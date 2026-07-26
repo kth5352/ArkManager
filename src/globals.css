@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+@config '../tailwind.config.ts';
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 4%;
+  --border: 240 6% 90%;
+  --accent: 240 5% 94%;
+  --accent-foreground: 240 6% 10%;
+  --primary: 240 6% 10%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 5% 94%;
+  --secondary-foreground: 240 6% 10%;
+  --muted: 240 5% 94%;
+  --muted-foreground: 240 4% 46%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 240 10% 4%;
+  --foreground: 0 0% 98%;
+  --card: 240 8% 8%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 6% 18%;
+  --accent: 240 6% 16%;
+  --accent-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 6% 10%;
+  --secondary: 240 6% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 6% 16%;
+  --muted-foreground: 240 4% 64%;
+  --destructive: 0 63% 40%;
+  --destructive-foreground: 0 0% 98%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  margin: 0;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
