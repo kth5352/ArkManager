@@ -13,6 +13,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
+            className="h-full"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
