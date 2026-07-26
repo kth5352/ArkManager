@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const IPC_CHANNELS = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
+  SETTINGS_GET_SYNC: 'settings:get-sync',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])

@@ -13,4 +13,11 @@ export function registerSettingsHandlers(db: AppDatabase): void {
     const { key, value } = SetSettingRequestSchema.parse(payload)
     setSetting(db, key, value)
   })
+
+  // Synchronous read used only at renderer boot to apply the persisted theme
+  // before first paint (avoids a flash of the wrong theme while the async
+  // React Query fetch resolves). Scoped to the 'theme' key only.
+  ipcMain.on(IPC_CHANNELS.SETTINGS_GET_SYNC, (event) => {
+    event.returnValue = getSetting(db, 'theme') ?? null
+  })
 }
