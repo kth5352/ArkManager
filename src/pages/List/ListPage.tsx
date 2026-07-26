@@ -1,3 +1,70 @@
+import { List, type RowComponentProps } from 'react-window'
+import { AutoSizer } from 'react-virtualized-auto-sizer'
+import { useGames } from '../../services/useGames'
+import { Skeleton } from '../../components/ui/skeleton'
+import type { MockGame } from '../../services/mockGames'
+
+const ROW_HEIGHT = 64
+
+function GameRow({ game }: { game: MockGame }) {
+  return (
+    <div className="flex items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent">
+      <div className="h-12 w-12 shrink-0 rounded bg-muted" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{game.title}</p>
+        <p className="truncate text-xs text-muted-foreground">{game.circle}</p>
+      </div>
+      <span className="w-24 shrink-0 text-xs text-muted-foreground">{game.releaseDate}</span>
+      <span className="w-24 shrink-0 text-xs text-muted-foreground">{game.rjCode}</span>
+    </div>
+  )
+}
+
+interface ListRowProps {
+  games: MockGame[]
+}
+
+function Row({ index, style, games }: RowComponentProps<ListRowProps>) {
+  const game = games[index]
+  if (!game) return null
+  return (
+    <div style={style}>
+      <GameRow game={game} />
+    </div>
+  )
+}
+
 export function ListPage() {
-  return <div className="p-6">List</div>
+  const { data: games, isLoading } = useGames()
+
+  if (isLoading || !games) {
+    return (
+      <div className="flex flex-col gap-2 p-6">
+        {Array.from({ length: 10 }, (_, i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-md" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-full w-full">
+      <AutoSizer
+        style={{ height: '100%', width: '100%' }}
+        renderProp={({ height, width }) => {
+          if (height === undefined || width === undefined) return null
+
+          return (
+            <List
+              rowComponent={Row}
+              rowProps={{ games }}
+              rowCount={games.length}
+              rowHeight={ROW_HEIGHT}
+              style={{ height, width }}
+            />
+          )
+        }}
+      />
+    </div>
+  )
 }
