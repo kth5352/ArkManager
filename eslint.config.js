@@ -1,12 +1,17 @@
+const js = require('@eslint/js')
 const tsParser = require('@typescript-eslint/parser')
 const tsPlugin = require('@typescript-eslint/eslint-plugin')
 const reactHooksPlugin = require('eslint-plugin-react-hooks')
-const reactRefreshPlugin = require('eslint-plugin-react-refresh')
+const reactRefreshPlugin = require('eslint-plugin-react-refresh').default
+const prettierConfig = require('eslint-config-prettier')
+const globals = require('globals')
 
 module.exports = [
   {
     ignores: ['out', 'dist', 'node_modules', '*.config.ts', '*.config.js', '*.cjs'],
   },
+  js.configs.recommended,
+  ...tsPlugin.configs['flat/recommended'],
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -15,6 +20,11 @@ module.exports = [
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: { jsx: true },
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.es2022,
       },
     },
     plugins: {
@@ -27,6 +37,8 @@ module.exports = [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  prettierConfig,
 ]
