@@ -1,0 +1,16 @@
+import { ipcMain } from 'electron'
+import { GetSettingRequestSchema, IPC_CHANNELS, SetSettingRequestSchema } from '../../../shared/types/ipc'
+import { getSetting, setSetting } from '../database/settingsRepository'
+import type { AppDatabase } from '../database/client'
+
+export function registerSettingsHandlers(db: AppDatabase): void {
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
+    const { key } = GetSettingRequestSchema.parse(payload)
+    return getSetting(db, key) ?? null
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event, payload: unknown) => {
+    const { key, value } = SetSettingRequestSchema.parse(payload)
+    setSetting(db, key, value)
+  })
+}
