@@ -7,6 +7,12 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    // Sidebar is a fixed w-56 (224px); Gallery needs at least one card column
+    // (CARD_WIDTH + GAP = 196px) plus the page's p-6 padding (48px) plus margin
+    // for chrome/breathing room -> 224 + 196 + 48 = 468, rounded up to 720 for comfort.
+    // 480 height comfortably fits the Sidebar's nav items and a card row plus title bar.
+    minWidth: 720,
+    minHeight: 480,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
