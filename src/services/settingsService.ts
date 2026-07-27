@@ -14,6 +14,13 @@ export function seedThemeQueryData(queryClient: QueryClient, theme: Theme): void
   queryClient.setQueryData(THEME_QUERY_KEY, theme)
 }
 
+// Synchronous read of the persisted theme, used only at boot (see
+// src/main.tsx) to apply the theme class before first paint. Keeps the
+// window.api call inside the service layer rather than in main.tsx directly.
+export function readPersistedThemeSync(): Theme | null {
+  return window.api.settings.getThemeSync()
+}
+
 export function useThemeQuery() {
   return useQuery({
     queryKey: THEME_QUERY_KEY,

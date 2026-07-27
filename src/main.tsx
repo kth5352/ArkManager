@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
 import { router } from './router'
-import { seedThemeQueryData } from './services/settingsService'
+import { readPersistedThemeSync, seedThemeQueryData } from './services/settingsService'
 import './globals.css'
 
 // Apply the persisted theme synchronously, before the first paint, so the
@@ -11,7 +11,7 @@ import './globals.css'
 // for reactivity/toggling after boot, see useTheme.ts) resolves. Mirrors
 // useTheme.ts's default-to-'dark' fallback for the "no persisted value yet"
 // case (fresh install).
-const persistedTheme = window.api.settings.getThemeSync()
+const persistedTheme = readPersistedThemeSync()
 const initialTheme = persistedTheme ?? 'dark'
 document.documentElement.classList.toggle('dark', initialTheme === 'dark')
 
