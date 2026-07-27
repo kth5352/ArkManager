@@ -17,6 +17,10 @@
   --muted-foreground: 240 4% 46%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 4%;
+  --input: 240 6% 90%;
+  --ring: 240 6% 10%;
   --radius: 0.5rem;
 }
 
@@ -36,6 +40,10 @@
   --muted-foreground: 240 4% 64%;
   --destructive: 0 63% 40%;
   --destructive-foreground: 0 0% 98%;
+  --popover: 240 8% 8%;
+  --popover-foreground: 0 0% 98%;
+  --input: 240 6% 18%;
+  --ring: 0 0% 98%;
 }
 
 * {
