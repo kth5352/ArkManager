@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { createDbClient } from './database/client'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
+import { registerLibrariesHandlers } from './ipc/librariesHandlers'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -33,6 +34,7 @@ app.whenReady().then(() => {
   const dbPath = join(app.getPath('userData'), 'dlibrary.db')
   const db = createDbClient(dbPath)
   registerSettingsHandlers(db)
+  registerLibrariesHandlers(db)
 
   createWindow()
 

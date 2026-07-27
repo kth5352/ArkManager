@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC_CHANNELS, type Theme } from '../../shared/types/ipc'
+import { IPC_CHANNELS, type Library, type LibraryWithStatus, type Theme } from '../../shared/types/ipc'
 
 const api = {
   settings: {
@@ -12,6 +12,14 @@ const api = {
     // for anything else - prefer the async getTheme/setTheme above.
     getThemeSync: (): Theme | null =>
       ipcRenderer.sendSync(IPC_CHANNELS.SETTINGS_GET_SYNC) as Theme | null,
+  },
+  libraries: {
+    list: (): Promise<LibraryWithStatus[]> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_LIST),
+    add: (name: string, path: string): Promise<Library> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_ADD, { name, path }),
+    remove: (id: string): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_REMOVE, { id }),
+    pickFolder: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_PICK_FOLDER),
   },
 }
 
