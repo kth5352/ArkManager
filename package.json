@@ -15,6 +15,14 @@
     "db:migrate": "drizzle-kit migrate",
     "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
+  "build": {
+    "appId": "com.dlibrary.app",
+    "productName": "DLibrary",
+    "files": ["out/**/*"],
+    "win": {
+      "target": "nsis"
+    }
+  },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
