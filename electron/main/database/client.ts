@@ -13,6 +13,15 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS libraries (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      path TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 
