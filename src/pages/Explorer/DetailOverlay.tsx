@@ -25,7 +25,9 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button onClick={() => console.log('open dlsite page', game.rjCode)}>DLsite 열기</Button>
+              <Button onClick={() => console.log('open dlsite page', game.rjCode)}>
+                DLsite 열기
+              </Button>
               <Button variant="secondary" onClick={() => console.log('open folder', game.id)}>
                 폴더 열기
               </Button>

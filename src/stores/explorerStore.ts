@@ -45,7 +45,8 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
       return { tabs, activeTabId }
     }),
 
-  closeOtherTabs: (id) => set((state) => ({ tabs: state.tabs.filter((tab) => tab.id === id), activeTabId: id })),
+  closeOtherTabs: (id) =>
+    set((state) => ({ tabs: state.tabs.filter((tab) => tab.id === id), activeTabId: id })),
 
   duplicateTab: (id) =>
     set((state) => {

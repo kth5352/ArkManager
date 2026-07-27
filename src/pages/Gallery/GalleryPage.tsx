@@ -47,7 +47,14 @@ interface GridCellProps {
   gap: number
 }
 
-function GameCell({ columnIndex, rowIndex, style, games, columnCount, gap }: CellComponentProps<GridCellProps>) {
+function GameCell({
+  columnIndex,
+  rowIndex,
+  style,
+  games,
+  columnCount,
+  gap,
+}: CellComponentProps<GridCellProps>) {
   const index = rowIndex * columnCount + columnIndex
   const game = games[index]
   if (!game) return null

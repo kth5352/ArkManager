@@ -10,7 +10,8 @@ const api = {
     // Synchronous IPC round-trip used only to apply the persisted theme
     // before the renderer's first paint (see src/main.tsx). Do not use this
     // for anything else - prefer the async getTheme/setTheme above.
-    getThemeSync: (): Theme | null => ipcRenderer.sendSync(IPC_CHANNELS.SETTINGS_GET_SYNC) as Theme | null,
+    getThemeSync: (): Theme | null =>
+      ipcRenderer.sendSync(IPC_CHANNELS.SETTINGS_GET_SYNC) as Theme | null,
   },
 }
 

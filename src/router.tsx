@@ -1,4 +1,10 @@
-import { Outlet, createHashHistory, createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
+import {
+  Outlet,
+  createHashHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router'
 import { AppLayout } from './components/layout/AppLayout'
 import { GalleryPage } from './pages/Gallery/GalleryPage'
 import { ListPage } from './pages/List/ListPage'
@@ -14,13 +20,39 @@ const rootRoute = createRootRoute({
   ),
 })
 
-const galleryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: GalleryPage })
-const listRoute = createRoute({ getParentRoute: () => rootRoute, path: '/list', component: ListPage })
-const explorerRoute = createRoute({ getParentRoute: () => rootRoute, path: '/explorer', component: ExplorerPage })
-const detailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/detail', component: DetailPage })
-const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage })
+const galleryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: GalleryPage,
+})
+const listRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/list',
+  component: ListPage,
+})
+const explorerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/explorer',
+  component: ExplorerPage,
+})
+const detailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/detail',
+  component: DetailPage,
+})
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  component: SettingsPage,
+})
 
-const routeTree = rootRoute.addChildren([galleryRoute, listRoute, explorerRoute, detailRoute, settingsRoute])
+const routeTree = rootRoute.addChildren([
+  galleryRoute,
+  listRoute,
+  explorerRoute,
+  detailRoute,
+  settingsRoute,
+])
 
 export const router = createRouter({ routeTree, history: createHashHistory() })
 

@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '../../components/ui/context-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '../../components/ui/context-menu'
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import { generateMockFolderEntries, type MockFolderEntry } from './mockFolderEntries'
 import { useExplorerStore } from '../../stores/explorerStore'
@@ -25,7 +30,9 @@ function FolderEntryContextMenu({
         <ContextMenuItem onSelect={() => console.log('reveal in OS explorer', entry.id)}>
           탐색기(OS)에서 열기
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('pin favorite', entry.id)}>즐겨찾기로 고정</ContextMenuItem>
+        <ContextMenuItem onSelect={() => console.log('pin favorite', entry.id)}>
+          즐겨찾기로 고정
+        </ContextMenuItem>
       </ContextMenuContent>
     )
   }
@@ -37,7 +44,9 @@ function FolderEntryContextMenu({
         <ContextMenuItem onSelect={() => console.log('open dlsite page', entry.rjCode)}>
           DLsite 페이지 열기
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('open folder', entry.id)}>폴더 열기</ContextMenuItem>
+        <ContextMenuItem onSelect={() => console.log('open folder', entry.id)}>
+          폴더 열기
+        </ContextMenuItem>
         <ContextMenuItem onSelect={() => navigator.clipboard.writeText(entry.rjCode ?? '')}>
           RJ번호 복사
         </ContextMenuItem>
@@ -53,10 +62,18 @@ function FolderEntryContextMenu({
         <ContextMenuItem onSelect={() => console.log('redownload cover', entry.rjCode)}>
           커버 이미지 재다운로드
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('extract archive', entry.id)}>압축 해제</ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('toggle favorite', entry.id)}>즐겨찾기 설정</ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('edit memo', entry.id)}>메모 설정</ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('set rating', entry.id)}>평점 설정</ContextMenuItem>
+        <ContextMenuItem onSelect={() => console.log('extract archive', entry.id)}>
+          압축 해제
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => console.log('toggle favorite', entry.id)}>
+          즐겨찾기 설정
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => console.log('edit memo', entry.id)}>
+          메모 설정
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => console.log('set rating', entry.id)}>
+          평점 설정
+        </ContextMenuItem>
       </ContextMenuContent>
     )
   }
@@ -88,7 +105,10 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
         {breadcrumbs.map((segment, index) => (
           <span key={segment.path} className="flex items-center gap-1">
             {index > 0 && <span>/</span>}
-            <button className="hover:text-foreground hover:underline" onClick={() => onNavigate(segment.path)}>
+            <button
+              className="hover:text-foreground hover:underline"
+              onClick={() => onNavigate(segment.path)}
+            >
               {segment.label}
             </button>
           </span>

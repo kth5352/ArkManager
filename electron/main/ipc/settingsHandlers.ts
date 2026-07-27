@@ -1,5 +1,9 @@
 import { ipcMain } from 'electron'
-import { GetSettingRequestSchema, IPC_CHANNELS, SetSettingRequestSchema } from '../../../shared/types/ipc'
+import {
+  GetSettingRequestSchema,
+  IPC_CHANNELS,
+  SetSettingRequestSchema,
+} from '../../../shared/types/ipc'
 import { getSetting, setSetting } from '../database/settingsRepository'
 import type { AppDatabase } from '../database/client'
 
