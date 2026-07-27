@@ -76,7 +76,7 @@ export function GalleryPage() {
               columnWidth={CARD_WIDTH + GAP}
               rowCount={rowCount}
               rowHeight={CARD_HEIGHT + GAP}
-              style={{ height, width }}
+              style={{ height, width, overflowX: 'hidden' }}
             />
           )
         }}
