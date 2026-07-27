@@ -28,6 +28,12 @@ const initialTabs: ExplorerTab[] = [
   { id: 'tab-games', label: 'DLsite Games', path: 'D:\\Games\\DLsite' },
 ]
 
+// Default path used when the user opens a brand new tab (e.g. via TabBar's
+// "+" button) with no other tab to derive a path from - reuses the first
+// initial tab's path so a fresh tab always lands somewhere browsable, even
+// after every tab (including all initial ones) has been closed.
+export const DEFAULT_NEW_TAB_PATH = initialTabs[0].path
+
 export const useExplorerStore = create<ExplorerState>((set) => ({
   tabs: initialTabs,
   activeTabId: initialTabs[0].id,

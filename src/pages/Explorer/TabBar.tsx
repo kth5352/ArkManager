@@ -8,13 +8,18 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Plus } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from '../../components/ui/context-menu'
-import { useExplorerStore, type ExplorerTab } from '../../stores/explorerStore'
+import {
+  DEFAULT_NEW_TAB_PATH,
+  useExplorerStore,
+  type ExplorerTab,
+} from '../../stores/explorerStore'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
   const activeTabId = useExplorerStore((s) => s.activeTabId)
@@ -62,6 +67,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
 export function TabBar() {
   const tabs = useExplorerStore((s) => s.tabs)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
+  const addTab = useExplorerStore((s) => s.addTab)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const handleDragEnd = (event: DragEndEvent): void => {
@@ -70,13 +76,25 @@ export function TabBar() {
     reorderTabs(String(active.id), String(over.id))
   }
 
+  const handleAddTab = (): void => {
+    addTab({ label: 'New Tab', path: DEFAULT_NEW_TAB_PATH })
+  }
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={tabs.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
-        <div className="flex border-b border-border">
+        <div className="flex items-center border-b border-border">
           {tabs.map((tab) => (
             <SortableTab key={tab.id} tab={tab} />
           ))}
+          <button
+            onClick={handleAddTab}
+            aria-label="새 탭 추가"
+            title="새 탭 추가"
+            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
       </SortableContext>
     </DndContext>
