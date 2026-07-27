@@ -33,4 +33,10 @@ describe('SetSettingRequestSchema', () => {
   it('rejects a missing value', () => {
     expect(() => SetSettingRequestSchema.parse({ key: 'theme' })).toThrow()
   })
+
+  it('rejects a value that is not a valid theme', () => {
+    expect(SetSettingRequestSchema.safeParse({ key: 'theme', value: 'chartreuse' }).success).toBe(
+      false
+    )
+  })
 })

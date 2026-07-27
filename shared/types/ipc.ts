@@ -18,6 +18,6 @@ export type GetSettingRequest = z.infer<typeof GetSettingRequestSchema>
 
 export const SetSettingRequestSchema = z.object({
   key: SettingKeySchema,
-  value: z.string(),
+  value: ThemeSchema,
 })
 export type SetSettingRequest = z.infer<typeof SetSettingRequestSchema>
