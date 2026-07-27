@@ -77,7 +77,7 @@ export function TabBar() {
   }
 
   const handleAddTab = (): void => {
-    addTab({ label: 'New Tab', path: DEFAULT_NEW_TAB_PATH })
+    addTab({ label: '새 탭', path: DEFAULT_NEW_TAB_PATH })
   }
 
   return (
