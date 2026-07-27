@@ -62,10 +62,17 @@ export const explorerTabs = sqliteTable('explorer_tabs', {
   position: integer('position').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull(),
 })
+
+export const sortPreferences = sqliteTable('sort_preferences', {
+  page: text('page').primaryKey(),        // 'gallery' | 'list' | 'explorer'
+  field: text('field').notNull(),          // 'name' | 'mtime'
+  direction: text('direction').notNull(),  // 'asc' | 'desc'
+})
 ```
 
 - `libraries`: `librariesRepository.ts` (Task 6의 `settingsRepository` 패턴), 경로 저장 전 정규화 함수(`normalizeLibraryPath`)를 거쳐 대소문자만 다른 중복 등록을 방지
 - `explorerTabs`: 탭 변경 시 debounce 후 저장, 앱 부팅 시 `useExplorerStore`의 초기 상태로 복원
+- `sortPreferences`: 정렬 상태는 세션이 아니라 앱 재시작 후에도 유지되어야 하므로 영속화. `page`를 기본키로 하는 3행 고정 테이블(gallery/list/explorer), 각각 독립적으로 저장·복원. `SortFieldSchema = z.enum(['name','mtime'])`/`SortDirectionSchema = z.enum(['asc','desc'])`로 검증하는 전용 repository — 기존 `app_settings`(테마 전용으로 이미 강화된 스키마, Task 21 최종 리뷰에서 `z.literal('theme')`/`ThemeSchema`로 좁혀둠)를 다시 범용화하지 않고 별도 테이블로 분리해 이미 검증된 코드를 건드리지 않는다
 - `games` 테이블은 만들지 않음 (위 "향후 메타데이터 캐싱과의 관계" 참고)
 
 Settings 페이지의 `useMockLibraryStore`(Zustand, 미영속)는 제거하고 IPC + React Query 서비스로 교체한다.
@@ -110,6 +117,7 @@ scanner:scan-recursive { libraryPaths: string[] } → ScannedEntry[]   # Gallery
 scanner:scan-shallow { dirPath: string } → ScannedEntry[]            # Explorer
 scanner:get-thumbnail { entryPath: string } → string | null          # 지연 로딩, 단건
 explorer:save-tabs { tabs: ExplorerTab[] } / explorer:load-tabs → ExplorerTab[]
+sort:get { page: 'gallery'|'list'|'explorer' } / sort:set { page, field, direction } → void
 shell:open-external { code: { type: 'RJ'|'VJ'|'ST'; value: string } } → void
 ```
 
@@ -121,7 +129,7 @@ shell:open-external { code: { type: 'RJ'|'VJ'|'ST'; value: string } } → void
 
 ## UI 변경
 
-- **공용 상단 툴바** (`src/components/layout/PageToolbar.tsx`): 정렬 드롭다운(이름/변경시간) + 오름/내림차순 토글 버튼. Gallery/List/Explorer 각 페이지가 자신의 정렬 상태(페이지별 독립, 세션 한정 - 재시작 시 초기화)를 툴바에 연결. Gallery 페이지에서만 줄 바가 추가로 표시됨 (기존 Ctrl+휠 줄 상태와 동일한 값 공유)
+- **공용 상단 툴바** (`src/components/layout/PageToolbar.tsx`): 정렬 드롭다운(이름/변경시간) + 오름/내림차순 토글 버튼. Gallery/List/Explorer 각 페이지가 자신의 정렬 상태(페이지별 독립, `sort:get`/`sort:set`으로 SQLite에 영속화 — 앱을 재시작해도 유지)를 툴바에 연결. Gallery 페이지에서만 줄 바가 추가로 표시됨 (기존 Ctrl+휠 줄 상태와 동일한 값 공유)
 - **Settings**: 기존 텍스트 입력 유지 + "폴더 선택" 버튼 추가(`libraries:pick-folder` 호출 후 입력란 자동 채움). `useMockLibraryStore` 제거, 실제 IPC + React Query 서비스로 교체
 - **DetailOverlay / List 행 / Explorer 컨텍스트메뉴**: RJ/VJ/ST 코드 텍스트를 클릭 가능하게 만들고 `shell:open-external` 호출. 기존 "DLsite 페이지 열기"/"DLsite 열기" 콘솔 로그 스텁을 동일 로직으로 실동작 연결
 
