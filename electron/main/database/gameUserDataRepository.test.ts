@@ -6,6 +6,7 @@ import {
   rekeyToCode,
   setFavorite,
   setRatingAndMemo,
+  listFavoriteKeys,
 } from './gameUserDataRepository'
 
 describe('gameUserDataRepository', () => {
@@ -90,5 +91,13 @@ describe('gameUserDataRepository', () => {
     expect(after?.isFavorite).toBe(true)
     expect(after?.rating).toBe(4)
     expect(after?.memo).toBe('괜찮음')
+  })
+
+  it('lists only the keys currently marked as favorite', () => {
+    setFavorite(db, 'RJ01111111', 'code', true)
+    setFavorite(db, 'RJ02222222', 'code', false)
+    setFavorite(db, 'd:\\games\\folder', 'path', true)
+
+    expect(listFavoriteKeys(db).sort()).toEqual(['RJ01111111', 'd:\\games\\folder'].sort())
   })
 })

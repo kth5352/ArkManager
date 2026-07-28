@@ -12,6 +12,7 @@ import { ExplorerPage } from './pages/Explorer/ExplorerPage'
 import { DetailPage } from './pages/Detail/DetailPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
 import { DlsiteSearchPage } from './pages/DlsiteSearch/DlsiteSearchPage'
+import { FavoritesPage } from './pages/Favorites/FavoritesPage'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -51,6 +52,11 @@ const settingsRoute = createRoute({
   path: '/settings',
   component: SettingsPage,
 })
+const favoritesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/favorites',
+  component: FavoritesPage,
+})
 
 const routeTree = rootRoute.addChildren([
   galleryRoute,
@@ -58,6 +64,7 @@ const routeTree = rootRoute.addChildren([
   explorerRoute,
   detailRoute,
   dlsiteSearchRoute,
+  favoritesRoute,
   settingsRoute,
 ])
 

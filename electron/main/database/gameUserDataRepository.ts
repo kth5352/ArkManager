@@ -62,6 +62,15 @@ export function touchGameUserData(
     .run()
 }
 
+export function listFavoriteKeys(db: AppDatabase): string[] {
+  return db
+    .select({ key: gameUserData.key })
+    .from(gameUserData)
+    .where(eq(gameUserData.isFavorite, true))
+    .all()
+    .map((row) => row.key)
+}
+
 // Moves a path-keyed row (a code-less file the user later assigned a code
 // to) onto the code as its new primary key, preserving createdAt as well as
 // isFavorite/rating/memo. No-op if the old path key was never recorded -

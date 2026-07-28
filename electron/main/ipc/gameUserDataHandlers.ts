@@ -6,7 +6,12 @@ import {
   SetRatingAndMemoRequestSchema,
   type GameUserDataDto,
 } from '../../../shared/types/ipc'
-import { getGameUserData, setFavorite, setRatingAndMemo } from '../database/gameUserDataRepository'
+import {
+  getGameUserData,
+  setFavorite,
+  setRatingAndMemo,
+  listFavoriteKeys,
+} from '../database/gameUserDataRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
 
@@ -32,5 +37,9 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
     const { identifier, rating, memo } = SetRatingAndMemoRequestSchema.parse(payload)
     const { key, keyType } = resolveGameEntryKey(identifier)
     setRatingAndMemo(db, key, keyType, rating, memo)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LIST_FAVORITE_KEYS, () => {
+    return listFavoriteKeys(db)
   })
 }

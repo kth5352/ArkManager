@@ -21,6 +21,7 @@ export const IPC_CHANNELS = {
   GAME_USER_DATA_GET: 'game-user-data:get',
   GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
   GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
+  GAME_USER_DATA_LIST_FAVORITE_KEYS: 'game-user-data:list-favorite-keys',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])

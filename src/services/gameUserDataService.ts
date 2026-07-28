@@ -60,3 +60,10 @@ export function useSetRatingAndMemo() {
     },
   })
 }
+
+export function useFavoriteKeys() {
+  return useQuery<string[]>({
+    queryKey: ['game-user-data', 'favorite-keys'],
+    queryFn: () => window.api.gameUserData.listFavoriteKeys(),
+  })
+}

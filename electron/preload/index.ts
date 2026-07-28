@@ -85,6 +85,8 @@ const api = {
         rating,
         memo,
       }),
+    listFavoriteKeys: (): Promise<string[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LIST_FAVORITE_KEYS),
   },
 }
 
