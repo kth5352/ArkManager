@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
 import { RatingMemoDialog } from '../../components/game/RatingMemoDialog'
+import { LaunchConfigDialog } from '../../components/game/LaunchConfigDialog'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
+import { useLaunchGame } from '../../services/launchService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface DetailOverlayProps {
@@ -14,7 +16,9 @@ interface DetailOverlayProps {
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const { data: thumbnail } = useThumbnail(game?.path ?? '', game?.kind ?? 'file')
   const openExternal = useOpenExternal()
+  const launchGame = useLaunchGame()
   const [editingRating, setEditingRating] = useState(false)
+  const [configuringLaunch, setConfiguringLaunch] = useState(false)
 
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>
@@ -51,8 +55,16 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
               <Button variant="secondary" onClick={() => console.log('open folder', game.path)}>
                 폴더 열기
               </Button>
-              <Button variant="secondary" onClick={() => console.log('launch', game.path)}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (game.kind === 'folder') launchGame.mutate(game)
+                }}
+              >
                 실행
+              </Button>
+              <Button variant="secondary" onClick={() => setConfiguringLaunch(true)}>
+                실행 설정
               </Button>
               <Button variant="secondary" onClick={() => setEditingRating(true)}>
                 평점/메모
@@ -65,6 +77,10 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         key={editingRating && game ? (game.code ? game.code.value : game.path) : 'closed'}
         entry={editingRating ? game : null}
         onClose={() => setEditingRating(false)}
+      />
+      <LaunchConfigDialog
+        entry={configuringLaunch ? game : null}
+        onClose={() => setConfiguringLaunch(false)}
       />
     </Dialog>
   )
