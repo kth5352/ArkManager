@@ -3,6 +3,7 @@ import {
   IPC_CHANNELS,
   type GameMetadataDto,
   type GameUserDataDto,
+  type LaunchConfigDto,
   type Library,
   type LibraryWithStatus,
   type PersistedExplorerTab,
@@ -87,6 +88,16 @@ const api = {
       }),
     listFavoriteKeys: (): Promise<string[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LIST_FAVORITE_KEYS),
+  },
+  launch: {
+    listExecutables: (folderPath: string): Promise<string[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_LIST_EXECUTABLES, { folderPath }),
+    isLocaleEmulatorAvailable: (): Promise<boolean> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE),
+    setConfig: (code: GameCode | null, path: string, config: LaunchConfigDto): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_SET_CONFIG, { identifier: { code, path }, config }),
+    launch: (code: GameCode | null, path: string): Promise<{ sessionMs: number }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_GAME, { identifier: { code, path } }),
   },
 }
 

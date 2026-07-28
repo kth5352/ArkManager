@@ -22,6 +22,10 @@ export const IPC_CHANNELS = {
   GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
   GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
   GAME_USER_DATA_LIST_FAVORITE_KEYS: 'game-user-data:list-favorite-keys',
+  LAUNCH_LIST_EXECUTABLES: 'launch:list-executables',
+  LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE: 'launch:is-locale-emulator-available',
+  LAUNCH_SET_CONFIG: 'launch:set-config',
+  LAUNCH_GAME: 'launch:launch-game',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -180,3 +184,22 @@ export interface GameUserDataDto {
   rating: number | null
   memo: string | null
 }
+
+export const LaunchConfigSchema = z.object({
+  executablePath: z.string(),
+  launchMode: z.enum(['normal', 'locale-emulator']),
+})
+export type LaunchConfigDto = z.infer<typeof LaunchConfigSchema>
+
+export const ListExecutablesRequestSchema = z.object({
+  folderPath: z.string(),
+})
+
+export const SetLaunchConfigRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  config: LaunchConfigSchema,
+})
+
+export const LaunchGameRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+})
