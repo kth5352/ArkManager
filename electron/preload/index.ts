@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC_CHANNELS,
+  type GameMetadataDto,
   type Library,
   type LibraryWithStatus,
   type PersistedExplorerTab,
@@ -57,6 +58,12 @@ const api = {
   shell: {
     openExternal: (code: GameCode): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SHELL_OPEN_EXTERNAL, { code }),
+  },
+  metadata: {
+    crawlAndSave: (code: GameCode): Promise<GameMetadataDto | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_AND_SAVE, { code }),
+    get: (code: GameCode): Promise<GameMetadataDto | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET, { code }),
   },
 }
 

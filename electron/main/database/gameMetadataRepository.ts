@@ -59,3 +59,14 @@ export function saveGameMetadata(
     })
     .run()
 }
+
+export function setGameMetadataCoverPath(
+  db: AppDatabase,
+  code: string,
+  coverImagePath: string
+): void {
+  db.update(gameMetadata)
+    .set({ coverImagePath, updatedAt: new Date().toISOString() })
+    .where(eq(gameMetadata.code, code))
+    .run()
+}

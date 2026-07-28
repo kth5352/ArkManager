@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createDbClient, type AppDatabase } from './client'
-import { getGameMetadata, touchGameMetadata, saveGameMetadata } from './gameMetadataRepository'
+import {
+  getGameMetadata,
+  touchGameMetadata,
+  saveGameMetadata,
+  setGameMetadataCoverPath,
+} from './gameMetadataRepository'
 
 describe('gameMetadataRepository', () => {
   let db: AppDatabase
@@ -54,5 +59,19 @@ describe('gameMetadataRepository', () => {
     expect(row?.title).toBe('シニシスタ2 SiNiSistar2')
     expect(row?.genres).toEqual(['ドット', 'シスター'])
     expect(row?.coverImagePath).toBeNull()
+  })
+
+  it('sets the cover image path independently of the crawled text fields', () => {
+    saveGameMetadata(db, 'RJ01169914', {
+      title: 'Test',
+      circle: 'Test Circle',
+      releaseDate: '2025-01-01',
+      genres: [],
+      coverImageUrl: null,
+    })
+
+    setGameMetadataCoverPath(db, 'RJ01169914', '/cache/covers/RJ01169914.webp')
+
+    expect(getGameMetadata(db, 'RJ01169914')?.coverImagePath).toBe('/cache/covers/RJ01169914.webp')
   })
 })

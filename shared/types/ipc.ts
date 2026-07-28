@@ -16,6 +16,8 @@ export const IPC_CHANNELS = {
   SORT_GET: 'sort:get',
   SORT_SET: 'sort:set',
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
+  METADATA_CRAWL_AND_SAVE: 'metadata:crawl-and-save',
+  METADATA_GET: 'metadata:get',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -124,3 +126,22 @@ export const OpenExternalRequestSchema = z.object({
   code: GameCodeSchema,
 })
 export type OpenExternalRequest = z.infer<typeof OpenExternalRequestSchema>
+
+export const CrawlAndSaveMetadataRequestSchema = z.object({
+  code: GameCodeSchema,
+})
+export type CrawlAndSaveMetadataRequest = z.infer<typeof CrawlAndSaveMetadataRequestSchema>
+
+export const GetMetadataRequestSchema = z.object({
+  code: GameCodeSchema,
+})
+export type GetMetadataRequest = z.infer<typeof GetMetadataRequestSchema>
+
+export interface GameMetadataDto {
+  code: string
+  title: string | null
+  circle: string | null
+  releaseDate: string | null
+  genres: string[]
+  coverImagePath: string | null
+}
