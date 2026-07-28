@@ -8,7 +8,7 @@ import {
   type SortPreference,
   type Theme,
 } from '../../shared/types/ipc'
-import type { GameEntry, ScannedEntry } from '../../shared/types/scanner'
+import type { GameCode, GameEntry, ScannedEntry } from '../../shared/types/scanner'
 
 const api = {
   settings: {
@@ -49,6 +49,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SORT_GET, { page }),
     set: (page: SortPage, field: SortPreference['field'], direction: SortPreference['direction']): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SORT_SET, { page, field, direction }),
+  },
+  shell: {
+    openExternal: (code: GameCode): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SHELL_OPEN_EXTERNAL, { code }),
   },
 }
 

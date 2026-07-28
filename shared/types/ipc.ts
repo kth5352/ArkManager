@@ -15,6 +15,7 @@ export const IPC_CHANNELS = {
   EXPLORER_LOAD_TABS: 'explorer:load-tabs',
   SORT_GET: 'sort:get',
   SORT_SET: 'sort:set',
+  SHELL_OPEN_EXTERNAL: 'shell:open-external',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -113,3 +114,13 @@ export interface SortPreference {
   field: SortField
   direction: SortDirection
 }
+
+export const GameCodeSchema = z.object({
+  type: z.enum(['RJ', 'VJ', 'ST']),
+  value: z.string(),
+})
+
+export const OpenExternalRequestSchema = z.object({
+  code: GameCodeSchema,
+})
+export type OpenExternalRequest = z.infer<typeof OpenExternalRequestSchema>

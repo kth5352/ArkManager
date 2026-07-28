@@ -6,6 +6,7 @@ import { registerLibrariesHandlers } from './ipc/librariesHandlers'
 import { registerScannerHandlers } from './ipc/scannerHandlers'
 import { registerExplorerHandlers } from './ipc/explorerHandlers'
 import { registerSortHandlers } from './ipc/sortHandlers'
+import { registerShellHandlers } from './ipc/shellHandlers'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -41,6 +42,7 @@ app.whenReady().then(() => {
   registerScannerHandlers()
   registerExplorerHandlers(db)
   registerSortHandlers(db)
+  registerShellHandlers()
 
   createWindow()
 
