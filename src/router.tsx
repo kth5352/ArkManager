@@ -11,6 +11,7 @@ import { ListPage } from './pages/List/ListPage'
 import { ExplorerPage } from './pages/Explorer/ExplorerPage'
 import { DetailPage } from './pages/Detail/DetailPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
+import { DlsiteSearchPage } from './pages/DlsiteSearch/DlsiteSearchPage'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -40,6 +41,11 @@ const detailRoute = createRoute({
   path: '/detail',
   component: DetailPage,
 })
+const dlsiteSearchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dlsite-search',
+  component: DlsiteSearchPage,
+})
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
@@ -51,6 +57,7 @@ const routeTree = rootRoute.addChildren([
   listRoute,
   explorerRoute,
   detailRoute,
+  dlsiteSearchRoute,
   settingsRoute,
 ])
 

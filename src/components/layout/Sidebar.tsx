@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { FolderTree, LayoutGrid, LibraryBig, List, Settings } from 'lucide-react'
+import { FolderTree, LayoutGrid, LibraryBig, List, Search, Settings } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { Button } from '../ui/button'
 
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/', label: 'Gallery', icon: LayoutGrid },
   { to: '/list', label: 'List', icon: List },
   { to: '/explorer', label: 'Explorer', icon: FolderTree },
+  { to: '/dlsite-search', label: 'DLsite 검색', icon: Search },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const
 
