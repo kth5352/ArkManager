@@ -26,6 +26,9 @@ export const IPC_CHANNELS = {
   LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE: 'launch:is-locale-emulator-available',
   LAUNCH_SET_CONFIG: 'launch:set-config',
   LAUNCH_GAME: 'launch:launch-game',
+  SAVE_PICK_FOLDER: 'save:pick-folder',
+  SAVE_SET_PATH: 'save:set-path',
+  SAVE_BACKUP_NOW: 'save:backup-now',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -201,5 +204,14 @@ export const SetLaunchConfigRequestSchema = z.object({
 })
 
 export const LaunchGameRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+})
+
+export const SetSavePathRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  savePath: z.string(),
+})
+
+export const BackupSaveNowRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
 })

@@ -99,6 +99,13 @@ const api = {
     launch: (code: GameCode | null, path: string): Promise<{ sessionMs: number }> =>
       ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_GAME, { identifier: { code, path } }),
   },
+  save: {
+    pickFolder: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SAVE_PICK_FOLDER),
+    setPath: (code: GameCode | null, path: string, savePath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_SET_PATH, { identifier: { code, path }, savePath }),
+    backupNow: (code: GameCode | null, path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_BACKUP_NOW, { identifier: { code, path } }),
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

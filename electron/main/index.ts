@@ -10,6 +10,7 @@ import { registerShellHandlers } from './ipc/shellHandlers'
 import { registerMetadataHandlers } from './ipc/metadataHandlers'
 import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
+import { registerSaveHandlers } from './ipc/saveHandlers'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -49,6 +50,7 @@ app.whenReady().then(() => {
   registerMetadataHandlers(db)
   registerGameUserDataHandlers(db)
   registerLaunchHandlers(db)
+  registerSaveHandlers(db)
 
   createWindow()
 
