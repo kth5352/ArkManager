@@ -40,6 +40,9 @@ export const gameMetadata = sqliteTable('game_metadata', {
 export const gameUserData = sqliteTable('game_user_data', {
   key: text('key').primaryKey(),
   keyType: text('key_type').notNull(), // 'code' | 'path'
+  isFavorite: integer('is_favorite', { mode: 'boolean' }).notNull().default(false),
+  rating: integer('rating'), // 1-5, null이면 미평가
+  memo: text('memo'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })

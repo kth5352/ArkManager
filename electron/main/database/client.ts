@@ -57,6 +57,9 @@ export function createDbClient(filePath: string) {
     CREATE TABLE IF NOT EXISTS game_user_data (
       key TEXT PRIMARY KEY,
       key_type TEXT NOT NULL,
+      is_favorite INTEGER NOT NULL DEFAULT 0,
+      rating INTEGER,
+      memo TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
