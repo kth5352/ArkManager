@@ -79,6 +79,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         onClose={() => setEditingRating(false)}
       />
       <LaunchConfigDialog
+        key={configuringLaunch && game ? (game.code ? game.code.value : game.path) : 'closed'}
         entry={configuringLaunch ? game : null}
         onClose={() => setConfiguringLaunch(false)}
       />
