@@ -13,6 +13,8 @@ export const IPC_CHANNELS = {
   SCANNER_GET_THUMBNAIL: 'scanner:get-thumbnail',
   EXPLORER_SAVE_TABS: 'explorer:save-tabs',
   EXPLORER_LOAD_TABS: 'explorer:load-tabs',
+  SORT_GET: 'sort:get',
+  SORT_SET: 'sort:set',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -85,3 +87,29 @@ export const SaveExplorerTabsRequestSchema = z.object({
   tabs: z.array(PersistedExplorerTabSchema),
 })
 export type SaveExplorerTabsRequest = z.infer<typeof SaveExplorerTabsRequestSchema>
+
+export const SortPageSchema = z.enum(['gallery', 'list', 'explorer'])
+export type SortPage = z.infer<typeof SortPageSchema>
+
+export const SortFieldSchema = z.enum(['name', 'mtime'])
+export type SortField = z.infer<typeof SortFieldSchema>
+
+export const SortDirectionSchema = z.enum(['asc', 'desc'])
+export type SortDirection = z.infer<typeof SortDirectionSchema>
+
+export const GetSortRequestSchema = z.object({
+  page: SortPageSchema,
+})
+export type GetSortRequest = z.infer<typeof GetSortRequestSchema>
+
+export const SetSortRequestSchema = z.object({
+  page: SortPageSchema,
+  field: SortFieldSchema,
+  direction: SortDirectionSchema,
+})
+export type SetSortRequest = z.infer<typeof SetSortRequestSchema>
+
+export interface SortPreference {
+  field: SortField
+  direction: SortDirection
+}

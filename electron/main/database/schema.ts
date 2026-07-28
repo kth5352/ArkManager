@@ -19,3 +19,9 @@ export const explorerTabs = sqliteTable('explorer_tabs', {
   position: integer('position').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull(),
 })
+
+export const sortPreferences = sqliteTable('sort_preferences', {
+  page: text('page').primaryKey(),
+  field: text('field').notNull(),
+  direction: text('direction').notNull(),
+})

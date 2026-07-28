@@ -4,6 +4,8 @@ import {
   type Library,
   type LibraryWithStatus,
   type PersistedExplorerTab,
+  type SortPage,
+  type SortPreference,
   type Theme,
 } from '../../shared/types/ipc'
 import type { GameEntry, ScannedEntry } from '../../shared/types/scanner'
@@ -41,6 +43,12 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_SAVE_TABS, { tabs }),
     load: (): Promise<PersistedExplorerTab[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_LOAD_TABS),
+  },
+  sort: {
+    get: (page: SortPage): Promise<SortPreference | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SORT_GET, { page }),
+    set: (page: SortPage, field: SortPreference['field'], direction: SortPreference['direction']): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SORT_SET, { page, field, direction }),
   },
 }
 

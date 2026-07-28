@@ -32,6 +32,14 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS sort_preferences (
+      page TEXT PRIMARY KEY,
+      field TEXT NOT NULL,
+      direction TEXT NOT NULL
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 
