@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { buildExternalUrl } from './buildExternalUrl'
 
 describe('buildExternalUrl', () => {
-  it('builds a DLsite URL for an RJ code', () => {
+  it('builds a DLsite maniax URL for an RJ code', () => {
     expect(buildExternalUrl({ type: 'RJ', value: 'RJ01169914' })).toBe(
-      'http://dlsite.com/maniax/work/=/product_id/RJ01169914.html'
+      'https://www.dlsite.com/maniax/work/=/product_id/RJ01169914.html'
     )
   })
 
-  it('builds a DLsite URL for a VJ code using the same pattern', () => {
-    expect(buildExternalUrl({ type: 'VJ', value: 'VJ009988' })).toBe(
-      'http://dlsite.com/maniax/work/=/product_id/VJ009988.html'
+  it('builds a DLsite pro URL for a VJ code (different category path than RJ)', () => {
+    expect(buildExternalUrl({ type: 'VJ', value: 'VJ01004728' })).toBe(
+      'https://www.dlsite.com/pro/work/=/product_id/VJ01004728.html'
     )
   })
 
