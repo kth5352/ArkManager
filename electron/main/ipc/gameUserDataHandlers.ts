@@ -11,6 +11,7 @@ import {
   setFavorite,
   setRatingAndMemo,
   listFavoriteKeys,
+  listRecentlyPlayedKeys,
 } from '../database/gameUserDataRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
@@ -41,5 +42,9 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
 
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LIST_FAVORITE_KEYS, () => {
     return listFavoriteKeys(db)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LIST_RECENTLY_PLAYED, () => {
+    return listRecentlyPlayedKeys(db)
   })
 }

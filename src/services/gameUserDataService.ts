@@ -67,3 +67,10 @@ export function useFavoriteKeys() {
     queryFn: () => window.api.gameUserData.listFavoriteKeys(),
   })
 }
+
+export function useRecentlyPlayed() {
+  return useQuery<{ key: string; lastPlayedAt: string }[]>({
+    queryKey: ['game-user-data', 'recently-played'],
+    queryFn: () => window.api.gameUserData.listRecentlyPlayed(),
+  })
+}

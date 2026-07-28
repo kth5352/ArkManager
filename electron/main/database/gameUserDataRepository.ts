@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { desc, eq, isNotNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { gameUserData } from './schema'
 
@@ -118,6 +118,28 @@ export function touchGameUserData(
     .values({ key, keyType, createdAt: now, updatedAt: now })
     .onConflictDoUpdate({ target: gameUserData.key, set: { updatedAt: now } })
     .run()
+}
+
+export interface RecentlyPlayedEntry {
+  key: string
+  lastPlayedAt: string
+}
+
+// Ties on lastPlayedAt (Date#toISOString() is only millisecond-precision, so
+// two sessions recorded in quick succession - e.g. in tests, or a user
+// launching two games back-to-back - can land on the identical instant) are
+// broken by rowid, which increases with each new row's first INSERT and is
+// left untouched by later UPDATEs, so it stays a stable proxy for insertion
+// (i.e. "first played") order.
+export function listRecentlyPlayedKeys(db: AppDatabase, limit = 50): RecentlyPlayedEntry[] {
+  return db
+    .select({ key: gameUserData.key, lastPlayedAt: gameUserData.lastPlayedAt })
+    .from(gameUserData)
+    .where(isNotNull(gameUserData.lastPlayedAt))
+    .orderBy(desc(gameUserData.lastPlayedAt), desc(sql`rowid`))
+    .limit(limit)
+    .all()
+    .map((row) => ({ key: row.key, lastPlayedAt: row.lastPlayedAt! }))
 }
 
 export function listFavoriteKeys(db: AppDatabase): string[] {

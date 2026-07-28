@@ -88,6 +88,8 @@ const api = {
       }),
     listFavoriteKeys: (): Promise<string[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LIST_FAVORITE_KEYS),
+    listRecentlyPlayed: (): Promise<{ key: string; lastPlayedAt: string }[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LIST_RECENTLY_PLAYED),
   },
   launch: {
     listExecutables: (folderPath: string): Promise<string[]> =>

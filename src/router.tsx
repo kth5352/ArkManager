@@ -13,6 +13,7 @@ import { DetailPage } from './pages/Detail/DetailPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
 import { DlsiteSearchPage } from './pages/DlsiteSearch/DlsiteSearchPage'
 import { FavoritesPage } from './pages/Favorites/FavoritesPage'
+import { RecentlyPlayedPage } from './pages/RecentlyPlayed/RecentlyPlayedPage'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -57,6 +58,11 @@ const favoritesRoute = createRoute({
   path: '/favorites',
   component: FavoritesPage,
 })
+const recentlyPlayedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/recently-played',
+  component: RecentlyPlayedPage,
+})
 
 const routeTree = rootRoute.addChildren([
   galleryRoute,
@@ -65,6 +71,7 @@ const routeTree = rootRoute.addChildren([
   detailRoute,
   dlsiteSearchRoute,
   favoritesRoute,
+  recentlyPlayedRoute,
   settingsRoute,
 ])
 

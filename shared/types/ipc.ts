@@ -22,6 +22,7 @@ export const IPC_CHANNELS = {
   GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
   GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
   GAME_USER_DATA_LIST_FAVORITE_KEYS: 'game-user-data:list-favorite-keys',
+  GAME_USER_DATA_LIST_RECENTLY_PLAYED: 'game-user-data:list-recently-played',
   LAUNCH_LIST_EXECUTABLES: 'launch:list-executables',
   LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE: 'launch:is-locale-emulator-available',
   LAUNCH_SET_CONFIG: 'launch:set-config',

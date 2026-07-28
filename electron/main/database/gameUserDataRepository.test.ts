@@ -10,6 +10,7 @@ import {
   setLaunchConfig,
   recordPlaySession,
   setSavePath,
+  listRecentlyPlayedKeys,
 } from './gameUserDataRepository'
 
 describe('gameUserDataRepository', () => {
@@ -154,5 +155,14 @@ describe('gameUserDataRepository', () => {
     expect(after?.launchConfig?.executablePath).toBe('d:\\games\\some-folder\\game.exe')
     expect(after?.totalPlaytimeMs).toBe(120_000)
     expect(after?.savePath).toBe('d:\\saves\\some-folder')
+  })
+
+  it('lists keys with a recorded play session, most recent first', () => {
+    recordPlaySession(db, 'RJ01111111', 'code', 1000)
+    recordPlaySession(db, 'RJ02222222', 'code', 1000)
+    touchGameUserData(db, 'RJ03333333', 'code') // 플레이 기록 없음 - 제외돼야 함
+
+    const recent = listRecentlyPlayedKeys(db)
+    expect(recent.map((r) => r.key)).toEqual(['RJ02222222', 'RJ01111111'])
   })
 })
