@@ -10,5 +10,10 @@ export function useGames() {
     queryKey: ['games', 'scan', libraryPaths],
     queryFn: () => window.api.scanner.scanRecursive(libraryPaths),
     enabled: libraries !== undefined,
+    // Interim mitigation until a real games cache table lands: without this,
+    // React Query's staleTime: 0 default re-runs a full recursive filesystem
+    // scan on every Gallery/List mount and every window refocus, which is
+    // expensive for a large library.
+    staleTime: 5 * 60_000,
   })
 }
