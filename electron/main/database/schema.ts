@@ -25,3 +25,9 @@ export const sortPreferences = sqliteTable('sort_preferences', {
   field: text('field').notNull(),
   direction: text('direction').notNull(),
 })
+
+export const gameMetadata = sqliteTable('game_metadata', {
+  code: text('code').primaryKey(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
