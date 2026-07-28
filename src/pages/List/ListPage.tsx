@@ -2,6 +2,7 @@ import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
+import { useOpenExternal } from '../../services/shellService'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { useSortPreference } from '../../services/sortService'
@@ -17,6 +18,7 @@ function formatMtime(mtimeMs: number): string {
 
 function GameRow({ game }: { game: GameEntry }) {
   const { data: thumbnail } = useThumbnail(game.path, game.kind)
+  const openExternal = useOpenExternal()
 
   return (
     <div className="flex items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent">
@@ -27,7 +29,12 @@ function GameRow({ game }: { game: GameEntry }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{game.name}</p>
-        <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>
+        <button
+          className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
+          onClick={() => openExternal.mutate(game.code)}
+        >
+          {game.code.value}
+        </button>
       </div>
       <span className="w-24 shrink-0 text-xs text-muted-foreground">
         {formatMtime(game.mtimeMs)}

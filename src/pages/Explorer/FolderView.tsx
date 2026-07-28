@@ -8,6 +8,7 @@ import {
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { useThumbnail } from '../../services/thumbnailService'
+import { useOpenExternal } from '../../services/shellService'
 import { useFolderScan } from '../../services/scannerService'
 import { DetailOverlay } from './DetailOverlay'
 import { PageToolbar } from '../../components/layout/PageToolbar'
@@ -28,11 +29,13 @@ function FolderEntryContextMenu({
   entry: ScannedEntry
   onOpenInNewTab: (entry: ScannedEntry) => void
 }) {
+  const openExternal = useOpenExternal()
+
   if (entry.code) {
     return (
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => console.log('launch', entry.path)}>실행</ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('open dlsite page', entry.code?.value)}>
+        <ContextMenuItem onSelect={() => entry.code && openExternal.mutate(entry.code)}>
           DLsite 페이지 열기
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => console.log('open folder', entry.path)}>

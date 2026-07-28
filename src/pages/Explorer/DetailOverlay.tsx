@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
 import { useThumbnail } from '../../services/thumbnailService'
+import { useOpenExternal } from '../../services/shellService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface DetailOverlayProps {
@@ -10,6 +11,7 @@ interface DetailOverlayProps {
 
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const { data: thumbnail } = useThumbnail(game?.path ?? '', game?.kind ?? 'file')
+  const openExternal = useOpenExternal()
 
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>
@@ -31,11 +33,16 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                 )}
               </div>
               <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                <p>작품번호: {game.code.value}</p>
+                <button
+                  className="text-left underline-offset-2 hover:underline"
+                  onClick={() => game.code && openExternal.mutate(game.code)}
+                >
+                  작품번호: {game.code.value}
+                </button>
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button onClick={() => console.log('open dlsite page', game.code?.value)}>
+              <Button onClick={() => game.code && openExternal.mutate(game.code)}>
                 DLsite 열기
               </Button>
               <Button variant="secondary" onClick={() => console.log('open folder', game.path)}>
