@@ -23,6 +23,11 @@ describe('cacheCoverImage', () => {
         res.writeHead(404).end()
         return
       }
+      if (req.url === '/invalid.jpg') {
+        res.writeHead(200, { 'Content-Type': 'image/png' })
+        res.end('not an image')
+        return
+      }
       res.writeHead(200, { 'Content-Type': 'image/png' })
       res.end(png)
     })
@@ -48,6 +53,19 @@ describe('cacheCoverImage', () => {
 
   it('returns null when the download fails', async () => {
     const savedPath = await cacheCoverImage(cacheDir, 'RJ00000000', `${baseUrl}/missing.jpg`)
+    expect(savedPath).toBeNull()
+  })
+
+  it('creates cacheDir if it does not exist', async () => {
+    const nonExistentDir = join(cacheDir, 'nested', 'cache', 'dir')
+    const savedPath = await cacheCoverImage(nonExistentDir, 'RJ01169914', `${baseUrl}/cover.jpg`)
+    expect(savedPath).toBe(join(nonExistentDir, 'RJ01169914.webp'))
+    const buffer = await readFile(savedPath!)
+    expect(buffer.subarray(8, 12).toString('ascii')).toBe('WEBP')
+  })
+
+  it('returns null when image parsing fails', async () => {
+    const savedPath = await cacheCoverImage(cacheDir, 'RJ00000000', `${baseUrl}/invalid.jpg`)
     expect(savedPath).toBeNull()
   })
 })
