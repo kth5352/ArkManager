@@ -1,6 +1,10 @@
 import { existsSync } from 'node:fs'
 import { dialog, ipcMain } from 'electron'
-import { AddLibraryRequestSchema, IPC_CHANNELS, RemoveLibraryRequestSchema } from '../../../shared/types/ipc'
+import {
+  AddLibraryRequestSchema,
+  IPC_CHANNELS,
+  RemoveLibraryRequestSchema,
+} from '../../../shared/types/ipc'
 import type { LibraryWithStatus } from '../../../shared/types/ipc'
 import { addLibrary, listLibraries, removeLibrary } from '../database/librariesRepository'
 import type { AppDatabase } from '../database/client'

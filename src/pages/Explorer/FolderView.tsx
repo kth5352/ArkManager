@@ -110,7 +110,12 @@ function FolderEntryRow({
           {entry.code && (
             <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
               {thumbnail && (
-                <img src={thumbnail} alt="" className="h-full w-full object-cover" draggable={false} />
+                <img
+                  src={thumbnail}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  draggable={false}
+                />
               )}
             </div>
           )}

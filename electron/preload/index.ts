@@ -26,7 +26,8 @@ const api = {
     list: (): Promise<LibraryWithStatus[]> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_LIST),
     add: (name: string, path: string): Promise<Library> =>
       ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_ADD, { name, path }),
-    remove: (id: string): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_REMOVE, { id }),
+    remove: (id: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_REMOVE, { id }),
     pickFolder: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_PICK_FOLDER),
   },
@@ -47,8 +48,11 @@ const api = {
   sort: {
     get: (page: SortPage): Promise<SortPreference | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SORT_GET, { page }),
-    set: (page: SortPage, field: SortPreference['field'], direction: SortPreference['direction']): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.SORT_SET, { page, field, direction }),
+    set: (
+      page: SortPage,
+      field: SortPreference['field'],
+      direction: SortPreference['direction']
+    ): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.SORT_SET, { page, field, direction }),
   },
   shell: {
     openExternal: (code: GameCode): Promise<void> =>

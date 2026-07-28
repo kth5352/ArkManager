@@ -6,7 +6,9 @@ export const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp
 const PREFERRED_NAMES = ['cover', 'folder', 'thumbnail']
 
 function isImageFile(fileName: string): boolean {
-  return IMAGE_EXTENSIONS.includes(extname(fileName).toLowerCase() as (typeof IMAGE_EXTENSIONS)[number])
+  return IMAGE_EXTENSIONS.includes(
+    extname(fileName).toLowerCase() as (typeof IMAGE_EXTENSIONS)[number]
+  )
 }
 
 export async function findThumbnailPath(folderPath: string): Promise<string | null> {
