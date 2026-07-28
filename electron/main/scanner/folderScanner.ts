@@ -1,17 +1,42 @@
-import { readdir, stat } from 'node:fs/promises'
+import { lstat, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { GameEntry, ScannedEntry } from '../../../shared/types/scanner'
 import { extractCode } from './codeRecognition'
 
-async function toScannedEntry(parentPath: string, name: string): Promise<ScannedEntry> {
+// An entry can become unstattable between readdir() and stat() - a
+// permission error, a broken link, or the entry being deleted mid-scan.
+// Returns null in that case rather than throwing, so one bad entry doesn't
+// fail the whole listing (see scanFolderShallow / scanLibraryRecursive).
+async function toScannedEntry(parentPath: string, name: string): Promise<ScannedEntry | null> {
   const path = join(parentPath, name)
-  const stats = await stat(path)
-  return {
-    name,
-    path,
-    kind: stats.isDirectory() ? 'folder' : 'file',
-    mtimeMs: stats.mtimeMs,
-    code: extractCode(name),
+  try {
+    const stats = await stat(path)
+    return {
+      name,
+      path,
+      kind: stats.isDirectory() ? 'folder' : 'file',
+      mtimeMs: stats.mtimeMs,
+      code: extractCode(name),
+    }
+  } catch {
+    return null
+  }
+}
+
+function isScannedEntry(entry: ScannedEntry | null): entry is ScannedEntry {
+  return entry !== null
+}
+
+// Directory junctions/symlinks are followed by stat() when classifying kind,
+// but must not be followed when deciding whether to recurse - a junction
+// pointing back at an ancestor directory would otherwise cause infinite
+// recursion. lstat() (unlike stat()) does not follow the link itself.
+async function isSymbolicLink(path: string): Promise<boolean> {
+  try {
+    const stats = await lstat(path)
+    return stats.isSymbolicLink()
+  } catch {
+    return false
   }
 }
 
@@ -21,7 +46,8 @@ async function toScannedEntry(parentPath: string, name: string): Promise<Scanned
 // lazy step - see scanner/thumbnail.ts and the get-thumbnail IPC handler).
 export async function scanFolderShallow(dirPath: string): Promise<ScannedEntry[]> {
   const names = await readdir(dirPath)
-  return Promise.all(names.map((name) => toScannedEntry(dirPath, name)))
+  const entries = await Promise.all(names.map((name) => toScannedEntry(dirPath, name)))
+  return entries.filter(isScannedEntry)
 }
 
 // Gallery/List: recursively walks the entire library tree and returns only
@@ -37,6 +63,7 @@ export async function scanLibraryRecursive(libraryPath: string): Promise<GameEnt
 
   for (const name of names) {
     const entry = await toScannedEntry(libraryPath, name)
+    if (!entry) continue
 
     if (entry.code) {
       results.push({ ...entry, code: entry.code })
@@ -44,8 +71,20 @@ export async function scanLibraryRecursive(libraryPath: string): Promise<GameEnt
     }
 
     if (entry.kind === 'folder') {
-      const nested = await scanLibraryRecursive(entry.path)
-      results.push(...nested)
+      // Skip recursing into symlinks/junctions - a link pointing back at an
+      // ancestor directory would otherwise cause infinite recursion. Treated
+      // as a leaf that just isn't walked, like a coded folder above.
+      if (await isSymbolicLink(entry.path)) continue
+
+      try {
+        const nested = await scanLibraryRecursive(entry.path)
+        results.push(...nested)
+      } catch {
+        // Subfolder became unreadable mid-scan (permission error, race, or
+        // a race with deletion) - skip this branch only, sibling branches
+        // still scan normally.
+        continue
+      }
     }
   }
 

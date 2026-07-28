@@ -136,7 +136,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   // re-fetches when it changes - ExplorerPage keys FolderView only on the
   // active tab's id, not its path, so navigating into a subfolder (or via
   // breadcrumb) updates `path` without unmounting this component.
-  const { data: entries = [] } = useFolderScan(path)
+  const { data: entries = [], isError } = useFolderScan(path)
 
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('explorer')
   const sortedEntries = sortEntries(entries, sortField, sortDirection)
@@ -169,16 +169,22 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
         ))}
       </div>
       <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
-      <ul className="flex-1 divide-y divide-border overflow-auto">
-        {sortedEntries.map((entry) => (
-          <FolderEntryRow
-            key={entry.path}
-            entry={entry}
-            onOpenInNewTab={openInNewTab}
-            onEntryClick={handleEntryClick}
-          />
-        ))}
-      </ul>
+      {isError ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+          이 폴더에 접근할 수 없습니다.
+        </div>
+      ) : (
+        <ul className="flex-1 divide-y divide-border overflow-auto">
+          {sortedEntries.map((entry) => (
+            <FolderEntryRow
+              key={entry.path}
+              entry={entry}
+              onOpenInNewTab={openInNewTab}
+              onEntryClick={handleEntryClick}
+            />
+          ))}
+        </ul>
+      )}
       <DetailOverlay game={selectedGame} onClose={() => setSelectedGame(null)} />
     </div>
   )

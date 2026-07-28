@@ -1,8 +1,28 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { scanFolderShallow, scanLibraryRecursive } from './folderScanner'
+
+// Node builtin ESM module namespaces aren't configurable, so vi.spyOn can't
+// target them directly - vi.mock + vi.hoisted lets individual "error
+// tolerance" tests below override stat()/readdir() for one specific path
+// while every other call (including all other tests in this file) falls
+// through to the real implementation unchanged.
+const { statOverride, readdirOverride } = vi.hoisted(() => ({
+  statOverride: { impl: null as ((path: string) => Promise<unknown>) | null },
+  readdirOverride: { impl: null as ((path: string) => Promise<unknown>) | null },
+}))
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return {
+    ...actual,
+    stat: (path: string) => (statOverride.impl ? statOverride.impl(path) : actual.stat(path)),
+    readdir: (path: string) =>
+      readdirOverride.impl ? readdirOverride.impl(path) : actual.readdir(path),
+  }
+})
 
 describe('scanFolderShallow', () => {
   let dir: string
@@ -102,5 +122,80 @@ describe('scanLibraryRecursive', () => {
 
     const entries = await scanLibraryRecursive(dir)
     expect(entries.map((e) => e.name)).toEqual(['RJ01111'])
+  })
+
+  it('does not infinitely recurse through a directory junction cycle', async () => {
+    await mkdir(join(dir, 'sub'))
+    await writeFile(join(dir, 'sub', 'RJ01111.zip'), '')
+    // Junction inside "sub" that points back at "dir" itself, creating a
+    // cycle. Windows directory junctions don't require admin privileges.
+    await symlink(dir, join(dir, 'sub', 'loop'), 'junction')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
+  })
+})
+
+// Simulates entries/subfolders that become inaccessible mid-scan (permission
+// errors, races with deletion) by mocking fs/promises for specific paths -
+// a real-filesystem repro of "unstattable between readdir and stat" is not
+// reliably reproducible, so this targets the exact failure mode instead.
+describe('error tolerance', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'dlibrary-tolerance-'))
+  })
+
+  afterEach(async () => {
+    statOverride.impl = null
+    readdirOverride.impl = null
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('scanFolderShallow tolerates a child entry that becomes unstattable', async () => {
+    await writeFile(join(dir, 'ghost.txt'), '')
+    await writeFile(join(dir, 'ok.txt'), '')
+    const ghostPath = join(dir, 'ghost.txt')
+
+    const { stat: realStat } =
+      await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    statOverride.impl = (path) =>
+      path === ghostPath ? Promise.reject(new Error('ENOENT: simulated race')) : realStat(path)
+
+    const entries = await scanFolderShallow(dir)
+    expect(entries.map((e) => e.name)).toEqual(['ok.txt'])
+  })
+
+  it('scanLibraryRecursive tolerates an unstattable entry without failing sibling entries', async () => {
+    await writeFile(join(dir, 'ghost.zip'), '')
+    await writeFile(join(dir, 'RJ01111.zip'), '')
+    const ghostPath = join(dir, 'ghost.zip')
+
+    const { stat: realStat } =
+      await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    statOverride.impl = (path) =>
+      path === ghostPath ? Promise.reject(new Error('ENOENT: simulated race')) : realStat(path)
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
+  })
+
+  it('scanLibraryRecursive tolerates an unreadable subfolder, still returning sibling branches', async () => {
+    await mkdir(join(dir, 'branch-a'))
+    await mkdir(join(dir, 'branch-b'))
+    await writeFile(join(dir, 'branch-a', 'RJ01111.zip'), '')
+    await writeFile(join(dir, 'branch-b', 'RJ02222.zip'), '')
+    const unreadablePath = join(dir, 'branch-b')
+
+    const { readdir: realReaddir } =
+      await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    readdirOverride.impl = (path) =>
+      path === unreadablePath
+        ? Promise.reject(new Error('EPERM: simulated denial'))
+        : realReaddir(path)
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
   })
 })
