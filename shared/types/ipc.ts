@@ -18,6 +18,9 @@ export const IPC_CHANNELS = {
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
   METADATA_CRAWL_AND_SAVE: 'metadata:crawl-and-save',
   METADATA_GET: 'metadata:get',
+  GAME_USER_DATA_GET: 'game-user-data:get',
+  GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
+  GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -144,4 +147,35 @@ export interface GameMetadataDto {
   releaseDate: string | null
   genres: string[]
   coverImagePath: string | null
+}
+
+// 렌더러는 항상 code와 path를 함께 보낸다 - 실제 키 도출(코드 있으면 코드,
+// 없으면 경로 정규화)은 정규화 로직이 이미 있는 main 프로세스에서만 한다.
+export const GameEntryIdentifierSchema = z.object({
+  code: GameCodeSchema.nullable(),
+  path: z.string(),
+})
+
+export const SetFavoriteRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  isFavorite: z.boolean(),
+})
+export type SetFavoriteRequest = z.infer<typeof SetFavoriteRequestSchema>
+
+export const SetRatingAndMemoRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  rating: z.number().min(1).max(5).nullable(),
+  memo: z.string().nullable(),
+})
+export type SetRatingAndMemoRequest = z.infer<typeof SetRatingAndMemoRequestSchema>
+
+export const GetGameUserDataRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+})
+export type GetGameUserDataRequest = z.infer<typeof GetGameUserDataRequestSchema>
+
+export interface GameUserDataDto {
+  isFavorite: boolean
+  rating: number | null
+  memo: string | null
 }

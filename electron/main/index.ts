@@ -8,6 +8,7 @@ import { registerExplorerHandlers } from './ipc/explorerHandlers'
 import { registerSortHandlers } from './ipc/sortHandlers'
 import { registerShellHandlers } from './ipc/shellHandlers'
 import { registerMetadataHandlers } from './ipc/metadataHandlers'
+import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -45,6 +46,7 @@ app.whenReady().then(() => {
   registerSortHandlers(db)
   registerShellHandlers()
   registerMetadataHandlers(db)
+  registerGameUserDataHandlers(db)
 
   createWindow()
 

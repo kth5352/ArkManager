@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC_CHANNELS,
   type GameMetadataDto,
+  type GameUserDataDto,
   type Library,
   type LibraryWithStatus,
   type PersistedExplorerTab,
@@ -64,6 +65,26 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_AND_SAVE, { code }),
     get: (code: GameCode): Promise<GameMetadataDto | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET, { code }),
+  },
+  gameUserData: {
+    get: (code: GameCode | null, path: string): Promise<GameUserDataDto | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_GET, { identifier: { code, path } }),
+    setFavorite: (code: GameCode | null, path: string, isFavorite: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_SET_FAVORITE, {
+        identifier: { code, path },
+        isFavorite,
+      }),
+    setRatingAndMemo: (
+      code: GameCode | null,
+      path: string,
+      rating: number | null,
+      memo: string | null
+    ): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_SET_RATING_AND_MEMO, {
+        identifier: { code, path },
+        rating,
+        memo,
+      }),
   },
 }
 
