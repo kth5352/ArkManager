@@ -16,7 +16,5 @@ export function filterFavorites<T extends Pick<ScannedEntry, 'code' | 'path'>>(
   favoriteKeys: string[]
 ): T[] {
   const favoriteKeySet = new Set(favoriteKeys)
-  return games.filter((game) =>
-    favoriteKeySet.has(game.code?.value ?? normalizePathKey(game.path))
-  )
+  return games.filter((game) => favoriteKeySet.has(game.code?.value ?? normalizePathKey(game.path)))
 }

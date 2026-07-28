@@ -28,7 +28,9 @@ function GameRow({ game }: { game: ScannedEntry }) {
     <div className="flex items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent">
       <button
         aria-label="즐겨찾기 토글"
-        onClick={() => toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })}
+        onClick={() =>
+          toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
+        }
         className="shrink-0 text-muted-foreground hover:text-foreground"
       >
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />

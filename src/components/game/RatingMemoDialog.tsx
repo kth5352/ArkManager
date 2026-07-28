@@ -1,11 +1,6 @@
 import { useState } from 'react'
 import { Star } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '../ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { useGameUserData, useSetRatingAndMemo } from '../../services/gameUserDataService'
 import type { GameUserDataDto } from '../../../shared/types/ipc'
@@ -22,9 +17,7 @@ export function RatingMemoDialog({ entry, onClose }: RatingMemoDialogProps) {
 
   const [rating, setRating] = useState<number | null>(userData?.rating ?? null)
   const [memo, setMemo] = useState(userData?.memo ?? '')
-  const [syncedUserData, setSyncedUserData] = useState<GameUserDataDto | null | undefined>(
-    userData
-  )
+  const [syncedUserData, setSyncedUserData] = useState<GameUserDataDto | null | undefined>(userData)
 
   if (userData !== syncedUserData) {
     setSyncedUserData(userData)
