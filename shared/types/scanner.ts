@@ -12,12 +12,3 @@ export interface ScannedEntry {
   mtimeMs: number
   code: GameCode | null
 }
-
-// scanLibraryRecursive's documented invariant is that every returned entry has
-// a recognized code (non-matching entries are dropped, not returned with
-// code: null) - this type makes that guarantee visible to Gallery/List
-// consumers instead of forcing them to null-check a field that can't
-// actually be null in that path.
-export interface GameEntry extends ScannedEntry {
-  code: GameCode
-}

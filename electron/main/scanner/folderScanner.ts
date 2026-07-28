@@ -1,6 +1,6 @@
 import { lstat, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { GameEntry, ScannedEntry } from '../../../shared/types/scanner'
+import type { ScannedEntry } from '../../../shared/types/scanner'
 import { extractCode } from './codeRecognition'
 
 // An entry can become unstattable between readdir() and stat() - a
@@ -50,41 +50,42 @@ export async function scanFolderShallow(dirPath: string): Promise<ScannedEntry[]
   return entries.filter(isScannedEntry)
 }
 
-// Gallery/List: recursively walks the entire library tree and returns only
-// entries with a recognized RJ/VJ/ST code, flattened. A folder that is
-// itself a recognized game (e.g. an unzipped "RJ01111/" containing cover.jpg
-// and data.pak) is treated as a leaf - its contents are not walked or
-// listed separately, since they're not games themselves. The return type
-// guarantees `code` is non-null (see GameEntry) since non-matching entries
-// are never included.
-export async function scanLibraryRecursive(libraryPath: string): Promise<GameEntry[]> {
+// Gallery/List: recursively walks the entire library tree. Coded entries
+// (file or folder) are leaves - matched, not walked further. Code-less
+// files are now included too (code: null) rather than dropped, per the
+// 코드없는 파일 노출 decision. Code-less folders are still walked into,
+// looking for coded/uncoded descendants at any depth.
+export async function scanLibraryRecursive(libraryPath: string): Promise<ScannedEntry[]> {
   const names = await readdir(libraryPath)
-  const results: GameEntry[] = []
+  const results: ScannedEntry[] = []
 
   for (const name of names) {
     const entry = await toScannedEntry(libraryPath, name)
     if (!entry) continue
 
     if (entry.code) {
-      results.push({ ...entry, code: entry.code })
+      results.push(entry)
       continue
     }
 
-    if (entry.kind === 'folder') {
-      // Skip recursing into symlinks/junctions - a link pointing back at an
-      // ancestor directory would otherwise cause infinite recursion. Treated
-      // as a leaf that just isn't walked, like a coded folder above.
-      if (await isSymbolicLink(entry.path)) continue
+    if (entry.kind === 'file') {
+      results.push(entry)
+      continue
+    }
 
-      try {
-        const nested = await scanLibraryRecursive(entry.path)
-        results.push(...nested)
-      } catch {
-        // Subfolder became unreadable mid-scan (permission error, race, or
-        // a race with deletion) - skip this branch only, sibling branches
-        // still scan normally.
-        continue
-      }
+    // Skip recursing into symlinks/junctions - a link pointing back at an
+    // ancestor directory would otherwise cause infinite recursion. Treated
+    // as a leaf that just isn't walked, like a coded folder above.
+    if (await isSymbolicLink(entry.path)) continue
+
+    try {
+      const nested = await scanLibraryRecursive(entry.path)
+      results.push(...nested)
+    } catch {
+      // Subfolder became unreadable mid-scan (permission error, race, or
+      // a race with deletion) - skip this branch only, sibling branches
+      // still scan normally.
+      continue
     }
   }
 

@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
+import { Heart } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
+import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
-import type { GameEntry } from '../../../shared/types/scanner'
+import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const CARD_WIDTH = 180
 const GAP = 16
@@ -22,15 +24,27 @@ const ZOOM_MIN = 0.6
 const ZOOM_MAX = 1.8
 const ZOOM_STEP = 0.05
 
-function GameCard({ game }: { game: GameEntry }) {
+function GameCard({ game }: { game: ScannedEntry }) {
   const { data: thumbnail } = useThumbnail(game.path, game.kind)
+  const { data: userData } = useGameUserData(game)
+  const toggleFavorite = useToggleFavorite()
 
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
       transition={{ duration: 0.15 }}
-      className="flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
+      className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
     >
+      <button
+        aria-label="즐겨찾기 토글"
+        onClick={(e) => {
+          e.stopPropagation()
+          toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
+        }}
+        className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+      >
+        <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
+      </button>
       <div className="aspect-[3/4] w-full bg-muted">
         {thumbnail && (
           <img src={thumbnail} alt="" className="h-full w-full object-cover" draggable={false} />
@@ -38,14 +52,14 @@ function GameCard({ game }: { game: GameEntry }) {
       </div>
       <div className="shrink-0 p-2">
         <p className="truncate text-sm font-medium">{game.name}</p>
-        <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>
+        {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
       </div>
     </motion.div>
   )
 }
 
 interface GridCellProps {
-  games: GameEntry[]
+  games: ScannedEntry[]
   columnCount: number
   gap: number
 }

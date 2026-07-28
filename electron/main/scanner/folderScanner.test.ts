@@ -96,13 +96,19 @@ describe('scanLibraryRecursive', () => {
     expect(entries[0].path).toBe(join(dir, 'a', 'b', 'c', 'RJ01234567.zip'))
   })
 
-  it('excludes entries without a recognized code', async () => {
+  it('includes code-less files alongside coded ones (no longer excluded)', async () => {
     await mkdir(join(dir, 'plain-folder'))
     await writeFile(join(dir, 'plain-folder', 'memo.txt'), '')
     await writeFile(join(dir, 'RJ01111.zip'), '')
 
     const entries = await scanLibraryRecursive(dir)
-    expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
+    const names = entries.map((e) => e.name).sort()
+    expect(names).toEqual(['RJ01111.zip', 'memo.txt'])
+    expect(entries.find((e) => e.name === 'memo.txt')?.code).toBeNull()
+    expect(entries.find((e) => e.name === 'RJ01111.zip')?.code).toEqual({
+      type: 'RJ',
+      value: 'RJ01111',
+    })
   })
 
   it('finds multiple coded entries across different branches', async () => {

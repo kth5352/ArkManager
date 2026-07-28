@@ -1,13 +1,15 @@
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
+import { Heart } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
+import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
-import type { GameEntry } from '../../../shared/types/scanner'
+import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 64
 
@@ -16,12 +18,21 @@ function formatMtime(mtimeMs: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-function GameRow({ game }: { game: GameEntry }) {
+function GameRow({ game }: { game: ScannedEntry }) {
   const { data: thumbnail } = useThumbnail(game.path, game.kind)
+  const { data: userData } = useGameUserData(game)
+  const toggleFavorite = useToggleFavorite()
   const openExternal = useOpenExternal()
 
   return (
     <div className="flex items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent">
+      <button
+        aria-label="즐겨찾기 토글"
+        onClick={() => toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })}
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+      >
+        <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
+      </button>
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
         {thumbnail && (
           <img src={thumbnail} alt="" className="h-full w-full object-cover" draggable={false} />
@@ -29,12 +40,16 @@ function GameRow({ game }: { game: GameEntry }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{game.name}</p>
-        <button
-          className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
-          onClick={() => openExternal.mutate(game.code)}
-        >
-          {game.code.value}
-        </button>
+        {game.code ? (
+          <button
+            className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
+            onClick={() => game.code && openExternal.mutate(game.code)}
+          >
+            {game.code.value}
+          </button>
+        ) : (
+          <p className="truncate text-xs text-muted-foreground">코드없음</p>
+        )}
       </div>
       <span className="w-24 shrink-0 text-xs text-muted-foreground">
         {formatMtime(game.mtimeMs)}
@@ -44,7 +59,7 @@ function GameRow({ game }: { game: GameEntry }) {
 }
 
 interface ListRowProps {
-  games: GameEntry[]
+  games: ScannedEntry[]
 }
 
 function Row({ index, style, games }: RowComponentProps<ListRowProps>) {

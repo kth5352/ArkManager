@@ -10,7 +10,7 @@ import {
   type SortPreference,
   type Theme,
 } from '../../shared/types/ipc'
-import type { GameCode, GameEntry, ScannedEntry } from '../../shared/types/scanner'
+import type { GameCode, ScannedEntry } from '../../shared/types/scanner'
 
 const api = {
   settings: {
@@ -34,7 +34,7 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_PICK_FOLDER),
   },
   scanner: {
-    scanRecursive: (libraryPaths: string[]): Promise<GameEntry[]> =>
+    scanRecursive: (libraryPaths: string[]): Promise<ScannedEntry[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, { libraryPaths }),
     scanShallow: (dirPath: string): Promise<ScannedEntry[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_SHALLOW, { dirPath }),

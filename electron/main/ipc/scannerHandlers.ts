@@ -9,7 +9,7 @@ import {
 } from '../../../shared/types/ipc'
 import { scanFolderShallow, scanLibraryRecursive } from '../scanner/folderScanner'
 import { findThumbnailPath } from '../scanner/thumbnail'
-import type { GameEntry } from '../../../shared/types/scanner'
+import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -30,7 +30,7 @@ export function registerScannerHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, async (_event, payload: unknown) => {
     const { libraryPaths } = ScanRecursiveRequestSchema.parse(payload)
     const results = await Promise.all(
-      libraryPaths.map(async (libraryPath): Promise<GameEntry[]> => {
+      libraryPaths.map(async (libraryPath): Promise<ScannedEntry[]> => {
         try {
           return await scanLibraryRecursive(libraryPath)
         } catch {
