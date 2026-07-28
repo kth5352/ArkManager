@@ -43,6 +43,10 @@ export const gameUserData = sqliteTable('game_user_data', {
   isFavorite: integer('is_favorite', { mode: 'boolean' }).notNull().default(false),
   rating: integer('rating'), // 1-5, null이면 미평가
   memo: text('memo'),
+  launchConfig: text('launch_config'), // JSON: { executablePath, launchMode }
+  totalPlaytimeMs: integer('total_playtime_ms').notNull().default(0),
+  lastPlayedAt: text('last_played_at'),
+  savePath: text('save_path'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })

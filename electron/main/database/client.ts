@@ -60,6 +60,10 @@ export function createDbClient(filePath: string) {
       is_favorite INTEGER NOT NULL DEFAULT 0,
       rating INTEGER,
       memo TEXT,
+      launch_config TEXT,
+      total_playtime_ms INTEGER NOT NULL DEFAULT 0,
+      last_played_at TEXT,
+      save_path TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )

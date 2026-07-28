@@ -7,6 +7,9 @@ import {
   setFavorite,
   setRatingAndMemo,
   listFavoriteKeys,
+  setLaunchConfig,
+  recordPlaySession,
+  setSavePath,
 } from './gameUserDataRepository'
 
 describe('gameUserDataRepository', () => {
@@ -99,5 +102,57 @@ describe('gameUserDataRepository', () => {
     setFavorite(db, 'd:\\games\\folder', 'path', true)
 
     expect(listFavoriteKeys(db).sort()).toEqual(['RJ01111111', 'd:\\games\\folder'].sort())
+  })
+
+  it('stores and retrieves a launch config', () => {
+    setLaunchConfig(db, 'RJ01234567', 'code', {
+      executablePath: 'C:\\games\\RJ01234567\\game.exe',
+      launchMode: 'normal',
+    })
+
+    const row = getGameUserData(db, 'RJ01234567')
+    expect(row?.launchConfig).toEqual({
+      executablePath: 'C:\\games\\RJ01234567\\game.exe',
+      launchMode: 'normal',
+    })
+  })
+
+  it('defaults totalPlaytimeMs to 0 and lastPlayedAt to null', () => {
+    touchGameUserData(db, 'RJ01234567', 'code')
+    const row = getGameUserData(db, 'RJ01234567')
+    expect(row?.totalPlaytimeMs).toBe(0)
+    expect(row?.lastPlayedAt).toBeNull()
+  })
+
+  it('accumulates playtime across multiple sessions and updates lastPlayedAt', () => {
+    recordPlaySession(db, 'RJ01234567', 'code', 60_000)
+    recordPlaySession(db, 'RJ01234567', 'code', 30_000)
+
+    const row = getGameUserData(db, 'RJ01234567')
+    expect(row?.totalPlaytimeMs).toBe(90_000)
+    expect(row?.lastPlayedAt).not.toBeNull()
+  })
+
+  it('stores a save path independently of other fields', () => {
+    setSavePath(db, 'RJ01234567', 'code', 'C:\\Users\\me\\AppData\\LocalLow\\game\\save')
+    expect(getGameUserData(db, 'RJ01234567')?.savePath).toBe(
+      'C:\\Users\\me\\AppData\\LocalLow\\game\\save'
+    )
+  })
+
+  it('rekeying preserves launchConfig/playtime/savePath too', () => {
+    setLaunchConfig(db, 'd:\\games\\some-folder', 'path', {
+      executablePath: 'd:\\games\\some-folder\\game.exe',
+      launchMode: 'normal',
+    })
+    recordPlaySession(db, 'd:\\games\\some-folder', 'path', 120_000)
+    setSavePath(db, 'd:\\games\\some-folder', 'path', 'd:\\saves\\some-folder')
+
+    rekeyToCode(db, 'd:\\games\\some-folder', 'RJ07777777')
+
+    const after = getGameUserData(db, 'RJ07777777')
+    expect(after?.launchConfig?.executablePath).toBe('d:\\games\\some-folder\\game.exe')
+    expect(after?.totalPlaytimeMs).toBe(120_000)
+    expect(after?.savePath).toBe('d:\\saves\\some-folder')
   })
 })
