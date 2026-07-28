@@ -51,8 +51,20 @@ function AddLibraryDialog() {
     if (path) setValue('path', path, { shouldValidate: true })
   }
 
+  const handleOpenChange = (nextOpen: boolean): void => {
+    if (!nextOpen) reset()
+    addLibrary.reset()
+    setOpen(nextOpen)
+  }
+
+  const addLibraryErrorMessage = addLibrary.isError
+    ? /UNIQUE constraint/i.test(addLibrary.error.message)
+      ? '이미 등록된 경로입니다.'
+      : '라이브러리를 추가하지 못했습니다. 다시 시도해 주세요.'
+    : null
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>라이브러리 추가</Button>
       </DialogTrigger>
@@ -72,6 +84,9 @@ function AddLibraryDialog() {
             </Button>
           </div>
           {errors.path && <p className="-mt-2 text-xs text-destructive">{errors.path.message}</p>}
+          {addLibraryErrorMessage && (
+            <p className="-mt-2 text-xs text-destructive">{addLibraryErrorMessage}</p>
+          )}
           <Button type="submit">저장</Button>
         </form>
       </DialogContent>
