@@ -1,6 +1,7 @@
 import { useGames } from '../../services/useGames'
 import { useFavoriteKeys } from '../../services/gameUserDataService'
 import { Skeleton } from '../../components/ui/skeleton'
+import { filterFavorites } from '../../lib/filterFavorites'
 
 export function FavoritesPage() {
   const { data: games, isLoading: gamesLoading } = useGames()
@@ -16,8 +17,7 @@ export function FavoritesPage() {
     )
   }
 
-  const favoriteKeySet = new Set(favoriteKeys)
-  const favorites = games.filter((game) => favoriteKeySet.has(game.code?.value ?? game.path))
+  const favorites = filterFavorites(games, favoriteKeys)
 
   if (favorites.length === 0) {
     return (
