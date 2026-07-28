@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { createDbClient } from './database/client'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
 import { registerLibrariesHandlers } from './ipc/librariesHandlers'
+import { registerScannerHandlers } from './ipc/scannerHandlers'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -35,6 +36,7 @@ app.whenReady().then(() => {
   const db = createDbClient(dbPath)
   registerSettingsHandlers(db)
   registerLibrariesHandlers(db)
+  registerScannerHandlers()
 
   createWindow()
 

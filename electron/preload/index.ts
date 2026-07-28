@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, type Library, type LibraryWithStatus, type Theme } from '../../shared/types/ipc'
+import type { GameEntry, ScannedEntry } from '../../shared/types/scanner'
 
 const api = {
   settings: {
@@ -20,6 +21,14 @@ const api = {
     remove: (id: string): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_REMOVE, { id }),
     pickFolder: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_PICK_FOLDER),
+  },
+  scanner: {
+    scanRecursive: (libraryPaths: string[]): Promise<GameEntry[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, { libraryPaths }),
+    scanShallow: (dirPath: string): Promise<ScannedEntry[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_SHALLOW, { dirPath }),
+    getThumbnail: (entryPath: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SCANNER_GET_THUMBNAIL, { entryPath }),
   },
 }
 

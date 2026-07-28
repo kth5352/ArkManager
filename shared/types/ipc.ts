@@ -8,6 +8,9 @@ export const IPC_CHANNELS = {
   LIBRARIES_ADD: 'libraries:add',
   LIBRARIES_REMOVE: 'libraries:remove',
   LIBRARIES_PICK_FOLDER: 'libraries:pick-folder',
+  SCANNER_SCAN_RECURSIVE: 'scanner:scan-recursive',
+  SCANNER_SCAN_SHALLOW: 'scanner:scan-shallow',
+  SCANNER_GET_THUMBNAIL: 'scanner:get-thumbnail',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -51,3 +54,18 @@ export const RemoveLibraryRequestSchema = z.object({
   id: z.string(),
 })
 export type RemoveLibraryRequest = z.infer<typeof RemoveLibraryRequestSchema>
+
+export const ScanRecursiveRequestSchema = z.object({
+  libraryPaths: z.array(z.string()),
+})
+export type ScanRecursiveRequest = z.infer<typeof ScanRecursiveRequestSchema>
+
+export const ScanShallowRequestSchema = z.object({
+  dirPath: z.string(),
+})
+export type ScanShallowRequest = z.infer<typeof ScanShallowRequestSchema>
+
+export const GetThumbnailRequestSchema = z.object({
+  entryPath: z.string(),
+})
+export type GetThumbnailRequest = z.infer<typeof GetThumbnailRequestSchema>
