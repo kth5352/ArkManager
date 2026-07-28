@@ -48,6 +48,15 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS game_user_data (
+      key TEXT PRIMARY KEY,
+      key_type TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 

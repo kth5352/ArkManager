@@ -31,3 +31,10 @@ export const gameMetadata = sqliteTable('game_metadata', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+export const gameUserData = sqliteTable('game_user_data', {
+  key: text('key').primaryKey(),
+  keyType: text('key_type').notNull(), // 'code' | 'path'
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
