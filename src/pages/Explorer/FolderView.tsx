@@ -10,6 +10,9 @@ import { useExplorerStore } from '../../stores/explorerStore'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useFolderScan } from '../../services/scannerService'
 import { DetailOverlay } from './DetailOverlay'
+import { PageToolbar } from '../../components/layout/PageToolbar'
+import { useSortPreference } from '../../services/sortService'
+import { sortEntries } from '../../lib/sortEntries'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface FolderViewProps {
@@ -127,6 +130,9 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   // breadcrumb) updates `path` without unmounting this component.
   const { data: entries = [] } = useFolderScan(path)
 
+  const { field: sortField, direction: sortDirection, setSort } = useSortPreference('explorer')
+  const sortedEntries = sortEntries(entries, sortField, sortDirection)
+
   const openInNewTab = (entry: ScannedEntry): void => {
     addTab({ label: entry.name, path: entry.path })
   }
@@ -154,8 +160,9 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
           </span>
         ))}
       </div>
+      <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       <ul className="flex-1 divide-y divide-border overflow-auto">
-        {entries.map((entry) => (
+        {sortedEntries.map((entry) => (
           <FolderEntryRow
             key={entry.path}
             entry={entry}

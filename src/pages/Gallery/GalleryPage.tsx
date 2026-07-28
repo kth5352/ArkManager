@@ -5,6 +5,9 @@ import { motion } from 'framer-motion'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
 import { Skeleton } from '../../components/ui/skeleton'
+import { PageToolbar } from '../../components/layout/PageToolbar'
+import { useSortPreference } from '../../services/sortService'
+import { sortEntries } from '../../lib/sortEntries'
 import type { GameEntry } from '../../../shared/types/scanner'
 
 const CARD_WIDTH = 180
@@ -67,6 +70,7 @@ function GameCell({
 
 export function GalleryPage() {
   const { data: games, isLoading } = useGames()
+  const { field: sortField, direction: sortDirection, setSort } = useSortPreference('gallery')
   const [zoom, setZoom] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -97,41 +101,50 @@ export function GalleryPage() {
     )
   }
 
-  if (games.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
-      </div>
-    )
-  }
-
   const cardWidth = CARD_WIDTH * zoom
   const cardHeight = computeCardHeight(cardWidth)
   const gap = GAP * zoom
 
+  const sortedGames = games.length > 0 ? sortEntries(games, sortField, sortDirection) : games
+
   return (
-    <div ref={containerRef} className="h-full w-full p-6">
-      <AutoSizer
-        style={{ height: '100%', width: '100%' }}
-        renderProp={({ height, width }) => {
-          if (height === undefined || width === undefined) return null
-
-          const columnCount = Math.max(1, Math.floor(width / (cardWidth + gap)))
-          const rowCount = Math.ceil(games.length / columnCount)
-
-          return (
-            <Grid
-              cellComponent={GameCell}
-              cellProps={{ games, columnCount, gap }}
-              columnCount={columnCount}
-              columnWidth={cardWidth + gap}
-              rowCount={rowCount}
-              rowHeight={cardHeight + gap}
-              style={{ height, width, overflowX: 'hidden' }}
-            />
-          )
-        }}
+    <div className="flex h-full flex-col">
+      <PageToolbar
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortChange={setSort}
+        zoom={zoom}
+        onZoomChange={setZoom}
       />
+      {sortedGames.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+          등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
+        </div>
+      ) : (
+        <div ref={containerRef} className="h-full w-full p-6">
+          <AutoSizer
+            style={{ height: '100%', width: '100%' }}
+            renderProp={({ height, width }) => {
+              if (height === undefined || width === undefined) return null
+
+              const columnCount = Math.max(1, Math.floor(width / (cardWidth + gap)))
+              const rowCount = Math.ceil(sortedGames.length / columnCount)
+
+              return (
+                <Grid
+                  cellComponent={GameCell}
+                  cellProps={{ games: sortedGames, columnCount, gap }}
+                  columnCount={columnCount}
+                  columnWidth={cardWidth + gap}
+                  rowCount={rowCount}
+                  rowHeight={cardHeight + gap}
+                  style={{ height, width, overflowX: 'hidden' }}
+                />
+              )
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

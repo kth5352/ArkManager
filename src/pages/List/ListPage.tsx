@@ -3,6 +3,9 @@ import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
 import { Skeleton } from '../../components/ui/skeleton'
+import { PageToolbar } from '../../components/layout/PageToolbar'
+import { useSortPreference } from '../../services/sortService'
+import { sortEntries } from '../../lib/sortEntries'
 import type { GameEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 64
@@ -49,6 +52,7 @@ function Row({ index, style, games }: RowComponentProps<ListRowProps>) {
 
 export function ListPage() {
   const { data: games, isLoading } = useGames()
+  const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
 
   if (isLoading || !games) {
     return (
@@ -60,32 +64,35 @@ export function ListPage() {
     )
   }
 
-  if (games.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
-      </div>
-    )
-  }
+  const sortedGames = games.length > 0 ? sortEntries(games, sortField, sortDirection) : games
 
   return (
-    <div className="h-full w-full">
-      <AutoSizer
-        style={{ height: '100%', width: '100%' }}
-        renderProp={({ height, width }) => {
-          if (height === undefined || width === undefined) return null
+    <div className="flex h-full flex-col">
+      <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+      {sortedGames.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+          등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
+        </div>
+      ) : (
+        <div className="h-full w-full">
+          <AutoSizer
+            style={{ height: '100%', width: '100%' }}
+            renderProp={({ height, width }) => {
+              if (height === undefined || width === undefined) return null
 
-          return (
-            <List
-              rowComponent={Row}
-              rowProps={{ games }}
-              rowCount={games.length}
-              rowHeight={ROW_HEIGHT}
-              style={{ height, width }}
-            />
-          )
-        }}
-      />
+              return (
+                <List
+                  rowComponent={Row}
+                  rowProps={{ games: sortedGames }}
+                  rowCount={sortedGames.length}
+                  rowHeight={ROW_HEIGHT}
+                  style={{ height, width }}
+                />
+              )
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
