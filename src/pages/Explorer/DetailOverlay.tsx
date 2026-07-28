@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
+import { RatingMemoDialog } from '../../components/game/RatingMemoDialog'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -12,6 +14,7 @@ interface DetailOverlayProps {
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const { data: thumbnail } = useThumbnail(game?.path ?? '', game?.kind ?? 'file')
   const openExternal = useOpenExternal()
+  const [editingRating, setEditingRating] = useState(false)
 
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>
@@ -51,10 +54,18 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
               <Button variant="secondary" onClick={() => console.log('launch', game.path)}>
                 실행
               </Button>
+              <Button variant="secondary" onClick={() => setEditingRating(true)}>
+                평점/메모
+              </Button>
             </div>
           </>
         )}
       </DialogContent>
+      <RatingMemoDialog
+        key={editingRating && game ? (game.code ? game.code.value : game.path) : 'closed'}
+        entry={editingRating ? game : null}
+        onClose={() => setEditingRating(false)}
+      />
     </Dialog>
   )
 }
