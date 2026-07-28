@@ -15,11 +15,8 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '../../components/ui/context-menu'
-import {
-  DEFAULT_NEW_TAB_PATH,
-  useExplorerStore,
-  type ExplorerTab,
-} from '../../stores/explorerStore'
+import { useExplorerStore, type ExplorerTab } from '../../stores/explorerStore'
+import { useLibraries } from '../../services/librariesService'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
   const activeTabId = useExplorerStore((s) => s.activeTabId)
@@ -68,6 +65,7 @@ export function TabBar() {
   const tabs = useExplorerStore((s) => s.tabs)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
   const addTab = useExplorerStore((s) => s.addTab)
+  const { data: libraries } = useLibraries()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const handleDragEnd = (event: DragEndEvent): void => {
@@ -77,7 +75,11 @@ export function TabBar() {
   }
 
   const handleAddTab = (): void => {
-    addTab({ label: '새 탭', path: DEFAULT_NEW_TAB_PATH })
+    // No path to derive a new tab from other than the user's own registered
+    // libraries - falls back to '' (no libraries registered yet) rather than
+    // blocking tab creation; FolderView renders a helpful message instead of
+    // crashing when it receives an empty/invalid path.
+    addTab({ label: '새 탭', path: libraries?.[0]?.path ?? '' })
   }
 
   return (

@@ -22,21 +22,16 @@ function createTabId(): string {
   return crypto.randomUUID()
 }
 
-const initialTabs: ExplorerTab[] = [
-  { id: 'tab-voice', label: 'Voice', path: 'E:\\DLsite\\Voice' },
-  { id: 'tab-rpg', label: 'RPG', path: 'F:\\RPG' },
-  { id: 'tab-games', label: 'DLsite Games', path: 'D:\\Games\\DLsite' },
-]
-
-// Default path used when the user opens a brand new tab (e.g. via TabBar's
-// "+" button) with no other tab to derive a path from - reuses the first
-// initial tab's path so a fresh tab always lands somewhere browsable, even
-// after every tab (including all initial ones) has been closed.
-export const DEFAULT_NEW_TAB_PATH = initialTabs[0].path
+// No hardcoded default tabs - every machine has a different library layout,
+// so guessing a path here (e.g. a developer's own drive letters) would just
+// point most users at a folder that doesn't exist. First run starts empty;
+// ExplorerPage shows an empty-state message until a tab is opened, and tabs
+// are persisted from then on (see useExplorerTabsPersistence).
+const initialTabs: ExplorerTab[] = []
 
 export const useExplorerStore = create<ExplorerState>((set) => ({
   tabs: initialTabs,
-  activeTabId: initialTabs[0].id,
+  activeTabId: '',
 
   addTab: (tab) =>
     set((state) => {
