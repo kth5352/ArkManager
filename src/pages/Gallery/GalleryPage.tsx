@@ -3,20 +3,14 @@ import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
 import { useGames } from '../../services/useGames'
+import { useThumbnail } from '../../services/thumbnailService'
 import { Skeleton } from '../../components/ui/skeleton'
-import type { MockGame } from '../../services/mockGames'
+import type { GameEntry } from '../../../shared/types/scanner'
 
 const CARD_WIDTH = 180
 const GAP = 16
-
-// Fixed (non-scaling) portions of card height: p-2 vertical padding (8px * 2 = 16px),
-// plus title (text-sm, 1.25rem/20px line-height) and circle name (text-xs, 1rem/16px
-// line-height) = 36px text, plus ~20px slack so the text block is never a hairline fit.
 const CARD_TEXT_BLOCK_HEIGHT = 16 + 36 + 20
 
-// Height budget: aspect-[3/4] cover image scales with card width (width * 4/3), plus the
-// fixed text block above. At the default CARD_WIDTH=180 this yields 180*(4/3) + 72 = 312,
-// matching the original fixed CARD_HEIGHT of 312.
 function computeCardHeight(cardWidth: number): number {
   return cardWidth * (4 / 3) + CARD_TEXT_BLOCK_HEIGHT
 }
@@ -25,24 +19,30 @@ const ZOOM_MIN = 0.6
 const ZOOM_MAX = 1.8
 const ZOOM_STEP = 0.05
 
-function GameCard({ game }: { game: MockGame }) {
+function GameCard({ game }: { game: GameEntry }) {
+  const { data: thumbnail } = useThumbnail(game.path, game.kind)
+
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
       transition={{ duration: 0.15 }}
       className="flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
     >
-      <div className="aspect-[3/4] w-full bg-muted" />
+      <div className="aspect-[3/4] w-full bg-muted">
+        {thumbnail && (
+          <img src={thumbnail} alt="" className="h-full w-full object-cover" draggable={false} />
+        )}
+      </div>
       <div className="shrink-0 p-2">
-        <p className="truncate text-sm font-medium">{game.title}</p>
-        <p className="truncate text-xs text-muted-foreground">{game.circle}</p>
+        <p className="truncate text-sm font-medium">{game.name}</p>
+        <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>
       </div>
     </motion.div>
   )
 }
 
 interface GridCellProps {
-  games: MockGame[]
+  games: GameEntry[]
   columnCount: number
   gap: number
 }
@@ -70,20 +70,6 @@ export function GalleryPage() {
   const [zoom, setZoom] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Ctrl+wheel zoom must be a native (non-passive) listener: React attaches its
-  // synthetic `onWheel` handler as a passive listener by default, so calling
-  // event.preventDefault() from a React onWheel prop would be silently ignored
-  // (and log a console warning) instead of suppressing Chromium/Electron's
-  // built-in Ctrl+wheel page-zoom gesture.
-  //
-  // Depends on `isLoading`: the ref-bearing container only exists in the "loaded"
-  // JSX branch below (the loading-skeleton branch renders a different, ref-less
-  // tree). With an empty dependency array this effect would run exactly once,
-  // immediately after the *first* commit — which, on a cold app boot, is the
-  // loading-skeleton commit where `containerRef.current` is still null, forever
-  // skipping listener attachment for this component instance. Re-running when
-  // `isLoading` flips to false ensures the listener attaches once the real
-  // container has mounted.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -107,6 +93,14 @@ export function GalleryPage() {
         {Array.from({ length: 15 }, (_, i) => (
           <Skeleton key={i} className="aspect-[3/4] w-full rounded-md" />
         ))}
+      </div>
+    )
+  }
+
+  if (games.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
       </div>
     )
   }
