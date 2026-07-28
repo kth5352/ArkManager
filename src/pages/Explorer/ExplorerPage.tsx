@@ -1,8 +1,10 @@
 import { TabBar } from './TabBar'
 import { FolderView } from './FolderView'
 import { useExplorerStore } from '../../stores/explorerStore'
+import { useExplorerTabsPersistence } from '../../hooks/useExplorerTabsPersistence'
 
 export function ExplorerPage() {
+  useExplorerTabsPersistence()
   const activeTab = useExplorerStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
   const navigateTab = useExplorerStore((s) => s.navigateTab)
 

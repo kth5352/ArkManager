@@ -1,37 +1,47 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
-import type { MockFolderEntry } from './mockFolderEntries'
+import { useThumbnail } from '../../services/thumbnailService'
+import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface DetailOverlayProps {
-  game: MockFolderEntry | null
+  game: ScannedEntry | null
   onClose: () => void
 }
 
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
+  const { data: thumbnail } = useThumbnail(game?.path ?? '', game?.kind ?? 'file')
+
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
-        {game && (
+        {game && game.code && (
           <>
             <DialogHeader>
-              <DialogTitle>{game.title}</DialogTitle>
+              <DialogTitle>{game.name}</DialogTitle>
             </DialogHeader>
             <div className="flex gap-4">
-              <div className="h-40 w-32 shrink-0 rounded bg-muted" />
+              <div className="h-40 w-32 shrink-0 overflow-hidden rounded bg-muted">
+                {thumbnail && (
+                  <img
+                    src={thumbnail}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                )}
+              </div>
               <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                <p>제작사: 샘플 서클</p>
-                <p>발매일: 2026-01-01</p>
-                <p>작품번호: {game.rjCode}</p>
+                <p>작품번호: {game.code.value}</p>
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button onClick={() => console.log('open dlsite page', game.rjCode)}>
+              <Button onClick={() => console.log('open dlsite page', game.code?.value)}>
                 DLsite 열기
               </Button>
-              <Button variant="secondary" onClick={() => console.log('open folder', game.id)}>
+              <Button variant="secondary" onClick={() => console.log('open folder', game.path)}>
                 폴더 열기
               </Button>
-              <Button variant="secondary" onClick={() => console.log('launch', game.id)}>
+              <Button variant="secondary" onClick={() => console.log('launch', game.path)}>
                 실행
               </Button>
             </div>
