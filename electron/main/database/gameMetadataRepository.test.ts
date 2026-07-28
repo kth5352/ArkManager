@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createDbClient, type AppDatabase } from './client'
-import { getGameMetadata, touchGameMetadata } from './gameMetadataRepository'
+import { getGameMetadata, touchGameMetadata, saveGameMetadata } from './gameMetadataRepository'
 
 describe('gameMetadataRepository', () => {
   let db: AppDatabase
@@ -39,5 +39,20 @@ describe('gameMetadataRepository', () => {
 
     expect(getGameMetadata(db, 'RJ01234567')?.code).toBe('RJ01234567')
     expect(getGameMetadata(db, 'VJ01004728')?.code).toBe('VJ01004728')
+  })
+
+  it('saves crawled metadata and reads it back with genres parsed as an array', () => {
+    saveGameMetadata(db, 'RJ01169914', {
+      title: 'シニシスタ2 SiNiSistar2',
+      circle: 'ウー',
+      releaseDate: '2025-04-12',
+      genres: ['ドット', 'シスター'],
+      coverImageUrl: 'https://img.dlsite.jp/example.jpg',
+    })
+
+    const row = getGameMetadata(db, 'RJ01169914')
+    expect(row?.title).toBe('シニシスタ2 SiNiSistar2')
+    expect(row?.genres).toEqual(['ドット', 'シスター'])
+    expect(row?.coverImagePath).toBeNull()
   })
 })

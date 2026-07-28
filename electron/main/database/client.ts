@@ -43,6 +43,11 @@ export function createDbClient(filePath: string) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS game_metadata (
       code TEXT PRIMARY KEY,
+      title TEXT,
+      circle TEXT,
+      release_date TEXT,
+      genres TEXT,
+      cover_image_path TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )

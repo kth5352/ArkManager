@@ -28,6 +28,11 @@ export const sortPreferences = sqliteTable('sort_preferences', {
 
 export const gameMetadata = sqliteTable('game_metadata', {
   code: text('code').primaryKey(),
+  title: text('title'),
+  circle: text('circle'),
+  releaseDate: text('release_date'),
+  genres: text('genres'), // JSON 배열 문자열로 저장
+  coverImagePath: text('cover_image_path'), // Task 3에서 채움, 지금은 항상 null
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
