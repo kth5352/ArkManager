@@ -1,4 +1,4 @@
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
@@ -10,4 +10,12 @@ export const libraries = sqliteTable('libraries', {
   name: text('name').notNull(),
   path: text('path').notNull().unique(),
   createdAt: text('created_at').notNull(),
+})
+
+export const explorerTabs = sqliteTable('explorer_tabs', {
+  id: text('id').primaryKey(),
+  label: text('label').notNull(),
+  path: text('path').notNull(),
+  position: integer('position').notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull(),
 })

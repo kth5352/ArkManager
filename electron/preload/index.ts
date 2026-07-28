@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC_CHANNELS, type Library, type LibraryWithStatus, type Theme } from '../../shared/types/ipc'
+import {
+  IPC_CHANNELS,
+  type Library,
+  type LibraryWithStatus,
+  type PersistedExplorerTab,
+  type Theme,
+} from '../../shared/types/ipc'
 import type { GameEntry, ScannedEntry } from '../../shared/types/scanner'
 
 const api = {
@@ -29,6 +35,12 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_SHALLOW, { dirPath }),
     getThumbnail: (entryPath: string): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_GET_THUMBNAIL, { entryPath }),
+  },
+  explorerTabs: {
+    save: (tabs: PersistedExplorerTab[]): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_SAVE_TABS, { tabs }),
+    load: (): Promise<PersistedExplorerTab[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_LOAD_TABS),
   },
 }
 

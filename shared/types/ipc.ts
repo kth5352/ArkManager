@@ -11,6 +11,8 @@ export const IPC_CHANNELS = {
   SCANNER_SCAN_RECURSIVE: 'scanner:scan-recursive',
   SCANNER_SCAN_SHALLOW: 'scanner:scan-shallow',
   SCANNER_GET_THUMBNAIL: 'scanner:get-thumbnail',
+  EXPLORER_SAVE_TABS: 'explorer:save-tabs',
+  EXPLORER_LOAD_TABS: 'explorer:load-tabs',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -69,3 +71,17 @@ export const GetThumbnailRequestSchema = z.object({
   entryPath: z.string(),
 })
 export type GetThumbnailRequest = z.infer<typeof GetThumbnailRequestSchema>
+
+export const PersistedExplorerTabSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  path: z.string(),
+  position: z.number(),
+  isActive: z.boolean(),
+})
+export type PersistedExplorerTab = z.infer<typeof PersistedExplorerTabSchema>
+
+export const SaveExplorerTabsRequestSchema = z.object({
+  tabs: z.array(PersistedExplorerTabSchema),
+})
+export type SaveExplorerTabsRequest = z.infer<typeof SaveExplorerTabsRequestSchema>

@@ -4,6 +4,7 @@ import { createDbClient } from './database/client'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
 import { registerLibrariesHandlers } from './ipc/librariesHandlers'
 import { registerScannerHandlers } from './ipc/scannerHandlers'
+import { registerExplorerHandlers } from './ipc/explorerHandlers'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -37,6 +38,7 @@ app.whenReady().then(() => {
   registerSettingsHandlers(db)
   registerLibrariesHandlers(db)
   registerScannerHandlers()
+  registerExplorerHandlers(db)
 
   createWindow()
 

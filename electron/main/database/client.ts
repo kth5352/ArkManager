@@ -22,6 +22,16 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS explorer_tabs (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      path TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      is_active INTEGER NOT NULL
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 
