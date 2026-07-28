@@ -74,11 +74,14 @@ export function TabBar() {
     reorderTabs(String(active.id), String(over.id))
   }
 
+  const hasLibraries = (libraries?.length ?? 0) > 0
+
   const handleAddTab = (): void => {
-    // No path to derive a new tab from other than the user's own registered
-    // libraries - falls back to '' (no libraries registered yet) rather than
-    // blocking tab creation; FolderView renders a helpful message instead of
-    // crashing when it receives an empty/invalid path.
+    // Only reachable when a library is registered (button is disabled
+    // otherwise) - without this guard a new tab would get path: '', and
+    // FolderView's isError branch would show a generic "cannot access this
+    // folder" message that's misleading for "no library registered yet".
+    if (!hasLibraries) return
     addTab({ label: '새 탭', path: libraries?.[0]?.path ?? '' })
   }
 
@@ -91,9 +94,10 @@ export function TabBar() {
           ))}
           <button
             onClick={handleAddTab}
+            disabled={!hasLibraries}
             aria-label="새 탭 추가"
-            title="새 탭 추가"
-            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={hasLibraries ? '새 탭 추가' : '먼저 설정에서 라이브러리를 등록하세요'}
+            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           >
             <Plus className="h-4 w-4" />
           </button>
