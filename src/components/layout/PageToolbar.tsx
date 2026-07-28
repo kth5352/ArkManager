@@ -26,7 +26,10 @@ export function PageToolbar({
 }: PageToolbarProps) {
   return (
     <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-      <Select value={sortField} onValueChange={(value) => onSortChange(value as SortField, sortDirection)}>
+      <Select
+        value={sortField}
+        onValueChange={(value) => onSortChange(value as SortField, sortDirection)}
+      >
         <SelectTrigger className="w-32">
           <SelectValue />
         </SelectTrigger>
