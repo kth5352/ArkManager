@@ -25,7 +25,7 @@ describe('gameMetadataRepository', () => {
     touchGameMetadata(db, 'RJ01234567')
     const first = getGameMetadata(db, 'RJ01234567')
 
-    await new Promise(resolve => setTimeout(resolve, 1))
+    await new Promise((resolve) => setTimeout(resolve, 1))
     touchGameMetadata(db, 'RJ01234567')
     const second = getGameMetadata(db, 'RJ01234567')
 

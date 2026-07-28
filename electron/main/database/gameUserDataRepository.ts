@@ -48,7 +48,10 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
         createdAt: existing.createdAt,
         updatedAt: new Date().toISOString(),
       })
-      .onConflictDoUpdate({ target: gameUserData.key, set: { updatedAt: new Date().toISOString() } })
+      .onConflictDoUpdate({
+        target: gameUserData.key,
+        set: { updatedAt: new Date().toISOString() },
+      })
       .run()
   })
 }
