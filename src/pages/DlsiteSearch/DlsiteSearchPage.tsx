@@ -36,9 +36,7 @@ export function DlsiteSearchPage() {
         </p>
       )}
 
-      {activeCode && isLoading && (
-        <p className="text-sm text-muted-foreground">불러오는 중...</p>
-      )}
+      {activeCode && isLoading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}
 
       {activeCode && !isLoading && !metadata && (
         <p className="text-sm text-muted-foreground">작품을 찾을 수 없습니다.</p>
