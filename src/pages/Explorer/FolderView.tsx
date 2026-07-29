@@ -126,7 +126,11 @@ function FolderEntryRow({
           <span className="truncate">{entry.name}</span>
         </li>
       </ContextMenuTrigger>
-      <FolderEntryContextMenu entry={entry} onOpenInNewTab={onOpenInNewTab} onOpenDetail={onOpenDetail} />
+      <FolderEntryContextMenu
+        entry={entry}
+        onOpenInNewTab={onOpenInNewTab}
+        onOpenDetail={onOpenDetail}
+      />
     </ContextMenu>
   )
 }

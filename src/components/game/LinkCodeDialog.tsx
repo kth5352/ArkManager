@@ -42,11 +42,7 @@ export function LinkCodeDialog({ entry, onClose }: LinkCodeDialogProps) {
           폴더명을 직접 바꾸면 기존 즐겨찾기/평점 기록이 유지되지 않습니다. 데이터를 유지하려면
           여기서 코드를 연동하세요.
         </p>
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="RJ01234567"
-        />
+        <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="RJ01234567" />
         <Button onClick={handleConfirm} disabled={!parsedCode || linkCode.isPending}>
           연동
         </Button>
