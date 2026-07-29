@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { Heart } from 'lucide-react'
@@ -7,8 +8,11 @@ import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
+import { SearchHeader } from '../../components/layout/SearchHeader'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
+import { filterEntries } from '../../lib/filterEntries'
+import { useGameMetadataMany } from '../../services/metadataService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 64
@@ -18,7 +22,15 @@ function formatMtime(mtimeMs: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-function GameRow({ game }: { game: ScannedEntry }) {
+function GameRow({
+  game,
+  genres,
+  onToggleGenreFilter,
+}: {
+  game: ScannedEntry
+  genres: string[]
+  onToggleGenreFilter: (genre: string) => void
+}) {
   const { data: thumbnail } = useThumbnail(game.path, game.kind)
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
@@ -41,7 +53,25 @@ function GameRow({ game }: { game: ScannedEntry }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{game.name}</p>
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-medium">{game.name}</p>
+          {genres.length > 0 && (
+            <div className="flex shrink-0 gap-1">
+              {genres.slice(0, 3).map((genre) => (
+                <button
+                  key={genre}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleGenreFilter(genre)
+                  }}
+                  className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {game.code ? (
           <button
             className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
@@ -62,14 +92,23 @@ function GameRow({ game }: { game: ScannedEntry }) {
 
 interface ListRowProps {
   games: ScannedEntry[]
+  metadataByCode: Record<string, { genres: string[] }>
+  onToggleGenreFilter: (genre: string) => void
 }
 
-function Row({ index, style, games }: RowComponentProps<ListRowProps>) {
+function Row({
+  index,
+  style,
+  games,
+  metadataByCode,
+  onToggleGenreFilter,
+}: RowComponentProps<ListRowProps>) {
   const game = games[index]
   if (!game) return null
+  const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
   return (
     <div style={style}>
-      <GameRow game={game} />
+      <GameRow game={game} genres={genres} onToggleGenreFilter={onToggleGenreFilter} />
     </div>
   )
 }
@@ -77,6 +116,17 @@ function Row({ index, style, games }: RowComponentProps<ListRowProps>) {
 export function ListPage() {
   const { data: games, isLoading } = useGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+
+  const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
+  const { data: metadataByCode = {} } = useGameMetadataMany(codes)
+
+  const toggleGenreFilter = (genre: string): void => {
+    setExcludedGenres((current) =>
+      current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre]
+    )
+  }
 
   if (isLoading || !games) {
     return (
@@ -88,10 +138,19 @@ export function ListPage() {
     )
   }
 
-  const sortedGames = games.length > 0 ? sortEntries(games, sortField, sortDirection) : games
+  const filteredGames =
+    games.length > 0 ? filterEntries(games, metadataByCode, searchQuery, excludedGenres) : games
+  const sortedGames =
+    filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
 
   return (
     <div className="flex h-full flex-col">
+      <SearchHeader
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        excludedGenres={excludedGenres}
+        onClearFilters={() => setExcludedGenres([])}
+      />
       <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       {sortedGames.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
@@ -107,7 +166,11 @@ export function ListPage() {
               return (
                 <List
                   rowComponent={Row}
-                  rowProps={{ games: sortedGames }}
+                  rowProps={{
+                    games: sortedGames,
+                    metadataByCode,
+                    onToggleGenreFilter: toggleGenreFilter,
+                  }}
                   rowCount={sortedGames.length}
                   rowHeight={ROW_HEIGHT}
                   style={{ height, width }}
