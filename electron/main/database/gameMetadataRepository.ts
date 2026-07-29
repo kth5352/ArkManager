@@ -20,7 +20,10 @@ export function getGameMetadata(db: AppDatabase, code: string): GameMetadataRow 
   return { ...row, genres: row.genres ? (JSON.parse(row.genres) as string[]) : [] }
 }
 
-export function getManyGameMetadata(db: AppDatabase, codes: string[]): Map<string, GameMetadataRow> {
+export function getManyGameMetadata(
+  db: AppDatabase,
+  codes: string[]
+): Map<string, GameMetadataRow> {
   if (codes.length === 0) return new Map()
 
   const rows = db.select().from(gameMetadata).where(inArray(gameMetadata.code, codes)).all()
