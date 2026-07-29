@@ -11,6 +11,7 @@ import {
   useToggleFavorite,
   userDataQueryKey,
 } from '../../services/gameUserDataService'
+import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -38,11 +39,13 @@ function GameCard({
   genres,
   onToggleGenreFilter,
   onHoverChange,
+  onOpenDetail,
 }: {
   game: ScannedEntry
   genres: string[]
   onToggleGenreFilter: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
+  onOpenDetail: (game: ScannedEntry) => void
 }) {
   const { data: thumbnail } = useThumbnail(game.path, game.kind)
   const { data: userData } = useGameUserData(game)
@@ -52,6 +55,7 @@ function GameCard({
     <motion.div
       onMouseEnter={() => onHoverChange(game)}
       onMouseLeave={() => onHoverChange(null)}
+      onClick={() => onOpenDetail(game)}
       whileHover={{ scale: 1.05 }}
       transition={{ duration: 0.15 }}
       className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
@@ -103,6 +107,7 @@ interface GridCellProps {
   metadataByCode: Record<string, { genres: string[] }>
   onToggleGenreFilter: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
+  onOpenDetail: (game: ScannedEntry) => void
 }
 
 function GameCell({
@@ -116,6 +121,7 @@ function GameCell({
   metadataByCode,
   onToggleGenreFilter,
   onHoverChange,
+  onOpenDetail,
 }: CellComponentProps<GridCellProps>) {
   const index = rowIndex * columnCount + columnIndex
   const game = games[index]
@@ -129,6 +135,7 @@ function GameCell({
           genres={genres}
           onToggleGenreFilter={onToggleGenreFilter}
           onHoverChange={onHoverChange}
+          onOpenDetail={onOpenDetail}
         />
       </div>
     </div>
@@ -145,6 +152,7 @@ export function GalleryPage() {
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const toggleFavoriteShortcut = useToggleFavorite()
   const queryClient = useQueryClient()
+  const { openDetail, DetailOverlayElement } = useGameDetailOverlay()
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -251,6 +259,7 @@ export function GalleryPage() {
                     metadataByCode,
                     onToggleGenreFilter: toggleGenreFilter,
                     onHoverChange: setHoveredGame,
+                    onOpenDetail: openDetail,
                   }}
                   columnCount={columnCount}
                   columnWidth={effectiveColumnWidth}
@@ -263,6 +272,7 @@ export function GalleryPage() {
           />
         </div>
       )}
+      <DetailOverlayElement />
     </div>
   )
 }
