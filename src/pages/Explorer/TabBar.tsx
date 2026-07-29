@@ -9,7 +9,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect } from 'react'
-import { Plus, X } from 'lucide-react'
+import { FolderOpen, Plus, X } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -122,6 +122,13 @@ export function TabBar() {
     addTab({ label: '새 탭', path: libraries?.[0]?.path ?? '' })
   }
 
+  const handleOpenFolder = async (): Promise<void> => {
+    const path = await window.api.libraries.pickFolder()
+    if (!path) return
+    const label = path.split(/[\\/]/).filter(Boolean).pop() ?? path
+    addTab({ label, path })
+  }
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={tabs.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
@@ -137,6 +144,14 @@ export function TabBar() {
             className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           >
             <Plus className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleOpenFolder}
+            aria-label="폴더 열기"
+            title="폴더 열기"
+            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <FolderOpen className="h-4 w-4" />
           </button>
         </div>
       </SortableContext>
