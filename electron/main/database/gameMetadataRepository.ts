@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { gameMetadata } from './schema'
 import type { CrawledGameMetadata } from '../metadata/crawlGameMetadata'
@@ -18,6 +18,18 @@ export function getGameMetadata(db: AppDatabase, code: string): GameMetadataRow 
   const row = db.select().from(gameMetadata).where(eq(gameMetadata.code, code)).get()
   if (!row) return undefined
   return { ...row, genres: row.genres ? (JSON.parse(row.genres) as string[]) : [] }
+}
+
+export function getManyGameMetadata(db: AppDatabase, codes: string[]): Map<string, GameMetadataRow> {
+  if (codes.length === 0) return new Map()
+
+  const rows = db.select().from(gameMetadata).where(inArray(gameMetadata.code, codes)).all()
+  return new Map(
+    rows.map((row) => [
+      row.code,
+      { ...row, genres: row.genres ? (JSON.parse(row.genres) as string[]) : [] },
+    ])
+  )
 }
 
 export function touchGameMetadata(db: AppDatabase, code: string): void {

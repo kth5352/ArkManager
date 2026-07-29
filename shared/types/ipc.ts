@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
   METADATA_CRAWL_AND_SAVE: 'metadata:crawl-and-save',
   METADATA_GET: 'metadata:get',
+  METADATA_GET_MANY: 'metadata:get-many',
   GAME_USER_DATA_GET: 'game-user-data:get',
   GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
   GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
@@ -148,6 +149,10 @@ export const GetMetadataRequestSchema = z.object({
   code: GameCodeSchema,
 })
 export type GetMetadataRequest = z.infer<typeof GetMetadataRequestSchema>
+
+export const GetManyMetadataRequestSchema = z.object({
+  codes: z.array(z.string()),
+})
 
 export interface GameMetadataDto {
   code: string

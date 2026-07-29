@@ -5,6 +5,7 @@ import {
   touchGameMetadata,
   saveGameMetadata,
   setGameMetadataCoverPath,
+  getManyGameMetadata,
 } from './gameMetadataRepository'
 
 describe('gameMetadataRepository', () => {
@@ -73,5 +74,31 @@ describe('gameMetadataRepository', () => {
     setGameMetadataCoverPath(db, 'RJ01169914', '/cache/covers/RJ01169914.webp')
 
     expect(getGameMetadata(db, 'RJ01169914')?.coverImagePath).toBe('/cache/covers/RJ01169914.webp')
+  })
+
+  it('fetches multiple codes in one call, omitting codes with no row', () => {
+    saveGameMetadata(db, 'RJ01111111', {
+      title: 'Game A',
+      circle: 'Circle A',
+      releaseDate: '2025-01-01',
+      genres: ['액션'],
+      coverImageUrl: null,
+    })
+    saveGameMetadata(db, 'RJ02222222', {
+      title: 'Game B',
+      circle: 'Circle B',
+      releaseDate: '2025-02-02',
+      genres: ['드라마'],
+      coverImageUrl: null,
+    })
+
+    const result = getManyGameMetadata(db, ['RJ01111111', 'RJ02222222', 'RJ99999999'])
+    expect(result.size).toBe(2)
+    expect(result.get('RJ01111111')?.title).toBe('Game A')
+    expect(result.has('RJ99999999')).toBe(false)
+  })
+
+  it('returns an empty map for an empty code list', () => {
+    expect(getManyGameMetadata(db, []).size).toBe(0)
   })
 })

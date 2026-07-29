@@ -66,6 +66,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_AND_SAVE, { code }),
     get: (code: GameCode): Promise<GameMetadataDto | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET, { code }),
+    getMany: (codes: string[]): Promise<Record<string, GameMetadataDto>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_MANY, { codes }),
   },
   gameUserData: {
     get: (code: GameCode | null, path: string): Promise<GameUserDataDto | null> =>

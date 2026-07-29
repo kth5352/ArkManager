@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import {
   CrawlAndSaveMetadataRequestSchema,
   GetMetadataRequestSchema,
+  GetManyMetadataRequestSchema,
   IPC_CHANNELS,
   type GameMetadataDto,
 } from '../../../shared/types/ipc'
@@ -12,6 +13,7 @@ import {
   getGameMetadata,
   saveGameMetadata,
   setGameMetadataCoverPath,
+  getManyGameMetadata,
 } from '../database/gameMetadataRepository'
 import type { AppDatabase } from '../database/client'
 
@@ -31,6 +33,23 @@ export function registerMetadataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.METADATA_GET, (_event, payload: unknown) => {
     const { code } = GetMetadataRequestSchema.parse(payload)
     return toDto(getGameMetadata(db, code.value))
+  })
+
+  ipcMain.handle(IPC_CHANNELS.METADATA_GET_MANY, (_event, payload: unknown) => {
+    const { codes } = GetManyMetadataRequestSchema.parse(payload)
+    const rows = getManyGameMetadata(db, codes)
+    const result: Record<string, GameMetadataDto> = {}
+    for (const [code, row] of rows) {
+      result[code] = {
+        code: row.code,
+        title: row.title,
+        circle: row.circle,
+        releaseDate: row.releaseDate,
+        genres: row.genres,
+        coverImagePath: row.coverImagePath,
+      }
+    }
+    return result
   })
 
   ipcMain.handle(IPC_CHANNELS.METADATA_CRAWL_AND_SAVE, async (_event, payload: unknown) => {

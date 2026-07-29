@@ -14,6 +14,14 @@ export function useGameMetadata(code: GameCode | null) {
   })
 }
 
+export function useGameMetadataMany(codes: string[]) {
+  return useQuery<Record<string, GameMetadataDto>>({
+    queryKey: ['metadata-many', [...codes].sort()],
+    queryFn: () => window.api.metadata.getMany(codes),
+    enabled: codes.length > 0,
+  })
+}
+
 export function useCrawlGameMetadata() {
   const queryClient = useQueryClient()
 
