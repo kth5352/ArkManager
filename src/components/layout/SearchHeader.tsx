@@ -21,11 +21,21 @@ export function SearchHeader({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.ctrlKey && event.key === 'f') {
-        event.preventDefault()
-        setExpanded(true)
-        inputRef.current?.focus()
-      }
+      if (!event.ctrlKey || event.key !== 'f') return
+
+      // Ctrl+F is global (window-level) so it can be pressed while another
+      // input/textarea elsewhere in the app is focused - don't steal focus
+      // from whatever the user is already typing into.
+      const active = document.activeElement
+      const isEditingElsewhere =
+        active instanceof HTMLElement &&
+        active !== inputRef.current &&
+        (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
+      if (isEditingElsewhere) return
+
+      event.preventDefault()
+      setExpanded(true)
+      inputRef.current?.focus()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
