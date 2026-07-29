@@ -8,7 +8,11 @@ import {
 import { listExecutables } from '../launch/listExecutables'
 import { detectLocaleEmulator } from '../launch/localeEmulator'
 import { launchGame } from '../launch/launchGame'
-import { getGameUserData, recordPlaySession, setLaunchConfig } from '../database/gameUserDataRepository'
+import {
+  getGameUserData,
+  recordPlaySession,
+  setLaunchConfig,
+} from '../database/gameUserDataRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
 

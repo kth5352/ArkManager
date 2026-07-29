@@ -11,5 +11,7 @@ export async function listExecutables(folderPath: string): Promise<string[]> {
   } catch {
     return []
   }
-  return names.filter((name) => extname(name).toLowerCase() === '.exe').map((name) => join(folderPath, name))
+  return names
+    .filter((name) => extname(name).toLowerCase() === '.exe')
+    .map((name) => join(folderPath, name))
 }

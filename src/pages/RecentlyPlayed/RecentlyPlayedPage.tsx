@@ -8,13 +8,7 @@ function codeFromKey(key: string): GameCode | null {
   return { type: match[1] as GameCode['type'], value: key }
 }
 
-function RecentlyPlayedRow({
-  entryKey,
-  lastPlayedAt,
-}: {
-  entryKey: string
-  lastPlayedAt: string
-}) {
+function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastPlayedAt: string }) {
   const code = codeFromKey(entryKey)
   const { data: metadata } = useGameMetadata(code)
 
