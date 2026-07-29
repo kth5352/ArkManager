@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
-import { Heart } from 'lucide-react'
+import { Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
 import {
@@ -78,6 +78,17 @@ function GameCard({
       <div className="shrink-0 p-2">
         <p className="truncate text-sm font-medium">{game.name}</p>
         {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
+        {userData?.rating != null && (
+          <div className="mt-0.5 flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <Star
+                key={value}
+                className="h-3 w-3 text-yellow-500"
+                fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
+              />
+            ))}
+          </div>
+        )}
         {genres.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {genres.slice(0, 3).map((genre) => (
