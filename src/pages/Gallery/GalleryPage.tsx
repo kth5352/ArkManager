@@ -89,6 +89,7 @@ interface GridCellProps {
   games: ScannedEntry[]
   columnCount: number
   gap: number
+  cardWidth: number
   metadataByCode: Record<string, { genres: string[] }>
   onToggleGenreFilter: (genre: string) => void
 }
@@ -100,6 +101,7 @@ function GameCell({
   games,
   columnCount,
   gap,
+  cardWidth,
   metadataByCode,
   onToggleGenreFilter,
 }: CellComponentProps<GridCellProps>) {
@@ -108,8 +110,10 @@ function GameCell({
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
   return (
-    <div style={{ ...style, padding: gap / 2 }}>
-      <GameCard game={game} genres={genres} onToggleGenreFilter={onToggleGenreFilter} />
+    <div style={{ ...style, padding: gap / 2, display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: cardWidth }}>
+        <GameCard game={game} genres={genres} onToggleGenreFilter={onToggleGenreFilter} />
+      </div>
     </div>
   )
 }
@@ -194,6 +198,9 @@ export function GalleryPage() {
               if (height === undefined || width === undefined) return null
 
               const columnCount = Math.max(1, Math.floor(width / (cardWidth + gap)))
+              const usedWidth = columnCount * (cardWidth + gap)
+              const extraPerColumn = columnCount > 0 ? (width - usedWidth) / columnCount : 0
+              const effectiveColumnWidth = cardWidth + gap + extraPerColumn
               const rowCount = Math.ceil(sortedGames.length / columnCount)
 
               return (
@@ -203,11 +210,12 @@ export function GalleryPage() {
                     games: sortedGames,
                     columnCount,
                     gap,
+                    cardWidth,
                     metadataByCode,
                     onToggleGenreFilter: toggleGenreFilter,
                   }}
                   columnCount={columnCount}
-                  columnWidth={cardWidth + gap}
+                  columnWidth={effectiveColumnWidth}
                   rowCount={rowCount}
                   rowHeight={cardHeight + gap}
                   style={{ height, width, overflowX: 'hidden' }}
