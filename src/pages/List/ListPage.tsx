@@ -54,7 +54,7 @@ function GameRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">{game.name}</p>
+          <p className="min-w-0 truncate text-sm font-medium">{game.name}</p>
           {genres.length > 0 && (
             <div className="flex shrink-0 gap-1">
               {genres.slice(0, 3).map((genre) => (
