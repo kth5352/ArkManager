@@ -6,7 +6,7 @@ import {
   useLocaleEmulatorAvailable,
   useSetLaunchConfig,
 } from '../../services/launchService'
-import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
+import { useBackupSaveNow, usePickSaveFolder, useSetSavePath } from '../../services/saveService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../../shared/types/ipc'
 
@@ -22,6 +22,7 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
   const setLaunchConfig = useSetLaunchConfig()
   const pickSaveFolder = usePickSaveFolder()
   const setSavePath = useSetSavePath()
+  const backupSaveNow = useBackupSaveNow()
 
   const [selectedExe, setSelectedExe] = useState('')
   const [launchMode, setLaunchMode] = useState<LaunchConfigDto['launchMode']>('normal')
@@ -35,6 +36,11 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
     if (!entry) return
     const path = await pickSaveFolder.mutateAsync()
     if (path) setSavePath.mutate({ entry, savePath: path })
+  }
+
+  const handleBackupNow = (): void => {
+    if (!entry) return
+    backupSaveNow.mutate(entry)
   }
 
   return (
@@ -101,6 +107,14 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
               <p className="text-sm font-medium">세이브 파일 백업 위치</p>
               <Button variant="secondary" onClick={handlePickSaveFolder}>
                 세이브 폴더 지정
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleBackupNow}
+                disabled={backupSaveNow.isPending}
+                className="ml-2"
+              >
+                지금 백업
               </Button>
             </div>
           </>

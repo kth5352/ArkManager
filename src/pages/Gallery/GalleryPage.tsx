@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
 import { Heart } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
-import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
+import {
+  useGameUserData,
+  useToggleFavorite,
+  userDataQueryKey,
+} from '../../services/gameUserDataService'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -14,6 +19,7 @@ import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { GameUserDataDto } from '../../../shared/types/ipc'
 
 const CARD_WIDTH = 180
 const GAP = 16
@@ -138,6 +144,7 @@ export function GalleryPage() {
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const toggleFavoriteShortcut = useToggleFavorite()
+  const queryClient = useQueryClient()
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -155,11 +162,15 @@ export function GalleryPage() {
       const target = event.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return // 검색창 입력 중엔 무시
       event.preventDefault()
-      toggleFavoriteShortcut.mutate({ entry: hoveredGame, isFavorite: true })
+      const cached = queryClient.getQueryData<GameUserDataDto | null>(userDataQueryKey(hoveredGame))
+      toggleFavoriteShortcut.mutate({
+        entry: hoveredGame,
+        isFavorite: !(cached?.isFavorite ?? false),
+      })
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hoveredGame, toggleFavoriteShortcut])
+  }, [hoveredGame, toggleFavoriteShortcut, queryClient])
 
   useEffect(() => {
     const container = containerRef.current

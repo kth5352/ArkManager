@@ -22,6 +22,14 @@ export function useGameMetadataMany(codes: string[]) {
   })
 }
 
+export function useGameCoverImage(code: GameCode | null) {
+  return useQuery<string | null>({
+    queryKey: code ? ['metadata', 'cover-image', code.value] : ['metadata', 'cover-image', 'none'],
+    queryFn: () => window.api.metadata.getCoverImage(code!),
+    enabled: code !== null,
+  })
+}
+
 export function useCrawlGameMetadata() {
   const queryClient = useQueryClient()
 
@@ -29,6 +37,10 @@ export function useCrawlGameMetadata() {
     mutationFn: (code: GameCode) => window.api.metadata.crawlAndSave(code),
     onSuccess: (result, code) => {
       if (result) queryClient.setQueryData(metadataQueryKey(code), result)
+      // Gallery/List/DetailList read genre badges via useGameMetadataMany, whose
+      // query key includes a per-call-site sorted codes array - invalidate by
+      // prefix so every variation picks up the freshly crawled metadata.
+      queryClient.invalidateQueries({ queryKey: ['metadata-many'] })
     },
   })
 }

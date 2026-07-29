@@ -4,6 +4,7 @@ import {
   CrawlAndSaveMetadataRequestSchema,
   GetMetadataRequestSchema,
   GetManyMetadataRequestSchema,
+  GetCoverImageRequestSchema,
   IPC_CHANNELS,
   type GameMetadataDto,
 } from '../../../shared/types/ipc'
@@ -16,6 +17,7 @@ import {
   getManyGameMetadata,
 } from '../database/gameMetadataRepository'
 import type { AppDatabase } from '../database/client'
+import { encodeThumbnail } from './scannerHandlers'
 
 function toDto(row: ReturnType<typeof getGameMetadata>): GameMetadataDto | null {
   if (!row) return null
@@ -67,5 +69,14 @@ export function registerMetadataHandlers(db: AppDatabase): void {
     }
 
     return toDto(getGameMetadata(db, code.value))
+  })
+
+  ipcMain.handle(IPC_CHANNELS.METADATA_GET_COVER_IMAGE, async (_event, payload: unknown) => {
+    const { code } = GetCoverImageRequestSchema.parse(payload)
+
+    const row = getGameMetadata(db, code.value)
+    if (!row?.coverImagePath) return null
+
+    return encodeThumbnail(row.coverImagePath).catch(() => null)
   })
 }

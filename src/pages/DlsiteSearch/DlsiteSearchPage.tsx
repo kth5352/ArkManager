@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
-import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
+import {
+  useCrawlGameMetadata,
+  useGameCoverImage,
+  useGameMetadata,
+} from '../../services/metadataService'
 import { parseCodeInput } from './parseCodeInput'
 import type { GameCode } from '../../../shared/types/scanner'
 
@@ -11,6 +15,7 @@ export function DlsiteSearchPage() {
 
   const { data: metadata, isLoading } = useGameMetadata(activeCode)
   const crawlAndSave = useCrawlGameMetadata()
+  const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? activeCode : null)
 
   const handleSearch = (): void => {
     const code = parseCodeInput(input)
@@ -45,9 +50,9 @@ export function DlsiteSearchPage() {
       {metadata && (
         <div className="flex gap-4">
           <div className="h-56 w-40 shrink-0 overflow-hidden rounded bg-muted">
-            {metadata.coverImagePath && (
+            {coverImage && (
               <img
-                src={`file://${metadata.coverImagePath}`}
+                src={coverImage}
                 alt=""
                 className="h-full w-full object-cover"
                 draggable={false}

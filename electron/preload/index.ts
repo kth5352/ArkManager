@@ -69,6 +69,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET, { code }),
     getMany: (codes: string[]): Promise<Record<string, GameMetadataDto>> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_MANY, { codes }),
+    getCoverImage: (code: GameCode): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_COVER_IMAGE, { code }),
   },
   gameUserData: {
     get: (code: GameCode | null, path: string): Promise<GameUserDataDto | null> =>

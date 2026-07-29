@@ -20,7 +20,7 @@ const MIME_TYPES: Record<string, string> = {
   '.bmp': 'image/bmp',
 }
 
-async function encodeThumbnail(imagePath: string): Promise<string> {
+export async function encodeThumbnail(imagePath: string): Promise<string> {
   const buffer = await readFile(imagePath)
   const mimeType = MIME_TYPES[extname(imagePath).toLowerCase()] ?? 'application/octet-stream'
   return `data:${mimeType};base64,${buffer.toString('base64')}`

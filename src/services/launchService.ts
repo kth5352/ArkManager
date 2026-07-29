@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ScannedEntry } from '../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../shared/types/ipc'
 
@@ -31,8 +31,13 @@ export function useSetLaunchConfig() {
 }
 
 export function useLaunchGame() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: (entry: Pick<ScannedEntry, 'code' | 'path'>) =>
       window.api.launch.launch(entry.code, entry.path),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['game-user-data', 'recently-played'] })
+    },
   })
 }

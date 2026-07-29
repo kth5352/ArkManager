@@ -6,7 +6,7 @@ function identifierKey(entry: Pick<ScannedEntry, 'code' | 'path'>): string {
   return entry.code ? entry.code.value : entry.path
 }
 
-function userDataQueryKey(entry: Pick<ScannedEntry, 'code' | 'path'>) {
+export function userDataQueryKey(entry: Pick<ScannedEntry, 'code' | 'path'>) {
   return ['game-user-data', identifierKey(entry)] as const
 }
 
@@ -34,6 +34,7 @@ export function useToggleFavorite() {
         rating: prev?.rating ?? null,
         memo: prev?.memo ?? null,
       }))
+      queryClient.invalidateQueries({ queryKey: ['game-user-data', 'favorite-keys'] })
     },
   })
 }
