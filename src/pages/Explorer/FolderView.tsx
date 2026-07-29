@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,7 +9,7 @@ import { useExplorerStore } from '../../stores/explorerStore'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
 import { useFolderScan } from '../../services/scannerService'
-import { DetailOverlay } from './DetailOverlay'
+import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
@@ -25,9 +24,11 @@ interface FolderViewProps {
 function FolderEntryContextMenu({
   entry,
   onOpenInNewTab,
+  onOpenDetail,
 }: {
   entry: ScannedEntry
   onOpenInNewTab: (entry: ScannedEntry) => void
+  onOpenDetail: (entry: ScannedEntry) => void
 }) {
   const openExternal = useOpenExternal()
 
@@ -82,6 +83,7 @@ function FolderEntryContextMenu({
         <ContextMenuItem onSelect={() => console.log('pin favorite', entry.path)}>
           즐겨찾기로 고정
         </ContextMenuItem>
+        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>코드 연동</ContextMenuItem>
       </ContextMenuContent>
     )
   }
@@ -93,10 +95,12 @@ function FolderEntryRow({
   entry,
   onOpenInNewTab,
   onEntryClick,
+  onOpenDetail,
 }: {
   entry: ScannedEntry
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
+  onOpenDetail: (entry: ScannedEntry) => void
 }) {
   const { data: thumbnail } = useThumbnail(entry.path, entry.kind)
 
@@ -122,13 +126,13 @@ function FolderEntryRow({
           <span className="truncate">{entry.name}</span>
         </li>
       </ContextMenuTrigger>
-      <FolderEntryContextMenu entry={entry} onOpenInNewTab={onOpenInNewTab} />
+      <FolderEntryContextMenu entry={entry} onOpenInNewTab={onOpenInNewTab} onOpenDetail={onOpenDetail} />
     </ContextMenu>
   )
 }
 
 export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
-  const [selectedGame, setSelectedGame] = useState<ScannedEntry | null>(null)
+  const { openDetail, DetailOverlayElement } = useGameDetailOverlay()
   const addTab = useExplorerStore((s) => s.addTab)
   const breadcrumbs = pathToBreadcrumbSegments(path)
 
@@ -145,11 +149,18 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
     addTab({ label: entry.name, path: entry.path })
   }
 
+  // Coded entries (file or folder) and code-less files open the detail
+  // overlay. Code-less folders still navigate into them - clicking through
+  // folders to find a game is Explorer's core browsing model, and a
+  // code-less folder is exactly what a user browses through on their way to
+  // linking a code (via the right-click "코드 연동" item above, not a click).
   const handleEntryClick = (entry: ScannedEntry): void => {
     if (entry.code) {
-      setSelectedGame(entry)
+      openDetail(entry)
     } else if (entry.kind === 'folder') {
       onNavigate(entry.path)
+    } else {
+      openDetail(entry)
     }
   }
 
@@ -181,11 +192,12 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
               entry={entry}
               onOpenInNewTab={openInNewTab}
               onEntryClick={handleEntryClick}
+              onOpenDetail={openDetail}
             />
           ))}
         </ul>
       )}
-      <DetailOverlay game={selectedGame} onClose={() => setSelectedGame(null)} />
+      <DetailOverlayElement />
     </div>
   )
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { Button } from '../../components/ui/button'
-import { RatingMemoDialog } from '../../components/game/RatingMemoDialog'
-import { LaunchConfigDialog } from '../../components/game/LaunchConfigDialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
+import { Button } from '../ui/button'
+import { RatingMemoDialog } from './RatingMemoDialog'
+import { LaunchConfigDialog } from './LaunchConfigDialog'
+import { LinkCodeDialog } from './LinkCodeDialog'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
@@ -19,6 +20,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const launchGame = useLaunchGame()
   const [editingRating, setEditingRating] = useState(false)
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
+  const [linkingCode, setLinkingCode] = useState(false)
 
   useEffect(() => {
     if (!game) return
@@ -37,7 +39,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
-        {game && game.code && (
+        {game && (
           <>
             <DialogHeader>
               <DialogTitle>{game.name}</DialogTitle>
@@ -54,18 +56,24 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                 )}
               </div>
               <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                <button
-                  className="text-left underline-offset-2 hover:underline"
-                  onClick={() => game.code && openExternal.mutate(game.code)}
-                >
-                  작품번호: {game.code.value}
-                </button>
+                {game.code ? (
+                  <button
+                    className="text-left underline-offset-2 hover:underline"
+                    onClick={() => game.code && openExternal.mutate(game.code)}
+                  >
+                    작품번호: {game.code.value}
+                  </button>
+                ) : (
+                  <p>코드없음</p>
+                )}
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
-              <Button onClick={() => game.code && openExternal.mutate(game.code)}>
-                DLsite 열기
-              </Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {game.code && (
+                <Button onClick={() => game.code && openExternal.mutate(game.code)}>
+                  DLsite 열기
+                </Button>
+              )}
               <Button variant="secondary" onClick={() => console.log('open folder', game.path)}>
                 폴더 열기
               </Button>
@@ -83,6 +91,11 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
               <Button variant="secondary" onClick={() => setEditingRating(true)}>
                 평점/메모
               </Button>
+              {!game.code && (
+                <Button variant="secondary" onClick={() => setLinkingCode(true)}>
+                  코드 연동
+                </Button>
+              )}
             </div>
           </>
         )}
@@ -96,6 +109,11 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         key={configuringLaunch && game ? (game.code ? game.code.value : game.path) : 'closed'}
         entry={configuringLaunch ? game : null}
         onClose={() => setConfiguringLaunch(false)}
+      />
+      <LinkCodeDialog
+        key={linkingCode && game ? game.path : 'closed'}
+        entry={linkingCode ? game : null}
+        onClose={() => setLinkingCode(false)}
       />
     </Dialog>
   )
