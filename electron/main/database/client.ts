@@ -69,6 +69,14 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS path_code_overrides (
+      path TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 

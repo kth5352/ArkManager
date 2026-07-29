@@ -50,3 +50,9 @@ export const gameUserData = sqliteTable('game_user_data', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+export const pathCodeOverrides = sqliteTable('path_code_overrides', {
+  path: text('path').primaryKey(), // normalized via normalizeLibraryPath
+  code: text('code').notNull(),
+  createdAt: text('created_at').notNull(),
+})
