@@ -16,6 +16,7 @@ async function toScannedEntry(parentPath: string, name: string): Promise<Scanned
       path,
       kind: stats.isDirectory() ? 'folder' : 'file',
       mtimeMs: stats.mtimeMs,
+      size: stats.size,
       code: extractCode(name),
     }
   } catch {
