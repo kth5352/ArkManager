@@ -155,9 +155,37 @@ export function listFavoriteKeys(db: AppDatabase): string[] {
 // to) onto the code as its new primary key, preserving createdAt as well as
 // isFavorite/rating/memo/launchConfig/totalPlaytimeMs/lastPlayedAt/savePath.
 // No-op if the old path key was never recorded - nothing to migrate.
+//
+// If the code already has its own row (e.g. crawled/favorited independently
+// before the user linked the path to it), the two rows are merged
+// deterministically rather than one silently clobbering the other:
+//   - isFavorite: true if either side is favorited.
+//   - rating/memo/launchConfig/lastPlayedAt/savePath: the code row's value
+//     wins when set, otherwise falls back to the path row's value.
+//   - totalPlaytimeMs: the code row's value wins when non-zero, otherwise
+//     falls back to the path row's value (does not sum - the two totals
+//     aren't known to be non-overlapping).
+//   - createdAt: the code row's, since it is the earlier-created row.
 export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string): void {
   const existing = getGameUserData(db, oldPathKey)
   if (!existing || existing.keyType !== 'path') return
+
+  const currentCodeRow = getGameUserData(db, newCode)
+  const now = new Date().toISOString()
+
+  const merged = {
+    isFavorite: (currentCodeRow?.isFavorite ?? false) || existing.isFavorite,
+    rating: currentCodeRow?.rating ?? existing.rating,
+    memo: currentCodeRow?.memo ?? existing.memo,
+    launchConfig: currentCodeRow?.launchConfig ?? existing.launchConfig,
+    totalPlaytimeMs:
+      currentCodeRow && currentCodeRow.totalPlaytimeMs !== 0
+        ? currentCodeRow.totalPlaytimeMs
+        : existing.totalPlaytimeMs,
+    lastPlayedAt: currentCodeRow?.lastPlayedAt ?? existing.lastPlayedAt,
+    savePath: currentCodeRow?.savePath ?? existing.savePath,
+    createdAt: currentCodeRow?.createdAt ?? existing.createdAt,
+  }
 
   db.transaction((tx) => {
     tx.delete(gameUserData).where(eq(gameUserData.key, oldPathKey)).run()
@@ -165,19 +193,28 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
       .values({
         key: newCode,
         keyType: 'code',
-        isFavorite: existing.isFavorite,
-        rating: existing.rating,
-        memo: existing.memo,
-        launchConfig: existing.launchConfig ? JSON.stringify(existing.launchConfig) : null,
-        totalPlaytimeMs: existing.totalPlaytimeMs,
-        lastPlayedAt: existing.lastPlayedAt,
-        savePath: existing.savePath,
-        createdAt: existing.createdAt,
-        updatedAt: new Date().toISOString(),
+        isFavorite: merged.isFavorite,
+        rating: merged.rating,
+        memo: merged.memo,
+        launchConfig: merged.launchConfig ? JSON.stringify(merged.launchConfig) : null,
+        totalPlaytimeMs: merged.totalPlaytimeMs,
+        lastPlayedAt: merged.lastPlayedAt,
+        savePath: merged.savePath,
+        createdAt: merged.createdAt,
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: gameUserData.key,
-        set: { updatedAt: new Date().toISOString() },
+        set: {
+          isFavorite: merged.isFavorite,
+          rating: merged.rating,
+          memo: merged.memo,
+          launchConfig: merged.launchConfig ? JSON.stringify(merged.launchConfig) : null,
+          totalPlaytimeMs: merged.totalPlaytimeMs,
+          lastPlayedAt: merged.lastPlayedAt,
+          savePath: merged.savePath,
+          updatedAt: now,
+        },
       })
       .run()
   })

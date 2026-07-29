@@ -157,6 +157,39 @@ describe('gameUserDataRepository', () => {
     expect(after?.savePath).toBe('d:\\saves\\some-folder')
   })
 
+  it('rekeying onto an existing code-keyed row merges without losing either side\'s data', () => {
+    // The code already has its own accumulated data (e.g. crawled/favorited independently).
+    setFavorite(db, 'RJ07777777', 'code', true)
+    setRatingAndMemo(db, 'RJ07777777', 'code', 4, 'code-side memo')
+
+    // The path also has its own accumulated data (playtime, save path) - nothing
+    // the code row has yet.
+    recordPlaySession(db, 'd:\\games\\some-folder', 'path', 90_000)
+    setSavePath(db, 'd:\\games\\some-folder', 'path', 'd:\\saves\\some-folder')
+
+    rekeyToCode(db, 'd:\\games\\some-folder', 'RJ07777777')
+
+    const merged = getGameUserData(db, 'RJ07777777')
+    // Code row's non-default values win.
+    expect(merged?.isFavorite).toBe(true)
+    expect(merged?.rating).toBe(4)
+    expect(merged?.memo).toBe('code-side memo')
+    // Path row backfills fields the code row left at default.
+    expect(merged?.totalPlaytimeMs).toBe(90_000)
+    expect(merged?.savePath).toBe('d:\\saves\\some-folder')
+    // The old path-keyed row is gone.
+    expect(getGameUserData(db, 'd:\\games\\some-folder')).toBeUndefined()
+  })
+
+  it('rekeying onto an existing code-keyed row backfills isFavorite from the path row when the code row was never favorited', () => {
+    touchGameUserData(db, 'RJ08888888', 'code') // exists, but isFavorite defaults to false
+    setFavorite(db, 'd:\\games\\another-folder', 'path', true)
+
+    rekeyToCode(db, 'd:\\games\\another-folder', 'RJ08888888')
+
+    expect(getGameUserData(db, 'RJ08888888')?.isFavorite).toBe(true)
+  })
+
   it('lists keys with a recorded play session, most recent first', () => {
     recordPlaySession(db, 'RJ01111111', 'code', 1000)
     recordPlaySession(db, 'RJ02222222', 'code', 1000)
