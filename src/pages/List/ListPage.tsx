@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { Heart } from 'lucide-react'
+import { Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
@@ -96,6 +96,17 @@ function GameRow({
       <span className="w-24 shrink-0 text-xs text-muted-foreground">
         {formatMtime(game.mtimeMs)}
       </span>
+      {userData?.rating != null && (
+        <div className="flex w-16 shrink-0 gap-0.5">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <Star
+              key={value}
+              className="h-3 w-3 text-yellow-500"
+              fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
