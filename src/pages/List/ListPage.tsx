@@ -6,6 +6,7 @@ import { useGames } from '../../services/useGames'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
+import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -26,10 +27,12 @@ function GameRow({
   game,
   genres,
   onToggleGenreFilter,
+  onOpenDetail,
 }: {
   game: ScannedEntry
   genres: string[]
   onToggleGenreFilter: (genre: string) => void
+  onOpenDetail: (game: ScannedEntry) => void
 }) {
   const { data: thumbnail } = useThumbnail(game.path, game.kind)
   const { data: userData } = useGameUserData(game)
@@ -37,12 +40,16 @@ function GameRow({
   const openExternal = useOpenExternal()
 
   return (
-    <div className="flex items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent">
+    <div
+      className="flex cursor-pointer items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent"
+      onClick={() => onOpenDetail(game)}
+    >
       <button
         aria-label="즐겨찾기 토글"
-        onClick={() =>
+        onClick={(e) => {
+          e.stopPropagation()
           toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
-        }
+        }}
         className="shrink-0 text-muted-foreground hover:text-foreground"
       >
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
@@ -75,7 +82,10 @@ function GameRow({
         {game.code ? (
           <button
             className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
-            onClick={() => game.code && openExternal.mutate(game.code)}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (game.code) openExternal.mutate(game.code)
+            }}
           >
             {game.code.value}
           </button>
@@ -94,6 +104,7 @@ interface ListRowProps {
   games: ScannedEntry[]
   metadataByCode: Record<string, { genres: string[] }>
   onToggleGenreFilter: (genre: string) => void
+  onOpenDetail: (game: ScannedEntry) => void
 }
 
 function Row({
@@ -102,13 +113,19 @@ function Row({
   games,
   metadataByCode,
   onToggleGenreFilter,
+  onOpenDetail,
 }: RowComponentProps<ListRowProps>) {
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
   return (
     <div style={style}>
-      <GameRow game={game} genres={genres} onToggleGenreFilter={onToggleGenreFilter} />
+      <GameRow
+        game={game}
+        genres={genres}
+        onToggleGenreFilter={onToggleGenreFilter}
+        onOpenDetail={onOpenDetail}
+      />
     </div>
   )
 }
@@ -118,6 +135,7 @@ export function ListPage() {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const { openDetail, DetailOverlayElement } = useGameDetailOverlay()
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -170,6 +188,7 @@ export function ListPage() {
                     games: sortedGames,
                     metadataByCode,
                     onToggleGenreFilter: toggleGenreFilter,
+                    onOpenDetail: openDetail,
                   }}
                   rowCount={sortedGames.length}
                   rowHeight={ROW_HEIGHT}
@@ -180,6 +199,7 @@ export function ListPage() {
           />
         </div>
       )}
+      <DetailOverlayElement />
     </div>
   )
 }
