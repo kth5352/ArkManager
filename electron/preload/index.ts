@@ -95,6 +95,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LIST_FAVORITE_KEYS),
     listRecentlyPlayed: (): Promise<{ key: string; lastPlayedAt: string }[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LIST_RECENTLY_PLAYED),
+    linkCode: (path: string, code: GameCode): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LINK_CODE, { path, code }),
   },
   launch: {
     listExecutables: (folderPath: string): Promise<string[]> =>

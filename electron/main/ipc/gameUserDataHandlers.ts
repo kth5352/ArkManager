@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import {
   GetGameUserDataRequestSchema,
   IPC_CHANNELS,
+  LinkCodeRequestSchema,
   SetFavoriteRequestSchema,
   SetRatingAndMemoRequestSchema,
   type GameUserDataDto,
@@ -12,7 +13,10 @@ import {
   setRatingAndMemo,
   listFavoriteKeys,
   listRecentlyPlayedKeys,
+  rekeyToCode,
 } from '../database/gameUserDataRepository'
+import { setPathCodeOverride } from '../database/pathCodeOverridesRepository'
+import { normalizeLibraryPath } from '../database/librariesRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
 
@@ -46,5 +50,12 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
 
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LIST_RECENTLY_PLAYED, () => {
     return listRecentlyPlayedKeys(db)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LINK_CODE, (_event, payload: unknown) => {
+    const { path, code } = LinkCodeRequestSchema.parse(payload)
+    const normalizedPath = normalizeLibraryPath(path)
+    setPathCodeOverride(db, normalizedPath, code.value)
+    rekeyToCode(db, normalizedPath, code.value)
   })
 }
