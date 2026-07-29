@@ -8,7 +8,8 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus } from 'lucide-react'
+import { useEffect } from 'react'
+import { Plus, X } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -31,20 +32,33 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <button
+        <div
           ref={setNodeRef}
           style={style}
           {...attributes}
           {...listeners}
           onClick={() => setActiveTab(tab.id)}
-          className={`flex shrink-0 items-center gap-2 rounded-t-md border-b-2 px-3 py-2 text-sm transition-colors ${
+          onAuxClick={(e) => {
+            if (e.button === 1) closeTab(tab.id) // 마우스 휠클릭(가운데 버튼)으로 탭 닫기
+          }}
+          className={`group flex shrink-0 items-center gap-1 rounded-t-md border-b-2 px-3 py-2 text-sm transition-colors ${
             tab.id === activeTabId
               ? 'border-primary bg-card font-medium'
               : 'border-transparent hover:bg-accent'
           }`}
         >
-          {tab.label}
-        </button>
+          <span>{tab.label}</span>
+          <button
+            aria-label="탭 닫기"
+            onClick={(e) => {
+              e.stopPropagation()
+              closeTab(tab.id)
+            }}
+            className="rounded p-0.5 opacity-0 hover:bg-accent group-hover:opacity-100"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => closeTab(tab.id)}>탭 닫기</ContextMenuItem>
@@ -65,8 +79,31 @@ export function TabBar() {
   const tabs = useExplorerStore((s) => s.tabs)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
   const addTab = useExplorerStore((s) => s.addTab)
+  const closeTab = useExplorerStore((s) => s.closeTab)
   const { data: libraries } = useLibraries()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.ctrlKey && event.key === 'w') {
+        // Ctrl+W is global (window-level) so it can fire while an input,
+        // textarea, or contentEditable elsewhere in the app (e.g. the
+        // RatingMemoDialog memo field) is focused - don't destroy in-progress
+        // typing by unmounting the active tab out from under it.
+        const active = document.activeElement
+        const isEditingElsewhere =
+          active instanceof HTMLElement &&
+          (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
+        if (isEditingElsewhere) return
+
+        event.preventDefault()
+        const activeTabId = useExplorerStore.getState().activeTabId
+        if (activeTabId) closeTab(activeTabId)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [closeTab])
 
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event
