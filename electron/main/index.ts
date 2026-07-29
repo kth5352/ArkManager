@@ -43,7 +43,7 @@ app.whenReady().then(() => {
   const db = createDbClient(dbPath)
   registerSettingsHandlers(db)
   registerLibrariesHandlers(db)
-  registerScannerHandlers()
+  registerScannerHandlers(db)
   registerExplorerHandlers(db)
   registerSortHandlers(db)
   registerShellHandlers()

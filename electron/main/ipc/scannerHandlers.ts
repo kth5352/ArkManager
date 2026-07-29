@@ -9,7 +9,9 @@ import {
 } from '../../../shared/types/ipc'
 import { scanFolderShallow, scanLibraryRecursive } from '../scanner/folderScanner'
 import { findThumbnailPath } from '../scanner/thumbnail'
+import { applyPathCodeOverrides } from '../scanner/applyPathCodeOverrides'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { AppDatabase } from '../database/client'
 
 const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -26,7 +28,7 @@ export async function encodeThumbnail(imagePath: string): Promise<string> {
   return `data:${mimeType};base64,${buffer.toString('base64')}`
 }
 
-export function registerScannerHandlers(): void {
+export function registerScannerHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, async (_event, payload: unknown) => {
     const { libraryPaths } = ScanRecursiveRequestSchema.parse(payload)
     const results = await Promise.all(
@@ -40,12 +42,13 @@ export function registerScannerHandlers(): void {
         }
       })
     )
-    return results.flat()
+    return applyPathCodeOverrides(db, results.flat())
   })
 
   ipcMain.handle(IPC_CHANNELS.SCANNER_SCAN_SHALLOW, async (_event, payload: unknown) => {
     const { dirPath } = ScanShallowRequestSchema.parse(payload)
-    return scanFolderShallow(dirPath)
+    const results = await scanFolderShallow(dirPath)
+    return applyPathCodeOverrides(db, results)
   })
 
   ipcMain.handle(IPC_CHANNELS.SCANNER_GET_THUMBNAIL, async (_event, payload: unknown) => {
