@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   IPC_CHANNELS,
   type GameMetadataDto,
@@ -33,6 +33,7 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_REMOVE, { id }),
     pickFolder: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_PICK_FOLDER),
+    getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   },
   scanner: {
     scanRecursive: (libraryPaths: string[]): Promise<ScannedEntry[]> =>

@@ -16,7 +16,7 @@ import {
   usePickLibraryFolder,
   useRemoveLibrary,
 } from '../../services/librariesService'
-import { useState } from 'react'
+import { useState, type DragEvent } from 'react'
 
 const librarySchema = z.object({
   name: z.string().min(1, '이름을 입력하세요'),
@@ -51,6 +51,17 @@ function AddLibraryDialog() {
     if (path) setValue('path', path, { shouldValidate: true })
   }
 
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  const handleDrop = (e: DragEvent<HTMLFormElement>): void => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    const path = window.api.libraries.getPathForFile(file)
+    if (path) setValue('path', path, { shouldValidate: true })
+  }
+
   const handleOpenChange = (nextOpen: boolean): void => {
     if (!nextOpen) reset()
     addLibrary.reset()
@@ -72,7 +83,18 @@ function AddLibraryDialog() {
         <DialogHeader>
           <DialogTitle>새 라이브러리</DialogTitle>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+        <form
+          className={`flex flex-col gap-4 rounded-md border-2 border-dashed p-2 transition-colors ${
+            isDragOver ? 'border-primary bg-accent' : 'border-transparent'
+          }`}
+          onSubmit={handleSubmit(onSubmit)}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setIsDragOver(true)
+          }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+        >
           <div>
             <Input placeholder="이름 (예: Voice)" {...register('name')} />
             {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
@@ -84,6 +106,9 @@ function AddLibraryDialog() {
             </Button>
           </div>
           {errors.path && <p className="-mt-2 text-xs text-destructive">{errors.path.message}</p>}
+          <p className="-mt-2 text-xs text-muted-foreground">
+            폴더를 여기로 드래그해서 놓아도 경로가 채워집니다.
+          </p>
           {addLibraryErrorMessage && (
             <p className="-mt-2 text-xs text-destructive">{addLibraryErrorMessage}</p>
           )}
