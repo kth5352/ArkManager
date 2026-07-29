@@ -9,6 +9,7 @@ import { filterEntries } from '../../lib/filterEntries'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { Skeleton } from '../../components/ui/skeleton'
+import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 32
@@ -32,9 +33,16 @@ function formatDate(mtimeMs: number): string {
 interface DetailListRowProps {
   entries: ScannedEntry[]
   metadataByCode: Record<string, { genres: string[] }>
+  onOpenDetail: (entry: ScannedEntry) => void
 }
 
-function Row({ index, style, entries, metadataByCode }: RowComponentProps<DetailListRowProps>) {
+function Row({
+  index,
+  style,
+  entries,
+  metadataByCode,
+  onOpenDetail,
+}: RowComponentProps<DetailListRowProps>) {
   const entry = entries[index]
   if (!entry) return null
   const genres = entry.code ? (metadataByCode[entry.code.value]?.genres ?? []) : []
@@ -42,7 +50,8 @@ function Row({ index, style, entries, metadataByCode }: RowComponentProps<Detail
   return (
     <div
       style={style}
-      className="flex items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
+      className="flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
+      onClick={() => onOpenDetail(entry)}
     >
       <span className="w-28 shrink-0 truncate">{entry.code?.value ?? '-'}</span>
       <span className="min-w-0 flex-1 truncate text-foreground">{entry.name}</span>
@@ -59,6 +68,7 @@ export function DetailListPage() {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('detail-list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const { openDetail, DetailOverlayElement } = useGameDetailOverlay()
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -98,7 +108,7 @@ export function DetailListPage() {
               return (
                 <List
                   rowComponent={Row}
-                  rowProps={{ entries: sorted, metadataByCode }}
+                  rowProps={{ entries: sorted, metadataByCode, onOpenDetail: openDetail }}
                   rowCount={sorted.length}
                   rowHeight={ROW_HEIGHT}
                   style={{ height, width }}
@@ -108,6 +118,7 @@ export function DetailListPage() {
           />
         </div>
       )}
+      <DetailOverlayElement />
     </div>
   )
 }
