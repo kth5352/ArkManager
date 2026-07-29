@@ -8,6 +8,7 @@ import {
 import { AppLayout } from './components/layout/AppLayout'
 import { GalleryPage } from './pages/Gallery/GalleryPage'
 import { ListPage } from './pages/List/ListPage'
+import { DetailListPage } from './pages/DetailList/DetailListPage'
 import { ExplorerPage } from './pages/Explorer/ExplorerPage'
 import { DetailPage } from './pages/Detail/DetailPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
@@ -32,6 +33,11 @@ const listRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/list',
   component: ListPage,
+})
+const detailListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/detail-list',
+  component: DetailListPage,
 })
 const explorerRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -67,6 +73,7 @@ const recentlyPlayedRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   galleryRoute,
   listRoute,
+  detailListRoute,
   explorerRoute,
   detailRoute,
   dlsiteSearchRoute,

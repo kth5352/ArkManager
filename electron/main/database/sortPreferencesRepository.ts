@@ -4,7 +4,7 @@ import { sortPreferences } from './schema'
 
 export type SortField = 'name' | 'mtime'
 export type SortDirection = 'asc' | 'desc'
-export type SortPage = 'gallery' | 'list' | 'explorer'
+export type SortPage = 'gallery' | 'list' | 'explorer' | 'detail-list'
 
 export interface SortPreference {
   field: SortField

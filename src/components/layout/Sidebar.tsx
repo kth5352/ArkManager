@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   LibraryBig,
   List,
+  Rows3,
   Search,
   Settings,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ import { Button } from '../ui/button'
 const navItems = [
   { to: '/', label: 'Gallery', icon: LayoutGrid },
   { to: '/list', label: 'List', icon: List },
+  { to: '/detail-list', label: 'DetailList', icon: Rows3 },
   { to: '/explorer', label: 'Explorer', icon: FolderTree },
   { to: '/dlsite-search', label: 'DLsite 검색', icon: Search },
   { to: '/favorites', label: '즐겨찾기', icon: Heart },
