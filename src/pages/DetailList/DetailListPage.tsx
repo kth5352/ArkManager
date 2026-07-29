@@ -1,8 +1,10 @@
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { useState } from 'react'
+import { Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { useGameMetadataMany } from '../../services/metadataService'
+import { useGameUserData } from '../../services/gameUserDataService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries } from '../../lib/filterEntries'
@@ -44,6 +46,7 @@ function Row({
   onOpenDetail,
 }: RowComponentProps<DetailListRowProps>) {
   const entry = entries[index]
+  const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
   if (!entry) return null
   const genres = entry.code ? (metadataByCode[entry.code.value]?.genres ?? []) : []
 
@@ -59,6 +62,16 @@ function Row({
       <span className="w-40 shrink-0 truncate">{genres.join(', ')}</span>
       <span className="w-24 shrink-0">{formatDate(entry.mtimeMs)}</span>
       <span className="w-20 shrink-0">{formatSize(entry.size)}</span>
+      <span className="flex w-16 shrink-0 gap-0.5">
+        {userData?.rating != null &&
+          [1, 2, 3, 4, 5].map((value) => (
+            <Star
+              key={value}
+              className="h-3 w-3 text-yellow-500"
+              fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
+            />
+          ))}
+      </span>
     </div>
   )
 }
