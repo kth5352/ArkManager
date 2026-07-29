@@ -1,5 +1,7 @@
 import { useRecentlyPlayed } from '../../services/gameUserDataService'
 import { useGameMetadata } from '../../services/metadataService'
+import { useGameUserData } from '../../services/gameUserDataService'
+import { formatPlaytime } from './formatPlaytime'
 import type { GameCode } from '../../../shared/types/scanner'
 
 function codeFromKey(key: string): GameCode | null {
@@ -11,11 +13,15 @@ function codeFromKey(key: string): GameCode | null {
 function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastPlayedAt: string }) {
   const code = codeFromKey(entryKey)
   const { data: metadata } = useGameMetadata(code)
+  const { data: userData } = useGameUserData({ code, path: code ? '' : entryKey })
 
   return (
     <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm">
       <span>{metadata?.title ?? entryKey}</span>
-      <span className="text-xs text-muted-foreground">{lastPlayedAt.slice(0, 10)}</span>
+      <span className="flex items-center gap-3 text-xs text-muted-foreground">
+        <span>{formatPlaytime(userData?.totalPlaytimeMs ?? 0)}</span>
+        <span>{lastPlayedAt.slice(0, 10)}</span>
+      </span>
     </div>
   )
 }
