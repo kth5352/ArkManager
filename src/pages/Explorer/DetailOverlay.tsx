@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Button } from '../../components/ui/button'
 import { RatingMemoDialog } from '../../components/game/RatingMemoDialog'
@@ -19,6 +19,20 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const launchGame = useLaunchGame()
   const [editingRating, setEditingRating] = useState(false)
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
+
+  useEffect(() => {
+    if (!game) return
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.ctrlKey && event.key === 'Enter' && game.kind === 'folder') {
+        const target = event.target as HTMLElement
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return // 메모 입력 중엔 무시
+        event.preventDefault()
+        launchGame.mutate(game)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [game, launchGame])
 
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>

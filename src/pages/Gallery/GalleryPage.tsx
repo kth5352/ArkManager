@@ -31,10 +31,12 @@ function GameCard({
   game,
   genres,
   onToggleGenreFilter,
+  onHoverChange,
 }: {
   game: ScannedEntry
   genres: string[]
   onToggleGenreFilter: (genre: string) => void
+  onHoverChange: (game: ScannedEntry | null) => void
 }) {
   const { data: thumbnail } = useThumbnail(game.path, game.kind)
   const { data: userData } = useGameUserData(game)
@@ -42,6 +44,8 @@ function GameCard({
 
   return (
     <motion.div
+      onMouseEnter={() => onHoverChange(game)}
+      onMouseLeave={() => onHoverChange(null)}
       whileHover={{ scale: 1.05 }}
       transition={{ duration: 0.15 }}
       className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
@@ -92,6 +96,7 @@ interface GridCellProps {
   cardWidth: number
   metadataByCode: Record<string, { genres: string[] }>
   onToggleGenreFilter: (genre: string) => void
+  onHoverChange: (game: ScannedEntry | null) => void
 }
 
 function GameCell({
@@ -104,6 +109,7 @@ function GameCell({
   cardWidth,
   metadataByCode,
   onToggleGenreFilter,
+  onHoverChange,
 }: CellComponentProps<GridCellProps>) {
   const index = rowIndex * columnCount + columnIndex
   const game = games[index]
@@ -112,7 +118,12 @@ function GameCell({
   return (
     <div style={{ ...style, padding: gap / 2, display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: cardWidth }}>
-        <GameCard game={game} genres={genres} onToggleGenreFilter={onToggleGenreFilter} />
+        <GameCard
+          game={game}
+          genres={genres}
+          onToggleGenreFilter={onToggleGenreFilter}
+          onHoverChange={onHoverChange}
+        />
       </div>
     </div>
   )
@@ -125,6 +136,8 @@ export function GalleryPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
+  const toggleFavoriteShortcut = useToggleFavorite()
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -134,6 +147,19 @@ export function GalleryPage() {
       current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre]
     )
   }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key.toLowerCase() !== 'f' || event.ctrlKey || event.altKey) return
+      if (!hoveredGame) return
+      const target = event.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return // 검색창 입력 중엔 무시
+      event.preventDefault()
+      toggleFavoriteShortcut.mutate({ entry: hoveredGame, isFavorite: true })
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [hoveredGame, toggleFavoriteShortcut])
 
   useEffect(() => {
     const container = containerRef.current
@@ -213,6 +239,7 @@ export function GalleryPage() {
                     cardWidth,
                     metadataByCode,
                     onToggleGenreFilter: toggleGenreFilter,
+                    onHoverChange: setHoveredGame,
                   }}
                   columnCount={columnCount}
                   columnWidth={effectiveColumnWidth}
