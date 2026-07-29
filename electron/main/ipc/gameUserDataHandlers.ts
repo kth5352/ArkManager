@@ -22,7 +22,12 @@ import type { AppDatabase } from '../database/client'
 
 function toDto(row: ReturnType<typeof getGameUserData>): GameUserDataDto | null {
   if (!row) return null
-  return { isFavorite: row.isFavorite, rating: row.rating, memo: row.memo }
+  return {
+    isFavorite: row.isFavorite,
+    rating: row.rating,
+    memo: row.memo,
+    totalPlaytimeMs: row.totalPlaytimeMs,
+  }
 }
 
 export function registerGameUserDataHandlers(db: AppDatabase): void {

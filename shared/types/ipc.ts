@@ -205,6 +205,7 @@ export interface GameUserDataDto {
   isFavorite: boolean
   rating: number | null
   memo: string | null
+  totalPlaytimeMs: number
 }
 
 export const LaunchConfigSchema = z.object({
