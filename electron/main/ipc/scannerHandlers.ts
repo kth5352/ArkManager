@@ -32,6 +32,17 @@ export function registerScannerHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, async (_event, payload: unknown) => {
     const { libraryPaths } = ScanRecursiveRequestSchema.parse(payload)
     const overrides = listPathCodeOverrides(db)
+
+    // A single-path request is Explorer's "search from here down" shape
+    // (see useFolderScanRecursive in src/services/scannerService.ts, which
+    // always calls scanRecursive([path])) - the renderer wants to know if
+    // THIS scan failed (folder deleted/unmounted mid-search) rather than
+    // seeing a result indistinguishable from "no matches", so let the
+    // failure propagate here instead of being swallowed below.
+    if (libraryPaths.length === 1) {
+      return scanLibraryRecursive(libraryPaths[0], overrides)
+    }
+
     const results = await Promise.all(
       libraryPaths.map(async (libraryPath): Promise<ScannedEntry[]> => {
         try {

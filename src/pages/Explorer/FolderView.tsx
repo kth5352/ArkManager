@@ -171,8 +171,6 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
     ? filterEntries(recursiveEntries, metadataByCode, searchQuery, excludedGenres)
     : []
 
-  const entries = isSearching ? searchResults : shallowEntries
-
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('explorer')
 
   const sortedSearchResults = sortEntries(searchResults, sortField, sortDirection)
@@ -256,7 +254,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
         </div>
       ) : (
         <ul className="flex-1 divide-y divide-border overflow-auto">
-          {sortEntries(entries, sortField, sortDirection).map((entry) => (
+          {sortEntries(shallowEntries, sortField, sortDirection).map((entry) => (
             <FolderEntryRow
               key={entry.path}
               entry={entry}
