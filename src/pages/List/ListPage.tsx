@@ -142,7 +142,7 @@ function Row({
 }
 
 export function ListPage() {
-  const { data: games, isLoading } = useGames()
+  const { data: games, isLoading, isError } = useGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
@@ -154,6 +154,14 @@ export function ListPage() {
   const toggleGenreFilter = (genre: string): void => {
     setExcludedGenres((current) =>
       current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre]
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+        라이브러리를 스캔하는 중 오류가 발생했습니다.
+      </div>
     )
   }
 
