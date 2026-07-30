@@ -4,6 +4,7 @@ import { Button } from '../ui/button'
 import { RatingMemoDialog } from './RatingMemoDialog'
 import { LaunchConfigDialog } from './LaunchConfigDialog'
 import { LinkCodeDialog } from './LinkCodeDialog'
+import { UnlinkCodeDialog } from './UnlinkCodeDialog'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
@@ -21,6 +22,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const [editingRating, setEditingRating] = useState(false)
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
   const [linkingCode, setLinkingCode] = useState(false)
+  const [unlinkingCode, setUnlinkingCode] = useState(false)
 
   useEffect(() => {
     if (!game) return
@@ -96,6 +98,11 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                   코드 연동
                 </Button>
               )}
+              {game.code && game.codeSource === 'override' && (
+                <Button variant="secondary" onClick={() => setUnlinkingCode(true)}>
+                  연동 해제
+                </Button>
+              )}
             </div>
           </>
         )}
@@ -114,6 +121,11 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         key={linkingCode && game ? game.path : 'closed'}
         entry={linkingCode ? game : null}
         onClose={() => setLinkingCode(false)}
+      />
+      <UnlinkCodeDialog
+        key={unlinkingCode && game ? game.path : 'closed'}
+        entry={unlinkingCode ? game : null}
+        onClose={() => setUnlinkingCode(false)}
       />
     </Dialog>
   )

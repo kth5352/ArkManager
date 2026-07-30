@@ -101,3 +101,21 @@ export function useLinkCode() {
     },
   })
 }
+
+export function useUnlinkCode() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ path }: { path: string }) => window.api.gameUserData.unlinkCode(path),
+    onSuccess: () => {
+      // Same four caches useLinkCode invalidates, for the same reason in
+      // reverse: this entry's identity reverts (code-keyed lookup no longer
+      // applies once the override is gone), and the live scan results need
+      // to stop treating this path as a coded leaf on the next read.
+      queryClient.invalidateQueries({ queryKey: ['game-user-data'] })
+      queryClient.invalidateQueries({ queryKey: ['games'] })
+      queryClient.invalidateQueries({ queryKey: ['folder-scan'] })
+      queryClient.invalidateQueries({ queryKey: ['folder-scan-recursive'] })
+    },
+  })
+}
