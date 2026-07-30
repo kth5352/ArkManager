@@ -13,13 +13,13 @@ function resolveCode(
   name: string,
   path: string,
   overrides: Map<string, string>
-): ScannedEntry['code'] {
+): Pick<ScannedEntry, 'code' | 'codeSource'> {
   const fromName = extractCode(name)
-  if (fromName) return fromName
+  if (fromName) return { code: fromName, codeSource: 'filename' }
   const overrideCode = overrides.get(normalizeLibraryPath(path))
-  if (!overrideCode) return null
+  if (!overrideCode) return { code: null, codeSource: undefined }
   const type = overrideCode.slice(0, 2) as GameCodeType
-  return { type, value: overrideCode }
+  return { code: { type, value: overrideCode }, codeSource: 'override' }
 }
 
 // An entry can become unstattable between readdir() and stat() - a
@@ -40,7 +40,7 @@ async function toScannedEntry(
       kind: stats.isDirectory() ? 'folder' : 'file',
       mtimeMs: stats.mtimeMs,
       size: stats.size,
-      code: resolveCode(name, path, overrides),
+      ...resolveCode(name, path, overrides),
     }
   } catch {
     return null
@@ -73,9 +73,7 @@ export async function scanFolderShallow(
   overrides: Map<string, string> = new Map()
 ): Promise<ScannedEntry[]> {
   const names = await readdir(dirPath)
-  const entries = await Promise.all(
-    names.map((name) => toScannedEntry(dirPath, name, overrides))
-  )
+  const entries = await Promise.all(names.map((name) => toScannedEntry(dirPath, name, overrides)))
   return entries.filter(isScannedEntry)
 }
 

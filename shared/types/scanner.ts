@@ -12,4 +12,9 @@ export interface ScannedEntry {
   mtimeMs: number
   size: number // bytes. for folders, the directory entry size itself (not content sum)
   code: GameCode | null
+  // Only set when `code` is non-null. 'filename' = extractCode() matched the
+  // name; 'override' = code came from a path_code_overrides entry (manually
+  // linked via "코드 연동"). Lets the UI offer "연동 해제" only for the
+  // latter - a filename-derived code has nothing to unlink.
+  codeSource?: 'filename' | 'override'
 }

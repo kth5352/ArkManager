@@ -163,6 +163,26 @@ describe('scanLibraryRecursive', () => {
     expect(entries[0].name).toBe('MyGame')
     expect(entries[0].code).toEqual({ type: 'RJ', value: 'RJ07777777' })
   })
+
+  it('sets codeSource to filename for a filename-derived code and override for a linked one', async () => {
+    await writeFile(join(dir, 'RJ01111.zip'), '')
+    await mkdir(join(dir, 'MyGame'))
+    await writeFile(join(dir, 'MyGame', 'game.exe'), '')
+    const overrides = new Map([[normalizeLibraryPath(join(dir, 'MyGame')), 'RJ07777777']])
+
+    const entries = await scanLibraryRecursive(dir, overrides)
+    const byName = new Map(entries.map((e) => [e.name, e]))
+
+    expect(byName.get('RJ01111.zip')?.codeSource).toBe('filename')
+    expect(byName.get('MyGame')?.codeSource).toBe('override')
+  })
+
+  it('leaves codeSource undefined for a code-less entry', async () => {
+    await writeFile(join(dir, 'memo.txt'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.find((e) => e.name === 'memo.txt')?.codeSource).toBeUndefined()
+  })
 })
 
 // Simulates entries/subfolders that become inaccessible mid-scan (permission
