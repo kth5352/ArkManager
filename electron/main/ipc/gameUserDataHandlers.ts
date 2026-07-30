@@ -5,6 +5,7 @@ import {
   LinkCodeRequestSchema,
   SetFavoriteRequestSchema,
   SetRatingAndMemoRequestSchema,
+  UnlinkCodeRequestSchema,
   type GameUserDataDto,
 } from '../../../shared/types/ipc'
 import {
@@ -15,7 +16,7 @@ import {
   listRecentlyPlayedKeys,
   rekeyToCode,
 } from '../database/gameUserDataRepository'
-import { setPathCodeOverride } from '../database/pathCodeOverridesRepository'
+import { deletePathCodeOverride, setPathCodeOverride } from '../database/pathCodeOverridesRepository'
 import { normalizeLibraryPath } from '../database/librariesRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
@@ -62,5 +63,11 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
     const normalizedPath = normalizeLibraryPath(path)
     setPathCodeOverride(db, normalizedPath, code.value)
     rekeyToCode(db, normalizedPath, code.value)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_UNLINK_CODE, (_event, payload: unknown) => {
+    const { path } = UnlinkCodeRequestSchema.parse(payload)
+    const normalizedPath = normalizeLibraryPath(path)
+    deletePathCodeOverride(db, normalizedPath)
   })
 }

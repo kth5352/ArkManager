@@ -26,3 +26,16 @@ export function listPathCodeOverrides(db: AppDatabase): Map<string, string> {
   const rows = db.select().from(pathCodeOverrides).all()
   return new Map(rows.map((row) => [row.path, row.code]))
 }
+
+// Removes a manually-linked code for a path (the "연동 해제" feature).
+// Deliberately does NOT touch game_user_data - the accumulated
+// favorite/rating/memo/playtime for the code this path was linked to stays
+// exactly where it is. Reversing rekeyToCode's merge back onto the path key
+// is not attempted: the code row may have had its own independent data
+// before this link existed (or gained more after), so there is no way to
+// tell which fields "belong" to this path versus the code itself without
+// risking silently discarding real data. See gameUserDataHandlers.ts's
+// unlink-code handler for where this is called from.
+export function deletePathCodeOverride(db: AppDatabase, normalizedPath: string): void {
+  db.delete(pathCodeOverrides).where(eq(pathCodeOverrides.path, normalizedPath)).run()
+}

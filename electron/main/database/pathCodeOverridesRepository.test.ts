@@ -4,6 +4,7 @@ import {
   setPathCodeOverride,
   getPathCodeOverride,
   listPathCodeOverrides,
+  deletePathCodeOverride,
 } from './pathCodeOverridesRepository'
 import { rekeyToCode, getGameUserData, setFavorite } from './gameUserDataRepository'
 
@@ -54,5 +55,24 @@ describe('pathCodeOverridesRepository', () => {
     expect(overrides.size).toBe(2)
     expect(overrides.get('d:\\games\\some-folder')).toBe('RJ01234567')
     expect(overrides.get('d:\\games\\other-folder')).toBe('VJ09999999')
+  })
+
+  it('deletePathCodeOverride removes an existing override', () => {
+    setPathCodeOverride(db, 'd:\\games\\some-folder', 'RJ01234567')
+    deletePathCodeOverride(db, 'd:\\games\\some-folder')
+    expect(getPathCodeOverride(db, 'd:\\games\\some-folder')).toBeNull()
+  })
+
+  it('deletePathCodeOverride is a no-op when no override exists for the path', () => {
+    expect(() => deletePathCodeOverride(db, 'd:\\games\\never-linked')).not.toThrow()
+    expect(getPathCodeOverride(db, 'd:\\games\\never-linked')).toBeNull()
+  })
+
+  it('deletePathCodeOverride does not affect an override for a different path', () => {
+    setPathCodeOverride(db, 'd:\\games\\keep-me', 'RJ01234567')
+    setPathCodeOverride(db, 'd:\\games\\remove-me', 'VJ09999999')
+    deletePathCodeOverride(db, 'd:\\games\\remove-me')
+    expect(getPathCodeOverride(db, 'd:\\games\\keep-me')).toBe('RJ01234567')
+    expect(getPathCodeOverride(db, 'd:\\games\\remove-me')).toBeNull()
   })
 })
