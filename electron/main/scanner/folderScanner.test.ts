@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { scanFolderShallow, scanLibraryRecursive } from './folderScanner'
+import { normalizeLibraryPath } from '../database/librariesRepository'
 
 // Node builtin ESM module namespaces aren't configurable, so vi.spyOn can't
 // target them directly - vi.mock + vi.hoisted lets individual "error
@@ -73,6 +74,17 @@ describe('scanFolderShallow', () => {
     const entries = await scanFolderShallow(dir)
     expect(entries.map((e) => e.name)).toEqual(['sub'])
   })
+
+  it('resolves a code-less folder to its linked code via a path_code_overrides entry', async () => {
+    await mkdir(join(dir, 'MyGame'))
+    const overrides = new Map([[normalizeLibraryPath(join(dir, 'MyGame')), 'RJ07777777']])
+
+    const entries = await scanFolderShallow(dir, overrides)
+    expect(entries.find((e) => e.name === 'MyGame')?.code).toEqual({
+      type: 'RJ',
+      value: 'RJ07777777',
+    })
+  })
 })
 
 describe('scanLibraryRecursive', () => {
@@ -139,6 +151,17 @@ describe('scanLibraryRecursive', () => {
 
     const entries = await scanLibraryRecursive(dir)
     expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
+  })
+
+  it('treats a code-less folder as a coded leaf when a path_code_overrides entry exists', async () => {
+    await mkdir(join(dir, 'MyGame'))
+    await writeFile(join(dir, 'MyGame', 'game.exe'), '')
+    const overrides = new Map([[normalizeLibraryPath(join(dir, 'MyGame')), 'RJ07777777']])
+
+    const entries = await scanLibraryRecursive(dir, overrides)
+    expect(entries).toHaveLength(1)
+    expect(entries[0].name).toBe('MyGame')
+    expect(entries[0].code).toEqual({ type: 'RJ', value: 'RJ07777777' })
   })
 })
 

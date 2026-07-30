@@ -88,13 +88,16 @@ export function useLinkCode() {
     onSuccess: () => {
       // The linked entry's identity changed (path-keyed -> code-keyed), and
       // its ScannedEntry.code will only reflect that after a rescan - the
-      // simplest correct invalidation is all three caches that could now be
+      // simplest correct invalidation is all four caches that could now be
       // stale: this entry's own user-data cache (key changed), the
       // favorite/recently-played lists (could now show under a new key),
-      // and the live scan results Gallery/List/DetailList/Explorer read.
+      // and the live scan results Gallery/List/DetailList/Explorer read
+      // (both the shallow per-folder cache and Explorer's recursive search
+      // cache, which reads the same override-aware scan result).
       queryClient.invalidateQueries({ queryKey: ['game-user-data'] })
       queryClient.invalidateQueries({ queryKey: ['games'] })
       queryClient.invalidateQueries({ queryKey: ['folder-scan'] })
+      queryClient.invalidateQueries({ queryKey: ['folder-scan-recursive'] })
     },
   })
 }

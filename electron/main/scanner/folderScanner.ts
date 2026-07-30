@@ -1,13 +1,36 @@
 import { lstat, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { GameCodeType, ScannedEntry } from '../../../shared/types/scanner'
+import { normalizeLibraryPath } from '../database/librariesRepository'
 import { extractCode } from './codeRecognition'
+
+// Prefers the filename-derived code; falls back to a manually-linked
+// path_code_overrides entry (the "코드 연동" feature) for code-less
+// files/folders whose name doesn't contain a recognizable code. This is what
+// lets a code-less FOLDER be resolved as a coded leaf during a recursive
+// scan instead of always being walked into (see scanLibraryRecursive).
+function resolveCode(
+  name: string,
+  path: string,
+  overrides: Map<string, string>
+): ScannedEntry['code'] {
+  const fromName = extractCode(name)
+  if (fromName) return fromName
+  const overrideCode = overrides.get(normalizeLibraryPath(path))
+  if (!overrideCode) return null
+  const type = overrideCode.slice(0, 2) as GameCodeType
+  return { type, value: overrideCode }
+}
 
 // An entry can become unstattable between readdir() and stat() - a
 // permission error, a broken link, or the entry being deleted mid-scan.
 // Returns null in that case rather than throwing, so one bad entry doesn't
 // fail the whole listing (see scanFolderShallow / scanLibraryRecursive).
-async function toScannedEntry(parentPath: string, name: string): Promise<ScannedEntry | null> {
+async function toScannedEntry(
+  parentPath: string,
+  name: string,
+  overrides: Map<string, string>
+): Promise<ScannedEntry | null> {
   const path = join(parentPath, name)
   try {
     const stats = await stat(path)
@@ -17,7 +40,7 @@ async function toScannedEntry(parentPath: string, name: string): Promise<Scanned
       kind: stats.isDirectory() ? 'folder' : 'file',
       mtimeMs: stats.mtimeMs,
       size: stats.size,
-      code: extractCode(name),
+      code: resolveCode(name, path, overrides),
     }
   } catch {
     return null
@@ -45,9 +68,14 @@ async function isSymbolicLink(path: string): Promise<boolean> {
 // explorer - every entry is shown regardless of whether it's a recognized
 // game. Never descends into subfolders (thumbnail lookup is a separate,
 // lazy step - see scanner/thumbnail.ts and the get-thumbnail IPC handler).
-export async function scanFolderShallow(dirPath: string): Promise<ScannedEntry[]> {
+export async function scanFolderShallow(
+  dirPath: string,
+  overrides: Map<string, string> = new Map()
+): Promise<ScannedEntry[]> {
   const names = await readdir(dirPath)
-  const entries = await Promise.all(names.map((name) => toScannedEntry(dirPath, name)))
+  const entries = await Promise.all(
+    names.map((name) => toScannedEntry(dirPath, name, overrides))
+  )
   return entries.filter(isScannedEntry)
 }
 
@@ -56,12 +84,15 @@ export async function scanFolderShallow(dirPath: string): Promise<ScannedEntry[]
 // files are now included too (code: null) rather than dropped, per the
 // 코드없는 파일 노출 decision. Code-less folders are still walked into,
 // looking for coded/uncoded descendants at any depth.
-export async function scanLibraryRecursive(libraryPath: string): Promise<ScannedEntry[]> {
+export async function scanLibraryRecursive(
+  libraryPath: string,
+  overrides: Map<string, string> = new Map()
+): Promise<ScannedEntry[]> {
   const names = await readdir(libraryPath)
   const results: ScannedEntry[] = []
 
   for (const name of names) {
-    const entry = await toScannedEntry(libraryPath, name)
+    const entry = await toScannedEntry(libraryPath, name, overrides)
     if (!entry) continue
 
     if (entry.code) {
@@ -80,7 +111,7 @@ export async function scanLibraryRecursive(libraryPath: string): Promise<Scanned
     if (await isSymbolicLink(entry.path)) continue
 
     try {
-      const nested = await scanLibraryRecursive(entry.path)
+      const nested = await scanLibraryRecursive(entry.path, overrides)
       results.push(...nested)
     } catch {
       // Subfolder became unreadable mid-scan (permission error, race, or

@@ -13,6 +13,7 @@ import { useFolderScan, useFolderScanRecursive } from '../../services/scannerSer
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
+import { Skeleton } from '../../components/ui/skeleton'
 import { filterEntries } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { useSortPreference } from '../../services/sortService'
@@ -141,7 +142,7 @@ function FolderEntryRow({
 }
 
 export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
-  const { openDetail, DetailOverlayElement } = useGameDetailOverlay()
+  const { openDetail, detailOverlayElement } = useGameDetailOverlay()
   const addTab = useExplorerStore((s) => s.addTab)
   const breadcrumbs = pathToBreadcrumbSegments(path)
 
@@ -157,7 +158,11 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   // breadcrumb position), not the tab's original opening path - matches the
   // "search from here down" expectation.
   const { data: shallowEntries = [], isError } = useFolderScan(path)
-  const { data: recursiveEntries = [] } = useFolderScanRecursive(path, { enabled: isSearching })
+  const {
+    data: recursiveEntries = [],
+    isLoading: isSearchLoading,
+    isError: isSearchError,
+  } = useFolderScanRecursive(path, { enabled: isSearching })
 
   const codes = recursiveEntries.flatMap((e) => (e.code ? [e.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -169,6 +174,8 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   const entries = isSearching ? searchResults : shallowEntries
 
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('explorer')
+
+  const sortedSearchResults = sortEntries(searchResults, sortField, sortDirection)
 
   const openInNewTab = (entry: ScannedEntry): void => {
     addTab({ label: entry.name, path: entry.path })
@@ -212,25 +219,37 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
       />
       <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       {isSearching ? (
-        <ul className="flex-1 divide-y divide-border overflow-auto">
-          {searchResults.map((entry) => (
-            <li
-              key={entry.path}
-              className="flex cursor-pointer flex-col gap-0.5 px-4 py-2 text-sm transition-colors hover:bg-accent"
-              onClick={() => openDetail(entry)}
-            >
-              <span className="truncate">{entry.name}</span>
-              <span className="truncate text-xs text-muted-foreground">
-                {relativePath(path, entry.path)}
-              </span>
-            </li>
-          ))}
-          {searchResults.length === 0 && (
-            <li className="px-4 py-8 text-center text-sm text-muted-foreground">
-              검색 결과가 없습니다.
-            </li>
-          )}
-        </ul>
+        isSearchLoading ? (
+          <div className="flex flex-1 flex-col gap-1 overflow-auto p-4">
+            {Array.from({ length: 10 }, (_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : isSearchError ? (
+          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+            검색 중 오류가 발생했습니다.
+          </div>
+        ) : (
+          <ul className="flex-1 divide-y divide-border overflow-auto">
+            {sortedSearchResults.map((entry) => (
+              <li
+                key={entry.path}
+                className="flex cursor-pointer flex-col gap-0.5 px-4 py-2 text-sm transition-colors hover:bg-accent"
+                onClick={() => openDetail(entry)}
+              >
+                <span className="truncate">{entry.name}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {relativePath(path, entry.path)}
+                </span>
+              </li>
+            ))}
+            {sortedSearchResults.length === 0 && (
+              <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                검색 결과가 없습니다.
+              </li>
+            )}
+          </ul>
+        )
       ) : isError ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           이 폴더에 접근할 수 없습니다.
@@ -248,7 +267,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
           ))}
         </ul>
       )}
-      <DetailOverlayElement />
+      {detailOverlayElement}
     </div>
   )
 }

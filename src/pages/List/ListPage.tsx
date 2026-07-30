@@ -146,7 +146,7 @@ export function ListPage() {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
-  const { openDetail, DetailOverlayElement } = useGameDetailOverlay()
+  const { openDetail, detailOverlayElement } = useGameDetailOverlay()
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -210,7 +210,7 @@ export function ListPage() {
           />
         </div>
       )}
-      <DetailOverlayElement />
+      {detailOverlayElement}
     </div>
   )
 }

@@ -11,14 +11,18 @@ export function getPathCodeOverride(db: AppDatabase, normalizedPath: string): st
   return row?.code ?? null
 }
 
-export function setPathCodeOverride(
-  db: AppDatabase,
-  normalizedPath: string,
-  code: string
-): void {
+export function setPathCodeOverride(db: AppDatabase, normalizedPath: string, code: string): void {
   const now = new Date().toISOString()
   db.insert(pathCodeOverrides)
     .values({ path: normalizedPath, code, createdAt: now })
     .onConflictDoUpdate({ target: pathCodeOverrides.path, set: { code } })
     .run()
+}
+
+// Loads every override once per scan request (normalized path -> code), so
+// the scanner can look overrides up in-memory per entry instead of issuing
+// one DB query per entry during a recursive scan.
+export function listPathCodeOverrides(db: AppDatabase): Map<string, string> {
+  const rows = db.select().from(pathCodeOverrides).all()
+  return new Map(rows.map((row) => [row.path, row.code]))
 }
