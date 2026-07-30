@@ -17,4 +17,8 @@ describe('relativePath', () => {
   it('returns an empty string when the path equals the root', () => {
     expect(relativePath('D:\\games', 'D:\\games')).toBe('')
   })
+
+  it('does not treat a sibling folder sharing a literal prefix as a descendant', () => {
+    expect(relativePath('D:\\game', 'D:\\games\\file.zip')).toBe('D:\\games\\file.zip')
+  })
 })
