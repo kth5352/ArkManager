@@ -34,6 +34,12 @@ export function LinkCodeDialog({ entry, onClose }: LinkCodeDialogProps) {
           crawlMetadata.mutate(parsedCode)
           onClose()
         },
+        onError: () => {
+          // Deliberately no-op beyond leaving linkCode.isError true - the
+          // confirmation view below reads it to show a message instead of
+          // silently doing nothing, without closing the dialog (so the user
+          // can just retry the same "연동 확정" click).
+        },
       }
     )
   }
@@ -62,14 +68,17 @@ export function LinkCodeDialog({ entry, onClose }: LinkCodeDialogProps) {
         ) : (
           <>
             <p className="text-sm">
-              <span className="font-medium">{parsedCode?.value}</span>(으)로 연동합니다. 연동 후
-              코드를 바꾸려면 다시 폴더명을 확인해 주세요.
+              <span className="font-medium">{parsedCode?.value}</span>(으)로 연동합니다. 잘못
+              연동했다면 나중에 상세 화면의 &quot;연동 해제&quot;로 되돌릴 수 있습니다.
             </p>
+            {linkCode.isError && (
+              <p className="text-xs text-destructive">연동에 실패했습니다. 다시 시도해주세요.</p>
+            )}
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => setConfirming(false)}>
                 뒤로
               </Button>
-              <Button onClick={handleConfirm} disabled={linkCode.isPending}>
+              <Button onClick={handleConfirm} disabled={!parsedCode || linkCode.isPending}>
                 연동 확정
               </Button>
             </div>
