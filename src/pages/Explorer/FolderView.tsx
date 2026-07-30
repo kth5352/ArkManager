@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -8,11 +9,15 @@ import { pathToBreadcrumbSegments } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { useThumbnail } from '../../services/thumbnailService'
 import { useOpenExternal } from '../../services/shellService'
-import { useFolderScan } from '../../services/scannerService'
+import { useFolderScan, useFolderScanRecursive } from '../../services/scannerService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { PageToolbar } from '../../components/layout/PageToolbar'
+import { SearchHeader } from '../../components/layout/SearchHeader'
+import { filterEntries } from '../../lib/filterEntries'
+import { useGameMetadataMany } from '../../services/metadataService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
+import { relativePath } from './relativePath'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface FolderViewProps {
@@ -144,10 +149,26 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   // re-fetches when it changes - ExplorerPage keys FolderView only on the
   // active tab's id, not its path, so navigating into a subfolder (or via
   // breadcrumb) updates `path` without unmounting this component.
-  const { data: entries = [], isError } = useFolderScan(path)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const isSearching = searchQuery !== ''
+
+  // Root is wherever the user is currently browsing within this tab (the
+  // breadcrumb position), not the tab's original opening path - matches the
+  // "search from here down" expectation.
+  const { data: shallowEntries = [], isError } = useFolderScan(path)
+  const { data: recursiveEntries = [] } = useFolderScanRecursive(path, { enabled: isSearching })
+
+  const codes = recursiveEntries.flatMap((e) => (e.code ? [e.code.value] : []))
+  const { data: metadataByCode = {} } = useGameMetadataMany(codes)
+
+  const searchResults = isSearching
+    ? filterEntries(recursiveEntries, metadataByCode, searchQuery, excludedGenres)
+    : []
+
+  const entries = isSearching ? searchResults : shallowEntries
 
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('explorer')
-  const sortedEntries = sortEntries(entries, sortField, sortDirection)
 
   const openInNewTab = (entry: ScannedEntry): void => {
     addTab({ label: entry.name, path: entry.path })
@@ -183,14 +204,40 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
           </span>
         ))}
       </div>
+      <SearchHeader
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        excludedGenres={excludedGenres}
+        onClearFilters={() => setExcludedGenres([])}
+      />
       <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
-      {isError ? (
+      {isSearching ? (
+        <ul className="flex-1 divide-y divide-border overflow-auto">
+          {searchResults.map((entry) => (
+            <li
+              key={entry.path}
+              className="flex cursor-pointer flex-col gap-0.5 px-4 py-2 text-sm transition-colors hover:bg-accent"
+              onClick={() => openDetail(entry)}
+            >
+              <span className="truncate">{entry.name}</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {relativePath(path, entry.path)}
+              </span>
+            </li>
+          ))}
+          {searchResults.length === 0 && (
+            <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+              검색 결과가 없습니다.
+            </li>
+          )}
+        </ul>
+      ) : isError ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           이 폴더에 접근할 수 없습니다.
         </div>
       ) : (
         <ul className="flex-1 divide-y divide-border overflow-auto">
-          {sortedEntries.map((entry) => (
+          {sortEntries(entries, sortField, sortDirection).map((entry) => (
             <FolderEntryRow
               key={entry.path}
               entry={entry}
