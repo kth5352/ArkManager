@@ -16,10 +16,11 @@ import {
   usePickLibraryFolder,
   useRemoveLibrary,
 } from '../../services/librariesService'
+import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useState, type DragEvent } from 'react'
 
 const librarySchema = z.object({
-  name: z.string().min(1, '이름을 입력하세요'),
+  name: z.string(),
   path: z.string().min(1, '경로를 입력하세요'),
 })
 
@@ -38,12 +39,16 @@ function AddLibraryDialog() {
   } = useForm<LibraryFormValues>({ resolver: zodResolver(librarySchema) })
 
   const onSubmit = (values: LibraryFormValues): void => {
-    addLibrary.mutate(values, {
-      onSuccess: () => {
-        reset()
-        setOpen(false)
-      },
-    })
+    const name = values.name.trim() !== '' ? values.name.trim() : deriveNameFromPath(values.path)
+    addLibrary.mutate(
+      { name, path: values.path },
+      {
+        onSuccess: () => {
+          reset()
+          setOpen(false)
+        },
+      }
+    )
   }
 
   const handlePickFolder = async (): Promise<void> => {
@@ -95,10 +100,7 @@ function AddLibraryDialog() {
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleDrop}
         >
-          <div>
-            <Input placeholder="이름 (예: Voice)" {...register('name')} />
-            {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
-          </div>
+          <Input placeholder="이름 (비워두면 폴더명 사용)" {...register('name')} />
           <div className="flex gap-2">
             <Input placeholder="경로 (예: D:\Games\DLsite)" {...register('path')} />
             <Button type="button" variant="secondary" onClick={handlePickFolder}>

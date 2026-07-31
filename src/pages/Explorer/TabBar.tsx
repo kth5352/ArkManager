@@ -18,6 +18,7 @@ import {
 } from '../../components/ui/context-menu'
 import { useExplorerStore, type ExplorerTab } from '../../stores/explorerStore'
 import { useLibraries } from '../../services/librariesService'
+import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
   const activeTabId = useExplorerStore((s) => s.activeTabId)
@@ -131,8 +132,7 @@ export function TabBar() {
   const handleOpenFolder = async (): Promise<void> => {
     const path = await window.api.libraries.pickFolder()
     if (!path) return
-    const label = path.split(/[\\/]/).filter(Boolean).pop() ?? path
-    addTab({ label, path })
+    addTab({ label: deriveNameFromPath(path), path })
   }
 
   return (
