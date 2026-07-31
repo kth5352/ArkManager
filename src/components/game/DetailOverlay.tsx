@@ -8,6 +8,7 @@ import { UnlinkCodeDialog } from './UnlinkCodeDialog'
 import { GameThumbnail } from './GameThumbnail'
 import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
+import { useCrawlGameMetadata } from '../../services/metadataService'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -19,6 +20,7 @@ interface DetailOverlayProps {
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const openExternal = useOpenExternal()
   const launchGame = useLaunchGame()
+  const crawlMetadata = useCrawlGameMetadata()
   const [editingRating, setEditingRating] = useState(false)
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
   const [linkingCode, setLinkingCode] = useState(false)
@@ -78,6 +80,15 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
               {game.code && (
                 <Button onClick={() => game.code && openExternal.mutate(game.code)}>
                   DLsite 열기
+                </Button>
+              )}
+              {game.code && (
+                <Button
+                  variant="secondary"
+                  onClick={() => game.code && crawlMetadata.mutate(game.code)}
+                  disabled={crawlMetadata.isPending}
+                >
+                  메타데이터 새로고침
                 </Button>
               )}
               <Button variant="secondary" onClick={() => console.log('open folder', game.path)}>

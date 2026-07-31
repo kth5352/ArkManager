@@ -15,7 +15,7 @@ import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { Skeleton } from '../../components/ui/skeleton'
 import { filterEntries } from '../../lib/filterEntries'
-import { useGameMetadataMany } from '../../services/metadataService'
+import { useCrawlGameMetadata, useGameMetadataMany } from '../../services/metadataService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { relativePath } from './relativePath'
@@ -37,6 +37,7 @@ function FolderEntryContextMenu({
   onOpenDetail: (entry: ScannedEntry) => void
 }) {
   const openExternal = useOpenExternal()
+  const crawlMetadata = useCrawlGameMetadata()
 
   if (entry.code) {
     return (
@@ -57,11 +58,8 @@ function FolderEntryContextMenu({
         <ContextMenuItem onSelect={() => console.log('edit custom title', entry.path)}>
           사용자 지정 제목 편집
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('refresh metadata', entry.code?.value)}>
+        <ContextMenuItem onSelect={() => entry.code && crawlMetadata.mutate(entry.code)}>
           메타데이터 새로고침
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('redownload cover', entry.code?.value)}>
-          커버 이미지 재다운로드
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => console.log('extract archive', entry.path)}>
           압축 해제

@@ -1,5 +1,5 @@
 import { useRecentlyPlayed } from '../../services/gameUserDataService'
-import { useGameMetadata } from '../../services/metadataService'
+import { useGameCoverImage, useGameMetadata } from '../../services/metadataService'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { formatPlaytime } from './formatPlaytime'
 import type { GameCode } from '../../../shared/types/scanner'
@@ -14,10 +14,20 @@ function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastP
   const code = codeFromKey(entryKey)
   const { data: metadata } = useGameMetadata(code)
   const { data: userData } = useGameUserData({ code, path: code ? '' : entryKey })
+  // Reads the cached DLsite cover directly by code, not GameThumbnail's
+  // local-folder-file lookup - this page's whole point (per the original
+  // design) is staying useful after the game's own files are gone, so it
+  // must never touch the filesystem path at all.
+  const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? code : null)
 
   return (
-    <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm">
-      <span>{metadata?.title ?? entryKey}</span>
+    <div className="flex items-center gap-3 border-b border-border px-4 py-2 text-sm">
+      <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+        {coverImage && (
+          <img src={coverImage} alt="" className="h-full w-full object-cover" draggable={false} />
+        )}
+      </div>
+      <span className="flex-1">{metadata?.title ?? entryKey}</span>
       <span className="flex items-center gap-3 text-xs text-muted-foreground">
         <span>{formatPlaytime(userData?.totalPlaytimeMs ?? 0)}</span>
         <span>{lastPlayedAt.slice(0, 10)}</span>

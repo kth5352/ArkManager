@@ -7,6 +7,7 @@ import { LaunchConfigSection } from './LaunchConfigSection'
 import { CodeLinkSection } from './CodeLinkSection'
 import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
+import { useCrawlGameMetadata } from '../../services/metadataService'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
@@ -24,6 +25,7 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
   const openExternal = useOpenExternal()
   const launchGame = useLaunchGame()
+  const crawlMetadata = useCrawlGameMetadata()
   const [launchConfigExpanded, setLaunchConfigExpanded] = useState(false)
   const [launchConfigExpandedForPath, setLaunchConfigExpandedForPath] = useState(game?.path)
 
@@ -132,6 +134,16 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
           {game.code && (
             <Button size="sm" onClick={() => game.code && openExternal.mutate(game.code)}>
               DLsite 열기
+            </Button>
+          )}
+          {game.code && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => game.code && crawlMetadata.mutate(game.code)}
+              disabled={crawlMetadata.isPending}
+            >
+              메타데이터 새로고침
             </Button>
           )}
           <Button
