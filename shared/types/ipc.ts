@@ -10,6 +10,11 @@ export const IPC_CHANNELS = {
   LIBRARIES_PICK_FOLDER: 'libraries:pick-folder',
   SCANNER_SCAN_RECURSIVE: 'scanner:scan-recursive',
   SCANNER_SCAN_SHALLOW: 'scanner:scan-shallow',
+  // Push-only, main -> renderer: fired periodically while a
+  // SCANNER_SCAN_RECURSIVE request is in flight (see scannerHandlers.ts) so
+  // a long scan can show live progress instead of an indefinite spinner. No
+  // request/response schema - not invoked via ipcRenderer.invoke.
+  SCANNER_SCAN_PROGRESS: 'scanner:scan-progress',
   EXPLORER_SAVE_TABS: 'explorer:save-tabs',
   EXPLORER_LOAD_TABS: 'explorer:load-tabs',
   SORT_GET: 'sort:get',

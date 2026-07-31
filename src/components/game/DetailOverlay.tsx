@@ -9,6 +9,7 @@ import { GameThumbnail } from './GameThumbnail'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
+import { IndeterminateProgressBar } from '../ui/progress-bar'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -117,6 +118,12 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                 </Button>
               )}
             </div>
+            {crawlMetadata.isPending && (
+              <div className="mt-3 flex flex-col gap-1">
+                <IndeterminateProgressBar />
+                <p className="text-xs text-muted-foreground">메타데이터 가져오는 중...</p>
+              </div>
+            )}
           </>
         )}
       </DialogContent>

@@ -10,6 +10,7 @@ import { useLaunchGame } from '../../services/launchService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
+import { IndeterminateProgressBar } from '../ui/progress-bar'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -156,6 +157,12 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
             </Button>
           )}
         </div>
+        {crawlMetadata.isPending && (
+          <div className="flex flex-col gap-1">
+            <IndeterminateProgressBar />
+            <p className="text-xs text-muted-foreground">메타데이터 가져오는 중...</p>
+          </div>
+        )}
         <RatingMemoSection game={game} />
         <LaunchConfigSection
           game={game}

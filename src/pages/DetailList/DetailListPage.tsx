@@ -12,6 +12,8 @@ import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
+import { useScanProgress } from '../../hooks/useScanProgress'
+import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 32
@@ -82,6 +84,7 @@ export function DetailListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
+  const scanProgress = useScanProgress(isLoading)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -96,10 +99,13 @@ export function DetailListPage() {
 
   if (isLoading || !games) {
     return (
-      <div className="flex flex-col gap-1 p-4">
-        {Array.from({ length: 15 }, (_, i) => (
-          <Skeleton key={i} className="h-8 w-full" />
-        ))}
+      <div className="flex h-full flex-col">
+        <div className="flex flex-col gap-1 p-4">
+          {Array.from({ length: 15 }, (_, i) => (
+            <Skeleton key={i} className="h-8 w-full" />
+          ))}
+        </div>
+        <ScanProgressIndicator scanned={scanProgress} />
       </div>
     )
   }

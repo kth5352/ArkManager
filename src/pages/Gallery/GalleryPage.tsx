@@ -8,9 +8,11 @@ import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
+import { useScanProgress } from '../../hooks/useScanProgress'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
+import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries } from '../../lib/filterEntries'
@@ -155,6 +157,7 @@ export function GalleryPage() {
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
   useFavoriteShortcut(hoveredGame)
+  const scanProgress = useScanProgress(isLoading)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -199,10 +202,13 @@ export function GalleryPage() {
 
   if (isLoading || !games) {
     return (
-      <div className="grid grid-cols-5 gap-4 p-6">
-        {Array.from({ length: 15 }, (_, i) => (
-          <Skeleton key={i} className="aspect-[3/4] w-full rounded-md" />
-        ))}
+      <div className="flex h-full flex-col">
+        <div className="grid grid-cols-5 gap-4 p-6">
+          {Array.from({ length: 15 }, (_, i) => (
+            <Skeleton key={i} className="aspect-[3/4] w-full rounded-md" />
+          ))}
+        </div>
+        <ScanProgressIndicator scanned={scanProgress} />
       </div>
     )
   }

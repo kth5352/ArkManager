@@ -13,8 +13,10 @@ import { useFolderScan, useFolderScanRecursive } from '../../services/scannerSer
 import { useLaunchGame } from '../../services/launchService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
+import { useScanProgress } from '../../hooks/useScanProgress'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
+import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import { Skeleton } from '../../components/ui/skeleton'
 import { filterEntries } from '../../lib/filterEntries'
 import { useCrawlGameMetadata, useGameMetadataMany } from '../../services/metadataService'
@@ -158,6 +160,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
     isLoading: isSearchLoading,
     isError: isSearchError,
   } = useFolderScanRecursive(path, { enabled: isSearching })
+  const scanProgress = useScanProgress(isSearching && isSearchLoading)
 
   const { openDetail, detailOverlayElement } = useGameDetailOverlay([
     ...shallowEntries,
@@ -220,10 +223,13 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
       </div>
       {isSearching ? (
         isSearchLoading ? (
-          <div className="flex flex-1 flex-col gap-1 overflow-auto p-4">
-            {Array.from({ length: 10 }, (_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
+          <div className="flex flex-1 flex-col">
+            <div className="flex flex-col gap-1 overflow-auto p-4">
+              {Array.from({ length: 10 }, (_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+            <ScanProgressIndicator scanned={scanProgress} />
           </div>
         ) : isSearchError ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">

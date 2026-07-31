@@ -29,7 +29,8 @@ function resolveCode(
 async function toScannedEntry(
   parentPath: string,
   name: string,
-  overrides: Map<string, string>
+  overrides: Map<string, string>,
+  onProgress?: () => void
 ): Promise<ScannedEntry | null> {
   const path = join(parentPath, name)
   try {
@@ -44,6 +45,8 @@ async function toScannedEntry(
     }
   } catch {
     return null
+  } finally {
+    onProgress?.()
   }
 }
 
@@ -75,13 +78,14 @@ function isImageFile(name: string): boolean {
 // read once no matter how deep the recursion goes.
 async function scanNonImageChildren(
   dirPath: string,
-  overrides: Map<string, string>
+  overrides: Map<string, string>,
+  onProgress?: () => void
 ): Promise<ScannedEntry[]> {
   const names = await readdir(dirPath)
   const entries = await Promise.all(
     names
       .filter((name) => !isImageFile(name))
-      .map((name) => toScannedEntry(dirPath, name, overrides))
+      .map((name) => toScannedEntry(dirPath, name, overrides, onProgress))
   )
   return entries.filter(isScannedEntry)
 }
@@ -151,7 +155,8 @@ export async function scanFolderShallow(
 // scanNonImageChildren, never re-read here.
 async function scanChildren(
   children: ScannedEntry[],
-  overrides: Map<string, string>
+  overrides: Map<string, string>,
+  onProgress?: () => void
 ): Promise<ScannedEntry[]> {
   const results: ScannedEntry[] = []
 
@@ -173,7 +178,7 @@ async function scanChildren(
 
     let nestedChildren: ScannedEntry[]
     try {
-      nestedChildren = await scanNonImageChildren(entry.path, overrides)
+      nestedChildren = await scanNonImageChildren(entry.path, overrides, onProgress)
     } catch {
       // Subfolder became unreadable mid-scan (permission error, race, or
       // a race with deletion) - skip this branch only, sibling branches
@@ -187,7 +192,7 @@ async function scanChildren(
       continue
     }
 
-    const nested = await scanChildren(nestedChildren, overrides)
+    const nested = await scanChildren(nestedChildren, overrides, onProgress)
     results.push(...nested)
   }
 
@@ -209,8 +214,9 @@ async function scanChildren(
 // Images are skipped entirely - see isImageFile.
 export async function scanLibraryRecursive(
   libraryPath: string,
-  overrides: Map<string, string> = new Map()
+  overrides: Map<string, string> = new Map(),
+  onProgress?: () => void
 ): Promise<ScannedEntry[]> {
-  const children = await scanNonImageChildren(libraryPath, overrides)
-  return scanChildren(children, overrides)
+  const children = await scanNonImageChildren(libraryPath, overrides, onProgress)
+  return scanChildren(children, overrides, onProgress)
 }

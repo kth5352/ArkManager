@@ -46,6 +46,17 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, { libraryPaths }),
     scanShallow: (dirPath: string): Promise<ScannedEntry[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_SHALLOW, { dirPath }),
+    // Subscribes to live progress updates for whichever SCANNER_SCAN_RECURSIVE
+    // request is currently in flight (see scannerHandlers.ts) - returns an
+    // unsubscribe function. There is no request id: this app only ever runs
+    // one recursive scan at a time in practice, so a listener just reflects
+    // "the scan currently running", not necessarily the caller's own request.
+    onScanProgress: (callback: (scanned: number) => void): (() => void) => {
+      const listener = (_event: unknown, payload: { scanned: number }): void =>
+        callback(payload.scanned)
+      ipcRenderer.on(IPC_CHANNELS.SCANNER_SCAN_PROGRESS, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.SCANNER_SCAN_PROGRESS, listener)
+    },
   },
   explorerTabs: {
     save: (tabs: PersistedExplorerTab[]): Promise<void> =>

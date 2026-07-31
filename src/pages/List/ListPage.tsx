@@ -8,9 +8,11 @@ import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
+import { useScanProgress } from '../../hooks/useScanProgress'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
+import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries } from '../../lib/filterEntries'
@@ -154,6 +156,7 @@ export function ListPage() {
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
   useFavoriteShortcut(hoveredGame)
+  const scanProgress = useScanProgress(isLoading)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -174,10 +177,13 @@ export function ListPage() {
 
   if (isLoading || !games) {
     return (
-      <div className="flex flex-col gap-2 p-6">
-        {Array.from({ length: 10 }, (_, i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-md" />
-        ))}
+      <div className="flex h-full flex-col">
+        <div className="flex flex-col gap-2 p-6">
+          {Array.from({ length: 10 }, (_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-md" />
+          ))}
+        </div>
+        <ScanProgressIndicator scanned={scanProgress} />
       </div>
     )
   }

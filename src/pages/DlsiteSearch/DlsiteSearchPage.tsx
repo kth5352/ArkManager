@@ -6,6 +6,7 @@ import {
   useGameCoverImage,
   useGameMetadata,
 } from '../../services/metadataService'
+import { IndeterminateProgressBar } from '../../components/ui/progress-bar'
 import { parseCodeInput } from './parseCodeInput'
 import type { GameCode } from '../../../shared/types/scanner'
 
@@ -39,6 +40,13 @@ export function DlsiteSearchPage() {
         <p className="text-sm text-muted-foreground">
           제목 검색은 아직 지원하지 않습니다 — RJ/VJ 코드를 입력해 주세요.
         </p>
+      )}
+
+      {crawlAndSave.isPending && (
+        <div className="flex max-w-xs flex-col gap-1">
+          <IndeterminateProgressBar />
+          <p className="text-xs text-muted-foreground">DLsite에서 정보를 가져오는 중...</p>
+        </div>
       )}
 
       {activeCode && isLoading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}

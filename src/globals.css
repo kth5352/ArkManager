@@ -2,6 +2,18 @@
 @import 'tw-animate-css';
 @config '../tailwind.config.ts';
 
+/* Used by IndeterminateProgressBar for operations with no known total (a
+   recursive filesystem scan, a network crawl) - a sliding bar rather than a
+   filled percentage, since there's no honest percentage to show. */
+@keyframes indeterminate-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
 :root {
   --background: 0 0% 100%;
   --foreground: 240 10% 4%;

@@ -243,6 +243,24 @@ describe('scanLibraryRecursive', () => {
     const entries = await scanLibraryRecursive(dir)
     expect(entries.find((e) => e.name === 'memo.txt')?.codeSource).toBeUndefined()
   })
+
+  it('calls onProgress once per scanned entry, including ones nested inside walked subfolders', async () => {
+    await writeFile(join(dir, 'RJ01111.zip'), '')
+    await mkdir(join(dir, 'category'))
+    await writeFile(join(dir, 'category', 'RJ02222.zip'), '')
+    await writeFile(join(dir, 'category', 'RJ03333.zip'), '')
+
+    const onProgress = vi.fn()
+    await scanLibraryRecursive(dir, new Map(), onProgress)
+
+    // dir's own 2 direct children (RJ01111.zip, category) + category's 2
+    // children (RJ02222.zip, RJ03333.zip) = 4 stat() calls total. "category"
+    // has no direct file of its own and both children are singleton-coded,
+    // so it's walked rather than collapsed into a leaf - onProgress must
+    // still count everything toScannedEntry actually stat()ed, not just
+    // what ends up in the final result.
+    expect(onProgress).toHaveBeenCalledTimes(4)
+  })
 })
 
 // Simulates entries/subfolders that become inaccessible mid-scan (permission

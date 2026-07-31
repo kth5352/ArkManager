@@ -26,10 +26,24 @@ export async function encodeThumbnail(imagePath: string): Promise<string> {
   return `data:${mimeType};base64,${buffer.toString('base64')}`
 }
 
+// Sending an IPC message per scanned item would flood the renderer on a
+// large library (thousands of stat() calls a second) - only push a progress
+// update every PROGRESS_INTERVAL items, plus one final update with the true
+// end count so the UI never lags behind by up to PROGRESS_INTERVAL - 1.
+const PROGRESS_INTERVAL = 25
+
 export function registerScannerHandlers(db: AppDatabase): void {
-  ipcMain.handle(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, async (_event, payload: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, async (event, payload: unknown) => {
     const { libraryPaths } = ScanRecursiveRequestSchema.parse(payload)
     const overrides = listPathCodeOverrides(db)
+
+    let scanned = 0
+    const onProgress = (): void => {
+      scanned += 1
+      if (scanned % PROGRESS_INTERVAL === 0) {
+        event.sender.send(IPC_CHANNELS.SCANNER_SCAN_PROGRESS, { scanned })
+      }
+    }
 
     // A single-path request is Explorer's "search from here down" shape
     // (see useFolderScanRecursive in src/services/scannerService.ts, which
@@ -38,13 +52,15 @@ export function registerScannerHandlers(db: AppDatabase): void {
     // seeing a result indistinguishable from "no matches", so let the
     // failure propagate here instead of being swallowed below.
     if (libraryPaths.length === 1) {
-      return scanLibraryRecursive(libraryPaths[0], overrides)
+      const result = await scanLibraryRecursive(libraryPaths[0], overrides, onProgress)
+      event.sender.send(IPC_CHANNELS.SCANNER_SCAN_PROGRESS, { scanned })
+      return result
     }
 
     const results = await Promise.all(
       libraryPaths.map(async (libraryPath): Promise<ScannedEntry[]> => {
         try {
-          return await scanLibraryRecursive(libraryPath, overrides)
+          return await scanLibraryRecursive(libraryPath, overrides, onProgress)
         } catch {
           // Library path no longer exists (deleted/unmounted drive) - skip it,
           // the rest of the registered libraries still scan normally.
@@ -52,6 +68,7 @@ export function registerScannerHandlers(db: AppDatabase): void {
         }
       })
     )
+    event.sender.send(IPC_CHANNELS.SCANNER_SCAN_PROGRESS, { scanned })
     return results.flat()
   })
 
