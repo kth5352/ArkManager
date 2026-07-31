@@ -6,7 +6,7 @@ import { useGames } from '../../services/useGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
-import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
+import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -143,7 +143,7 @@ export function ListPage() {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
-  const { openDetail, detailOverlayElement } = useGameDetailOverlay(games ?? [])
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -188,36 +188,40 @@ export function ListPage() {
         />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>
-      {sortedGames.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
-        </div>
-      ) : (
-        <div className="h-full w-full">
-          <AutoSizer
-            style={{ height: '100%', width: '100%' }}
-            renderProp={({ height, width }) => {
-              if (height === undefined || width === undefined) return null
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          {sortedGames.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
+            </div>
+          ) : (
+            <div className="h-full w-full">
+              <AutoSizer
+                style={{ height: '100%', width: '100%' }}
+                renderProp={({ height, width }) => {
+                  if (height === undefined || width === undefined) return null
 
-              return (
-                <List
-                  rowComponent={Row}
-                  rowProps={{
-                    games: sortedGames,
-                    metadataByCode,
-                    onToggleGenreFilter: toggleGenreFilter,
-                    onOpenDetail: openDetail,
-                  }}
-                  rowCount={sortedGames.length}
-                  rowHeight={ROW_HEIGHT}
-                  style={{ height, width }}
-                />
-              )
-            }}
-          />
+                  return (
+                    <List
+                      rowComponent={Row}
+                      rowProps={{
+                        games: sortedGames,
+                        metadataByCode,
+                        onToggleGenreFilter: toggleGenreFilter,
+                        onOpenDetail: openDetail,
+                      }}
+                      rowCount={sortedGames.length}
+                      rowHeight={ROW_HEIGHT}
+                      style={{ height, width }}
+                    />
+                  )
+                }}
+              />
+            </div>
+          )}
         </div>
-      )}
-      {detailOverlayElement}
+        {detailSidebarElement}
+      </div>
     </div>
   )
 }

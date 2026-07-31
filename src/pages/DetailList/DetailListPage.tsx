@@ -11,7 +11,7 @@ import { filterEntries } from '../../lib/filterEntries'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { Skeleton } from '../../components/ui/skeleton'
-import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
+import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 32
@@ -81,7 +81,7 @@ export function DetailListPage() {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('detail-list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
-  const { openDetail, detailOverlayElement } = useGameDetailOverlay(games ?? [])
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -118,30 +118,34 @@ export function DetailListPage() {
         />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>
-      {sorted.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          표시할 항목이 없습니다.
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          {sorted.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              표시할 항목이 없습니다.
+            </div>
+          ) : (
+            <div className="h-full w-full">
+              <AutoSizer
+                style={{ height: '100%', width: '100%' }}
+                renderProp={({ height, width }) => {
+                  if (height === undefined || width === undefined) return null
+                  return (
+                    <List
+                      rowComponent={Row}
+                      rowProps={{ entries: sorted, metadataByCode, onOpenDetail: openDetail }}
+                      rowCount={sorted.length}
+                      rowHeight={ROW_HEIGHT}
+                      style={{ height, width }}
+                    />
+                  )
+                }}
+              />
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="h-full w-full">
-          <AutoSizer
-            style={{ height: '100%', width: '100%' }}
-            renderProp={({ height, width }) => {
-              if (height === undefined || width === undefined) return null
-              return (
-                <List
-                  rowComponent={Row}
-                  rowProps={{ entries: sorted, metadataByCode, onOpenDetail: openDetail }}
-                  rowCount={sorted.length}
-                  rowHeight={ROW_HEIGHT}
-                  style={{ height, width }}
-                />
-              )
-            }}
-          />
-        </div>
-      )}
-      {detailOverlayElement}
+        {detailSidebarElement}
+      </div>
     </div>
   )
 }
