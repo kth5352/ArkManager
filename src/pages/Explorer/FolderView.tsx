@@ -8,7 +8,7 @@ import {
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
-import { useOpenExternal } from '../../services/shellService'
+import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useFolderScan, useFolderScanRecursive } from '../../services/scannerService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { PageToolbar } from '../../components/layout/PageToolbar'
@@ -37,6 +37,7 @@ function FolderEntryContextMenu({
   onOpenDetail: (entry: ScannedEntry) => void
 }) {
   const openExternal = useOpenExternal()
+  const showItemInFolder = useShowItemInFolder()
   const crawlMetadata = useCrawlGameMetadata()
 
   if (entry.code) {
@@ -46,7 +47,7 @@ function FolderEntryContextMenu({
         <ContextMenuItem onSelect={() => entry.code && openExternal.mutate(entry.code)}>
           DLsite 페이지 열기
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('open folder', entry.path)}>
+        <ContextMenuItem onSelect={() => showItemInFolder.mutate(entry.path)}>
           폴더 열기
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => navigator.clipboard.writeText(entry.code?.value ?? '')}>
@@ -81,7 +82,7 @@ function FolderEntryContextMenu({
     return (
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => onOpenInNewTab(entry)}>새 탭으로 열기</ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('reveal in OS explorer', entry.path)}>
+        <ContextMenuItem onSelect={() => showItemInFolder.mutate(entry.path)}>
           탐색기(OS)에서 열기
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => console.log('pin favorite', entry.path)}>

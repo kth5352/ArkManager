@@ -6,3 +6,9 @@ export function useOpenExternal() {
     mutationFn: (code: GameCode) => window.api.shell.openExternal(code),
   })
 }
+
+export function useShowItemInFolder() {
+  return useMutation({
+    mutationFn: (path: string) => window.api.shell.showItemInFolder(path),
+  })
+}

@@ -19,6 +19,7 @@ import {
 import { useExplorerStore, type ExplorerTab } from '../../stores/explorerStore'
 import { useLibraries } from '../../services/librariesService'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
+import { useShowItemInFolder } from '../../services/shellService'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
   const activeTabId = useExplorerStore((s) => s.activeTabId)
@@ -26,6 +27,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
   const closeTab = useExplorerStore((s) => s.closeTab)
   const closeOtherTabs = useExplorerStore((s) => s.closeOtherTabs)
   const duplicateTab = useExplorerStore((s) => s.duplicateTab)
+  const showItemInFolder = useShowItemInFolder()
 
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: tab.id })
   const style = { transform: CSS.Transform.toString(transform), transition }
@@ -68,7 +70,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
         <ContextMenuItem onSelect={() => console.log('refresh folder', tab.path)}>
           이 폴더 새로고침
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('reveal in OS explorer', tab.path)}>
+        <ContextMenuItem onSelect={() => showItemInFolder.mutate(tab.path)}>
           탐색기(OS)에서 폴더 열기
         </ContextMenuItem>
       </ContextMenuContent>

@@ -5,7 +5,7 @@ import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
 import { LaunchConfigSection } from './LaunchConfigSection'
 import { CodeLinkSection } from './CodeLinkSection'
-import { useOpenExternal } from '../../services/shellService'
+import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
@@ -24,6 +24,7 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const [width, setWidth] = useState(persistedWidth ?? SIDEBAR_WIDTH_DEFAULT)
   const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
   const openExternal = useOpenExternal()
+  const showItemInFolder = useShowItemInFolder()
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
   const [launchConfigExpanded, setLaunchConfigExpanded] = useState(false)
@@ -146,11 +147,7 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
               메타데이터 새로고침
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => console.log('open folder', game.path)}
-          >
+          <Button size="sm" variant="secondary" onClick={() => showItemInFolder.mutate(game.path)}>
             폴더 열기
           </Button>
           {game.kind === 'folder' && (

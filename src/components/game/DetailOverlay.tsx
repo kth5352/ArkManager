@@ -6,7 +6,7 @@ import { LaunchConfigDialog } from './LaunchConfigDialog'
 import { LinkCodeDialog } from './LinkCodeDialog'
 import { UnlinkCodeDialog } from './UnlinkCodeDialog'
 import { GameThumbnail } from './GameThumbnail'
-import { useOpenExternal } from '../../services/shellService'
+import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
@@ -19,6 +19,7 @@ interface DetailOverlayProps {
 
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const openExternal = useOpenExternal()
+  const showItemInFolder = useShowItemInFolder()
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
   const [editingRating, setEditingRating] = useState(false)
@@ -91,7 +92,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                   메타데이터 새로고침
                 </Button>
               )}
-              <Button variant="secondary" onClick={() => console.log('open folder', game.path)}>
+              <Button variant="secondary" onClick={() => showItemInFolder.mutate(game.path)}>
                 폴더 열기
               </Button>
               {game.kind === 'folder' && (

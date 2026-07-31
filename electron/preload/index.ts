@@ -65,6 +65,8 @@ const api = {
   shell: {
     openExternal: (code: GameCode): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SHELL_OPEN_EXTERNAL, { code }),
+    showItemInFolder: (path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SHELL_SHOW_ITEM_IN_FOLDER, { path }),
   },
   metadata: {
     crawlAndSave: (code: GameCode): Promise<GameMetadataDto | null> =>
