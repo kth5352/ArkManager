@@ -73,3 +73,39 @@ export function setGameMetadataCoverPath(
     .where(eq(gameMetadata.code, code))
     .run()
 }
+
+// cover_image_path stores an absolute filesystem path under userData (see
+// METADATA_CRAWL_AND_SAVE's cacheDir), unlike every other column here -
+// migrateUserDataFolder.ts moves the actual cached .webp files to a renamed
+// userData folder, but a moved file doesn't rewrite path strings stored
+// elsewhere in the database that still point at the old location. Without
+// this, every cover crawled before a userData migration (e.g. the
+// DLibrary -> Ark Manager rename) points at a file that no longer exists
+// there, and silently fails to load (METADATA_GET_COVER_IMAGE catches the
+// ENOENT and returns null) - not just the image, since the earlier symptom
+// this fixes read as "no info at all" for those entries. Intentionally not
+// gated behind "did a migration actually happen" the way
+// migrateUserDataFolder is - a plain startsWith scan over game_metadata is
+// cheap enough to just always run, and naturally does nothing once nothing
+// matches the old prefix anymore.
+export function rewriteCoverImagePathPrefix(
+  db: AppDatabase,
+  oldPrefix: string,
+  newPrefix: string
+): void {
+  if (oldPrefix === newPrefix) return
+
+  const rows = db
+    .select({ code: gameMetadata.code, coverImagePath: gameMetadata.coverImagePath })
+    .from(gameMetadata)
+    .all()
+
+  for (const row of rows) {
+    if (!row.coverImagePath?.startsWith(oldPrefix)) continue
+    const rewritten = newPrefix + row.coverImagePath.slice(oldPrefix.length)
+    db.update(gameMetadata)
+      .set({ coverImagePath: rewritten })
+      .where(eq(gameMetadata.code, row.code))
+      .run()
+  }
+}

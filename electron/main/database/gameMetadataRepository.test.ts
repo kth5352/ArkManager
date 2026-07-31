@@ -5,6 +5,7 @@ import {
   saveGameMetadata,
   setGameMetadataCoverPath,
   getManyGameMetadata,
+  rewriteCoverImagePathPrefix,
 } from './gameMetadataRepository'
 
 describe('gameMetadataRepository', () => {
@@ -71,5 +72,80 @@ describe('gameMetadataRepository', () => {
 
   it('returns an empty map for an empty code list', () => {
     expect(getManyGameMetadata(db, []).size).toBe(0)
+  })
+
+  describe('rewriteCoverImagePathPrefix', () => {
+    it('rewrites a matching prefix on every affected row', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+      saveGameMetadata(db, 'RJ02222222', {
+        title: 'B',
+        circle: 'B',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+      setGameMetadataCoverPath(db, 'RJ01111111', 'C:\\old\\cache\\covers\\RJ01111111.webp')
+      setGameMetadataCoverPath(db, 'RJ02222222', 'C:\\old\\cache\\covers\\RJ02222222.webp')
+
+      rewriteCoverImagePathPrefix(db, 'C:\\old', 'C:\\new')
+
+      expect(getGameMetadata(db, 'RJ01111111')?.coverImagePath).toBe(
+        'C:\\new\\cache\\covers\\RJ01111111.webp'
+      )
+      expect(getGameMetadata(db, 'RJ02222222')?.coverImagePath).toBe(
+        'C:\\new\\cache\\covers\\RJ02222222.webp'
+      )
+    })
+
+    it('leaves a row with no cover image path alone', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+
+      expect(() => rewriteCoverImagePathPrefix(db, 'C:\\old', 'C:\\new')).not.toThrow()
+      expect(getGameMetadata(db, 'RJ01111111')?.coverImagePath).toBeNull()
+    })
+
+    it('leaves a row whose path does not start with the old prefix alone', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+      setGameMetadataCoverPath(db, 'RJ01111111', 'C:\\unrelated\\RJ01111111.webp')
+
+      rewriteCoverImagePathPrefix(db, 'C:\\old', 'C:\\new')
+
+      expect(getGameMetadata(db, 'RJ01111111')?.coverImagePath).toBe(
+        'C:\\unrelated\\RJ01111111.webp'
+      )
+    })
+
+    it('is a no-op when oldPrefix and newPrefix are the same', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+      setGameMetadataCoverPath(db, 'RJ01111111', 'C:\\same\\RJ01111111.webp')
+
+      rewriteCoverImagePathPrefix(db, 'C:\\same', 'C:\\same')
+
+      expect(getGameMetadata(db, 'RJ01111111')?.coverImagePath).toBe('C:\\same\\RJ01111111.webp')
+    })
   })
 })

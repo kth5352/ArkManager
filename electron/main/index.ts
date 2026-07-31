@@ -13,6 +13,7 @@ import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
+import { rewriteCoverImagePathPrefix } from './database/gameMetadataRepository'
 import { migrateUserDataFolder, NEW_DB_FILENAME } from './migrateUserDataFolder'
 import {
   registerThumbnailProtocolHandler,
@@ -112,10 +113,17 @@ if (!gotSingleInstanceLock) {
     // createDbClient ever opens a (possibly fresh, empty) db at the new
     // path - see migrateUserDataFolder.ts for why "does newPath exist" is
     // not itself a safe signal here.
-    await migrateUserDataFolder(join(app.getPath('appData'), 'dlibrary'), app.getPath('userData'))
+    const oldUserDataPath = join(app.getPath('appData'), 'dlibrary')
+    const newUserDataPath = app.getPath('userData')
+    await migrateUserDataFolder(oldUserDataPath, newUserDataPath)
 
-    const dbPath = join(app.getPath('userData'), NEW_DB_FILENAME)
+    const dbPath = join(newUserDataPath, NEW_DB_FILENAME)
     const db = createDbClient(dbPath)
+    // Moving the cached cover-image files (above) doesn't rewrite the
+    // absolute paths already stored in game_metadata pointing at them - see
+    // rewriteCoverImagePathPrefix's own comment for why this silently broke
+    // more than just the cover image for anything crawled before a rename.
+    rewriteCoverImagePathPrefix(db, oldUserDataPath, newUserDataPath)
     registerSettingsHandlers(db)
     registerLibrariesHandlers(db)
     registerScannerHandlers(db)
