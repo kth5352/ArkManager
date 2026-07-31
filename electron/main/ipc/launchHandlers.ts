@@ -5,6 +5,7 @@ import {
   ListExecutablesRequestSchema,
   SetLaunchConfigRequestSchema,
 } from '../../../shared/types/ipc'
+import { NO_LAUNCH_CONFIG_ERROR_MESSAGE } from '../../../shared/launchErrors'
 import { listExecutables } from '../launch/listExecutables'
 import { detectLocaleEmulator } from '../launch/localeEmulator'
 import { launchGame } from '../launch/launchGame'
@@ -38,7 +39,7 @@ export function registerLaunchHandlers(db: AppDatabase): void {
 
     const userData = getGameUserData(db, key)
     if (!userData?.launchConfig) {
-      throw new Error('실행 설정이 없습니다. 먼저 실행파일을 지정해 주세요.')
+      throw new Error(NO_LAUNCH_CONFIG_ERROR_MESSAGE)
     }
 
     const { sessionMs } = await launchGame(userData.launchConfig)

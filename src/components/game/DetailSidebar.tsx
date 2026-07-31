@@ -9,6 +9,7 @@ import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
+import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface DetailSidebarProps {
@@ -23,10 +24,30 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
   const openExternal = useOpenExternal()
   const launchGame = useLaunchGame()
+  const [launchConfigExpanded, setLaunchConfigExpanded] = useState(false)
+  const [launchConfigExpandedForPath, setLaunchConfigExpandedForPath] = useState(game?.path)
 
   if (persistedWidth !== syncedWidth) {
     setSyncedWidth(persistedWidth)
     if (persistedWidth !== undefined) setWidth(persistedWidth)
+  }
+
+  // Resets to collapsed on every game switch, same as LaunchConfigSection's
+  // other local state would if this lived there - it's lifted up here only
+  // so handleLaunch (below) can force it open when a launch attempt fails
+  // for lack of a saved config.
+  if (game?.path !== launchConfigExpandedForPath) {
+    setLaunchConfigExpandedForPath(game?.path)
+    setLaunchConfigExpanded(false)
+  }
+
+  const handleLaunch = (): void => {
+    if (!game) return
+    launchGame.mutate(game, {
+      onError: (error) => {
+        if (isNoLaunchConfigError(error)) setLaunchConfigExpanded(true)
+      },
+    })
   }
 
   useEffect(() => {
@@ -121,13 +142,17 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
             폴더 열기
           </Button>
           {game.kind === 'folder' && (
-            <Button size="sm" variant="secondary" onClick={() => launchGame.mutate(game)}>
+            <Button size="sm" variant="secondary" onClick={handleLaunch}>
               실행
             </Button>
           )}
         </div>
         <RatingMemoSection game={game} />
-        <LaunchConfigSection game={game} />
+        <LaunchConfigSection
+          game={game}
+          expanded={launchConfigExpanded}
+          onExpandedChange={setLaunchConfigExpanded}
+        />
         <CodeLinkSection game={game} />
       </div>
     </div>

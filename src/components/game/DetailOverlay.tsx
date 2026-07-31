@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { RatingMemoDialog } from './RatingMemoDialog'
@@ -8,6 +8,7 @@ import { UnlinkCodeDialog } from './UnlinkCodeDialog'
 import { GameThumbnail } from './GameThumbnail'
 import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
+import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface DetailOverlayProps {
@@ -23,6 +24,17 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const [linkingCode, setLinkingCode] = useState(false)
   const [unlinkingCode, setUnlinkingCode] = useState(false)
 
+  const handleLaunch = useCallback(
+    (entry: ScannedEntry): void => {
+      launchGame.mutate(entry, {
+        onError: (error) => {
+          if (isNoLaunchConfigError(error)) setConfiguringLaunch(true)
+        },
+      })
+    },
+    [launchGame]
+  )
+
   useEffect(() => {
     if (!game) return
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -30,12 +42,12 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         const target = event.target as HTMLElement
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return // 메모 입력 중엔 무시
         event.preventDefault()
-        launchGame.mutate(game)
+        handleLaunch(game)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [game, launchGame])
+  }, [game, handleLaunch])
 
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>
@@ -72,7 +84,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                 폴더 열기
               </Button>
               {game.kind === 'folder' && (
-                <Button variant="secondary" onClick={() => launchGame.mutate(game)}>
+                <Button variant="secondary" onClick={() => handleLaunch(game)}>
                   실행
                 </Button>
               )}

@@ -12,15 +12,22 @@ import type { LaunchConfigDto } from '../../../shared/types/ipc'
 
 interface LaunchConfigSectionProps {
   game: ScannedEntry
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
 }
 
 // Collapsible, starts collapsed (see DetailSidebar's per-game key resetting
-// this section's local `expanded` state on every selection change). Field
-// set and explicit-save behavior mirror LaunchConfigDialog.tsx exactly -
-// this is used less often than rating/memo, so an explicit save button
-// stays appropriate here.
-export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
-  const [expanded, setExpanded] = useState(false)
+// this section's local state on every selection change - `expanded` itself
+// is controlled by the parent so it can also force this section open when
+// launching fails for lack of a saved config, not just via the toggle
+// button below). Field set and explicit-save behavior mirror
+// LaunchConfigDialog.tsx exactly - this is used less often than
+// rating/memo, so an explicit save button stays appropriate here.
+export function LaunchConfigSection({
+  game,
+  expanded,
+  onExpandedChange,
+}: LaunchConfigSectionProps) {
   const folderPath = game.kind === 'folder' ? game.path : ''
   const { data: executables } = useListExecutables(folderPath)
   const { data: leAvailable } = useLocaleEmulatorAvailable()
@@ -50,7 +57,7 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
     <div className="border-t border-border pt-3">
       <button
         className="flex w-full items-center gap-1 text-xs font-medium text-muted-foreground"
-        onClick={() => setExpanded((current) => !current)}
+        onClick={() => onExpandedChange(!expanded)}
       >
         <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
         실행 설정
