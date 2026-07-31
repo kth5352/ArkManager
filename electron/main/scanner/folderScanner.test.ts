@@ -108,19 +108,57 @@ describe('scanLibraryRecursive', () => {
     expect(entries[0].path).toBe(join(dir, 'a', 'b', 'c', 'RJ01234567.zip'))
   })
 
-  it('includes code-less files alongside coded ones (no longer excluded)', async () => {
+  it('includes a code-less file alongside a coded sibling in the same folder', async () => {
+    await mkdir(join(dir, 'mixed'))
+    await writeFile(join(dir, 'mixed', 'RJ01111.zip'), '')
+    await writeFile(join(dir, 'mixed', 'readme.txt'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    const names = entries.map((e) => e.name).sort()
+    expect(names).toEqual(['RJ01111.zip', 'readme.txt'])
+    expect(entries.find((e) => e.name === 'readme.txt')?.code).toBeNull()
+    expect(entries.find((e) => e.name === 'RJ01111.zip')?.code).toEqual({
+      type: 'RJ',
+      value: 'RJ01111',
+    })
+  })
+
+  it('collapses a code-less folder into a single leaf when every child is code-less and at least one is a file', async () => {
     await mkdir(join(dir, 'plain-folder'))
     await writeFile(join(dir, 'plain-folder', 'memo.txt'), '')
     await writeFile(join(dir, 'RJ01111.zip'), '')
 
     const entries = await scanLibraryRecursive(dir)
     const names = entries.map((e) => e.name).sort()
-    expect(names).toEqual(['RJ01111.zip', 'memo.txt'])
-    expect(entries.find((e) => e.name === 'memo.txt')?.code).toBeNull()
-    expect(entries.find((e) => e.name === 'RJ01111.zip')?.code).toEqual({
-      type: 'RJ',
-      value: 'RJ01111',
-    })
+    expect(names).toEqual(['RJ01111.zip', 'plain-folder'])
+    const folderEntry = entries.find((e) => e.name === 'plain-folder')
+    expect(folderEntry?.kind).toBe('folder')
+    expect(folderEntry?.code).toBeNull()
+  })
+
+  it("does not expose an unrecognized game folder's own internal engine files individually", async () => {
+    // Mirrors a real NScripter/TyranoScript-style game folder that has no
+    // recognizable code in its own name - DS_SYS.SAV and ds_title.ogg are
+    // the game's own save/audio assets, not separate games.
+    await mkdir(join(dir, 'MyGame'))
+    await writeFile(join(dir, 'MyGame', 'DS_SYS.SAV'), '')
+    await writeFile(join(dir, 'MyGame', 'ds_title.ogg'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['MyGame'])
+  })
+
+  it('still walks a pure code-less container folder to find the game folder nested inside it', async () => {
+    // "Circle" has no files directly (only the MyGame subfolder), so it's
+    // still walked into - MyGame has a file directly (game.exe) alongside
+    // no coded children, so it collapses into a single leaf instead of
+    // exposing game.exe as its own entry.
+    await mkdir(join(dir, 'Circle', 'MyGame'), { recursive: true })
+    await writeFile(join(dir, 'Circle', 'MyGame', 'game.exe'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['MyGame'])
+    expect(entries[0].path).toBe(join(dir, 'Circle', 'MyGame'))
   })
 
   it('finds multiple coded entries across different branches', async () => {
