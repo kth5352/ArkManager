@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { userDataQueryKey } from './gameUserDataService'
 import type { ScannedEntry } from '../../shared/types/scanner'
-import type { LaunchConfigDto } from '../../shared/types/ipc'
+import type { GameUserDataDto, LaunchConfigDto } from '../../shared/types/ipc'
 
 export function useListExecutables(folderPath: string) {
   return useQuery<string[]>({
@@ -36,7 +37,16 @@ export function useLaunchGame() {
   return useMutation({
     mutationFn: (entry: Pick<ScannedEntry, 'code' | 'path'>) =>
       window.api.launch.launch(entry.code, entry.path),
-    onSuccess: () => {
+    onSuccess: (result, entry) => {
+      // The recently-played list query only carries { key, lastPlayedAt } -
+      // it never had this session's playtime to begin with, so invalidating
+      // it alone doesn't update what RecentlyPlayedPage shows for
+      // totalPlaytimeMs. Update this entry's own cache slot directly with
+      // the sessionMs the backend just persisted, so it doesn't wait out
+      // useGameUserData's 5-minute staleTime.
+      queryClient.setQueryData<GameUserDataDto | null>(userDataQueryKey(entry), (prev) =>
+        prev ? { ...prev, totalPlaytimeMs: prev.totalPlaytimeMs + result.sessionMs } : prev
+      )
       queryClient.invalidateQueries({ queryKey: ['game-user-data', 'recently-played'] })
     },
   })

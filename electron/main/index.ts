@@ -11,6 +11,8 @@ import { registerMetadataHandlers } from './ipc/metadataHandlers'
 import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
+import { getActiveSessions } from './launch/activeSessions'
+import { recordPlaySession } from './database/gameUserDataRepository'
 import {
   registerThumbnailProtocolHandler,
   registerThumbnailProtocolScheme,
@@ -60,6 +62,18 @@ app.whenReady().then(() => {
   registerLaunchHandlers(db)
   registerSaveHandlers(db)
   registerThumbnailProtocolHandler()
+
+  // A game launched via LAUNCH_GAME only persists its playtime after the
+  // child process exits (see launchHandlers.ts) - if the app quits while a
+  // game is still running, that promise never resolves and the whole
+  // session would otherwise be lost. Flush whatever elapsed so far for any
+  // still-running game before the process actually goes away.
+  app.on('before-quit', () => {
+    const now = Date.now()
+    for (const session of getActiveSessions()) {
+      recordPlaySession(db, session.key, session.keyType, now - session.startedAt)
+    }
+  })
 
   createWindow()
 

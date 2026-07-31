@@ -9,6 +9,7 @@ import { NO_LAUNCH_CONFIG_ERROR_MESSAGE } from '../../../shared/launchErrors'
 import { listExecutables } from '../launch/listExecutables'
 import { detectLocaleEmulator } from '../launch/localeEmulator'
 import { launchGame } from '../launch/launchGame'
+import { endSession, startSession } from '../launch/activeSessions'
 import {
   getGameUserData,
   recordPlaySession,
@@ -42,8 +43,13 @@ export function registerLaunchHandlers(db: AppDatabase): void {
       throw new Error(NO_LAUNCH_CONFIG_ERROR_MESSAGE)
     }
 
-    const { sessionMs } = await launchGame(userData.launchConfig)
-    recordPlaySession(db, key, keyType, sessionMs)
-    return { sessionMs }
+    startSession(key, keyType)
+    try {
+      const { sessionMs } = await launchGame(userData.launchConfig)
+      recordPlaySession(db, key, keyType, sessionMs)
+      return { sessionMs }
+    } finally {
+      endSession(key)
+    }
   })
 }
