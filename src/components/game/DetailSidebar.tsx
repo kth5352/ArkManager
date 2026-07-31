@@ -16,7 +16,7 @@ interface DetailSidebarProps {
 export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const { data: persistedWidth } = useSidebarWidthQuery()
   const setSidebarWidth = useSetSidebarWidthMutation()
-  const [width, setWidth] = useState(SIDEBAR_WIDTH_DEFAULT)
+  const [width, setWidth] = useState(persistedWidth ?? SIDEBAR_WIDTH_DEFAULT)
   const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
   const openExternal = useOpenExternal()
   const launchGame = useLaunchGame()
