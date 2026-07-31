@@ -3,7 +3,7 @@ import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
-import { useThumbnail } from '../../services/thumbnailService'
+import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
@@ -34,7 +34,6 @@ function GameRow({
   onToggleGenreFilter: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
 }) {
-  const { data: thumbnail } = useThumbnail(game.path, game.kind)
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
   const openExternal = useOpenExternal()
@@ -55,9 +54,7 @@ function GameRow({
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
       </button>
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-        {thumbnail && (
-          <img src={thumbnail} alt="" className="h-full w-full object-cover" draggable={false} />
-        )}
+        <GameThumbnail entry={game} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

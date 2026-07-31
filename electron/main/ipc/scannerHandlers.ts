@@ -1,14 +1,12 @@
-import { readFile, stat } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { ipcMain } from 'electron'
 import {
-  GetThumbnailRequestSchema,
   IPC_CHANNELS,
   ScanRecursiveRequestSchema,
   ScanShallowRequestSchema,
 } from '../../../shared/types/ipc'
 import { scanFolderShallow, scanLibraryRecursive } from '../scanner/folderScanner'
-import { findThumbnailPath } from '../scanner/thumbnail'
 import { listPathCodeOverrides } from '../database/pathCodeOverridesRepository'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { AppDatabase } from '../database/client'
@@ -61,17 +59,5 @@ export function registerScannerHandlers(db: AppDatabase): void {
     const { dirPath } = ScanShallowRequestSchema.parse(payload)
     const overrides = listPathCodeOverrides(db)
     return scanFolderShallow(dirPath, overrides)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.SCANNER_GET_THUMBNAIL, async (_event, payload: unknown) => {
-    const { entryPath } = GetThumbnailRequestSchema.parse(payload)
-
-    const stats = await stat(entryPath).catch(() => null)
-    if (!stats || !stats.isDirectory()) return null
-
-    const thumbnailPath = await findThumbnailPath(entryPath)
-    if (!thumbnailPath) return null
-
-    return encodeThumbnail(thumbnailPath)
   })
 }

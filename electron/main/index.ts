@@ -11,6 +11,14 @@ import { registerMetadataHandlers } from './ipc/metadataHandlers'
 import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
+import {
+  registerThumbnailProtocolHandler,
+  registerThumbnailProtocolScheme,
+} from './thumbnailProtocol'
+
+// Must happen before app.whenReady() - Electron requires privileged scheme
+// registration at module load time.
+registerThumbnailProtocolScheme()
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -51,6 +59,7 @@ app.whenReady().then(() => {
   registerGameUserDataHandlers(db)
   registerLaunchHandlers(db)
   registerSaveHandlers(db)
+  registerThumbnailProtocolHandler()
 
   createWindow()
 

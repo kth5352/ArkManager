@@ -7,7 +7,7 @@ import {
 } from '../../components/ui/context-menu'
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
-import { useThumbnail } from '../../services/thumbnailService'
+import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { useOpenExternal } from '../../services/shellService'
 import { useFolderScan, useFolderScanRecursive } from '../../services/scannerService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
@@ -108,8 +108,6 @@ function FolderEntryRow({
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
 }) {
-  const { data: thumbnail } = useThumbnail(entry.path, entry.kind)
-
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -119,14 +117,7 @@ function FolderEntryRow({
         >
           {entry.code && (
             <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
-              {thumbnail && (
-                <img
-                  src={thumbnail}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  draggable={false}
-                />
-              )}
+              <GameThumbnail entry={entry} />
             </div>
           )}
           <span className="truncate">{entry.name}</span>

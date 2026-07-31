@@ -5,7 +5,7 @@ import { RatingMemoDialog } from './RatingMemoDialog'
 import { LaunchConfigDialog } from './LaunchConfigDialog'
 import { LinkCodeDialog } from './LinkCodeDialog'
 import { UnlinkCodeDialog } from './UnlinkCodeDialog'
-import { useThumbnail } from '../../services/thumbnailService'
+import { GameThumbnail } from './GameThumbnail'
 import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -16,7 +16,6 @@ interface DetailOverlayProps {
 }
 
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
-  const { data: thumbnail } = useThumbnail(game?.path ?? '', game?.kind ?? 'file')
   const openExternal = useOpenExternal()
   const launchGame = useLaunchGame()
   const [editingRating, setEditingRating] = useState(false)
@@ -48,14 +47,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
             </DialogHeader>
             <div className="flex gap-4">
               <div className="h-40 w-32 shrink-0 overflow-hidden rounded bg-muted">
-                {thumbnail && (
-                  <img
-                    src={thumbnail}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    draggable={false}
-                  />
-                )}
+                <GameThumbnail entry={game} />
               </div>
               <div className="flex flex-col gap-1 text-sm text-muted-foreground">
                 {game.code ? (

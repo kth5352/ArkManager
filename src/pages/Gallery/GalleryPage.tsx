@@ -5,7 +5,7 @@ import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
 import { Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
-import { useThumbnail } from '../../services/thumbnailService'
+import { GameThumbnail } from '../../components/game/GameThumbnail'
 import {
   useGameUserData,
   useToggleFavorite,
@@ -47,7 +47,6 @@ function GameCard({
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
 }) {
-  const { data: thumbnail } = useThumbnail(game.path, game.kind)
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
 
@@ -71,9 +70,7 @@ function GameCard({
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
       </button>
       <div className="aspect-[3/4] w-full bg-muted">
-        {thumbnail && (
-          <img src={thumbnail} alt="" className="h-full w-full object-cover" draggable={false} />
-        )}
+        <GameThumbnail entry={game} />
       </div>
       <div className="shrink-0 p-2">
         <p className="truncate text-sm font-medium">{game.name}</p>

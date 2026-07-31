@@ -40,8 +40,6 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, { libraryPaths }),
     scanShallow: (dirPath: string): Promise<ScannedEntry[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_SHALLOW, { dirPath }),
-    getThumbnail: (entryPath: string): Promise<string | null> =>
-      ipcRenderer.invoke(IPC_CHANNELS.SCANNER_GET_THUMBNAIL, { entryPath }),
   },
   explorerTabs: {
     save: (tabs: PersistedExplorerTab[]): Promise<void> =>

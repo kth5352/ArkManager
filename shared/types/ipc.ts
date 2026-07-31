@@ -10,7 +10,6 @@ export const IPC_CHANNELS = {
   LIBRARIES_PICK_FOLDER: 'libraries:pick-folder',
   SCANNER_SCAN_RECURSIVE: 'scanner:scan-recursive',
   SCANNER_SCAN_SHALLOW: 'scanner:scan-shallow',
-  SCANNER_GET_THUMBNAIL: 'scanner:get-thumbnail',
   EXPLORER_SAVE_TABS: 'explorer:save-tabs',
   EXPLORER_LOAD_TABS: 'explorer:load-tabs',
   SORT_GET: 'sort:get',
@@ -87,11 +86,6 @@ export const ScanShallowRequestSchema = z.object({
   dirPath: z.string(),
 })
 export type ScanShallowRequest = z.infer<typeof ScanShallowRequestSchema>
-
-export const GetThumbnailRequestSchema = z.object({
-  entryPath: z.string(),
-})
-export type GetThumbnailRequest = z.infer<typeof GetThumbnailRequestSchema>
 
 export const PersistedExplorerTabSchema = z.object({
   id: z.string(),
