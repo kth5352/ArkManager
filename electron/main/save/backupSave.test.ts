@@ -9,8 +9,8 @@ describe('backupSave', () => {
   let backupDir: string
 
   beforeEach(async () => {
-    sourceDir = await mkdtemp(join(tmpdir(), 'dlibrary-save-src-'))
-    backupDir = join(await mkdtemp(join(tmpdir(), 'dlibrary-save-dst-')), 'nested')
+    sourceDir = await mkdtemp(join(tmpdir(), 'ark-manager-save-src-'))
+    backupDir = join(await mkdtemp(join(tmpdir(), 'ark-manager-save-dst-')), 'nested')
   })
 
   afterEach(async () => {

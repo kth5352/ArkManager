@@ -8,7 +8,7 @@ describe('findLocaleEmulatorAt', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-le-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-le-'))
   })
 
   afterEach(async () => {

@@ -18,7 +18,7 @@ export async function crawlDlsiteSearch(query: string): Promise<DlsiteSearchResu
   if (trimmed === '') return []
 
   const response = await fetch(searchUrl(trimmed), {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DLibrary/1.0' },
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0' },
     signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
   })
   if (!response.ok) return []

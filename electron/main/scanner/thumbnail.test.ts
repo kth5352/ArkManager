@@ -8,7 +8,7 @@ describe('findThumbnailPath', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-thumb-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-thumb-'))
   })
 
   afterEach(async () => {

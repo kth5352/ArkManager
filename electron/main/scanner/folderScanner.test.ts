@@ -29,7 +29,7 @@ describe('scanFolderShallow', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-shallow-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-shallow-'))
   })
 
   afterEach(async () => {
@@ -91,7 +91,7 @@ describe('scanLibraryRecursive', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-recursive-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-recursive-'))
   })
 
   afterEach(async () => {
@@ -271,7 +271,7 @@ describe('error tolerance', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-tolerance-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-tolerance-'))
   })
 
   afterEach(async () => {

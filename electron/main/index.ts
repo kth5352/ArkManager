@@ -13,12 +13,13 @@ import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
+import { migrateUserDataFolder, NEW_DB_FILENAME } from './migrateUserDataFolder'
 import {
   registerThumbnailProtocolHandler,
   registerThumbnailProtocolScheme,
 } from './thumbnailProtocol'
 
-// better-sqlite3 opens dlibrary.db with an exclusive file lock - a second
+// better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
 // crash trying to open the same file or, worse, run a second independent
 // writer against it. requestSingleInstanceLock() makes every launch after
@@ -41,6 +42,21 @@ if (!gotSingleInstanceLock) {
   // registration at module load time.
   registerThumbnailProtocolScheme()
 
+  // Without this, the running window/taskbar icon falls back to Electron's
+  // own generic icon even once build.icon (package.json) gives the packaged
+  // .exe its own file icon - that build-time icon only ever applies to the
+  // .exe file itself, not the BrowserWindow at runtime. LOGO.png isn't part
+  // of the compiled out/ directory electron-vite produces, so a packaged
+  // build needs its own copy shipped alongside the app - see this package's
+  // build.extraResources, which copies it to process.resourcesPath. In dev,
+  // __dirname is out/main, two levels up is the project root where the
+  // source file actually lives.
+  function resolveLogoPath(): string {
+    return app.isPackaged
+      ? join(process.resourcesPath, 'LOGO.png')
+      : join(__dirname, '../../LOGO.png')
+  }
+
   function createWindow(): void {
     const win = new BrowserWindow({
       width: 1280,
@@ -52,6 +68,7 @@ if (!gotSingleInstanceLock) {
       minWidth: 720,
       minHeight: 480,
       show: false,
+      icon: resolveLogoPath(),
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
       },
@@ -71,8 +88,17 @@ if (!gotSingleInstanceLock) {
     })
   }
 
-  app.whenReady().then(() => {
-    const dbPath = join(app.getPath('userData'), 'dlibrary.db')
+  app.whenReady().then(async () => {
+    // The app was renamed from "dlibrary" to "ark-manager" - Electron
+    // derives userData's location from the app's own name, so an existing
+    // install's registered libraries/ratings/cache would otherwise be
+    // silently left behind under the old-named folder. Must run before
+    // createDbClient ever opens a (possibly fresh, empty) db at the new
+    // path - see migrateUserDataFolder.ts for why "does newPath exist" is
+    // not itself a safe signal here.
+    await migrateUserDataFolder(join(app.getPath('appData'), 'dlibrary'), app.getPath('userData'))
+
+    const dbPath = join(app.getPath('userData'), NEW_DB_FILENAME)
     const db = createDbClient(dbPath)
     registerSettingsHandlers(db)
     registerLibrariesHandlers(db)

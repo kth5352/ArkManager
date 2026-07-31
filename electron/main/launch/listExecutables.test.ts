@@ -8,7 +8,7 @@ describe('listExecutables', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-exe-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-exe-'))
   })
 
   afterEach(async () => {

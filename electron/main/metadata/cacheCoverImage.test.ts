@@ -36,7 +36,7 @@ describe('cacheCoverImage', () => {
     if (address === null || typeof address === 'string') throw new Error('server not listening')
     baseUrl = `http://127.0.0.1:${address.port}`
 
-    cacheDir = await mkdtemp(join(tmpdir(), 'dlibrary-cover-'))
+    cacheDir = await mkdtemp(join(tmpdir(), 'ark-manager-cover-'))
   })
 
   afterEach(async () => {

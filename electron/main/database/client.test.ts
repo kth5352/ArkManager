@@ -14,7 +14,7 @@ describe('createDbClient column backfill', () => {
   })
 
   it('backfills columns missing from a game_user_data table created before they existed', async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-db-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-db-'))
     const dbPath = join(dir, 'old.db')
 
     // Simulates a real user's database created before is_favorite (and
@@ -57,7 +57,7 @@ describe('createDbClient column backfill', () => {
   })
 
   it('is idempotent - running it again on an already-current table does not error', async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dlibrary-db-'))
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-db-'))
     const dbPath = join(dir, 'current.db')
 
     const first = createDbClient(dbPath)

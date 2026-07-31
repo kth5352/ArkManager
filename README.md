@@ -1,4 +1,4 @@
-# DLibrary
+# Ark Manager
 
 DLsite에서 구매한 게임을 Steam 라이브러리처럼 관리하는 Windows용 Electron 앱.
 

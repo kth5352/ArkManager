@@ -1,17 +1,8 @@
 import { Link } from '@tanstack/react-router'
-import {
-  FolderTree,
-  Heart,
-  History,
-  LayoutGrid,
-  LibraryBig,
-  List,
-  Rows3,
-  Search,
-  Settings,
-} from 'lucide-react'
+import { FolderTree, Heart, History, LayoutGrid, List, Rows3, Search, Settings } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { Button } from '../ui/button'
+import logoUrl from '../../../LOGO.png'
 
 const navItems = [
   { to: '/', label: 'Gallery', icon: LayoutGrid },
@@ -30,8 +21,8 @@ export function Sidebar() {
   return (
     <aside className="flex w-56 flex-col border-r border-border bg-card p-4">
       <div className="mb-6 flex items-center gap-2 font-semibold">
-        <LibraryBig className="h-5 w-5" />
-        DLibrary
+        <img src={logoUrl} alt="" className="h-6 w-6 rounded" />
+        Ark Manager
       </div>
       <nav className="flex flex-1 flex-col gap-1">
         {navItems.map(({ to, label, icon: Icon }) => (

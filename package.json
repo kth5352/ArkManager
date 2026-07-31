@@ -1,5 +1,5 @@
 {
-  "name": "dlibrary",
+  "name": "ark-manager",
   "version": "0.1.0",
   "private": true,
   "description": "DLsite game library manager",
@@ -17,10 +17,17 @@
     "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "build": {
-    "appId": "com.dlibrary.app",
-    "productName": "DLibrary",
+    "appId": "com.arkmanager.app",
+    "productName": "Ark Manager",
+    "icon": "LOGO.png",
     "files": [
       "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "LOGO.png",
+        "to": "LOGO.png"
+      }
     ],
     "win": {
       "target": "nsis"

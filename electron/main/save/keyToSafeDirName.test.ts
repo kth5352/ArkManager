@@ -27,7 +27,7 @@ describe('keyToSafeDirName', () => {
   })
 
   it('regression: a code-less (path-keyed) game backup directory can be created without throwing', async () => {
-    const base = await mkdtemp(join(tmpdir(), 'dlibrary-userdata-'))
+    const base = await mkdtemp(join(tmpdir(), 'ark-manager-userdata-'))
     try {
       const key = 'd:\\games\\myfolder'
       const backupDir = join(base, 'saves', keyToSafeDirName(key))
