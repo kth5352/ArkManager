@@ -16,7 +16,7 @@ import { filterEntries } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
-const ROW_HEIGHT = 64
+const ROW_HEIGHT = 84 // 64 + 20 (제목 2번째 줄분)
 
 function formatMtime(mtimeMs: number): string {
   const date = new Date(mtimeMs)
@@ -58,7 +58,7 @@ function GameRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="min-w-0 truncate text-sm font-medium">{game.name}</p>
+          <p className="min-w-0 line-clamp-2 break-words text-sm font-medium">{game.name}</p>
           {genres.length > 0 && (
             <div className="flex shrink-0 gap-1">
               {genres.slice(0, 3).map((genre) => (

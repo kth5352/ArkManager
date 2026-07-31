@@ -24,7 +24,7 @@ import type { GameUserDataDto } from '../../../shared/types/ipc'
 
 const CARD_WIDTH = 180
 const GAP = 16
-const CARD_TEXT_BLOCK_HEIGHT = 16 + 36 + 20
+const CARD_TEXT_BLOCK_HEIGHT = 16 + 36 + 20 + 20 // 마지막 +20은 제목 2번째 줄분
 
 function computeCardHeight(cardWidth: number): number {
   return cardWidth * (4 / 3) + CARD_TEXT_BLOCK_HEIGHT
@@ -73,7 +73,7 @@ function GameCard({
         <GameThumbnail entry={game} />
       </div>
       <div className="shrink-0 p-2">
-        <p className="truncate text-sm font-medium">{game.name}</p>
+        <p className="line-clamp-2 break-words text-sm font-medium">{game.name}</p>
         {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
         {userData?.rating != null && (
           <div className="mt-0.5 flex gap-0.5">
