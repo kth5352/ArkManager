@@ -35,14 +35,6 @@ export function getManyGameMetadata(
   )
 }
 
-export function touchGameMetadata(db: AppDatabase, code: string): void {
-  const now = new Date().toISOString()
-  db.insert(gameMetadata)
-    .values({ code, createdAt: now, updatedAt: now })
-    .onConflictDoUpdate({ target: gameMetadata.code, set: { updatedAt: now } })
-    .run()
-}
-
 // 크롤링 결과를 저장한다. coverImagePath는 여기서 건드리지 않는다 - Task 3의
 // 이미지 캐시 다운로드가 성공한 뒤 별도로 채운다 (크롤링 자체는 성공했지만
 // 이미지 다운로드만 실패하는 경우를 구분하기 위함).

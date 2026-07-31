@@ -7,6 +7,7 @@ import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
+import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -28,11 +29,13 @@ function GameRow({
   genres,
   onToggleGenreFilter,
   onOpenDetail,
+  onHoverChange,
 }: {
   game: ScannedEntry
   genres: string[]
   onToggleGenreFilter: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
+  onHoverChange: (game: ScannedEntry | null) => void
 }) {
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
@@ -42,6 +45,8 @@ function GameRow({
     <div
       className="flex cursor-pointer items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent"
       onClick={() => onOpenDetail(game)}
+      onMouseEnter={() => onHoverChange(game)}
+      onMouseLeave={() => onHoverChange(null)}
     >
       <button
         aria-label="즐겨찾기 토글"
@@ -113,6 +118,7 @@ interface ListRowProps {
   metadataByCode: Record<string, { genres: string[] }>
   onToggleGenreFilter: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
+  onHoverChange: (game: ScannedEntry | null) => void
 }
 
 function Row({
@@ -122,6 +128,7 @@ function Row({
   metadataByCode,
   onToggleGenreFilter,
   onOpenDetail,
+  onHoverChange,
 }: RowComponentProps<ListRowProps>) {
   const game = games[index]
   if (!game) return null
@@ -133,6 +140,7 @@ function Row({
         genres={genres}
         onToggleGenreFilter={onToggleGenreFilter}
         onOpenDetail={onOpenDetail}
+        onHoverChange={onHoverChange}
       />
     </div>
   )
@@ -143,7 +151,9 @@ export function ListPage() {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
+  useFavoriteShortcut(hoveredGame)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -211,6 +221,7 @@ export function ListPage() {
                         metadataByCode,
                         onToggleGenreFilter: toggleGenreFilter,
                         onOpenDetail: openDetail,
+                        onHoverChange: setHoveredGame,
                       }}
                       rowCount={sortedGames.length}
                       rowHeight={ROW_HEIGHT}

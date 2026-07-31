@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
 import { Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
-import {
-  useGameUserData,
-  useToggleFavorite,
-  userDataQueryKey,
-} from '../../services/gameUserDataService'
+import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
+import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -20,7 +16,6 @@ import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
-import type { GameUserDataDto } from '../../../shared/types/ipc'
 
 const CARD_WIDTH = 180
 const GAP = 16
@@ -158,9 +153,8 @@ export function GalleryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
-  const toggleFavoriteShortcut = useToggleFavorite()
-  const queryClient = useQueryClient()
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
+  useFavoriteShortcut(hoveredGame)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -170,23 +164,6 @@ export function GalleryPage() {
       current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre]
     )
   }
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key.toLowerCase() !== 'f' || event.ctrlKey || event.altKey) return
-      if (!hoveredGame) return
-      const target = event.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return // 검색창 입력 중엔 무시
-      event.preventDefault()
-      const cached = queryClient.getQueryData<GameUserDataDto | null>(userDataQueryKey(hoveredGame))
-      toggleFavoriteShortcut.mutate({
-        entry: hoveredGame,
-        isFavorite: !(cached?.isFavorite ?? false),
-      })
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hoveredGame, toggleFavoriteShortcut, queryClient])
 
   useEffect(() => {
     // `container` is a callback ref (state), not a plain object ref - this
