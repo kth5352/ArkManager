@@ -76,6 +76,22 @@ if (!gotSingleInstanceLock) {
 
     win.once('ready-to-show', () => win.show())
 
+    // Renderer console.* calls don't reach this process's own stdout by
+    // default, which makes a renderer-side crash (e.g. a blank white
+    // window) invisible outside of manually opening DevTools. Forwarding it
+    // here means `npm run dev`'s own terminal output is enough to diagnose
+    // one. Dev-only - a packaged build's users shouldn't see this noise.
+    if (!app.isPackaged) {
+      win.webContents.on('console-message', (details) => {
+        console.log(
+          `[renderer:${details.level}] ${details.message} (${details.sourceId}:${details.lineNumber})`
+        )
+      })
+      win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+        console.log(`[renderer] did-fail-load: ${errorCode} ${errorDescription}`)
+      })
+    }
+
     if (process.env['ELECTRON_RENDERER_URL']) {
       win.loadURL(process.env['ELECTRON_RENDERER_URL'])
     } else {
