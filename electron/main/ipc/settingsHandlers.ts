@@ -22,7 +22,8 @@ function parseStoredTheme(raw: string | undefined): 'light' | 'dark' | null {
 export function registerSettingsHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
     const { key } = GetSettingRequestSchema.parse(payload)
-    return parseStoredTheme(getSetting(db, key))
+    if (key === 'theme') return parseStoredTheme(getSetting(db, key))
+    return getSetting(db, key) ?? null
   })
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event, payload: unknown) => {

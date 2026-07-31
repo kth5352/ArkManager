@@ -34,9 +34,16 @@ describe('SetSettingRequestSchema', () => {
     expect(() => SetSettingRequestSchema.parse({ key: 'theme' })).toThrow()
   })
 
-  it('rejects a value that is not a valid theme', () => {
+  it('accepts any string value (per-key validation, e.g. theme, happens at the read path)', () => {
     expect(SetSettingRequestSchema.safeParse({ key: 'theme', value: 'chartreuse' }).success).toBe(
-      false
+      true
     )
+  })
+
+  it('accepts key "sidebar-width"', () => {
+    expect(SetSettingRequestSchema.parse({ key: 'sidebar-width', value: '400' })).toEqual({
+      key: 'sidebar-width',
+      value: '400',
+    })
   })
 })

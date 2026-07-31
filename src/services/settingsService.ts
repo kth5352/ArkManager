@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { Theme } from '../../shared/types/ipc'
+import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../lib/clampSidebarWidth'
 
 export const THEME_QUERY_KEY = ['settings', 'theme'] as const
 
@@ -37,6 +38,28 @@ export function useSetThemeMutation() {
     mutationFn: (theme: Theme) => window.api.settings.setTheme(theme),
     onSuccess: (_data, theme) => {
       queryClient.setQueryData(THEME_QUERY_KEY, theme)
+    },
+  })
+}
+
+export const SIDEBAR_WIDTH_QUERY_KEY = ['settings', 'sidebar-width'] as const
+
+export function useSidebarWidthQuery() {
+  return useQuery({
+    queryKey: SIDEBAR_WIDTH_QUERY_KEY,
+    queryFn: async (): Promise<number> => {
+      const value = await window.api.settings.getSidebarWidth()
+      return value === null ? SIDEBAR_WIDTH_DEFAULT : clampSidebarWidth(value)
+    },
+  })
+}
+
+export function useSetSidebarWidthMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (width: number) => window.api.settings.setSidebarWidth(clampSidebarWidth(width)),
+    onSuccess: (_data, width) => {
+      queryClient.setQueryData(SIDEBAR_WIDTH_QUERY_KEY, clampSidebarWidth(width))
     },
   })
 }

@@ -24,6 +24,12 @@ const api = {
     // for anything else - prefer the async getTheme/setTheme above.
     getThemeSync: (): Theme | null =>
       ipcRenderer.sendSync(IPC_CHANNELS.SETTINGS_GET_SYNC) as Theme | null,
+    getSidebarWidth: (): Promise<number | null> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'sidebar-width' })
+        .then((value: string | null) => (value === null ? null : Number(value))),
+    setSidebarWidth: (width: number): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'sidebar-width', value: String(width) }),
   },
   libraries: {
     list: (): Promise<LibraryWithStatus[]> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_LIST),

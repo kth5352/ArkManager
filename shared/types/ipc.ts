@@ -38,7 +38,7 @@ export const IPC_CHANNELS = {
 export const ThemeSchema = z.enum(['light', 'dark'])
 export type Theme = z.infer<typeof ThemeSchema>
 
-export const SettingKeySchema = z.enum(['theme'])
+export const SettingKeySchema = z.enum(['theme', 'sidebar-width'])
 
 export const GetSettingRequestSchema = z.object({
   key: SettingKeySchema,
@@ -47,7 +47,7 @@ export type GetSettingRequest = z.infer<typeof GetSettingRequestSchema>
 
 export const SetSettingRequestSchema = z.object({
   key: SettingKeySchema,
-  value: ThemeSchema,
+  value: z.string(),
 })
 export type SetSettingRequest = z.infer<typeof SetSettingRequestSchema>
 
