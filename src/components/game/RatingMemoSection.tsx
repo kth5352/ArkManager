@@ -29,7 +29,10 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
   // this section's own rating-save and memo-save race each other - both go
   // through the same combined useSetRatingAndMemo mutation, so a save
   // triggered by one field can resolve after the user has already changed
-  // the other.
+  // the other. handleRatingClick and handleMemoChange also set hydrated =
+  // true immediately on any user edit (not just on the first userData
+  // arrival), so an edit made before the initial load resolves can't be
+  // clobbered by that load's stale pre-edit response arriving afterward.
   const [hydrated, setHydrated] = useState(userData !== undefined)
   const [justSaved, setJustSaved] = useState(false)
 
@@ -48,10 +51,16 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
   const handleRatingClick = (value: number): void => {
     const nextRating = value === rating ? null : value
     setRating(nextRating)
+    setHydrated(true)
     setRatingAndMemo.mutate(
       { entry: game, rating: nextRating, memo: memo.trim() === '' ? null : memo },
       { onSuccess: () => setJustSaved(true) }
     )
+  }
+
+  const handleMemoChange = (value: string): void => {
+    setMemo(value)
+    setHydrated(true)
   }
 
   const handleMemoBlur = (): void => {
@@ -78,7 +87,7 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
       <p className="mt-2 text-xs font-medium text-muted-foreground">메모</p>
       <textarea
         value={memo}
-        onChange={(e) => setMemo(e.target.value)}
+        onChange={(e) => handleMemoChange(e.target.value)}
         onBlur={handleMemoBlur}
         placeholder="메모"
         className="min-h-20 w-full rounded-md border border-border bg-background p-2 text-sm"
