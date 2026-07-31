@@ -65,8 +65,15 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LINK_CODE, (_event, payload: unknown) => {
     const { path, code } = LinkCodeRequestSchema.parse(payload)
     const normalizedPath = normalizeLibraryPath(path)
-    setPathCodeOverride(db, normalizedPath, code.value)
-    rekeyToCode(db, normalizedPath, code.value)
+    // Two separate writes (the override record, then migrating/merging the
+    // user-data row onto the new code key) - without a shared transaction, a
+    // crash or thrown error between them would leave the override pointing
+    // at a code whose user-data row was never actually migrated, silently
+    // losing the path's rating/memo/launchConfig/playtime.
+    db.transaction(() => {
+      setPathCodeOverride(db, normalizedPath, code.value)
+      rekeyToCode(db, normalizedPath, code.value)
+    })
   })
 
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_UNLINK_CODE, (_event, payload: unknown) => {

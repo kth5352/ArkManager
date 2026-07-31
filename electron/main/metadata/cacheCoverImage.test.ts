@@ -68,4 +68,11 @@ describe('cacheCoverImage', () => {
     const savedPath = await cacheCoverImage(cacheDir, 'RJ00000000', `${baseUrl}/invalid.jpg`)
     expect(savedPath).toBeNull()
   })
+
+  it('hashes a code containing path-traversal segments instead of writing outside cacheDir', async () => {
+    const savedPath = await cacheCoverImage(cacheDir, '../../evil', `${baseUrl}/cover.jpg`)
+    expect(savedPath).not.toBeNull()
+    expect(savedPath!.startsWith(cacheDir)).toBe(true)
+    expect(savedPath).not.toContain('evil')
+  })
 })

@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { protocol } from 'electron'
 import { findThumbnailPath } from './scanner/thumbnail'
+import { listLibraries, normalizeLibraryPath } from './database/librariesRepository'
+import type { AppDatabase } from './database/client'
 
 // Folder-scan thumbnails (Gallery/List/DetailList/Explorer cards - one per
 // visible row, mounted/unmounted constantly by react-window during scroll)
@@ -39,6 +41,32 @@ function decodeEntryPath(url: string): string {
   return decodeURIComponent(new URL(url).pathname.slice(1))
 }
 
+// normalizeLibraryPath only lowercases and strips a trailing slash - it
+// doesn't unify backslash vs. forward slash, which Windows paths mix freely
+// (a registered library path always uses the OS-native separator, but a
+// requested entryPath could in principle use either). Converting both sides
+// to forward slashes here makes the prefix check separator-agnostic.
+function normalizeForComparison(path: string): string {
+  return normalizeLibraryPath(path).replace(/\\/g, '/')
+}
+
+// The handler's own comment used to claim entryPath was trustworthy because
+// findThumbnailPath re-derives the actual file via a directory listing
+// rather than trusting a file path from the URL - but findThumbnailPath will
+// happily readdir *any* folder on disk, so that alone doesn't stop a
+// compromised or buggy renderer from requesting thumb://.../C:/Users/x/Documents
+// and reading back whatever image happens to live there. Requiring entryPath
+// to fall under a currently registered library closes that gap.
+export function isPathWithinAnyLibrary(entryPath: string, libraryPaths: string[]): boolean {
+  const normalizedEntry = normalizeForComparison(entryPath)
+  return libraryPaths.some((libraryPath) => {
+    const normalizedLibrary = normalizeForComparison(libraryPath)
+    return (
+      normalizedEntry === normalizedLibrary || normalizedEntry.startsWith(`${normalizedLibrary}/`)
+    )
+  })
+}
+
 // Must run before app.whenReady() - Electron requires privileged schemes to
 // be registered at module load time, before the app is ready.
 export function registerThumbnailProtocolScheme(): void {
@@ -51,9 +79,14 @@ export function registerThumbnailProtocolScheme(): void {
 }
 
 // Must run after app.whenReady().
-export function registerThumbnailProtocolHandler(): void {
+export function registerThumbnailProtocolHandler(db: AppDatabase): void {
   protocol.handle(THUMBNAIL_SCHEME, async (request) => {
     const entryPath = decodeEntryPath(request.url)
+    const libraryPaths = listLibraries(db).map((library) => library.path)
+    if (!isPathWithinAnyLibrary(entryPath, libraryPaths)) {
+      return new Response(null, { status: 404 })
+    }
+
     const thumbnailPath = await findThumbnailPath(entryPath)
     if (!thumbnailPath) return new Response(null, { status: 404 })
 

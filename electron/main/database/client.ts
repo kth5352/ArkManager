@@ -31,6 +31,12 @@ function ensureColumns(
 export function createDbClient(filePath: string) {
   const sqlite = new Database(filePath)
   sqlite.pragma('journal_mode = WAL')
+  // WAL already lets readers and a writer proceed concurrently, but two
+  // near-simultaneous writers (e.g. two IPC handlers firing in the same
+  // tick) can still hit SQLITE_BUSY without this - better-sqlite3 defaults
+  // to a 0ms busy timeout (fail immediately) rather than SQLite's own
+  // more forgiving default.
+  sqlite.pragma('busy_timeout = 5000')
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (

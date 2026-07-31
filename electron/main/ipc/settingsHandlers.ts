@@ -19,10 +19,24 @@ function parseStoredTheme(raw: string | undefined): 'light' | 'dark' | null {
   return result.success ? result.data : null
 }
 
+// Same self-healing principle as parseStoredTheme, for the other key that
+// can actually be read back (SettingKeySchema currently only allows
+// 'theme' | 'sidebar-width'). The renderer's own clampSidebarWidth already
+// guards against NaN once the value reaches it, but that's an accident of
+// the renderer's code, not a guarantee this IPC contract makes - a
+// corrupted or manually-edited DB row (e.g. "abc") would otherwise cross
+// the IPC boundary as a string that looks valid but Number()s to NaN.
+// Self-heals to null here instead, exactly like theme.
+function parseStoredSidebarWidth(raw: string | undefined): string | null {
+  if (raw === undefined) return null
+  return Number.isFinite(Number(raw)) ? raw : null
+}
+
 export function registerSettingsHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
     const { key } = GetSettingRequestSchema.parse(payload)
     if (key === 'theme') return parseStoredTheme(getSetting(db, key))
+    if (key === 'sidebar-width') return parseStoredSidebarWidth(getSetting(db, key))
     return getSetting(db, key) ?? null
   })
 
