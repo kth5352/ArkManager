@@ -17,13 +17,14 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const { data: persistedWidth } = useSidebarWidthQuery()
   const setSidebarWidth = useSetSidebarWidthMutation()
   const [width, setWidth] = useState(SIDEBAR_WIDTH_DEFAULT)
+  const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
   const openExternal = useOpenExternal()
   const launchGame = useLaunchGame()
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+  if (persistedWidth !== syncedWidth) {
+    setSyncedWidth(persistedWidth)
     if (persistedWidth !== undefined) setWidth(persistedWidth)
-  }, [persistedWidth])
+  }
 
   useEffect(() => {
     if (!game) return
