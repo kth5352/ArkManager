@@ -237,19 +237,21 @@ export function GalleryPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <SearchHeader
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        excludedGenres={excludedGenres}
-        onClearFilters={() => setExcludedGenres([])}
-      />
-      <PageToolbar
-        sortField={sortField}
-        sortDirection={sortDirection}
-        onSortChange={setSort}
-        zoom={zoom}
-        onZoomChange={setZoom}
-      />
+      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+        <SearchHeader
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          excludedGenres={excludedGenres}
+          onClearFilters={() => setExcludedGenres([])}
+        />
+        <PageToolbar
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={setSort}
+          zoom={zoom}
+          onZoomChange={setZoom}
+        />
+      </div>
       {sortedGames.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.

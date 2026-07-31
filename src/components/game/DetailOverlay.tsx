@@ -79,14 +79,11 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
               <Button variant="secondary" onClick={() => console.log('open folder', game.path)}>
                 폴더 열기
               </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  if (game.kind === 'folder') launchGame.mutate(game)
-                }}
-              >
-                실행
-              </Button>
+              {game.kind === 'folder' && (
+                <Button variant="secondary" onClick={() => launchGame.mutate(game)}>
+                  실행
+                </Button>
+              )}
               <Button variant="secondary" onClick={() => setConfiguringLaunch(true)}>
                 실행 설정
               </Button>

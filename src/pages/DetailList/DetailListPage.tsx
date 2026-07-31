@@ -109,13 +109,15 @@ export function DetailListPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <SearchHeader
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        excludedGenres={excludedGenres}
-        onClearFilters={() => setExcludedGenres([])}
-      />
-      <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+        <SearchHeader
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          excludedGenres={excludedGenres}
+          onClearFilters={() => setExcludedGenres([])}
+        />
+        <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+      </div>
       {sorted.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           표시할 항목이 없습니다.

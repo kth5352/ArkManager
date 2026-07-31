@@ -25,7 +25,7 @@ export function PageToolbar({
   onZoomChange,
 }: PageToolbarProps) {
   return (
-    <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+    <div className="flex flex-1 items-center gap-2">
       <Select
         value={sortField}
         onValueChange={(value) => onSortChange(value as SortField, sortDirection)}

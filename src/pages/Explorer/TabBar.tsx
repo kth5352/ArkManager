@@ -77,6 +77,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
 
 export function TabBar() {
   const tabs = useExplorerStore((s) => s.tabs)
+  const activeTabId = useExplorerStore((s) => s.activeTabId)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
   const addTab = useExplorerStore((s) => s.addTab)
   const closeTab = useExplorerStore((s) => s.closeTab)
@@ -119,7 +120,12 @@ export function TabBar() {
     // FolderView's isError branch would show a generic "cannot access this
     // folder" message that's misleading for "no library registered yet".
     if (!hasLibraries) return
-    addTab({ label: '새 탭', path: libraries?.[0]?.path ?? '' })
+    // Inherit the currently active tab's path (like a real browser's "new
+    // tab" staying in context) rather than always jumping back to whichever
+    // library happens to be first in the registration list - only falls
+    // back to that when there's no active tab yet (e.g. the very first tab).
+    const activeTab = tabs.find((tab) => tab.id === activeTabId)
+    addTab({ label: '새 탭', path: activeTab?.path ?? libraries?.[0]?.path ?? '' })
   }
 
   const handleOpenFolder = async (): Promise<void> => {

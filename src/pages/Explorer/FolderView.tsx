@@ -213,13 +213,15 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
           </span>
         ))}
       </div>
-      <SearchHeader
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        excludedGenres={excludedGenres}
-        onClearFilters={() => setExcludedGenres([])}
-      />
-      <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+        <SearchHeader
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          excludedGenres={excludedGenres}
+          onClearFilters={() => setExcludedGenres([])}
+        />
+        <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+      </div>
       {isSearching ? (
         isSearchLoading ? (
           <div className="flex flex-1 flex-col gap-1 overflow-auto p-4">
