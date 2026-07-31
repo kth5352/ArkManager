@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
+import { LaunchConfigSection } from './LaunchConfigSection'
 import { useOpenExternal } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
@@ -125,6 +126,7 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
           )}
         </div>
         <RatingMemoSection game={game} />
+        <LaunchConfigSection game={game} />
       </div>
     </div>
   )
