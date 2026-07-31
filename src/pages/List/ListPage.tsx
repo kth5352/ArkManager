@@ -192,7 +192,9 @@ export function ListPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           {sortedGames.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-              등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
+              {games.length === 0
+                ? '등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.'
+                : '표시할 항목이 없습니다.'}
             </div>
           ) : (
             <div className="h-full w-full">

@@ -5,6 +5,10 @@ export function useFolderScan(path: string) {
   return useQuery<ScannedEntry[]>({
     queryKey: ['folder-scan', path],
     queryFn: () => window.api.scanner.scanShallow(path),
+    // Same mitigation as useGames - without this, staleTime: 0's default
+    // refetch-on-mount/refocus re-runs a filesystem scan every time a tab
+    // is revisited or the window regains focus.
+    staleTime: 5 * 60_000,
   })
 }
 
@@ -18,5 +22,9 @@ export function useFolderScanRecursive(path: string, options: { enabled: boolean
     queryKey: ['folder-scan-recursive', path],
     queryFn: () => window.api.scanner.scanRecursive([path]),
     enabled: options.enabled,
+    // Same mitigation as useGames/useFolderScan - a recursive scan is the
+    // most expensive of the three, so paying staleTime: 0's refetch-on-
+    // refocus cost here is even less justified.
+    staleTime: 5 * 60_000,
   })
 }

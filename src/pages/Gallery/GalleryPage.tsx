@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
@@ -154,7 +154,7 @@ export function GalleryPage() {
   const { data: games, isLoading, isError } = useGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('gallery')
   const [zoom, setZoom] = useState(1)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [container, setContainer] = useState<HTMLDivElement | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
@@ -189,7 +189,14 @@ export function GalleryPage() {
   }, [hoveredGame, toggleFavoriteShortcut, queryClient])
 
   useEffect(() => {
-    const container = containerRef.current
+    // `container` is a callback ref (state), not a plain object ref - this
+    // div only exists in the DOM while sortedGames is non-empty (see the
+    // conditional render below), so it mounts/unmounts as search/filter
+    // results go in and out of empty. A plain useRef wouldn't re-trigger
+    // this effect on those transitions (its deps were only `[isLoading]`),
+    // permanently losing the zoom listener the first time results emptied
+    // out and came back. A state-backed callback ref re-renders on every
+    // attach/detach, so depending on it here keeps the listener in sync.
     if (!container) return
 
     const handleWheel = (event: WheelEvent): void => {
@@ -203,7 +210,7 @@ export function GalleryPage() {
 
     container.addEventListener('wheel', handleWheel, { passive: false })
     return () => container.removeEventListener('wheel', handleWheel)
-  }, [isLoading])
+  }, [container])
 
   if (isError && !games) {
     return (
@@ -253,10 +260,12 @@ export function GalleryPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           {sortedGames.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-              등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.
+              {games.length === 0
+                ? '등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.'
+                : '표시할 항목이 없습니다.'}
             </div>
           ) : (
-            <div ref={containerRef} className="h-full w-full p-6">
+            <div ref={setContainer} className="h-full w-full p-6">
               <AutoSizer
                 style={{ height: '100%', width: '100%' }}
                 renderProp={({ height, width }) => {

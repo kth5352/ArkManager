@@ -13,10 +13,18 @@ export function useExplorerTabsPersistence(): void {
 
   useEffect(() => {
     let cancelled = false
+    const snapshotAtMount = useExplorerStore.getState()
 
     loadExplorerTabs().then((persisted) => {
       if (cancelled) return
-      if (persisted.length > 0) {
+      // If the user already added/closed/reordered a tab during this async
+      // load (zustand's getState() returns a new object reference on every
+      // setState), the live store has already diverged from what was on
+      // disk - applying the persisted snapshot now would silently discard
+      // that in-flight action. Skip hydration in that case and let the
+      // already-changed live state stand; it'll be what gets saved back by
+      // the debounced-save effect below regardless.
+      if (persisted.length > 0 && useExplorerStore.getState() === snapshotAtMount) {
         const tabs = [...persisted]
           .sort((a, b) => a.position - b.position)
           .map(({ id, label, path }) => ({ id, label, path }))
