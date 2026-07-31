@@ -6,6 +6,7 @@ import {
   useLocaleEmulatorAvailable,
   useSetLaunchConfig,
 } from '../../services/launchService'
+import { useGameUserData } from '../../services/gameUserDataService'
 import { useBackupSaveNow, usePickSaveFolder, useSetSavePath } from '../../services/saveService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../../shared/types/ipc'
@@ -19,13 +20,26 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
   const folderPath = entry?.kind === 'folder' ? entry.path : ''
   const { data: executables } = useListExecutables(folderPath)
   const { data: leAvailable } = useLocaleEmulatorAvailable()
+  const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
   const setLaunchConfig = useSetLaunchConfig()
   const pickSaveFolder = usePickSaveFolder()
   const setSavePath = useSetSavePath()
   const backupSaveNow = useBackupSaveNow()
 
-  const [selectedExe, setSelectedExe] = useState('')
-  const [launchMode, setLaunchMode] = useState<LaunchConfigDto['launchMode']>('normal')
+  const [selectedExe, setSelectedExe] = useState(userData?.launchConfig?.executablePath ?? '')
+  const [launchMode, setLaunchMode] = useState<LaunchConfigDto['launchMode']>(
+    userData?.launchConfig?.launchMode ?? 'normal'
+  )
+  // Re-syncs from userData on every change (not hydrate-once) - this dialog
+  // is remounted per open (keyed by entry in DetailOverlay), and unlike
+  // LaunchConfigSection there's no separate-field-save race to guard
+  // against, so RatingMemoDialog's simpler always-sync pattern applies here.
+  const [syncedUserData, setSyncedUserData] = useState(userData)
+  if (userData !== syncedUserData) {
+    setSyncedUserData(userData)
+    setSelectedExe(userData?.launchConfig?.executablePath ?? '')
+    setLaunchMode(userData?.launchConfig?.launchMode ?? 'normal')
+  }
 
   const handleSaveLaunchConfig = (): void => {
     if (!entry || !selectedExe) return

@@ -20,6 +20,8 @@ export function useLocaleEmulatorAvailable() {
 }
 
 export function useSetLaunchConfig() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: ({
       entry,
@@ -28,6 +30,11 @@ export function useSetLaunchConfig() {
       entry: Pick<ScannedEntry, 'code' | 'path'>
       config: LaunchConfigDto
     }) => window.api.launch.setConfig(entry.code, entry.path, config),
+    onSuccess: (_result, { entry, config }) => {
+      queryClient.setQueryData<GameUserDataDto | null>(userDataQueryKey(entry), (prev) =>
+        prev ? { ...prev, launchConfig: config } : prev
+      )
+    },
   })
 }
 

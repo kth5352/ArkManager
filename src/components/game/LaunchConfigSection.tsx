@@ -6,6 +6,7 @@ import {
   useLocaleEmulatorAvailable,
   useSetLaunchConfig,
 } from '../../services/launchService'
+import { useGameUserData } from '../../services/gameUserDataService'
 import { useBackupSaveNow, usePickSaveFolder, useSetSavePath } from '../../services/saveService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../../shared/types/ipc'
@@ -31,13 +32,28 @@ export function LaunchConfigSection({
   const folderPath = game.kind === 'folder' ? game.path : ''
   const { data: executables } = useListExecutables(folderPath)
   const { data: leAvailable } = useLocaleEmulatorAvailable()
+  const { data: userData } = useGameUserData(game)
   const setLaunchConfig = useSetLaunchConfig()
   const pickSaveFolder = usePickSaveFolder()
   const setSavePath = useSetSavePath()
   const backupSaveNow = useBackupSaveNow()
 
-  const [selectedExe, setSelectedExe] = useState('')
-  const [launchMode, setLaunchMode] = useState<LaunchConfigDto['launchMode']>('normal')
+  const [selectedExe, setSelectedExe] = useState(userData?.launchConfig?.executablePath ?? '')
+  const [launchMode, setLaunchMode] = useState<LaunchConfigDto['launchMode']>(
+    userData?.launchConfig?.launchMode ?? 'normal'
+  )
+  // Hydrates from the already-saved config exactly once, the first time
+  // userData becomes available after mount (mirrors RatingMemoSection's
+  // hydrate-once pattern) - this section is remounted per game (keyed by
+  // path in DetailSidebar), so mount-time hydration is sufficient; unlike
+  // rating/memo there's no separate-field-save race to guard against since
+  // both fields commit together via one explicit save button.
+  const [hydrated, setHydrated] = useState(userData !== undefined)
+  if (!hydrated && userData !== undefined) {
+    setHydrated(true)
+    setSelectedExe(userData?.launchConfig?.executablePath ?? '')
+    setLaunchMode(userData?.launchConfig?.launchMode ?? 'normal')
+  }
 
   const handleSaveLaunchConfig = (): void => {
     if (!selectedExe) return

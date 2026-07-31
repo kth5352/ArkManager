@@ -44,6 +44,7 @@ export function useToggleFavorite() {
         rating: prev?.rating ?? null,
         memo: prev?.memo ?? null,
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
+        launchConfig: prev?.launchConfig ?? null,
       }))
       queryClient.invalidateQueries({ queryKey: ['game-user-data', 'favorite-keys'] })
     },
@@ -69,6 +70,7 @@ export function useSetRatingAndMemo() {
         rating,
         memo,
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
+        launchConfig: prev?.launchConfig ?? null,
       }))
     },
   })

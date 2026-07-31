@@ -212,6 +212,7 @@ export interface GameUserDataDto {
   rating: number | null
   memo: string | null
   totalPlaytimeMs: number
+  launchConfig: LaunchConfigDto | null
 }
 
 export const LaunchConfigSchema = z.object({

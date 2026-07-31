@@ -16,7 +16,10 @@ import {
   listRecentlyPlayedKeys,
   rekeyToCode,
 } from '../database/gameUserDataRepository'
-import { deletePathCodeOverride, setPathCodeOverride } from '../database/pathCodeOverridesRepository'
+import {
+  deletePathCodeOverride,
+  setPathCodeOverride,
+} from '../database/pathCodeOverridesRepository'
 import { normalizeLibraryPath } from '../database/librariesRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
@@ -28,6 +31,7 @@ function toDto(row: ReturnType<typeof getGameUserData>): GameUserDataDto | null 
     rating: row.rating,
     memo: row.memo,
     totalPlaytimeMs: row.totalPlaytimeMs,
+    launchConfig: row.launchConfig,
   }
 }
 
