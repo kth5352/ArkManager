@@ -29,4 +29,23 @@ describe('extractCode', () => {
   it('does not match a code embedded mid-word without a boundary', () => {
     expect(extractCode('COST1234.txt')).toBeNull()
   })
+
+  it('recognizes a code immediately followed by an underscore (DLsite\'s own "code_title" convention)', () => {
+    expect(extractCode('RJ01102860_타워 오브 헤븐 천사님에게서는 도망칠 수 없어!')).toEqual({
+      type: 'RJ',
+      value: 'RJ01102860',
+    })
+  })
+
+  it('recognizes a code immediately preceded by an underscore', () => {
+    expect(extractCode('작품명_RJ01102860.zip')).toEqual({ type: 'RJ', value: 'RJ01102860' })
+  })
+
+  it('recognizes a code in an asset filename joined by an underscore', () => {
+    expect(extractCode('RJ01102860_bgm01.ogg')).toEqual({ type: 'RJ', value: 'RJ01102860' })
+  })
+
+  it('still rejects a code embedded mid-word when preceded by a letter directly (no underscore)', () => {
+    expect(extractCode('XRJ0123')).toBeNull()
+  })
 })
