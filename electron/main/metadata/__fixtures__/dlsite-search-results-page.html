@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  Mirrors DLsite's real search-results markup as observed against a live
+  page (fetched 2026-07-31): each result is Vue-hydrated, so the <img> in
+  the raw HTML this app actually receives is a 1x1 lazy-load placeholder -
+  the real thumbnail URL only appears as literal text inside a Vue binding
+  attribute on a custom element, not a plain src/data-src DOM attribute. See
+  dlsiteSearchParser.ts's IMAGE_URL_PATTERN comment for why the parser scans
+  raw HTML text for it instead of querying for an <img> attribute.
+-->
+<html>
+  <head></head>
+  <body>
+    <ul id="search_result_list" class="n_worklist">
+      <li data-list_item_product_id="RJ01169914" class="search_result_img_box_inner">
+        <dl class="work_img_main">
+          <dt class="search_img work_thumb">
+            <div class="work_thumb_inner" data-vue-component="thumb-img-popup">
+              <thumb-with-ng-filter-block
+                link="https://www.dlsite.com/maniax/work/=/product_id/RJ01169914.html"
+                :thumb-candidates="['//img.dlsite.jp/resize/images2/work/doujin/RJ01170000/RJ01169914_img_main_240x240.webp']"
+              >
+                <img src="data:image/gif;base64,R0lGODlhAQABAGAAACH5BAEKAP8ALAAAAAABAAEAAAgEAP8FBAA7" />
+              </thumb-with-ng-filter-block>
+            </div>
+          </dt>
+        </dl>
+        <dl class="work_name">
+          <dt>
+            <a
+              href="https://www.dlsite.com/maniax/work/=/product_id/RJ01169914.html"
+              title="シニシスタ2 SiNiSistar2"
+              >シニシスタ2 SiNiSistar2</a
+            >
+          </dt>
+        </dl>
+        <a
+          href="https://www.dlsite.com/maniax/work/reviewlist/=/product_id/RJ01169914.html"
+          class="icon_review"
+        ></a>
+        <a
+          href="https://www.dlsite.com/maniax/cart/=/product_id/RJ01169914.html"
+          class="btn_cart"
+        ></a>
+      </li>
+      <li data-list_item_product_id="VJ01004728" class="search_result_img_box_inner">
+        <dl class="work_img_main">
+          <dt class="search_img work_thumb">
+            <div class="work_thumb_inner" data-vue-component="thumb-img-popup">
+              <thumb-with-ng-filter-block
+                link="https://www.dlsite.com/pro/work/=/product_id/VJ01004728.html"
+                :thumb-candidates="['//img.dlsite.jp/resize/images2/work/professional/VJ01005000/VJ01004728_img_main_240x240.webp']"
+              >
+                <img src="data:image/gif;base64,R0lGODlhAQABAGAAACH5BAEKAP8ALAAAAAABAAEAAAgEAP8FBAA7" />
+              </thumb-with-ng-filter-block>
+            </div>
+          </dt>
+        </dl>
+        <dl class="work_name">
+          <dt>
+            <a
+              href="https://www.dlsite.com/pro/work/=/product_id/VJ01004728.html"
+              title="サンプル作品2"
+              >サンプル作品2</a
+            >
+          </dt>
+        </dl>
+        <a
+          href="https://www.dlsite.com/pro/work/reviewlist/=/product_id/VJ01004728.html"
+          class="icon_review"
+        ></a>
+        <a
+          href="https://www.dlsite.com/pro/cart/=/product_id/VJ01004728.html"
+          class="btn_cart"
+        ></a>
+      </li>
+    </ul>
+  </body>
+</html>

@@ -1,14 +1,17 @@
 import { useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import {
   useCrawlGameMetadata,
   useGameCoverImage,
   useGameMetadata,
+  useSearchDlsite,
 } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../../components/ui/progress-bar'
 import { parseCodeInput } from './parseCodeInput'
 import type { GameCode } from '../../../shared/types/scanner'
+import type { DlsiteSearchResultDto } from '../../../shared/types/ipc'
 
 export function DlsiteSearchPage() {
   const [input, setInput] = useState('')
@@ -16,13 +19,36 @@ export function DlsiteSearchPage() {
 
   const { data: metadata, isLoading } = useGameMetadata(activeCode)
   const crawlAndSave = useCrawlGameMetadata()
+  const searchDlsite = useSearchDlsite()
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? activeCode : null)
 
-  const handleSearch = (): void => {
-    const code = parseCodeInput(input)
-    setActiveCode(code)
-    if (code) crawlAndSave.mutate(code)
+  const selectResult = (result: DlsiteSearchResultDto): void => {
+    setActiveCode(result.code)
+    crawlAndSave.mutate(result.code)
   }
+
+  const handleSearch = (): void => {
+    const trimmed = input.trim()
+    if (trimmed === '') return
+
+    const code = parseCodeInput(trimmed)
+    if (code) {
+      searchDlsite.reset()
+      setActiveCode(code)
+      crawlAndSave.mutate(code)
+      return
+    }
+
+    setActiveCode(null)
+    searchDlsite.mutate(trimmed)
+  }
+
+  // Only true once a title search actually ran and hasn't been superseded -
+  // selecting a result or entering a direct code moves on to the detail
+  // view instead (activeCode becomes non-null), without needing to clear
+  // searchDlsite's own cached data (still used by the "검색 결과로 돌아가기"
+  // back link below).
+  const showingResultsList = activeCode === null && searchDlsite.data !== undefined
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
@@ -36,10 +62,56 @@ export function DlsiteSearchPage() {
         <Button onClick={handleSearch}>검색</Button>
       </div>
 
-      {!activeCode && input.trim() !== '' && (
-        <p className="text-sm text-muted-foreground">
-          제목 검색은 아직 지원하지 않습니다 — RJ/VJ 코드를 입력해 주세요.
-        </p>
+      {activeCode && searchDlsite.data !== undefined && (
+        <button
+          className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+          onClick={() => setActiveCode(null)}
+        >
+          <ArrowLeft className="h-3 w-3" />
+          검색 결과로 돌아가기
+        </button>
+      )}
+
+      {searchDlsite.isPending && (
+        <div className="flex max-w-xs flex-col gap-1">
+          <IndeterminateProgressBar />
+          <p className="text-xs text-muted-foreground">DLsite에서 검색하는 중...</p>
+        </div>
+      )}
+
+      {searchDlsite.isError && (
+        <p className="text-sm text-muted-foreground">검색 중 오류가 발생했습니다.</p>
+      )}
+
+      {showingResultsList && searchDlsite.data!.length === 0 && (
+        <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
+      )}
+
+      {showingResultsList && searchDlsite.data!.length > 0 && (
+        <div className="flex flex-col gap-1 overflow-auto">
+          {searchDlsite.data!.map((result) => (
+            <button
+              key={result.code.value}
+              onClick={() => selectResult(result)}
+              className="flex items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-accent"
+            >
+              <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted">
+                {result.thumbnailUrl && (
+                  <img
+                    src={result.thumbnailUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                )}
+              </div>
+              <div className="flex flex-col gap-0.5 text-sm">
+                <p className="font-medium">{result.title}</p>
+                <p className="text-xs text-muted-foreground">{result.code.value}</p>
+              </div>
+            </button>
+          ))}
+        </div>
       )}
 
       {crawlAndSave.isPending && (

@@ -5,10 +5,12 @@ import {
   GetMetadataRequestSchema,
   GetManyMetadataRequestSchema,
   GetCoverImageRequestSchema,
+  SearchDlsiteRequestSchema,
   IPC_CHANNELS,
   type GameMetadataDto,
 } from '../../../shared/types/ipc'
 import { crawlGameMetadata } from '../metadata/crawlGameMetadata'
+import { crawlDlsiteSearch } from '../metadata/crawlDlsiteSearch'
 import { cacheCoverImage } from '../metadata/cacheCoverImage'
 import {
   getGameMetadata,
@@ -78,5 +80,10 @@ export function registerMetadataHandlers(db: AppDatabase): void {
     if (!row?.coverImagePath) return null
 
     return encodeThumbnail(row.coverImagePath).catch(() => null)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_DLSITE, async (_event, payload: unknown) => {
+    const { query } = SearchDlsiteRequestSchema.parse(payload)
+    return crawlDlsiteSearch(query)
   })
 }

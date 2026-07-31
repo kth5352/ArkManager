@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   IPC_CHANNELS,
+  type DlsiteSearchResultDto,
   type GameMetadataDto,
   type GameUserDataDto,
   type LaunchConfigDto,
@@ -88,6 +89,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_MANY, { codes }),
     getCoverImage: (code: GameCode): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_COVER_IMAGE, { code }),
+    searchDlsite: (query: string): Promise<DlsiteSearchResultDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_DLSITE, { query }),
   },
   gameUserData: {
     get: (code: GameCode | null, path: string): Promise<GameUserDataDto | null> =>

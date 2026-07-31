@@ -25,6 +25,7 @@ export const IPC_CHANNELS = {
   METADATA_GET: 'metadata:get',
   METADATA_GET_MANY: 'metadata:get-many',
   METADATA_GET_COVER_IMAGE: 'metadata:get-cover-image',
+  METADATA_SEARCH_DLSITE: 'metadata:search-dlsite',
   GAME_USER_DATA_GET: 'game-user-data:get',
   GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
   GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
@@ -166,6 +167,17 @@ export const GetCoverImageRequestSchema = z.object({
   code: GameCodeSchema,
 })
 export type GetCoverImageRequest = z.infer<typeof GetCoverImageRequestSchema>
+
+export const SearchDlsiteRequestSchema = z.object({
+  query: z.string(),
+})
+export type SearchDlsiteRequest = z.infer<typeof SearchDlsiteRequestSchema>
+
+export interface DlsiteSearchResultDto {
+  code: z.infer<typeof GameCodeSchema>
+  title: string
+  thumbnailUrl: string | null
+}
 
 export interface GameMetadataDto {
   code: string

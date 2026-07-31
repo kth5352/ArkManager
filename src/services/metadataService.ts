@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GameCode } from '../../shared/types/scanner'
-import type { GameMetadataDto } from '../../shared/types/ipc'
+import type { DlsiteSearchResultDto, GameMetadataDto } from '../../shared/types/ipc'
 
 function metadataQueryKey(code: GameCode) {
   return ['metadata', code.value] as const
@@ -27,6 +27,13 @@ export function useGameCoverImage(code: GameCode | null) {
     queryKey: code ? ['metadata', 'cover-image', code.value] : ['metadata', 'cover-image', 'none'],
     queryFn: () => window.api.metadata.getCoverImage(code!),
     enabled: code !== null,
+  })
+}
+
+export function useSearchDlsite() {
+  return useMutation({
+    mutationFn: (query: string): Promise<DlsiteSearchResultDto[]> =>
+      window.api.metadata.searchDlsite(query),
   })
 }
 
