@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Star } from 'lucide-react'
 import { useGameUserData, useSetRatingAndMemo } from '../../services/gameUserDataService'
-import type { GameUserDataDto } from '../../../shared/types/ipc'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface RatingMemoSectionProps {
@@ -19,11 +18,23 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
 
   const [rating, setRating] = useState<number | null>(userData?.rating ?? null)
   const [memo, setMemo] = useState(userData?.memo ?? '')
-  const [syncedUserData, setSyncedUserData] = useState<GameUserDataDto | null | undefined>(userData)
+  // Hydrates local state from userData exactly once - the first time it
+  // becomes available after mount (userData arrives asynchronously; it may
+  // still be undefined on the very first render). After that, local state
+  // is authoritative: it's already updated synchronously on every user edit
+  // (star click, textarea onChange), with the write already sent via
+  // mutate(). Re-syncing from every subsequent userData cache update (as
+  // RatingMemoDialog.tsx does, safely, since that dialog closes after its
+  // one save) would clobber a fresher local edit with a stale echo whenever
+  // this section's own rating-save and memo-save race each other - both go
+  // through the same combined useSetRatingAndMemo mutation, so a save
+  // triggered by one field can resolve after the user has already changed
+  // the other.
+  const [hydrated, setHydrated] = useState(userData !== undefined)
   const [justSaved, setJustSaved] = useState(false)
 
-  if (userData !== syncedUserData) {
-    setSyncedUserData(userData)
+  if (!hydrated && userData !== undefined) {
+    setHydrated(true)
     setRating(userData?.rating ?? null)
     setMemo(userData?.memo ?? '')
   }
