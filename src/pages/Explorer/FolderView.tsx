@@ -10,6 +10,8 @@ import { useExplorerStore } from '../../stores/explorerStore'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useFolderScan, useFolderScanRecursive } from '../../services/scannerService'
+import { useLaunchGame } from '../../services/launchService'
+import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -39,11 +41,16 @@ function FolderEntryContextMenu({
   const openExternal = useOpenExternal()
   const showItemInFolder = useShowItemInFolder()
   const crawlMetadata = useCrawlGameMetadata()
+  const launchGame = useLaunchGame()
+  const { data: userData } = useGameUserData(entry)
+  const toggleFavorite = useToggleFavorite()
 
   if (entry.code) {
     return (
       <ContextMenuContent>
-        <ContextMenuItem onSelect={() => console.log('launch', entry.path)}>실행</ContextMenuItem>
+        {entry.kind === 'folder' && (
+          <ContextMenuItem onSelect={() => launchGame.mutate(entry)}>실행</ContextMenuItem>
+        )}
         <ContextMenuItem onSelect={() => entry.code && openExternal.mutate(entry.code)}>
           DLsite 페이지 열기
         </ContextMenuItem>
@@ -65,15 +72,14 @@ function FolderEntryContextMenu({
         <ContextMenuItem onSelect={() => console.log('extract archive', entry.path)}>
           압축 해제
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('toggle favorite', entry.path)}>
-          즐겨찾기 설정
+        <ContextMenuItem
+          onSelect={() =>
+            toggleFavorite.mutate({ entry, isFavorite: !(userData?.isFavorite ?? false) })
+          }
+        >
+          {userData?.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 설정'}
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('edit memo', entry.path)}>
-          메모 설정
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('set rating', entry.path)}>
-          평점 설정
-        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>평점/메모</ContextMenuItem>
       </ContextMenuContent>
     )
   }

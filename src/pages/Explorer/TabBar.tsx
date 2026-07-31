@@ -8,6 +8,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { FolderOpen, Plus, X } from 'lucide-react'
 import {
@@ -28,6 +29,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
   const closeOtherTabs = useExplorerStore((s) => s.closeOtherTabs)
   const duplicateTab = useExplorerStore((s) => s.duplicateTab)
   const showItemInFolder = useShowItemInFolder()
+  const queryClient = useQueryClient()
 
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: tab.id })
   const style = { transform: CSS.Transform.toString(transform), transition }
@@ -67,7 +69,12 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
         <ContextMenuItem onSelect={() => closeTab(tab.id)}>탭 닫기</ContextMenuItem>
         <ContextMenuItem onSelect={() => closeOtherTabs(tab.id)}>다른 탭 모두 닫기</ContextMenuItem>
         <ContextMenuItem onSelect={() => duplicateTab(tab.id)}>탭 복제</ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('refresh folder', tab.path)}>
+        <ContextMenuItem
+          onSelect={() => {
+            queryClient.invalidateQueries({ queryKey: ['folder-scan', tab.path] })
+            queryClient.invalidateQueries({ queryKey: ['folder-scan-recursive', tab.path] })
+          }}
+        >
           이 폴더 새로고침
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => showItemInFolder.mutate(tab.path)}>
