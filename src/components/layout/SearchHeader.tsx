@@ -51,7 +51,17 @@ export function SearchHeader({
           isExpanded ? 'w-64' : 'w-8'
         }`}
       >
-        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <button
+          type="button"
+          aria-label="검색창 열기"
+          onClick={() => {
+            setExpanded(true)
+            inputRef.current?.focus()
+          }}
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <Search className="h-4 w-4" />
+        </button>
         <Input
           ref={inputRef}
           value={query}
