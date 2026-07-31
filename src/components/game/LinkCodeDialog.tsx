@@ -69,8 +69,7 @@ export function LinkCodeDialog({ entry, onClose }: LinkCodeDialogProps) {
           <>
             <p className="text-sm">
               <span className="font-medium">{parsedCode?.value}</span>(으)로 연동합니다. 잘못
-              연동했다면 나중에 상세 화면의 &quot;연동 해제&quot;로 연동을 해제할 수
-              있습니다.
+              연동했다면 나중에 상세 화면의 &quot;연동 해제&quot;로 연동을 해제할 수 있습니다.
             </p>
             {linkCode.isError && (
               <p className="text-xs text-destructive">연동에 실패했습니다. 다시 시도해주세요.</p>

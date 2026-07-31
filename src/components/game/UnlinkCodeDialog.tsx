@@ -27,9 +27,9 @@ export function UnlinkCodeDialog({ entry, onClose }: UnlinkCodeDialogProps) {
           폴더는 다시 코드없는 항목으로 표시됩니다.
         </p>
         <p className="text-xs text-muted-foreground">
-          지금까지 쌓인 즐겨찾기·평점·메모·플레이타임 기록은 삭제되지 않고{' '}
-          {entry?.code?.value} 코드에 그대로 남습니다. 같은 코드로 다시 연동하면 기록이
-          복원되지만, 다른 코드로 연동하면 이 기록을 다시 찾을 수 없게 됩니다.
+          지금까지 쌓인 즐겨찾기·평점·메모·플레이타임 기록은 삭제되지 않고 {entry?.code?.value}{' '}
+          코드에 그대로 남습니다. 같은 코드로 다시 연동하면 기록이 복원되지만, 다른 코드로 연동하면
+          이 기록을 다시 찾을 수 없게 됩니다.
         </p>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={onClose}>

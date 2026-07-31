@@ -32,9 +32,22 @@ export function useGameDetailOverlay(entries: ScannedEntry[]): {
     setSelectedPath(entry.path)
   }
 
-  const selectedGame = selectedPath
-    ? (entries.find((e) => e.path === selectedPath) ?? null)
-    : null
+  const selectedGame = selectedPath ? (entries.find((e) => e.path === selectedPath) ?? null) : null
+
+  // A controlled Dialog's onOpenChange only fires on user-initiated closes
+  // (Escape/outside click/close button), not when `open` flips to false
+  // because selectedGame itself went null (e.g. the entry left `entries`
+  // after an unlink). Adjusting selectedPath here during render - rather
+  // than in an effect - is React's documented pattern for this
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes):
+  // it terminates after one extra render because the next pass has
+  // selectedPath already null, so the condition can't hold twice. Without
+  // this, selectedPath would stay pointing at the now-absent path, and the
+  // overlay could silently reopen later if that same path ever reappears in
+  // `entries` without a fresh openDetail() call.
+  if (selectedPath && !selectedGame) {
+    setSelectedPath(null)
+  }
 
   return {
     openDetail,
