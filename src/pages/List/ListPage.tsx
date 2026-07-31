@@ -146,7 +146,7 @@ export function ListPage() {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
-  const { openDetail, detailOverlayElement } = useGameDetailOverlay()
+  const { openDetail, detailOverlayElement } = useGameDetailOverlay(games ?? [])
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -157,7 +157,7 @@ export function ListPage() {
     )
   }
 
-  if (isError) {
+  if (isError && !games) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
         라이브러리를 스캔하는 중 오류가 발생했습니다.

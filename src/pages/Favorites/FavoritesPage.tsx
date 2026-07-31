@@ -7,7 +7,7 @@ export function FavoritesPage() {
   const { data: games, isLoading: gamesLoading, isError: gamesError } = useGames()
   const { data: favoriteKeys, isLoading: keysLoading } = useFavoriteKeys()
 
-  if (gamesError) {
+  if (gamesError && !games) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         라이브러리를 스캔하는 중 오류가 발생했습니다.

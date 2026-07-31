@@ -142,7 +142,6 @@ function FolderEntryRow({
 }
 
 export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
-  const { openDetail, detailOverlayElement } = useGameDetailOverlay()
   const addTab = useExplorerStore((s) => s.addTab)
   const breadcrumbs = pathToBreadcrumbSegments(path)
 
@@ -163,6 +162,11 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
     isLoading: isSearchLoading,
     isError: isSearchError,
   } = useFolderScanRecursive(path, { enabled: isSearching })
+
+  const { openDetail, detailOverlayElement } = useGameDetailOverlay([
+    ...shallowEntries,
+    ...recursiveEntries,
+  ])
 
   const codes = recursiveEntries.flatMap((e) => (e.code ? [e.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)

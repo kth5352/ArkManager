@@ -16,20 +16,30 @@ import type { ScannedEntry } from '../../shared/types/scanner'
 // type every render, causing React to unmount/remount DetailOverlay (and
 // lose all its in-progress dialog state) on every re-render of the host
 // page, e.g. a React Query refetch on window refocus.
-export function useGameDetailOverlay(): {
+//
+// entries is the host page's current live scan/query result(s). Only the
+// opened path is kept in state; the entry itself is re-derived from
+// entries on every render, so a mutation elsewhere (e.g. link/unlink
+// invalidating the games query) is reflected in the open overlay without
+// requiring it to be closed and reopened.
+export function useGameDetailOverlay(entries: ScannedEntry[]): {
   openDetail: (entry: ScannedEntry) => void
   detailOverlayElement: JSX.Element
 } {
-  const [selectedGame, setSelectedGame] = useState<ScannedEntry | null>(null)
+  const [selectedPath, setSelectedPath] = useState<string | null>(null)
 
   const openDetail = (entry: ScannedEntry): void => {
-    setSelectedGame(entry)
+    setSelectedPath(entry.path)
   }
+
+  const selectedGame = selectedPath
+    ? (entries.find((e) => e.path === selectedPath) ?? null)
+    : null
 
   return {
     openDetail,
     detailOverlayElement: (
-      <DetailOverlay game={selectedGame} onClose={() => setSelectedGame(null)} />
+      <DetailOverlay game={selectedGame} onClose={() => setSelectedPath(null)} />
     ),
   }
 }
