@@ -148,6 +148,28 @@ describe('scanLibraryRecursive', () => {
     expect(entries.map((e) => e.name)).toEqual(['MyGame'])
   })
 
+  it('excludes image files entirely, even when their filename carries a recognizable code', async () => {
+    await writeFile(join(dir, 'cover.jpg'), '')
+    await writeFile(join(dir, 'RJ01111_cover.png'), '')
+    await writeFile(join(dir, 'RJ01111.zip'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
+  })
+
+  it('collapses a code-less folder when a code is repeated across several children (a shared asset-naming convention, not separate games)', async () => {
+    // Mirrors many DLsite voice-heavy games, where every audio file is
+    // named with the game's own code - MyGame's own name has no code, but
+    // its voice files (and DS_SYS.SAV) shouldn't leak individually.
+    await mkdir(join(dir, 'MyGame'))
+    await writeFile(join(dir, 'MyGame', 'RJ01234567_v001.ogg'), '')
+    await writeFile(join(dir, 'MyGame', 'RJ01234567_v002.ogg'), '')
+    await writeFile(join(dir, 'MyGame', 'DS_SYS.SAV'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['MyGame'])
+  })
+
   it('still walks a pure code-less container folder to find the game folder nested inside it', async () => {
     // "Circle" has no files directly (only the MyGame subfolder), so it's
     // still walked into - MyGame has a file directly (game.exe) alongside
