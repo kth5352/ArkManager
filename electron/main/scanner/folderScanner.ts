@@ -67,6 +67,25 @@ function isImageFile(name: string): boolean {
   return IMAGE_EXTENSIONS.has(name.slice(dotIndex).toLowerCase())
 }
 
+// Like scanFolderShallow, but for scanLibraryRecursive's internal use only:
+// images are filtered out of `names` before stat() is ever called on them
+// (never worth the syscall - see isImageFile), and the result doubles as
+// both a folder's classification signal (classifyChildren below) and the
+// starting point for recursing into it, so each folder in the tree is only
+// read once no matter how deep the recursion goes.
+async function scanNonImageChildren(
+  dirPath: string,
+  overrides: Map<string, string>
+): Promise<ScannedEntry[]> {
+  const names = await readdir(dirPath)
+  const entries = await Promise.all(
+    names
+      .filter((name) => !isImageFile(name))
+      .map((name) => toScannedEntry(dirPath, name, overrides))
+  )
+  return entries.filter(isScannedEntry)
+}
+
 // Distinguishes a code-less folder that's a real wrapper holding at least
 // one individually-identifiable game (a code that appears on exactly one
 // child - e.g. a single loose "RJ01234567.zip" archive sitting beside an
@@ -84,28 +103,19 @@ function isImageFile(name: string): boolean {
 // collapses into a single leaf instead of exposing its contents
 // individually. A folder with zero direct files but only subfolders is
 // still walked either way - that's the shape of a circle/category folder
-// holding further category or game folders. Reuses scanFolderShallow
-// rather than a raw readdir so failed-to-stat children are tolerated the
-// same way the rest of this module already handles them.
-async function classifyCodelessFolder(
-  dirPath: string,
-  overrides: Map<string, string>
-): Promise<{ hasSingletonCodedChild: boolean; hasDirectFile: boolean }> {
-  try {
-    const children = (await scanFolderShallow(dirPath, overrides)).filter(
-      (c) => !isImageFile(c.name)
-    )
-    const codeCounts = new Map<string, number>()
-    for (const child of children) {
-      if (!child.code) continue
-      codeCounts.set(child.code.value, (codeCounts.get(child.code.value) ?? 0) + 1)
-    }
-    return {
-      hasSingletonCodedChild: [...codeCounts.values()].some((count) => count === 1),
-      hasDirectFile: children.some((c) => c.kind === 'file'),
-    }
-  } catch {
-    return { hasSingletonCodedChild: false, hasDirectFile: false }
+// holding further category or game folders.
+function classifyChildren(children: ScannedEntry[]): {
+  hasSingletonCodedChild: boolean
+  hasDirectFile: boolean
+} {
+  const codeCounts = new Map<string, number>()
+  for (const child of children) {
+    if (!child.code) continue
+    codeCounts.set(child.code.value, (codeCounts.get(child.code.value) ?? 0) + 1)
+  }
+  return {
+    hasSingletonCodedChild: [...codeCounts.values()].some((count) => count === 1),
+    hasDirectFile: children.some((c) => c.kind === 'file'),
   }
 }
 
@@ -135,32 +145,17 @@ export async function scanFolderShallow(
   return entries.filter(isScannedEntry)
 }
 
-// Gallery/List: recursively walks the entire library tree. Coded entries
-// (file or folder) are leaves - matched, not walked further. Code-less
-// files are included too (code: null) rather than dropped, per the
-// 코드없는 파일 노출 decision - but only when found directly inside a folder
-// that turns out to be a genuine multi-game container (see
-// classifyCodelessFolder). A code-less folder with at least one direct
-// file and no singleton-coded child is itself treated as a leaf instead
-// of being walked - so a game's own internal files (save data, repeated
-// same-code audio assets, engine files) never get exposed as individual
-// entries just because the game folder wasn't given a recognizable code.
-// A pure code-less subfolder hierarchy (no direct files at all) is still
-// walked, since that's a circle/category folder rather than a game's own
-// root. Images are skipped entirely - see isImageFile.
-export async function scanLibraryRecursive(
-  libraryPath: string,
-  overrides: Map<string, string> = new Map()
+// Shared by scanLibraryRecursive's entry point and its own recursive step -
+// `children` is always a folder's freshly-read (and already stat()ed)
+// direct children, computed exactly once by the caller via
+// scanNonImageChildren, never re-read here.
+async function scanChildren(
+  children: ScannedEntry[],
+  overrides: Map<string, string>
 ): Promise<ScannedEntry[]> {
-  const names = await readdir(libraryPath)
   const results: ScannedEntry[] = []
 
-  for (const name of names) {
-    if (isImageFile(name)) continue
-
-    const entry = await toScannedEntry(libraryPath, name, overrides)
-    if (!entry) continue
-
+  for (const entry of children) {
     if (entry.code) {
       results.push(entry)
       continue
@@ -176,25 +171,46 @@ export async function scanLibraryRecursive(
     // as a leaf that just isn't walked, like a coded folder above.
     if (await isSymbolicLink(entry.path)) continue
 
-    const { hasSingletonCodedChild, hasDirectFile } = await classifyCodelessFolder(
-      entry.path,
-      overrides
-    )
-    if (hasDirectFile && !hasSingletonCodedChild) {
-      results.push(entry)
-      continue
-    }
-
+    let nestedChildren: ScannedEntry[]
     try {
-      const nested = await scanLibraryRecursive(entry.path, overrides)
-      results.push(...nested)
+      nestedChildren = await scanNonImageChildren(entry.path, overrides)
     } catch {
       // Subfolder became unreadable mid-scan (permission error, race, or
       // a race with deletion) - skip this branch only, sibling branches
       // still scan normally.
       continue
     }
+
+    const { hasSingletonCodedChild, hasDirectFile } = classifyChildren(nestedChildren)
+    if (hasDirectFile && !hasSingletonCodedChild) {
+      results.push(entry)
+      continue
+    }
+
+    const nested = await scanChildren(nestedChildren, overrides)
+    results.push(...nested)
   }
 
   return results
+}
+
+// Gallery/List: recursively walks the entire library tree. Coded entries
+// (file or folder) are leaves - matched, not walked further. Code-less
+// files are included too (code: null) rather than dropped, per the
+// 코드없는 파일 노출 decision - but only when found directly inside a folder
+// that turns out to be a genuine multi-game container (see
+// classifyChildren). A code-less folder with at least one direct file and
+// no singleton-coded child is itself treated as a leaf instead of being
+// walked - so a game's own internal files (save data, repeated same-code
+// audio assets, engine files) never get exposed as individual entries just
+// because the game folder wasn't given a recognizable code. A pure
+// code-less subfolder hierarchy (no direct files at all) is still walked,
+// since that's a circle/category folder rather than a game's own root.
+// Images are skipped entirely - see isImageFile.
+export async function scanLibraryRecursive(
+  libraryPath: string,
+  overrides: Map<string, string> = new Map()
+): Promise<ScannedEntry[]> {
+  const children = await scanNonImageChildren(libraryPath, overrides)
+  return scanChildren(children, overrides)
 }

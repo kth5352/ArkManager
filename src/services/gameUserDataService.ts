@@ -15,6 +15,15 @@ export function useGameUserData(entry: Pick<ScannedEntry, 'code' | 'path'>) {
   return useQuery<GameUserDataDto | null>({
     queryKey: userDataQueryKey(entry),
     queryFn: () => window.api.gameUserData.get(entry.code, entry.path),
+    // Without this, react-window remounts a "new" card component for every
+    // row that scrolls into view, and staleTime: 0's default refetch-on-mount
+    // fires a fresh IPC + SQLite read per card on every scroll tick, even for
+    // entries already fetched moments earlier. Mutations (useToggleFavorite,
+    // useSetRatingAndMemo) already update this cache directly via
+    // setQueryData, so a stale read is never user-visible from this app's
+    // own actions - only an edit made outside the app while it's open could
+    // lag behind, which is an acceptable tradeoff.
+    staleTime: 5 * 60_000,
   })
 }
 
