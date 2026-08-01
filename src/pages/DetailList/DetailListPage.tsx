@@ -116,7 +116,7 @@ function ColumnResizeHandle({ onResize }: { onResize: (deltaX: number) => void }
       // right where a user's cursor naturally lands on the boundary.
       className="group absolute right-0 top-0 z-10 flex h-full w-3 shrink-0 cursor-col-resize justify-end"
     >
-      <div className="pointer-events-none h-full w-px group-hover:bg-primary/40" />
+      <div className="pointer-events-none h-full w-0.5 bg-muted-foreground/40 group-hover:bg-primary" />
     </div>
   )
 }
