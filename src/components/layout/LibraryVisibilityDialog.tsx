@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '../ui/button'
 import { useLibraries } from '../../services/librariesService'
 import { useLibraryVisibilityStore } from '../../stores/libraryVisibilityStore'
+import { useTranslation } from '../../i18n/useTranslation'
 
 // Hidden entirely with 0-1 registered libraries - nothing to choose between.
 export function LibraryVisibilityDialog() {
+  const { t } = useTranslation()
   const { data: libraries } = useLibraries()
   const hiddenLibraryIds = useLibraryVisibilityStore((s) => s.hiddenLibraryIds)
   const toggleLibrary = useLibraryVisibilityStore((s) => s.toggleLibrary)
@@ -19,15 +21,15 @@ export function LibraryVisibilityDialog() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="라이브러리 표시 설정"
-          title="라이브러리 표시 설정"
+          aria-label={t('library.visibilitySettings')}
+          title={t('library.visibilitySettings')}
         >
           <LibraryIcon className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>표시할 라이브러리</DialogTitle>
+          <DialogTitle>{t('library.visibleLibraries')}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-2">
           {libraries.map((library) => (
@@ -43,7 +45,7 @@ export function LibraryVisibilityDialog() {
           ))}
         </div>
         <Button variant="secondary" size="sm" onClick={showAll} className="w-fit">
-          모두 표시
+          {t('library.showAll')}
         </Button>
       </DialogContent>
     </Dialog>

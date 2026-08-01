@@ -4,6 +4,7 @@ import { RenameDialog } from '../game/RenameDialog'
 import { DeleteConfirmDialog } from '../game/DeleteConfirmDialog'
 import { MoveDialog } from '../game/MoveDialog'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface SelectionToolbarProps {
@@ -17,6 +18,7 @@ interface SelectionToolbarProps {
 // full selection cluster ending in "취소", so both states read as
 // consistently anchored to the top-right rather than jumping position.
 export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
+  const { t } = useTranslation()
   const isActive = useSelectionStore((s) => s.isActive)
   const selectedPaths = useSelectionStore((s) => s.selectedPaths)
   const activate = useSelectionStore((s) => s.activate)
@@ -27,7 +29,7 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
   if (!isActive) {
     return (
       <Button size="sm" variant="ghost" className="ml-auto" onClick={() => activate()}>
-        선택
+        {t('selection.select')}
       </Button>
     )
   }
@@ -42,9 +44,11 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
   return (
     <>
       <div className="ml-auto flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
-        <span className="mr-1 text-muted-foreground">{selectedPaths.size}개 선택됨</span>
+        <span className="mr-1 text-muted-foreground">
+          {t('selection.selectedCount', { count: selectedPaths.size })}
+        </span>
         <Button size="sm" variant="ghost" onClick={() => selectAll(allEntries.map((e) => e.path))}>
-          전체 선택
+          {t('selection.selectAll')}
         </Button>
         <Button
           size="sm"
@@ -52,7 +56,7 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
           onClick={() => setDialogMode('rename')}
           disabled={selectedPaths.size === 0}
         >
-          이름 변경
+          {t('selection.rename')}
         </Button>
         <Button
           size="sm"
@@ -60,7 +64,7 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
           onClick={() => setDialogMode('move')}
           disabled={selectedPaths.size === 0}
         >
-          이동
+          {t('selection.move')}
         </Button>
         <Button
           size="sm"
@@ -68,10 +72,10 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
           onClick={() => setDialogMode('delete')}
           disabled={selectedPaths.size === 0}
         >
-          삭제
+          {t('common.delete')}
         </Button>
         <Button size="sm" variant="ghost" onClick={deactivate}>
-          취소
+          {t('common.cancel')}
         </Button>
       </div>
       <RenameDialog

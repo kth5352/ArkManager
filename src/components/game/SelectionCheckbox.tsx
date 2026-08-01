@@ -1,4 +1,5 @@
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useTranslation } from '../../i18n/useTranslation'
 
 interface SelectionCheckboxProps {
   path: string
@@ -6,6 +7,7 @@ interface SelectionCheckboxProps {
 }
 
 export function SelectionCheckbox({ path, className }: SelectionCheckboxProps) {
+  const { t } = useTranslation()
   const isActive = useSelectionStore((s) => s.isActive)
   const isSelected = useSelectionStore((s) => s.selectedPaths.has(path))
   const toggle = useSelectionStore((s) => s.toggle)
@@ -18,7 +20,7 @@ export function SelectionCheckbox({ path, className }: SelectionCheckboxProps) {
   return (
     <input
       type="checkbox"
-      aria-label="선택"
+      aria-label={t('selection.select')}
       checked={isSelected}
       onClick={(e) => e.stopPropagation()}
       onChange={() => toggle(path)}

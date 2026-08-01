@@ -1,5 +1,7 @@
 import { Archive, FolderOpen, Layers } from 'lucide-react'
 import { Button } from '../ui/button'
+import { useTranslation } from '../../i18n/useTranslation'
+import type { TranslationKey } from '../../i18n/translations'
 import type { FileKindFilter } from '../../lib/filterEntries'
 
 interface FileKindFilterToggleProps {
@@ -7,23 +9,25 @@ interface FileKindFilterToggleProps {
   onChange: (value: FileKindFilter) => void
 }
 
-const OPTIONS: { value: FileKindFilter; label: string; icon: typeof Layers }[] = [
-  { value: 'all', label: '전체', icon: Layers },
-  { value: 'archive-only', label: '압축파일만', icon: Archive },
-  { value: 'no-archive', label: '압축파일 제외', icon: FolderOpen },
+const OPTIONS: { value: FileKindFilter; labelKey: TranslationKey; icon: typeof Layers }[] = [
+  { value: 'all', labelKey: 'fileKind.all', icon: Layers },
+  { value: 'archive-only', labelKey: 'fileKind.archiveOnly', icon: Archive },
+  { value: 'no-archive', labelKey: 'fileKind.noArchive', icon: FolderOpen },
 ]
 
 export function FileKindFilterToggle({ value, onChange }: FileKindFilterToggleProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
-      {OPTIONS.map(({ value: optionValue, label, icon: Icon }) => (
+      {OPTIONS.map(({ value: optionValue, labelKey, icon: Icon }) => (
         <Button
           key={optionValue}
           type="button"
           variant={value === optionValue ? 'secondary' : 'ghost'}
           size="sm"
-          title={label}
-          aria-label={label}
+          title={t(labelKey)}
+          aria-label={t(labelKey)}
           onClick={() => onChange(optionValue)}
           className="h-7 px-2"
         >

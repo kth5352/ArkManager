@@ -57,6 +57,40 @@ const ko = {
   'settings.pickLeProcPath': 'LEProc.exe 위치 지정',
   'settings.specifiedPath': '지정된 경로:',
   'settings.language': '언어',
+
+  'search.openSearch': '검색창 열기',
+  'search.placeholder': '제목, 장르, 서클명, 코드로 검색',
+  'search.tagFilterPlaceholder': '태그 필터 (-태그는 제외)',
+  'search.removeIncludeFilter': '{genre} 필터 제거',
+  'search.removeExcludeFilter': '{genre} 제외 필터 제거',
+  'search.clearFilters': '필터 해제',
+
+  'fileKind.all': '전체',
+  'fileKind.archiveOnly': '압축파일만',
+  'fileKind.noArchive': '압축파일 제외',
+
+  'scan.progressWithCount': '{count}개 항목 스캔 중...',
+  'scan.progress': '스캔 중...',
+
+  'library.visibilitySettings': '라이브러리 표시 설정',
+  'library.visibleLibraries': '표시할 라이브러리',
+  'library.showAll': '모두 표시',
+
+  'bulkCrawl.fetching': 'DLsite 정보 가져오는 중... ({completed}/{total})',
+
+  'pageToolbar.name': '이름',
+  'pageToolbar.mtime': '변경시간',
+  'pageToolbar.extension': '확장자',
+  'pageToolbar.toggleSortDirection': '정렬 방향 전환',
+
+  'duplicatesOnly.label': '중복만',
+  'duplicatesOnly.tooltip': '중복만 보기',
+
+  'selection.select': '선택',
+  'selection.selectedCount': '{count}개 선택됨',
+  'selection.selectAll': '전체 선택',
+  'selection.rename': '이름 변경',
+  'selection.move': '이동',
 } as const
 
 const ja: Record<keyof typeof ko, string> = {
@@ -110,6 +144,40 @@ const ja: Record<keyof typeof ko, string> = {
   'settings.pickLeProcPath': 'LEProc.exeの場所を指定',
   'settings.specifiedPath': '指定されたパス:',
   'settings.language': '言語',
+
+  'search.openSearch': '検索ボックスを開く',
+  'search.placeholder': 'タイトル、ジャンル、サークル名、コードで検索',
+  'search.tagFilterPlaceholder': 'タグフィルター（-タグで除外）',
+  'search.removeIncludeFilter': '{genre}フィルターを削除',
+  'search.removeExcludeFilter': '{genre}除外フィルターを削除',
+  'search.clearFilters': 'フィルター解除',
+
+  'fileKind.all': 'すべて',
+  'fileKind.archiveOnly': '圧縮ファイルのみ',
+  'fileKind.noArchive': '圧縮ファイルを除外',
+
+  'scan.progressWithCount': '{count}件スキャン中...',
+  'scan.progress': 'スキャン中...',
+
+  'library.visibilitySettings': 'ライブラリ表示設定',
+  'library.visibleLibraries': '表示するライブラリ',
+  'library.showAll': 'すべて表示',
+
+  'bulkCrawl.fetching': 'DLsite情報を取得中... ({completed}/{total})',
+
+  'pageToolbar.name': '名前',
+  'pageToolbar.mtime': '更新日時',
+  'pageToolbar.extension': '拡張子',
+  'pageToolbar.toggleSortDirection': '並べ替え方向を切り替え',
+
+  'duplicatesOnly.label': '重複のみ',
+  'duplicatesOnly.tooltip': '重複のみ表示',
+
+  'selection.select': '選択',
+  'selection.selectedCount': '{count}件選択',
+  'selection.selectAll': 'すべて選択',
+  'selection.rename': '名前変更',
+  'selection.move': '移動',
 }
 
 const en: Record<keyof typeof ko, string> = {
@@ -164,6 +232,40 @@ const en: Record<keyof typeof ko, string> = {
   'settings.pickLeProcPath': 'Set LEProc.exe Location',
   'settings.specifiedPath': 'Specified path:',
   'settings.language': 'Language',
+
+  'search.openSearch': 'Open search',
+  'search.placeholder': 'Search by title, genre, circle, or code',
+  'search.tagFilterPlaceholder': 'Tag filter (-tag to exclude)',
+  'search.removeIncludeFilter': 'Remove {genre} filter',
+  'search.removeExcludeFilter': 'Remove {genre} exclude filter',
+  'search.clearFilters': 'Clear filters',
+
+  'fileKind.all': 'All',
+  'fileKind.archiveOnly': 'Archives only',
+  'fileKind.noArchive': 'Exclude archives',
+
+  'scan.progressWithCount': 'Scanning {count} items...',
+  'scan.progress': 'Scanning...',
+
+  'library.visibilitySettings': 'Library visibility',
+  'library.visibleLibraries': 'Visible libraries',
+  'library.showAll': 'Show all',
+
+  'bulkCrawl.fetching': 'Fetching DLsite info... ({completed}/{total})',
+
+  'pageToolbar.name': 'Name',
+  'pageToolbar.mtime': 'Modified',
+  'pageToolbar.extension': 'Extension',
+  'pageToolbar.toggleSortDirection': 'Toggle sort direction',
+
+  'duplicatesOnly.label': 'Duplicates',
+  'duplicatesOnly.tooltip': 'Show duplicates only',
+
+  'selection.select': 'Select',
+  'selection.selectedCount': '{count} selected',
+  'selection.selectAll': 'Select all',
+  'selection.rename': 'Rename',
+  'selection.move': 'Move',
 }
 
 export const translations = { ko, ja, en }

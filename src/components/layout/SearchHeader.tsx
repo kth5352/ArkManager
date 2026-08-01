@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
+import { useTranslation } from '../../i18n/useTranslation'
 
 interface SearchHeaderProps {
   query: string
@@ -18,6 +19,7 @@ export function SearchHeader({
   excludedGenres,
   onGenreFiltersChange,
 }: SearchHeaderProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [genreInput, setGenreInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -96,7 +98,7 @@ export function SearchHeader({
       >
         <button
           type="button"
-          aria-label="검색창 열기"
+          aria-label={t('search.openSearch')}
           onClick={() => {
             setExpanded(true)
             inputRef.current?.focus()
@@ -111,7 +113,7 @@ export function SearchHeader({
           onChange={(e) => onQueryChange(e.target.value)}
           onFocus={() => setExpanded(true)}
           onBlur={() => setExpanded(false)}
-          placeholder="제목, 장르, 서클명, 코드로 검색"
+          placeholder={t('search.placeholder')}
           className="h-7 border-none p-0 shadow-none focus-visible:ring-0"
         />
       </div>
@@ -119,7 +121,7 @@ export function SearchHeader({
         value={genreInput}
         onChange={(e) => setGenreInput(e.target.value)}
         onKeyDown={handleGenreInputKeyDown}
-        placeholder="태그 필터 (-태그는 제외)"
+        placeholder={t('search.tagFilterPlaceholder')}
         className="h-7 w-40"
       />
       {includedGenres.map((genre) => (
@@ -129,7 +131,7 @@ export function SearchHeader({
         >
           {genre}
           <button
-            aria-label={`${genre} 필터 제거`}
+            aria-label={t('search.removeIncludeFilter', { genre })}
             onClick={() => removeIncluded(genre)}
             className="hover:text-primary/70"
           >
@@ -144,7 +146,7 @@ export function SearchHeader({
         >
           -{genre}
           <button
-            aria-label={`${genre} 제외 필터 제거`}
+            aria-label={t('search.removeExcludeFilter', { genre })}
             onClick={() => removeExcluded(genre)}
             className="hover:text-destructive/70"
           >
@@ -155,7 +157,7 @@ export function SearchHeader({
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={() => onGenreFiltersChange([], [])}>
           <X className="mr-1 h-3 w-3" />
-          필터 해제
+          {t('search.clearFilters')}
         </Button>
       )}
     </div>
