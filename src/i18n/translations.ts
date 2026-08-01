@@ -182,7 +182,7 @@ const ko = {
 
   'game.codeNumber': '작품번호: {code}',
   'game.noCode': '코드없음',
-  'game.openDlsite': 'DLsite 열기',
+  'game.openWeb': '웹에서 열기',
   'game.refreshMetadata': '메타데이터 새로고침',
   'game.openFolder': '폴더 열기',
   'game.launch': '실행',
@@ -228,7 +228,6 @@ const ko = {
   'dlsiteSearch.notFound': '작품을 찾을 수 없습니다.',
 
   'explorer.noOpenTabs': '열려있는 탭이 없습니다.',
-  'explorer.openDlsitePage': 'DLsite 페이지 열기',
   'explorer.copyRjNumber': 'RJ번호 복사',
   'explorer.copyTitle': '제목 복사',
   'explorer.unfavorite': '즐겨찾기 해제',
@@ -444,7 +443,7 @@ const ja: Record<keyof typeof ko, string> = {
 
   'game.codeNumber': '作品番号: {code}',
   'game.noCode': 'コードなし',
-  'game.openDlsite': 'DLsiteを開く',
+  'game.openWeb': 'Webで開く',
   'game.refreshMetadata': 'メタデータ更新',
   'game.openFolder': 'フォルダを開く',
   'game.launch': '起動',
@@ -490,7 +489,6 @@ const ja: Record<keyof typeof ko, string> = {
   'dlsiteSearch.notFound': '作品が見つかりません。',
 
   'explorer.noOpenTabs': '開いているタブがありません。',
-  'explorer.openDlsitePage': 'DLsiteページを開く',
   'explorer.copyRjNumber': 'RJ番号をコピー',
   'explorer.copyTitle': 'タイトルをコピー',
   'explorer.unfavorite': 'お気に入り解除',
@@ -708,7 +706,7 @@ const en: Record<keyof typeof ko, string> = {
 
   'game.codeNumber': 'Code: {code}',
   'game.noCode': 'No code',
-  'game.openDlsite': 'Open DLsite',
+  'game.openWeb': 'Open on Web',
   'game.refreshMetadata': 'Refresh Metadata',
   'game.openFolder': 'Open Folder',
   'game.launch': 'Launch',
@@ -754,7 +752,6 @@ const en: Record<keyof typeof ko, string> = {
   'dlsiteSearch.notFound': 'Title not found.',
 
   'explorer.noOpenTabs': 'No tabs open.',
-  'explorer.openDlsitePage': 'Open DLsite Page',
   'explorer.copyRjNumber': 'Copy RJ Number',
   'explorer.copyTitle': 'Copy Title',
   'explorer.unfavorite': 'Remove Favorite',

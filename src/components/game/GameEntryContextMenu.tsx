@@ -69,7 +69,7 @@ export function GameEntryContextMenu({
       )}
       {entry.code && (
         <ContextMenuItem onSelect={() => entry.code && openExternal.mutate(entry.code)}>
-          {t('explorer.openDlsitePage')}
+          {t('game.openWeb')}
         </ContextMenuItem>
       )}
       {onOpenInNewTab && entry.kind === 'folder' && (

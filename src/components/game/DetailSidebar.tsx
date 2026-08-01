@@ -214,7 +214,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         <div className="flex flex-wrap gap-2">
           {game.code && (
             <Button size="sm" onClick={() => game.code && openExternal.mutate(game.code)}>
-              {t('game.openDlsite')}
+              {t('game.openWeb')}
             </Button>
           )}
           {game.code && (

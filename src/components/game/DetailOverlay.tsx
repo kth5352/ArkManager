@@ -85,7 +85,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
             <div className="mt-4 flex flex-wrap gap-2">
               {game.code && (
                 <Button onClick={() => game.code && openExternal.mutate(game.code)}>
-                  {t('game.openDlsite')}
+                  {t('game.openWeb')}
                 </Button>
               )}
               {game.code && (
