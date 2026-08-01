@@ -1,17 +1,45 @@
-import { access } from 'node:fs/promises'
+import { access, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
-// 특정 기준 디렉터리 아래에 LEProc.exe가 있는지 확인하는 순수 로직 -
-// detectLocaleEmulator가 실제 Program Files 경로들로 이 함수를 호출한다.
-// 테스트 가능하도록 기준 디렉터리를 인자로 분리했다.
-export async function findLocaleEmulatorAt(baseDir: string): Promise<string | null> {
-  const candidate = join(baseDir, 'Locale Emulator', 'LEProc.exe')
+const LE_PROC_FILENAME = 'LEProc.exe'
+// A real install doesn't always sit directly under a "Locale Emulator"
+// folder - it's commonly bundled a few levels deep inside another app's own
+// folder structure (e.g. Program Files\DLsiteNest\Assets\LocalEmulator\
+// LEProc.exe). This walks a bounded number of levels under each candidate
+// base instead of assuming a fixed subfolder name/depth.
+const SEARCH_DEPTH = 4
+
+// Searches baseDir and up to `depth` levels of its subfolders for
+// LEProc.exe, stopping at the first match. Bounded by `depth` (not by
+// symlink/junction detection) - a directory cycle still terminates within
+// the depth budget since it strictly decreases each level, same as
+// scanLibraryRecursive's own reasoning for images/archives.
+export async function findLocaleEmulatorAt(
+  baseDir: string,
+  depth = SEARCH_DEPTH
+): Promise<string | null> {
+  let entries
   try {
-    await access(candidate)
-    return candidate
+    entries = await readdir(baseDir, { withFileTypes: true })
   } catch {
     return null
   }
+
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name === LE_PROC_FILENAME) {
+      return join(baseDir, entry.name)
+    }
+  }
+
+  if (depth <= 0) return null
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const found = await findLocaleEmulatorAt(join(baseDir, entry.name), depth - 1)
+    if (found) return found
+  }
+
+  return null
 }
 
 // 알려진 설치 경로만 확인한다 - 레지스트리 키는 공식 문서로 확인하지

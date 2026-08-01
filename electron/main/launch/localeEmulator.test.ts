@@ -26,6 +26,24 @@ describe('findLocaleEmulatorAt', () => {
   it('returns null when LEProc.exe does not exist under the given base dir', async () => {
     expect(await findLocaleEmulatorAt(dir)).toBeNull()
   })
+
+  it("finds LEProc.exe nested several levels deep inside another app's own folder", async () => {
+    // Mirrors a real install: Program Files\DLsiteNest\Assets\LocalEmulator
+    // \LEProc.exe - bundled inside another app, not under a top-level
+    // "Locale Emulator" folder at all.
+    await mkdir(join(dir, 'DLsiteNest', 'Assets', 'LocalEmulator'), { recursive: true })
+    const expected = join(dir, 'DLsiteNest', 'Assets', 'LocalEmulator', 'LEProc.exe')
+    await writeFile(expected, '')
+
+    expect(await findLocaleEmulatorAt(dir)).toBe(expected)
+  })
+
+  it('does not descend past the given depth', async () => {
+    await mkdir(join(dir, 'a', 'b', 'c', 'd'), { recursive: true })
+    await writeFile(join(dir, 'a', 'b', 'c', 'd', 'LEProc.exe'), '')
+
+    expect(await findLocaleEmulatorAt(dir, 2)).toBeNull()
+  })
 })
 
 describe('detectLocaleEmulator', () => {
