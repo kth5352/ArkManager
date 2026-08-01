@@ -332,14 +332,21 @@ export interface SaveSnapshotDto {
   totalSizeBytes: number
 }
 
+// Must match timestampToDirName's output exactly (createSnapshot.ts) - this
+// value is joined directly into a filesystem path as a directory name on
+// the main process side (saveHandlers.ts), so anything looser than the
+// shape that function actually produces (e.g. a path-separator-containing
+// string) would let a crafted timestamp escape the intended backup folder.
+const SNAPSHOT_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/
+
 export const RestoreSaveSnapshotRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
-  timestamp: z.string(),
+  timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN),
 })
 
 export const SaveDiffRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
-  timestamp: z.string().nullable(),
+  timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN).nullable(),
 })
 
 export type SaveDiffStatus = 'added' | 'removed' | 'modified'

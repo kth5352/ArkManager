@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { GetSettingRequestSchema, SetSettingRequestSchema, ThemeSchema } from './ipc'
+import {
+  GetSettingRequestSchema,
+  RestoreSaveSnapshotRequestSchema,
+  SaveDiffRequestSchema,
+  SetSettingRequestSchema,
+  ThemeSchema,
+} from './ipc'
 
 describe('ThemeSchema', () => {
   it('accepts light and dark', () => {
@@ -45,5 +51,48 @@ describe('SetSettingRequestSchema', () => {
       key: 'sidebar-width',
       value: '400',
     })
+  })
+})
+
+describe('RestoreSaveSnapshotRequestSchema', () => {
+  const identifier = { code: null, path: 'D:\\Games\\SomeGame' }
+
+  it('accepts a timestamp shaped like timestampToDirName output', () => {
+    expect(
+      RestoreSaveSnapshotRequestSchema.safeParse({
+        identifier,
+        timestamp: '2026-08-01T14-53-10-699Z',
+      }).success
+    ).toBe(true)
+  })
+
+  it('rejects a timestamp containing path-escaping segments', () => {
+    expect(
+      RestoreSaveSnapshotRequestSchema.safeParse({
+        identifier,
+        timestamp: '../../../../Windows',
+      }).success
+    ).toBe(false)
+  })
+
+  it('rejects an arbitrary string that is not a valid snapshot timestamp', () => {
+    expect(
+      RestoreSaveSnapshotRequestSchema.safeParse({ identifier, timestamp: 'not-a-timestamp' })
+        .success
+    ).toBe(false)
+  })
+})
+
+describe('SaveDiffRequestSchema', () => {
+  const identifier = { code: null, path: 'D:\\Games\\SomeGame' }
+
+  it('accepts a null timestamp (diff against the live save with no snapshot)', () => {
+    expect(SaveDiffRequestSchema.safeParse({ identifier, timestamp: null }).success).toBe(true)
+  })
+
+  it('rejects a timestamp containing path-escaping segments', () => {
+    expect(
+      SaveDiffRequestSchema.safeParse({ identifier, timestamp: '../../../../Windows' }).success
+    ).toBe(false)
   })
 })
