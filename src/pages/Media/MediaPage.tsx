@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import { Play, Plus } from 'lucide-react'
 import { usePickLibraryFolder } from '../../services/librariesService'
 import { useFolderScanRecursive } from '../../services/scannerService'
+import { useMediaFolderQuery, useSetMediaFolderMutation } from '../../services/settingsService'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
 import { isMediaFile } from '../../../shared/isMediaFile'
 import { Button } from '../../components/ui/button'
@@ -11,10 +11,15 @@ import { useTranslation } from '../../i18n/useTranslation'
 // A dedicated browse-and-queue page, separate from Explorer's per-folder
 // "click to play" entry point (see FolderView.tsx) - this one is for
 // picking any folder (not necessarily a registered library) and building up
-// a playlist from everything media-shaped found in it, recursively.
+// a playlist from everything media-shaped found in it, recursively. The
+// picked folder is persisted (see useMediaFolderQuery) rather than kept in
+// local state, so navigating to another tab and back doesn't force picking
+// it again - it's also what makes media:// willing to serve files from a
+// non-library folder at all (see mediaProtocol.ts).
 export function MediaPage() {
   const { t } = useTranslation()
-  const [folder, setFolder] = useState<string | null>(null)
+  const { data: folder = null, isLoading: isFolderLoading } = useMediaFolderQuery()
+  const setMediaFolder = useSetMediaFolderMutation()
   const pickFolder = usePickLibraryFolder()
   const { data: entries, isLoading } = useFolderScanRecursive(folder ?? '', {
     enabled: folder !== null,
@@ -28,7 +33,7 @@ export function MediaPage() {
 
   const handlePickFolder = async (): Promise<void> => {
     const dir = await pickFolder.mutateAsync()
-    if (dir) setFolder(dir)
+    if (dir) setMediaFolder.mutate(dir)
   }
 
   return (
@@ -50,7 +55,7 @@ export function MediaPage() {
         )}
       </div>
       <div className="flex-1 overflow-auto">
-        {folder === null ? (
+        {isFolderLoading ? null : folder === null ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {t('media.pickFolderPrompt')}
           </div>

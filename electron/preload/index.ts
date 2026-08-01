@@ -48,6 +48,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale' }),
     setLocale: (value: Locale): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'locale', value }),
+    getMediaFolder: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-folder' }),
+    setMediaFolder: (path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-folder', value: path }),
   },
   libraries: {
     list: (): Promise<LibraryWithStatus[]> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_LIST),

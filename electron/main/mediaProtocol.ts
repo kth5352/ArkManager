@@ -1,6 +1,7 @@
 import { net, protocol } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { listLibraries } from './database/librariesRepository'
+import { getSetting } from './database/settingsRepository'
 import { isPathWithinAnyLibrary } from './thumbnailProtocol'
 import type { AppDatabase } from './database/client'
 
@@ -10,10 +11,6 @@ import type { AppDatabase } from './database/client'
 // answer those. net.fetch on a file: URL handles Range headers natively, as
 // long as the original request's headers are forwarded to it.
 const MEDIA_SCHEME = 'media'
-
-export function buildMediaUrl(filePath: string): string {
-  return `${MEDIA_SCHEME}://file/${encodeURIComponent(filePath)}`
-}
 
 function decodeFilePath(url: string): string {
   return decodeURIComponent(new URL(url).pathname.slice(1))
@@ -37,14 +34,22 @@ export function registerMediaProtocolScheme(): void {
 }
 
 // Must run after app.whenReady(). Same trust boundary as thumbnailProtocol -
-// only a path under a currently registered library is servable, so a
+// only a path under a currently registered library, or the one folder the
+// user explicitly picked via the Media page's native folder dialog (see
+// MediaPage.tsx / the 'media-folder' setting), is servable - a
 // compromised/buggy renderer can't use media:// to read arbitrary files
-// from disk.
+// from disk that the user never actually chose. The Media page deliberately
+// lets a user browse any folder, not just registered libraries (see its own
+// comment), so it needs this second allowed root or every file inside a
+// non-library folder 404s and the player reports every track as
+// unplayable.
 export function registerMediaProtocolHandler(db: AppDatabase): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const filePath = decodeFilePath(request.url)
     const libraryPaths = listLibraries(db).map((library) => library.path)
-    if (!isPathWithinAnyLibrary(filePath, libraryPaths)) {
+    const mediaFolder = getSetting(db, 'media-folder')
+    const allowedRoots = mediaFolder ? [...libraryPaths, mediaFolder] : libraryPaths
+    if (!isPathWithinAnyLibrary(filePath, allowedRoots)) {
       return new Response(null, { status: 404 })
     }
 

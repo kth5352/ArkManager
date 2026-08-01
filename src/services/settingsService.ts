@@ -115,3 +115,32 @@ export function useSetLanguageMutation() {
     },
   })
 }
+
+// Remembers the last folder picked on the Media page (see MediaPage.tsx) so
+// switching tabs and coming back doesn't require picking it again. null
+// means "never picked one yet". Also doubles as the second allowed root
+// electron/main/mediaProtocol.ts checks - the Media page deliberately lets
+// the user browse any folder, not just a registered library, so this
+// persisted value is what makes media:// actually able to serve files from
+// it (see that file's own comment).
+export const MEDIA_FOLDER_QUERY_KEY = ['settings', 'media-folder'] as const
+
+export function useMediaFolderQuery() {
+  return useQuery({
+    queryKey: MEDIA_FOLDER_QUERY_KEY,
+    queryFn: async (): Promise<string | null> => {
+      const value = await window.api.settings.getMediaFolder()
+      return value ?? null
+    },
+  })
+}
+
+export function useSetMediaFolderMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (path: string) => window.api.settings.setMediaFolder(path),
+    onSuccess: (_data, path) => {
+      queryClient.setQueryData(MEDIA_FOLDER_QUERY_KEY, path)
+    },
+  })
+}
