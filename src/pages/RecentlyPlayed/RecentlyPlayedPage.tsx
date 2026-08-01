@@ -4,18 +4,12 @@ import { useGameCoverImage, useGameMetadata } from '../../services/metadataServi
 import { useGameUserData } from '../../services/gameUserDataService'
 import { usePendingGalleryOpenStore } from '../../stores/pendingGalleryOpenStore'
 import { formatPlaytime } from './formatPlaytime'
+import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
 import { useTranslation } from '../../i18n/useTranslation'
-import type { GameCode } from '../../../shared/types/scanner'
-
-function codeFromKey(key: string): GameCode | null {
-  const match = /^(RJ|VJ|ST)(\d+)$/.exec(key)
-  if (!match) return null
-  return { type: match[1] as GameCode['type'], value: key }
-}
 
 function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastPlayedAt: string }) {
   const { t } = useTranslation()
-  const code = codeFromKey(entryKey)
+  const code = parseCodeInput(entryKey)
   const { data: metadata } = useGameMetadata(code)
   const { data: userData } = useGameUserData({ code, path: code ? '' : entryKey })
   // Reads the cached DLsite cover directly by code, not GameThumbnail's

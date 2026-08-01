@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGameCoverImage, useGameMetadata } from '../../services/metadataService'
 import { useGamesWithSavePath, useSaveSnapshots } from '../../services/saveService'
 import { SaveManagerDialog } from '../../components/game/SaveManagerDialog'
+import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
 
@@ -10,12 +11,6 @@ interface ManagingEntry {
   path: string
   name: string
   savePath: string
-}
-
-function codeFromKey(key: string): GameCode | null {
-  const match = /^(RJ|VJ|ST)(\d+)$/.exec(key)
-  if (!match) return null
-  return { type: match[1] as GameCode['type'], value: key }
 }
 
 function SaveEntryRow({
@@ -28,7 +23,7 @@ function SaveEntryRow({
   onManage: (entry: ManagingEntry) => void
 }) {
   const { t } = useTranslation()
-  const code = codeFromKey(entryKey)
+  const code = parseCodeInput(entryKey)
   const entry = { code, path: code ? '' : entryKey }
   const { data: metadata } = useGameMetadata(code)
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? code : null)
