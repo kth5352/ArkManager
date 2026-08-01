@@ -148,6 +148,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   // active tab's id, not its path, so navigating into a subfolder (or via
   // breadcrumb) updates `path` without unmounting this component.
   const [searchQuery, setSearchQuery] = useState('')
+  const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const isSearching = searchQuery !== ''
 
@@ -171,7 +172,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
 
   const searchResults = isSearching
-    ? filterEntries(recursiveEntries, metadataByCode, searchQuery, excludedGenres)
+    ? filterEntries(recursiveEntries, metadataByCode, searchQuery, includedGenres, excludedGenres)
     : []
 
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('explorer')
@@ -216,8 +217,12 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
         <SearchHeader
           query={searchQuery}
           onQueryChange={setSearchQuery}
+          includedGenres={includedGenres}
           excludedGenres={excludedGenres}
-          onClearFilters={() => setExcludedGenres([])}
+          onGenreFiltersChange={(nextIncluded, nextExcluded) => {
+            setIncludedGenres(nextIncluded)
+            setExcludedGenres(nextExcluded)
+          }}
         />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>

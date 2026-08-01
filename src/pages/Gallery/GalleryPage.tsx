@@ -35,13 +35,13 @@ const ZOOM_STEP = 0.05
 function GameCard({
   game,
   genres,
-  onToggleGenreFilter,
+  onFilterByGenre,
   onHoverChange,
   onOpenDetail,
 }: {
   game: ScannedEntry
   genres: string[]
-  onToggleGenreFilter: (genre: string) => void
+  onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
 }) {
@@ -91,7 +91,7 @@ function GameCard({
                 key={genre}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onToggleGenreFilter(genre)
+                  onFilterByGenre(genre)
                 }}
                 className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
               >
@@ -111,7 +111,7 @@ interface GridCellProps {
   gap: number
   cardWidth: number
   metadataByCode: Record<string, { genres: string[] }>
-  onToggleGenreFilter: (genre: string) => void
+  onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
 }
@@ -125,7 +125,7 @@ function GameCell({
   gap,
   cardWidth,
   metadataByCode,
-  onToggleGenreFilter,
+  onFilterByGenre,
   onHoverChange,
   onOpenDetail,
 }: CellComponentProps<GridCellProps>) {
@@ -139,7 +139,7 @@ function GameCell({
         <GameCard
           game={game}
           genres={genres}
-          onToggleGenreFilter={onToggleGenreFilter}
+          onFilterByGenre={onFilterByGenre}
           onHoverChange={onHoverChange}
           onOpenDetail={onOpenDetail}
         />
@@ -154,6 +154,7 @@ export function GalleryPage() {
   const [zoom, setZoom] = useState(1)
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
@@ -165,10 +166,12 @@ export function GalleryPage() {
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
 
-  const toggleGenreFilter = (genre: string): void => {
-    setExcludedGenres((current) =>
-      current.includes(genre) ? current.filter((g) => g !== genre) : [...current, genre]
-    )
+  // Clicking a tag on a card is a quick "show me only this" shortcut, not
+  // an incremental toggle - it replaces whatever include filter was active
+  // (the SearchHeader's own filter-composer input, below, is additive and
+  // meant for building up several terms deliberately).
+  const filterByGenre = (genre: string): void => {
+    setIncludedGenres([genre])
   }
 
   useEffect(() => {
@@ -221,7 +224,9 @@ export function GalleryPage() {
   const gap = GAP * zoom
 
   const filteredGames =
-    games.length > 0 ? filterEntries(games, metadataByCode, searchQuery, excludedGenres) : games
+    games.length > 0
+      ? filterEntries(games, metadataByCode, searchQuery, includedGenres, excludedGenres)
+      : games
   const sortedGames =
     filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
 
@@ -231,8 +236,12 @@ export function GalleryPage() {
         <SearchHeader
           query={searchQuery}
           onQueryChange={setSearchQuery}
+          includedGenres={includedGenres}
           excludedGenres={excludedGenres}
-          onClearFilters={() => setExcludedGenres([])}
+          onGenreFiltersChange={(nextIncluded, nextExcluded) => {
+            setIncludedGenres(nextIncluded)
+            setExcludedGenres(nextExcluded)
+          }}
         />
         <PageToolbar
           sortField={sortField}
@@ -272,7 +281,7 @@ export function GalleryPage() {
                         gap,
                         cardWidth,
                         metadataByCode,
-                        onToggleGenreFilter: toggleGenreFilter,
+                        onFilterByGenre: filterByGenre,
                         onHoverChange: setHoveredGame,
                         onOpenDetail: openDetail,
                       }}

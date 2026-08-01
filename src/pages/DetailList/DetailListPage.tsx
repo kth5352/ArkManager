@@ -83,6 +83,7 @@ export function DetailListPage() {
   const { data: games, isLoading, isError } = useGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('detail-list')
   const [searchQuery, setSearchQuery] = useState('')
+  const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
   const scanProgress = useScanProgress(isLoading)
@@ -113,7 +114,7 @@ export function DetailListPage() {
     )
   }
 
-  const filtered = filterEntries(games, metadataByCode, searchQuery, excludedGenres)
+  const filtered = filterEntries(games, metadataByCode, searchQuery, includedGenres, excludedGenres)
   const sorted = sortEntries(filtered, sortField, sortDirection)
 
   return (
@@ -122,8 +123,12 @@ export function DetailListPage() {
         <SearchHeader
           query={searchQuery}
           onQueryChange={setSearchQuery}
+          includedGenres={includedGenres}
           excludedGenres={excludedGenres}
-          onClearFilters={() => setExcludedGenres([])}
+          onGenreFiltersChange={(nextIncluded, nextExcluded) => {
+            setIncludedGenres(nextIncluded)
+            setExcludedGenres(nextExcluded)
+          }}
         />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>

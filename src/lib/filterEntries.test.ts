@@ -19,31 +19,31 @@ const entries: TestEntry[] = [
 
 describe('filterEntries', () => {
   it('matches by file name (case-insensitive)', () => {
-    expect(filterEntries(entries, metadataByCode, 'ALPHA', []).map((e) => e.name)).toEqual([
+    expect(filterEntries(entries, metadataByCode, 'ALPHA', [], []).map((e) => e.name)).toEqual([
       'alpha.zip',
     ])
   })
 
   it('matches by crawled title', () => {
-    expect(filterEntries(entries, metadataByCode, 'Beta Game', []).map((e) => e.name)).toEqual([
+    expect(filterEntries(entries, metadataByCode, 'Beta Game', [], []).map((e) => e.name)).toEqual([
       'beta.zip',
     ])
   })
 
   it('matches by circle name', () => {
-    expect(filterEntries(entries, metadataByCode, 'Circle One', []).map((e) => e.name)).toEqual([
-      'alpha.zip',
-    ])
+    expect(filterEntries(entries, metadataByCode, 'Circle One', [], []).map((e) => e.name)).toEqual(
+      ['alpha.zip']
+    )
   })
 
   it('matches by game code', () => {
-    expect(filterEntries(entries, metadataByCode, 'RJ02222222', []).map((e) => e.name)).toEqual([
-      'beta.zip',
-    ])
+    expect(filterEntries(entries, metadataByCode, 'RJ02222222', [], []).map((e) => e.name)).toEqual(
+      ['beta.zip']
+    )
   })
 
-  it('returns everything when query is empty and no genres excluded', () => {
-    expect(filterEntries(entries, metadataByCode, '', []).map((e) => e.name)).toEqual([
+  it('returns everything when query is empty and no genre filters are set', () => {
+    expect(filterEntries(entries, metadataByCode, '', [], []).map((e) => e.name)).toEqual([
       'alpha.zip',
       'beta.zip',
       'no-code-file.txt',
@@ -51,16 +51,40 @@ describe('filterEntries', () => {
   })
 
   it('excludes entries whose genres intersect the excluded-genre list', () => {
-    expect(filterEntries(entries, metadataByCode, '', ['액션']).map((e) => e.name)).toEqual([
+    expect(filterEntries(entries, metadataByCode, '', [], ['액션']).map((e) => e.name)).toEqual([
       'beta.zip',
       'no-code-file.txt',
     ])
   })
 
   it('never excludes code-less or metadata-less entries by genre (nothing to exclude on)', () => {
-    expect(filterEntries(entries, metadataByCode, '', ['드라마']).map((e) => e.name)).toEqual([
+    expect(filterEntries(entries, metadataByCode, '', [], ['드라마']).map((e) => e.name)).toEqual([
       'alpha.zip',
       'no-code-file.txt',
     ])
+  })
+
+  it('includes only entries that have every included genre', () => {
+    expect(filterEntries(entries, metadataByCode, '', ['액션'], []).map((e) => e.name)).toEqual([
+      'alpha.zip',
+    ])
+  })
+
+  it('requires ALL included genres to be present (AND, not OR)', () => {
+    expect(
+      filterEntries(entries, metadataByCode, '', ['액션', '드라마'], []).map((e) => e.name)
+    ).toEqual([])
+  })
+
+  it('hides code-less or metadata-less entries when an include filter is set (unknown genres never match)', () => {
+    expect(
+      filterEntries(entries, metadataByCode, '', ['액션'], []).map((e) => e.name)
+    ).not.toContain('no-code-file.txt')
+  })
+
+  it('applies included and excluded genre filters together', () => {
+    expect(
+      filterEntries(entries, metadataByCode, '', ['액션'], ['판타지']).map((e) => e.name)
+    ).toEqual([])
   })
 })
