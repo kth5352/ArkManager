@@ -51,7 +51,7 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
 
   const handlePickSaveFolder = async (): Promise<void> => {
     if (!entry) return
-    const path = await pickSaveFolder.mutateAsync()
+    const path = await pickSaveFolder.mutateAsync(entry.path)
     if (path) setSavePath.mutate({ entry, savePath: path })
   }
 

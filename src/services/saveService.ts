@@ -13,7 +13,9 @@ function identifierKey(entry: Pick<ScannedEntry, 'code' | 'path'>): string {
 }
 
 export function usePickSaveFolder() {
-  return useMutation({ mutationFn: () => window.api.save.pickFolder() })
+  return useMutation({
+    mutationFn: (startPath: string | null) => window.api.save.pickFolder(startPath),
+  })
 }
 
 export function useSetSavePath() {

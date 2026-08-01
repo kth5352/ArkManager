@@ -11,6 +11,7 @@ import {
   type Library,
   type LibraryWithStatus,
   type Locale,
+  type MediaSyncState,
   type MoveResultDto,
   type PersistedExplorerTab,
   type RenameResultDto,
@@ -197,7 +198,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_GAME, { identifier: { code, path } }),
   },
   save: {
-    pickFolder: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SAVE_PICK_FOLDER),
+    pickFolder: (startPath: string | null): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_PICK_FOLDER, { startPath }),
     setPath: (code: GameCode | null, path: string, savePath: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_SET_PATH, { identifier: { code, path }, savePath }),
     listSnapshots: (code: GameCode | null, path: string): Promise<SaveSnapshotDto[]> =>
@@ -217,6 +219,24 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_DIFF, { identifier: { code, path }, timestamp }),
     listGamesWithSavePath: (): Promise<GameWithSavePathDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_LIST_GAMES_WITH_SAVE_PATH),
+  },
+  media: {
+    openPlayerWindow: (initialState: MediaSyncState): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_OPEN_PLAYER_WINDOW, initialState),
+    broadcastState: (state: MediaSyncState): void =>
+      ipcRenderer.send(IPC_CHANNELS.MEDIA_STATE_BROADCAST, state),
+    onStateSync: (callback: (state: MediaSyncState) => void): (() => void) => {
+      const listener = (_event: unknown, state: MediaSyncState): void => callback(state)
+      ipcRenderer.on(IPC_CHANNELS.MEDIA_STATE_SYNC, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_STATE_SYNC, listener)
+    },
+    onPlayerWindowClosed: (callback: (lastKnownTimeSeconds: number) => void): (() => void) => {
+      const listener = (_event: unknown, seconds: number): void => callback(seconds)
+      ipcRenderer.on(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED, listener)
+    },
+    reportTime: (seconds: number): void =>
+      ipcRenderer.send(IPC_CHANNELS.MEDIA_REPORT_TIME, seconds),
   },
   cache: {
     clear: (deleteSaveBackups: boolean): Promise<void> =>

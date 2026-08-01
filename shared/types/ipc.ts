@@ -62,6 +62,11 @@ export const IPC_CHANNELS = {
   SAVE_RESTORE_SNAPSHOT: 'save:restore-snapshot',
   SAVE_DIFF: 'save:diff',
   SAVE_LIST_GAMES_WITH_SAVE_PATH: 'save:list-games-with-save-path',
+  MEDIA_OPEN_PLAYER_WINDOW: 'media:open-player-window',
+  MEDIA_PLAYER_WINDOW_CLOSED: 'media:player-window-closed',
+  MEDIA_STATE_BROADCAST: 'media:state-broadcast',
+  MEDIA_STATE_SYNC: 'media:state-sync',
+  MEDIA_REPORT_TIME: 'media:report-time',
   CACHE_CLEAR: 'cache:clear',
 } as const
 
@@ -307,6 +312,10 @@ export const SetSavePathRequestSchema = z.object({
   savePath: z.string(),
 })
 
+export const PickSaveFolderRequestSchema = z.object({
+  startPath: z.string().nullable(),
+})
+
 export const SaveSnapshotRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
 })
@@ -378,4 +387,24 @@ export interface MoveResultDto {
   success: boolean
   newPath?: string
   error?: string
+}
+
+export interface MediaTrackDto {
+  path: string
+  name: string
+}
+
+// The media player's cross-window control-plane snapshot (see
+// src/stores/mediaPlayerStore.ts and useMediaPlayerSync) - relayed as-is
+// between the main window and the detached player window through the main
+// process. Deliberately excludes currentTime/duration, which change too
+// often (~4x/sec during playback) to broadcast this way and stay local to
+// whichever window is actually hosting playback.
+export interface MediaSyncState {
+  playlist: MediaTrackDto[]
+  currentIndex: number | null
+  isPlaying: boolean
+  volume: number
+  isDetached: boolean
+  handoffTimeSeconds: number | null
 }

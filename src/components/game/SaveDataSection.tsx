@@ -25,7 +25,7 @@ export function SaveDataSection({ game }: SaveDataSectionProps) {
   const setSavePath = useSetSavePath()
 
   const handlePickSaveFolder = async (): Promise<void> => {
-    const path = await pickSaveFolder.mutateAsync()
+    const path = await pickSaveFolder.mutateAsync(game.path)
     if (path) setSavePath.mutate({ entry: game, savePath: path })
   }
 

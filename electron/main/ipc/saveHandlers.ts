@@ -2,6 +2,7 @@ import { app, dialog, ipcMain } from 'electron'
 import { join } from 'node:path'
 import {
   IPC_CHANNELS,
+  PickSaveFolderRequestSchema,
   RestoreSaveSnapshotRequestSchema,
   SaveDiffRequestSchema,
   SaveSnapshotRequestSchema,
@@ -32,8 +33,15 @@ function backupRootDir(key: string): string {
 }
 
 export function registerSaveHandlers(db: AppDatabase): void {
-  ipcMain.handle(IPC_CHANNELS.SAVE_PICK_FOLDER, async () => {
-    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+  ipcMain.handle(IPC_CHANNELS.SAVE_PICK_FOLDER, async (_event, payload: unknown) => {
+    const { startPath } = PickSaveFolderRequestSchema.parse(payload)
+    // If startPath is a file (an unextracted archive), the native dialog
+    // opens to its containing folder rather than preselecting it - only
+    // directories can be selected here anyway (properties: ['openDirectory']).
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      ...(startPath ? { defaultPath: startPath } : {}),
+    })
     if (result.canceled || result.filePaths.length === 0) return null
     return result.filePaths[0]
   })
