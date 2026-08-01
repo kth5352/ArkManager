@@ -26,6 +26,7 @@ import { useCrawlGameMetadata, useGameMetadataMany } from '../../services/metada
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { relativePath } from './relativePath'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface FolderViewProps {
@@ -43,6 +44,7 @@ function FolderEntryContextMenu({
   onOpenInNewTab: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
 }) {
+  const { t } = useTranslation()
   const openExternal = useOpenExternal()
   const showItemInFolder = useShowItemInFolder()
   const crawlMetadata = useCrawlGameMetadata()
@@ -54,37 +56,41 @@ function FolderEntryContextMenu({
     return (
       <ContextMenuContent>
         {entry.kind === 'folder' && (
-          <ContextMenuItem onSelect={() => launchGame.mutate(entry)}>실행</ContextMenuItem>
+          <ContextMenuItem onSelect={() => launchGame.mutate(entry)}>
+            {t('game.launch')}
+          </ContextMenuItem>
         )}
         <ContextMenuItem onSelect={() => entry.code && openExternal.mutate(entry.code)}>
-          DLsite 페이지 열기
+          {t('explorer.openDlsitePage')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => showItemInFolder.mutate(entry.path)}>
-          폴더 열기
+          {t('game.openFolder')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => navigator.clipboard.writeText(entry.code?.value ?? '')}>
-          RJ번호 복사
+          {t('explorer.copyRjNumber')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => navigator.clipboard.writeText(entry.name)}>
-          제목 복사
+          {t('explorer.copyTitle')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => console.log('edit custom title', entry.path)}>
-          사용자 지정 제목 편집
+          {t('explorer.editCustomTitle')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => entry.code && crawlMetadata.mutate(entry.code)}>
-          메타데이터 새로고침
+          {t('game.refreshMetadata')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => console.log('extract archive', entry.path)}>
-          압축 해제
+          {t('explorer.extractArchive')}
         </ContextMenuItem>
         <ContextMenuItem
           onSelect={() =>
             toggleFavorite.mutate({ entry, isFavorite: !(userData?.isFavorite ?? false) })
           }
         >
-          {userData?.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 설정'}
+          {userData?.isFavorite ? t('explorer.unfavorite') : t('explorer.favorite')}
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>평점/메모</ContextMenuItem>
+        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>
+          {t('game.ratingMemo')}
+        </ContextMenuItem>
       </ContextMenuContent>
     )
   }
@@ -92,14 +98,18 @@ function FolderEntryContextMenu({
   if (entry.kind === 'folder') {
     return (
       <ContextMenuContent>
-        <ContextMenuItem onSelect={() => onOpenInNewTab(entry)}>새 탭으로 열기</ContextMenuItem>
+        <ContextMenuItem onSelect={() => onOpenInNewTab(entry)}>
+          {t('explorer.openInNewTab')}
+        </ContextMenuItem>
         <ContextMenuItem onSelect={() => showItemInFolder.mutate(entry.path)}>
-          탐색기(OS)에서 열기
+          {t('explorer.openInOsExplorer')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => console.log('pin favorite', entry.path)}>
-          즐겨찾기로 고정
+          {t('explorer.pinFavorite')}
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>코드 연동</ContextMenuItem>
+        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>
+          {t('codeLink.dialogTitle')}
+        </ContextMenuItem>
       </ContextMenuContent>
     )
   }
@@ -146,6 +156,7 @@ function FolderEntryRow({
 }
 
 export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
+  const { t } = useTranslation()
   const addTab = useExplorerStore((s) => s.addTab)
   const breadcrumbs = pathToBreadcrumbSegments(path)
 
@@ -257,7 +268,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
           </div>
         ) : isSearchError ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            검색 중 오류가 발생했습니다.
+            {t('dlsiteSearch.searchError')}
           </div>
         ) : (
           <ul className="flex-1 divide-y divide-border overflow-auto">
@@ -275,14 +286,14 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
             ))}
             {sortedSearchResults.length === 0 && (
               <li className="px-4 py-8 text-center text-sm text-muted-foreground">
-                검색 결과가 없습니다.
+                {t('dlsiteSearch.noResults')}
               </li>
             )}
           </ul>
         )
       ) : isError ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          이 폴더에 접근할 수 없습니다.
+          {t('explorer.cannotAccessFolder')}
         </div>
       ) : (
         <ul className="flex-1 divide-y divide-border overflow-auto">

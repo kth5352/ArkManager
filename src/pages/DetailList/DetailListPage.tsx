@@ -25,6 +25,7 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 32
@@ -136,6 +137,7 @@ function Row({
   columnWidths,
   onOpenDetail,
 }: RowComponentProps<DetailListRowProps>) {
+  const { t } = useTranslation()
   const entry = entries[index]
   const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
   const activateSelection = useSelectionStore((s) => s.activate)
@@ -171,10 +173,13 @@ function Row({
       {duplicates && (
         <span
           className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
-          title={`같은 코드의 다른 사본 ${duplicates.length - 1}개:\n${duplicates
-            .filter((d) => d.path !== entry.path)
-            .map((d) => d.path)
-            .join('\n')}`}
+          title={t('detailList.duplicateTooltip', {
+            count: duplicates.length - 1,
+            paths: duplicates
+              .filter((d) => d.path !== entry.path)
+              .map((d) => d.path)
+              .join('\n'),
+          })}
         >
           <Copy className="h-3 w-3" />
           {duplicates.length}
@@ -184,7 +189,7 @@ function Row({
         <span className="block truncate">{entry.path}</span>
       </HoverTooltip>
       <HoverTooltip
-        content={genres.join(', ') || '없음'}
+        content={genres.join(', ') || t('detailList.none')}
         className="shrink-0"
         style={{ width: columnWidths.genres }}
       >
@@ -207,6 +212,7 @@ function Row({
 }
 
 export function DetailListPage() {
+  const { t } = useTranslation()
   const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('detail-list')
   const [searchQuery, setSearchQuery] = useState('')
@@ -246,7 +252,7 @@ export function DetailListPage() {
   if (isError && !games) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        라이브러리를 스캔하는 중 오류가 발생했습니다.
+        {t('common.scanError')}
       </div>
     )
   }
@@ -300,7 +306,7 @@ export function DetailListPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           {visible.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-              표시할 항목이 없습니다.
+              {t('common.noItemsToShow')}
             </div>
           ) : (
             <>
@@ -311,28 +317,30 @@ export function DetailListPage() {
                 <span className="h-3.5 w-3.5 shrink-0" />
                 <span className="h-3.5 w-3.5 shrink-0" />
                 <HeaderCell
-                  label="코드"
+                  label={t('detailList.code')}
                   width={columnWidths.code}
                   onResize={(delta) => resizeColumn('code', delta)}
                 />
                 <HeaderCell
-                  label="이름"
+                  label={t('detailList.name')}
                   width={columnWidths.name}
                   onResize={(delta) => resizeColumn('name', delta)}
                 />
                 <HeaderCell
-                  label="경로"
+                  label={t('detailList.path')}
                   width={columnWidths.path}
                   onResize={(delta) => resizeColumn('path', delta)}
                 />
                 <HeaderCell
-                  label="장르"
+                  label={t('detailList.genres')}
                   width={columnWidths.genres}
                   onResize={(delta) => resizeColumn('genres', delta)}
                 />
-                <span className="w-24 shrink-0 text-xs font-medium">수정일</span>
-                <span className="w-20 shrink-0 text-xs font-medium">크기</span>
-                <span className="w-16 shrink-0 text-xs font-medium">평점</span>
+                <span className="w-24 shrink-0 text-xs font-medium">
+                  {t('detailList.modified')}
+                </span>
+                <span className="w-20 shrink-0 text-xs font-medium">{t('detailList.size')}</span>
+                <span className="w-16 shrink-0 text-xs font-medium">{t('detailList.rating')}</span>
               </div>
               <div className="h-full w-full">
                 <AutoSizer

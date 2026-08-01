@@ -6,12 +6,14 @@ import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerSt
 import { isMediaFile } from '../../../shared/isMediaFile'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
+import { useTranslation } from '../../i18n/useTranslation'
 
 // A dedicated browse-and-queue page, separate from Explorer's per-folder
 // "click to play" entry point (see FolderView.tsx) - this one is for
 // picking any folder (not necessarily a registered library) and building up
 // a playlist from everything media-shaped found in it, recursively.
 export function MediaPage() {
+  const { t } = useTranslation()
   const [folder, setFolder] = useState<string | null>(null)
   const pickFolder = usePickLibraryFolder()
   const { data: entries, isLoading } = useFolderScanRecursive(folder ?? '', {
@@ -33,7 +35,7 @@ export function MediaPage() {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border px-4 py-2">
         <Button size="sm" variant="secondary" onClick={handlePickFolder}>
-          폴더 선택
+          {t('settings.pickFolder')}
         </Button>
         {folder && <span className="truncate text-xs text-muted-foreground">{folder}</span>}
         {tracks.length > 0 && (
@@ -43,14 +45,14 @@ export function MediaPage() {
             className="ml-auto"
             onClick={() => addToPlaylist(tracks)}
           >
-            전체 재생목록에 추가
+            {t('media.addAllToPlaylist')}
           </Button>
         )}
       </div>
       <div className="flex-1 overflow-auto">
         {folder === null ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            폴더를 선택하면 동영상/음성 파일을 찾아 보여줍니다.
+            {t('media.pickFolderPrompt')}
           </div>
         ) : isLoading ? (
           <div className="flex flex-col gap-1 p-4">
@@ -60,7 +62,7 @@ export function MediaPage() {
           </div>
         ) : tracks.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            이 폴더에서 동영상/음성 파일을 찾지 못했습니다.
+            {t('media.noMediaFound')}
           </div>
         ) : (
           <ul className="divide-y divide-border">
@@ -77,7 +79,7 @@ export function MediaPage() {
                   <span className="truncate">{track.name}</span>
                 </button>
                 <button
-                  aria-label="재생목록에 추가"
+                  aria-label={t('media.addToPlaylist')}
                   className="shrink-0 text-muted-foreground hover:text-foreground"
                   onClick={() => addToPlaylist([track])}
                 >

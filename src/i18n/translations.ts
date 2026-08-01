@@ -208,6 +208,34 @@ const ko = {
   'dlsiteSearch.noResults': '검색 결과가 없습니다.',
   'dlsiteSearch.fetchingInfo': 'DLsite에서 정보를 가져오는 중...',
   'dlsiteSearch.notFound': '작품을 찾을 수 없습니다.',
+
+  'explorer.noOpenTabs': '열려있는 탭이 없습니다.',
+  'explorer.openDlsitePage': 'DLsite 페이지 열기',
+  'explorer.copyRjNumber': 'RJ번호 복사',
+  'explorer.copyTitle': '제목 복사',
+  'explorer.editCustomTitle': '사용자 지정 제목 편집',
+  'explorer.extractArchive': '압축 해제',
+  'explorer.unfavorite': '즐겨찾기 해제',
+  'explorer.favorite': '즐겨찾기 설정',
+  'explorer.openInNewTab': '새 탭으로 열기',
+  'explorer.openInOsExplorer': '탐색기(OS)에서 열기',
+  'explorer.pinFavorite': '즐겨찾기로 고정',
+  'explorer.cannotAccessFolder': '이 폴더에 접근할 수 없습니다.',
+
+  'media.addAllToPlaylist': '전체 재생목록에 추가',
+  'media.pickFolderPrompt': '폴더를 선택하면 동영상/음성 파일을 찾아 보여줍니다.',
+  'media.noMediaFound': '이 폴더에서 동영상/음성 파일을 찾지 못했습니다.',
+  'media.addToPlaylist': '재생목록에 추가',
+
+  'detailList.duplicateTooltip': '같은 코드의 다른 사본 {count}개:\n{paths}',
+  'detailList.none': '없음',
+  'detailList.code': '코드',
+  'detailList.name': '이름',
+  'detailList.path': '경로',
+  'detailList.genres': '장르',
+  'detailList.modified': '수정일',
+  'detailList.size': '크기',
+  'detailList.rating': '평점',
 } as const
 
 const ja: Record<keyof typeof ko, string> = {
@@ -409,6 +437,34 @@ const ja: Record<keyof typeof ko, string> = {
   'dlsiteSearch.noResults': '検索結果がありません。',
   'dlsiteSearch.fetchingInfo': 'DLsiteから情報を取得中...',
   'dlsiteSearch.notFound': '作品が見つかりません。',
+
+  'explorer.noOpenTabs': '開いているタブがありません。',
+  'explorer.openDlsitePage': 'DLsiteページを開く',
+  'explorer.copyRjNumber': 'RJ番号をコピー',
+  'explorer.copyTitle': 'タイトルをコピー',
+  'explorer.editCustomTitle': 'カスタムタイトルを編集',
+  'explorer.extractArchive': '解凍',
+  'explorer.unfavorite': 'お気に入り解除',
+  'explorer.favorite': 'お気に入り設定',
+  'explorer.openInNewTab': '新しいタブで開く',
+  'explorer.openInOsExplorer': 'エクスプローラー（OS）で開く',
+  'explorer.pinFavorite': 'お気に入りに固定',
+  'explorer.cannotAccessFolder': 'このフォルダにアクセスできません。',
+
+  'media.addAllToPlaylist': 'すべて再生リストに追加',
+  'media.pickFolderPrompt': 'フォルダを選択すると動画/音声ファイルを探して表示します。',
+  'media.noMediaFound': 'このフォルダに動画/音声ファイルが見つかりませんでした。',
+  'media.addToPlaylist': '再生リストに追加',
+
+  'detailList.duplicateTooltip': '同じコードの他のコピー{count}個:\n{paths}',
+  'detailList.none': 'なし',
+  'detailList.code': 'コード',
+  'detailList.name': '名前',
+  'detailList.path': 'パス',
+  'detailList.genres': 'ジャンル',
+  'detailList.modified': '更新日',
+  'detailList.size': 'サイズ',
+  'detailList.rating': '評価',
 }
 
 const en: Record<keyof typeof ko, string> = {
@@ -612,6 +668,34 @@ const en: Record<keyof typeof ko, string> = {
   'dlsiteSearch.noResults': 'No results found.',
   'dlsiteSearch.fetchingInfo': 'Fetching info from DLsite...',
   'dlsiteSearch.notFound': 'Title not found.',
+
+  'explorer.noOpenTabs': 'No tabs open.',
+  'explorer.openDlsitePage': 'Open DLsite Page',
+  'explorer.copyRjNumber': 'Copy RJ Number',
+  'explorer.copyTitle': 'Copy Title',
+  'explorer.editCustomTitle': 'Edit Custom Title',
+  'explorer.extractArchive': 'Extract Archive',
+  'explorer.unfavorite': 'Remove Favorite',
+  'explorer.favorite': 'Add Favorite',
+  'explorer.openInNewTab': 'Open in New Tab',
+  'explorer.openInOsExplorer': 'Open in OS Explorer',
+  'explorer.pinFavorite': 'Pin as Favorite',
+  'explorer.cannotAccessFolder': 'This folder cannot be accessed.',
+
+  'media.addAllToPlaylist': 'Add All to Playlist',
+  'media.pickFolderPrompt': 'Pick a folder to find video/audio files in it.',
+  'media.noMediaFound': 'No video/audio files found in this folder.',
+  'media.addToPlaylist': 'Add to playlist',
+
+  'detailList.duplicateTooltip': '{count} other copies with the same code:\n{paths}',
+  'detailList.none': 'None',
+  'detailList.code': 'Code',
+  'detailList.name': 'Name',
+  'detailList.path': 'Path',
+  'detailList.genres': 'Genres',
+  'detailList.modified': 'Modified',
+  'detailList.size': 'Size',
+  'detailList.rating': 'Rating',
 }
 
 export const translations = { ko, ja, en }
