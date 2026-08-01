@@ -1,15 +1,25 @@
-import { net, protocol } from 'electron'
-import { pathToFileURL } from 'node:url'
+import { protocol } from 'electron'
+import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
+import { Readable } from 'node:stream'
 import { listLibraries } from './database/librariesRepository'
 import { getSetting } from './database/settingsRepository'
 import { isPathWithinAnyLibrary } from './thumbnailProtocol'
+import { parseRangeHeader } from './media/parseRangeHeader'
+import { resolveMediaMimeType } from './media/resolveMediaMimeType'
 import type { AppDatabase } from './database/client'
 
 // Video/audio playback (see src/stores/mediaPlayerStore.ts) needs actual
-// byte-range streaming - <video>/<audio> issue Range requests to seek, and
-// a whole-file-in-memory response (like thumbnailProtocol's readFile) can't
-// answer those. net.fetch on a file: URL handles Range headers natively, as
-// long as the original request's headers are forwarded to it.
+// byte-range streaming - <video>/<audio> issue Range requests to seek, and a
+// whole-file-in-memory response (like thumbnailProtocol's readFile) can't
+// answer those, nor even reliably signal the file is seekable at all.
+// net.fetch(pathToFileURL(...)) was tried first (forwarding the incoming
+// request's own headers straight through) on the assumption Chromium's own
+// net stack would honor Range against a file: URL the same way it does over
+// HTTP - in practice this left seeking non-functional, so this instead reads
+// the exact requested byte range itself via fs.createReadStream and returns
+// a proper 206/Content-Range response, the same way a real HTTP media server
+// would.
 const MEDIA_SCHEME = 'media'
 
 function decodeFilePath(url: string): string {
@@ -53,6 +63,47 @@ export function registerMediaProtocolHandler(db: AppDatabase): void {
       return new Response(null, { status: 404 })
     }
 
-    return net.fetch(pathToFileURL(filePath).toString(), { headers: request.headers })
+    let fileSize: number
+    try {
+      fileSize = (await stat(filePath)).size
+    } catch {
+      return new Response(null, { status: 404 })
+    }
+
+    const mimeType = resolveMediaMimeType(filePath)
+    const rangeHeader = request.headers.get('range')
+
+    if (!rangeHeader) {
+      const body = Readable.toWeb(createReadStream(filePath)) as ReadableStream
+      return new Response(body, {
+        status: 200,
+        headers: {
+          'Content-Type': mimeType,
+          'Content-Length': String(fileSize),
+          'Accept-Ranges': 'bytes',
+        },
+      })
+    }
+
+    const range = parseRangeHeader(rangeHeader, fileSize)
+    if (!range) {
+      return new Response(null, {
+        status: 416,
+        headers: { 'Content-Range': `bytes */${fileSize}` },
+      })
+    }
+
+    const body = Readable.toWeb(
+      createReadStream(filePath, { start: range.start, end: range.end })
+    ) as ReadableStream
+    return new Response(body, {
+      status: 206,
+      headers: {
+        'Content-Type': mimeType,
+        'Content-Length': String(range.end - range.start + 1),
+        'Content-Range': `bytes ${range.start}-${range.end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+      },
+    })
   })
 }
