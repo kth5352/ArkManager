@@ -196,7 +196,11 @@ function Row({
           >
             <span className="block truncate">{entry.code?.value ?? '-'}</span>
           </HoverTooltip>
-          <HoverTooltip content={entry.name} className="min-w-0 flex-1">
+          <HoverTooltip
+            content={entry.name}
+            className="shrink-0"
+            style={{ width: columnWidths.name }}
+          >
             <span className="block truncate text-foreground">{entry.name}</span>
           </HoverTooltip>
           {duplicates && (
@@ -274,6 +278,11 @@ export function DetailListPage() {
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
+  // Matches SelectionCheckbox's own condition exactly - it renders nothing
+  // at all (not just hidden) while selection mode is off, so the header
+  // must skip reserving that slot too, or every row column below silently
+  // ends up shifted left of its header by that unclaimed width.
+  const isSelectionActive = useSelectionStore((s) => s.isActive)
   const scanProgress = useScanProgress(isLoading)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
@@ -357,7 +366,7 @@ export function DetailListPage() {
                 style={{ height: HEADER_HEIGHT }}
                 className="flex shrink-0 items-center gap-4 border-b border-border bg-muted/40 px-4"
               >
-                <span className="h-3.5 w-3.5 shrink-0" />
+                {isSelectionActive && <span className="h-3.5 w-3.5 shrink-0" />}
                 <span className="h-3.5 w-3.5 shrink-0" />
                 <HeaderCell
                   label={t('detailList.code')}
