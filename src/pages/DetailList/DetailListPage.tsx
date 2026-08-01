@@ -1,6 +1,6 @@
-import { List, type RowComponentProps } from 'react-window'
+import { List, useListCallbackRef, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Copy, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { useGameMetadataMany } from '../../services/metadataService'
@@ -203,21 +203,30 @@ function Row({
           >
             <span className="block truncate text-foreground">{entry.name}</span>
           </HoverTooltip>
-          {duplicates && (
-            <span
-              className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
-              title={t('detailList.duplicateTooltip', {
-                count: duplicates.length - 1,
-                paths: duplicates
-                  .filter((d) => d.path !== entry.path)
-                  .map((d) => d.path)
-                  .join('\n'),
-              })}
-            >
-              <Copy className="h-3 w-3" />
-              {duplicates.length}
-            </span>
-          )}
+          {/* Fixed-width slot, always present (matching HeaderCell's own
+              unconditional placeholder below) - this badge only renders for
+              SOME rows, so without a reserved width every column after it
+              (path/genres/modified/size/rating) would shift right only for
+              rows that happen to have duplicates, misaligning them from
+              both the header and from every other row. */}
+          <span className="flex w-10 shrink-0 items-center">
+            {duplicates && (
+              <span
+                className="flex items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
+                title={t('detailList.duplicateTooltip', {
+                  count: duplicates.length - 1,
+                  paths: duplicates
+                    .filter((d) => d.path !== entry.path)
+                    .map((d) => d.path)
+                    .join('\n'),
+                })}
+              >
+                <Copy className="h-3 w-3" />
+                {duplicates.length}
+              </span>
+            )}
+          </span>
+
           <HoverTooltip
             content={entry.path}
             className="shrink-0"
@@ -267,6 +276,32 @@ export function DetailListPage() {
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [duplicatesOnly, setDuplicatesOnly] = useState(false)
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>(DEFAULT_COLUMN_WIDTHS)
+
+  // react-window's List sets overflowY: 'auto' on its own scroll container,
+  // which per the CSS overflow spec makes the browser treat overflowX as
+  // 'auto' too (an unset axis can't stay 'visible' once the other axis
+  // isn't) - so the list already grows a horizontal scrollbar on its own
+  // whenever a row is wider than the available width (e.g. after widening a
+  // resizable column). The header row above it is a separate DOM element
+  // with no scroll position of its own, so it used to overflow unclipped
+  // instead of scrolling in sync - showing a second, uncoordinated
+  // horizontal scrollbar (or bleeding past its own box entirely, depending
+  // on ancestor overflow). headerTrackRef gets transformed to follow the
+  // list's own scrollLeft instead, so there's only one real horizontal
+  // scrollbar and the header always stays aligned with its columns.
+  const headerTrackRef = useRef<HTMLDivElement>(null)
+  const [listApi, setListApi] = useListCallbackRef(null)
+  useEffect(() => {
+    const el = listApi?.element
+    if (!el) return
+    const handleScroll = (): void => {
+      if (headerTrackRef.current) {
+        headerTrackRef.current.style.transform = `translateX(${-el.scrollLeft}px)`
+      }
+    }
+    el.addEventListener('scroll', handleScroll)
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [listApi])
 
   // DetailList's own rows show genres as plain (non-clickable) text - this
   // only drives tag clicks inside the detail sidebar opened from a row.
@@ -364,35 +399,46 @@ export function DetailListPage() {
             <>
               <div
                 style={{ height: HEADER_HEIGHT }}
-                className="flex shrink-0 items-center gap-4 border-b border-border bg-muted/40 px-4"
+                className="shrink-0 overflow-hidden border-b border-border bg-muted/40"
               >
-                {isSelectionActive && <span className="h-3.5 w-3.5 shrink-0" />}
-                <span className="h-3.5 w-3.5 shrink-0" />
-                <HeaderCell
-                  label={t('detailList.code')}
-                  width={columnWidths.code}
-                  onResize={(delta) => resizeColumn('code', delta)}
-                />
-                <HeaderCell
-                  label={t('detailList.name')}
-                  width={columnWidths.name}
-                  onResize={(delta) => resizeColumn('name', delta)}
-                />
-                <HeaderCell
-                  label={t('detailList.path')}
-                  width={columnWidths.path}
-                  onResize={(delta) => resizeColumn('path', delta)}
-                />
-                <HeaderCell
-                  label={t('detailList.genres')}
-                  width={columnWidths.genres}
-                  onResize={(delta) => resizeColumn('genres', delta)}
-                />
-                <span className="w-24 shrink-0 text-xs font-medium">
-                  {t('detailList.modified')}
-                </span>
-                <span className="w-20 shrink-0 text-xs font-medium">{t('detailList.size')}</span>
-                <span className="w-16 shrink-0 text-xs font-medium">{t('detailList.rating')}</span>
+                <div
+                  ref={headerTrackRef}
+                  style={{ height: HEADER_HEIGHT, width: 'max-content' }}
+                  className="flex items-center gap-4 px-4"
+                >
+                  {isSelectionActive && <span className="h-3.5 w-3.5 shrink-0" />}
+                  <span className="h-3.5 w-3.5 shrink-0" />
+                  <HeaderCell
+                    label={t('detailList.code')}
+                    width={columnWidths.code}
+                    onResize={(delta) => resizeColumn('code', delta)}
+                  />
+                  <HeaderCell
+                    label={t('detailList.name')}
+                    width={columnWidths.name}
+                    onResize={(delta) => resizeColumn('name', delta)}
+                  />
+                  {/* Matches Row's duplicate-badge slot exactly - see the
+                      comment there. */}
+                  <span className="w-10 shrink-0" />
+                  <HeaderCell
+                    label={t('detailList.path')}
+                    width={columnWidths.path}
+                    onResize={(delta) => resizeColumn('path', delta)}
+                  />
+                  <HeaderCell
+                    label={t('detailList.genres')}
+                    width={columnWidths.genres}
+                    onResize={(delta) => resizeColumn('genres', delta)}
+                  />
+                  <span className="w-24 shrink-0 text-xs font-medium">
+                    {t('detailList.modified')}
+                  </span>
+                  <span className="w-20 shrink-0 text-xs font-medium">{t('detailList.size')}</span>
+                  <span className="w-16 shrink-0 text-xs font-medium">
+                    {t('detailList.rating')}
+                  </span>
+                </div>
               </div>
               <div className="h-full w-full">
                 <AutoSizer
@@ -401,6 +447,7 @@ export function DetailListPage() {
                     if (height === undefined || width === undefined) return null
                     return (
                       <List
+                        listRef={setListApi}
                         rowComponent={Row}
                         rowProps={{
                           entries: visible,
