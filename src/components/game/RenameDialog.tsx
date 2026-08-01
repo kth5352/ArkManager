@@ -3,7 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useRenameEntries } from '../../services/fileOpsService'
-import { buildRenamePlan } from '../../lib/buildRenamePlan'
+import { useGameMetadataMany } from '../../services/metadataService'
+import {
+  buildRenamePlan,
+  DEFAULT_RENAME_PATTERN,
+  type RenameTarget,
+} from '../../lib/buildRenamePlan'
 import type { RenameResultDto } from '../../../shared/types/ipc'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -24,11 +29,26 @@ interface RenameDialogProps {
 export function RenameDialog({ targets, onClose }: RenameDialogProps) {
   const isBulk = targets.length > 1
   const [singleName, setSingleName] = useState(() => targets[0]?.name ?? '')
-  const [pattern, setPattern] = useState('')
+  const [pattern, setPattern] = useState(DEFAULT_RENAME_PATTERN)
   const [results, setResults] = useState<RenameResultDto[] | null>(null)
   const renameEntries = useRenameEntries()
 
-  const preview = isBulk ? buildRenamePlan(targets, pattern) : []
+  const codes = targets.flatMap((t) => (t.code ? [t.code.value] : []))
+  const { data: metadataByCode = {} } = useGameMetadataMany(codes)
+
+  const richTargets: RenameTarget[] = targets.map((t) => {
+    const metadata = t.code ? metadataByCode[t.code.value] : undefined
+    return {
+      name: t.name,
+      kind: t.kind,
+      code: t.code?.value ?? null,
+      circle: metadata?.circle ?? null,
+      title: metadata?.title ?? null,
+      genres: metadata?.genres ?? [],
+    }
+  })
+
+  const preview = isBulk ? buildRenamePlan(richTargets, pattern) : []
   const hasDuplicateInBatch = new Set(preview.map((p) => p.newName)).size !== preview.length
 
   const handleApply = (): void => {
@@ -67,12 +87,15 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
             <Input
               value={pattern}
               onChange={(e) => setPattern(e.target.value)}
-              placeholder="예: 아마카노 {index} - {name}{ext}"
+              placeholder={DEFAULT_RENAME_PATTERN}
               autoFocus
             />
             <p className="text-xs text-muted-foreground">
-              {'{name}'}: 원래 이름 · {'{ext}'}: 확장자 · {'{index}'}: 순번(1부터) · {'{index:2}'}:
-              0으로 채운 순번. {'{ext}'}를 생략하면 파일 확장자는 자동으로 유지됩니다.
+              {'{code}'}: 식별코드 · {'{circle}'}: 서클명 · {'{title}'}: 크롤링된 제목 ·{' '}
+              {'{genres}'}: 태그 목록({'{'}태그1, 태그2{'}'}) · {'{name}'}: 원래 이름 · {'{ext}'}:
+              확장자 · {'{index}'}: 순번(1부터, {'{index:2}'}처럼 0으로 채우기 가능). 크롤링되지
+              않은 정보는 빈 값으로 처리되며, {'{ext}'}를 생략하면 파일 확장자는 자동으로
+              유지됩니다.
             </p>
             <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2 text-xs">
               {preview.map((p, i) => (
