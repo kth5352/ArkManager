@@ -28,6 +28,7 @@ import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 84 // 64 + 20 (제목 2번째 줄분)
@@ -52,6 +53,7 @@ function GameRow({
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
 }) {
+  const { t } = useTranslation()
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
   const openExternal = useOpenExternal()
@@ -73,7 +75,7 @@ function GameRow({
     >
       <SelectionCheckbox path={game.path} className="h-4 w-4 shrink-0 rounded-sm" />
       <button
-        aria-label="즐겨찾기 토글"
+        aria-label={t('game.toggleFavorite')}
         onClick={(e) => {
           e.stopPropagation()
           toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
@@ -120,11 +122,11 @@ function GameRow({
               {game.code.value}
             </button>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">코드없음</p>
+            <p className="truncate text-xs text-muted-foreground">{t('game.noCode')}</p>
           )}
           {!!duplicateCount && (
             <span
-              title={`같은 코드의 파일이 ${duplicateCount}개 있습니다.`}
+              title={t('game.duplicateTitle', { count: duplicateCount })}
               className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
             >
               <Copy className="h-2.5 w-2.5" />
@@ -150,7 +152,7 @@ function GameRow({
       {!!userData?.totalPlaytimeMs && (
         <span className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
-          {formatPlaytime(userData.totalPlaytimeMs)}
+          {formatPlaytime(userData.totalPlaytimeMs, t)}
         </span>
       )}
     </div>
@@ -195,6 +197,7 @@ function Row({
 }
 
 export function ListPage() {
+  const { t } = useTranslation()
   const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
@@ -228,7 +231,7 @@ export function ListPage() {
   if (isError && !games) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        라이브러리를 스캔하는 중 오류가 발생했습니다.
+        {t('common.scanError')}
       </div>
     )
   }
@@ -286,9 +289,7 @@ export function ListPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           {visibleGames.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-              {games.length === 0
-                ? '등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.'
-                : '표시할 항목이 없습니다.'}
+              {games.length === 0 ? t('common.noGamesFound') : t('common.noItemsToShow')}
             </div>
           ) : (
             <div className="h-full w-full">

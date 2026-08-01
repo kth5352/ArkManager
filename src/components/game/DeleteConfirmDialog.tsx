@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { useDeleteEntries } from '../../services/fileOpsService'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { DeleteResultDto } from '../../../shared/types/ipc'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -11,12 +12,13 @@ interface DeleteConfirmDialogProps {
 }
 
 export function DeleteConfirmDialog({ targets, onClose }: DeleteConfirmDialogProps) {
+  const { t } = useTranslation()
   const [results, setResults] = useState<DeleteResultDto[] | null>(null)
   const deleteEntries = useDeleteEntries()
 
   const handleConfirm = (): void => {
     deleteEntries.mutate(
-      targets.map((t) => t.path),
+      targets.map((target) => target.path),
       { onSuccess: setResults }
     )
   }
@@ -25,7 +27,7 @@ export function DeleteConfirmDialog({ targets, onClose }: DeleteConfirmDialogPro
     <Dialog open={targets.length > 0} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{targets.length}개 항목을 휴지통으로 이동</DialogTitle>
+          <DialogTitle>{t('fileOps.deleteCount', { count: targets.length })}</DialogTitle>
         </DialogHeader>
 
         {results ? (
@@ -36,35 +38,33 @@ export function DeleteConfirmDialog({ targets, onClose }: DeleteConfirmDialogPro
                   key={r.path}
                   className={r.success ? 'text-muted-foreground' : 'text-destructive'}
                 >
-                  {r.success ? '완료' : `실패: ${r.error}`} -{' '}
-                  {targets.find((t) => t.path === r.path)?.name ?? r.path}
+                  {r.success ? t('fileOps.done') : t('fileOps.failed', { error: r.error ?? '' })} -{' '}
+                  {targets.find((target) => target.path === r.path)?.name ?? r.path}
                 </li>
               ))}
             </ul>
-            <Button onClick={onClose}>닫기</Button>
+            <Button onClick={onClose}>{t('common.close')}</Button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2 text-xs">
-              {targets.map((t) => (
-                <li key={t.path} className="truncate text-muted-foreground">
-                  {t.name}
+              {targets.map((target) => (
+                <li key={target.path} className="truncate text-muted-foreground">
+                  {target.name}
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-muted-foreground">
-              파일은 휴지통으로 이동하며, 필요하면 휴지통에서 복구할 수 있습니다.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('fileOps.trashHint')}</p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={onClose}>
-                취소
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleConfirm}
                 disabled={deleteEntries.isPending}
               >
-                {deleteEntries.isPending ? '이동 중...' : '휴지통으로 이동'}
+                {deleteEntries.isPending ? t('fileOps.movingEllipsis') : t('fileOps.moveToTrash')}
               </Button>
             </div>
           </div>

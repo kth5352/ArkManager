@@ -132,6 +132,60 @@ const ko = {
   'launchConfig.saveBackupLocation': '세이브 파일 백업 위치',
   'launchConfig.pickSaveFolder': '세이브 폴더 지정',
   'launchConfig.backupNow': '지금 백업',
+
+  'customCover.title': '표지 이미지',
+  'customCover.noImageInClipboard': '클립보드에 이미지가 없습니다.',
+  'customCover.pickFile': '파일에서 선택',
+  'customCover.paste': '붙여넣기',
+  'customCover.remove': '제거',
+
+  'fileOps.done': '완료',
+  'fileOps.failed': '실패: {error}',
+  'fileOps.movingEllipsis': '이동 중...',
+  'fileOps.deleteCount': '{count}개 항목을 휴지통으로 이동',
+  'fileOps.trashHint': '파일은 휴지통으로 이동하며, 필요하면 휴지통에서 복구할 수 있습니다.',
+  'fileOps.moveToTrash': '휴지통으로 이동',
+  'fileOps.moveCount': '{count}개 항목 이동',
+  'fileOps.pickDestination': '대상 폴더 선택',
+  'fileOps.destination': '대상: {dir}',
+  'fileOps.move': '이동',
+
+  'rename.bulkTitle': '이름 일괄 변경 ({count}개)',
+  'rename.title': '이름 변경',
+  'rename.completed': '완료: {name}',
+  // Not interpolated (called with no params) - the {code}/{circle}/etc.
+  // shown here are the literal token syntax being documented to the user,
+  // not placeholders for useTranslation's {param} substitution.
+  'rename.tokenHelp':
+    '{code}: 식별코드 · {circle}: 서클명 · {title}: 크롤링된 제목 · {genres}: 태그 목록({태그1, 태그2}) · {name}: 원래 이름 · {ext}: 확장자 · {index}: 순번(1부터, {index:2}처럼 0으로 채우기 가능). 크롤링되지 않은 정보는 빈 값으로 처리되며, {ext}를 생략하면 파일 확장자는 자동으로 유지됩니다.',
+  'rename.duplicateNames': '변경 후 이름이 서로 중복됩니다. 패턴을 확인하세요.',
+  'rename.changing': '변경 중...',
+  'rename.bulkApply': '일괄 변경',
+  'rename.apply': '변경',
+
+  'game.codeNumber': '작품번호: {code}',
+  'game.noCode': '코드없음',
+  'game.openDlsite': 'DLsite 열기',
+  'game.refreshMetadata': '메타데이터 새로고침',
+  'game.openFolder': '폴더 열기',
+  'game.launch': '실행',
+  'game.ratingMemo': '평점/메모',
+  'game.fetchingMetadata': '메타데이터 가져오는 중...',
+  'game.playtime': '플레이타임: {time}',
+  'game.closeSidebar': '상세 패널 닫기',
+
+  'time.minutes': '{minutes}분',
+  'time.hours': '{hours}시간',
+  'time.hoursMinutes': '{hours}시간 {minutes}분',
+
+  'game.toggleFavorite': '즐겨찾기 토글',
+  'game.duplicateTitle': '같은 코드의 파일이 {count}개 있습니다.',
+  'common.scanError': '라이브러리를 스캔하는 중 오류가 발생했습니다.',
+  'common.noGamesFound':
+    '등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.',
+  'common.noItemsToShow': '표시할 항목이 없습니다.',
+
+  'recentlyPlayed.empty': '아직 플레이한 게임이 없습니다.',
 } as const
 
 const ja: Record<keyof typeof ko, string> = {
@@ -260,6 +314,57 @@ const ja: Record<keyof typeof ko, string> = {
   'launchConfig.saveBackupLocation': 'セーブファイルのバックアップ場所',
   'launchConfig.pickSaveFolder': 'セーブフォルダ指定',
   'launchConfig.backupNow': '今すぐバックアップ',
+
+  'customCover.title': '表紙画像',
+  'customCover.noImageInClipboard': 'クリップボードに画像がありません。',
+  'customCover.pickFile': 'ファイルから選択',
+  'customCover.paste': '貼り付け',
+  'customCover.remove': '削除',
+
+  'fileOps.done': '完了',
+  'fileOps.failed': '失敗: {error}',
+  'fileOps.movingEllipsis': '移動中...',
+  'fileOps.deleteCount': '{count}件をごみ箱に移動',
+  'fileOps.trashHint': 'ファイルはごみ箱に移動し、必要であればごみ箱から復元できます。',
+  'fileOps.moveToTrash': 'ごみ箱に移動',
+  'fileOps.moveCount': '{count}件を移動',
+  'fileOps.pickDestination': '移動先フォルダを選択',
+  'fileOps.destination': '移動先: {dir}',
+  'fileOps.move': '移動',
+
+  'rename.bulkTitle': '名前を一括変更（{count}件）',
+  'rename.title': '名前変更',
+  'rename.completed': '完了: {name}',
+  'rename.tokenHelp':
+    '{code}: 識別コード · {circle}: サークル名 · {title}: クロールしたタイトル · {genres}: タグ一覧（{タグ1, タグ2}） · {name}: 元の名前 · {ext}: 拡張子 · {index}: 連番（1から、{index:2}のように0埋め可能）。クロールされていない情報は空値になり、{ext}を省略するとファイルの拡張子は自動的に維持されます。',
+  'rename.duplicateNames': '変更後の名前が重複します。パターンを確認してください。',
+  'rename.changing': '変更中...',
+  'rename.bulkApply': '一括変更',
+  'rename.apply': '変更',
+
+  'game.codeNumber': '作品番号: {code}',
+  'game.noCode': 'コードなし',
+  'game.openDlsite': 'DLsiteを開く',
+  'game.refreshMetadata': 'メタデータ更新',
+  'game.openFolder': 'フォルダを開く',
+  'game.launch': '起動',
+  'game.ratingMemo': '評価/メモ',
+  'game.fetchingMetadata': 'メタデータ取得中...',
+  'game.playtime': 'プレイ時間: {time}',
+  'game.closeSidebar': '詳細パネルを閉じる',
+
+  'time.minutes': '{minutes}分',
+  'time.hours': '{hours}時間',
+  'time.hoursMinutes': '{hours}時間{minutes}分',
+
+  'game.toggleFavorite': 'お気に入り切り替え',
+  'game.duplicateTitle': '同じコードのファイルが{count}個あります。',
+  'common.scanError': 'ライブラリのスキャン中にエラーが発生しました。',
+  'common.noGamesFound':
+    '登録されたライブラリで認識されたゲームがありません。設定でライブラリを追加してください。',
+  'common.noItemsToShow': '表示する項目がありません。',
+
+  'recentlyPlayed.empty': 'まだプレイしたゲームがありません。',
 }
 
 const en: Record<keyof typeof ko, string> = {
@@ -389,7 +494,77 @@ const en: Record<keyof typeof ko, string> = {
   'launchConfig.saveBackupLocation': 'Save Backup Location',
   'launchConfig.pickSaveFolder': 'Pick Save Folder',
   'launchConfig.backupNow': 'Backup Now',
+
+  'customCover.title': 'Cover Image',
+  'customCover.noImageInClipboard': 'No image in clipboard.',
+  'customCover.pickFile': 'Pick from File',
+  'customCover.paste': 'Paste',
+  'customCover.remove': 'Remove',
+
+  'fileOps.done': 'Done',
+  'fileOps.failed': 'Failed: {error}',
+  'fileOps.movingEllipsis': 'Moving...',
+  'fileOps.deleteCount': 'Move {count} items to Recycle Bin',
+  'fileOps.trashHint':
+    'Files will be moved to the Recycle Bin, and can be restored from there if needed.',
+  'fileOps.moveToTrash': 'Move to Recycle Bin',
+  'fileOps.moveCount': 'Move {count} items',
+  'fileOps.pickDestination': 'Pick Destination Folder',
+  'fileOps.destination': 'Destination: {dir}',
+  'fileOps.move': 'Move',
+
+  'rename.bulkTitle': 'Bulk Rename ({count} items)',
+  'rename.title': 'Rename',
+  'rename.completed': 'Done: {name}',
+  'rename.tokenHelp':
+    '{code}: identifier code · {circle}: circle name · {title}: crawled title · {genres}: tag list ({tag1, tag2}) · {name}: original name · {ext}: extension · {index}: position (1-based, use {index:2} to zero-pad). Fields with no crawled data become empty; omitting {ext} keeps the original file extension automatically.',
+  'rename.duplicateNames': 'The resulting names would collide. Please check your pattern.',
+  'rename.changing': 'Renaming...',
+  'rename.bulkApply': 'Apply to All',
+  'rename.apply': 'Apply',
+
+  'game.codeNumber': 'Code: {code}',
+  'game.noCode': 'No code',
+  'game.openDlsite': 'Open DLsite',
+  'game.refreshMetadata': 'Refresh Metadata',
+  'game.openFolder': 'Open Folder',
+  'game.launch': 'Launch',
+  'game.ratingMemo': 'Rating/Memo',
+  'game.fetchingMetadata': 'Fetching metadata...',
+  'game.playtime': 'Playtime: {time}',
+  'game.closeSidebar': 'Close detail panel',
+
+  'time.minutes': '{minutes}m',
+  'time.hours': '{hours}h',
+  'time.hoursMinutes': '{hours}h {minutes}m',
+
+  'game.toggleFavorite': 'Toggle favorite',
+  'game.duplicateTitle': '{count} files share this code.',
+  'common.scanError': 'An error occurred while scanning the library.',
+  'common.noGamesFound':
+    'No recognized games found in the registered libraries. Try adding a library in Settings.',
+  'common.noItemsToShow': 'No items to show.',
+
+  'recentlyPlayed.empty': "You haven't played any games yet.",
 }
 
 export const translations = { ko, ja, en }
 export type TranslationKey = keyof typeof ko
+export type TranslationDict = (typeof translations)[Locale]
+
+// Plain {name} substitution against a specific dict - shared by
+// useTranslation() (which picks the dict for the current locale) and any
+// plain (non-hook) function that needs to format a locale-aware string
+// outside of React, like formatPlaytime.
+export function translate(
+  dict: TranslationDict,
+  key: TranslationKey,
+  params?: Record<string, string | number>
+): string {
+  const text = dict[key] ?? translations[DEFAULT_LOCALE][key] ?? key
+  if (!params) return text
+  return Object.entries(params).reduce(
+    (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),
+    text
+  )
+}

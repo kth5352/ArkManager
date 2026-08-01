@@ -10,6 +10,7 @@ import { useOpenExternal, useShowItemInFolder } from '../../services/shellServic
 import { useLaunchGame } from '../../services/launchService'
 import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
+import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -19,6 +20,7 @@ interface DetailOverlayProps {
 }
 
 export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
+  const { t } = useTranslation()
   const openExternal = useOpenExternal()
   const showItemInFolder = useShowItemInFolder()
   const launchGame = useLaunchGame()
@@ -73,17 +75,17 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                     className="text-left underline-offset-2 hover:underline"
                     onClick={() => game.code && openExternal.mutate(game.code)}
                   >
-                    작품번호: {game.code.value}
+                    {t('game.codeNumber', { code: game.code.value })}
                   </button>
                 ) : (
-                  <p>코드없음</p>
+                  <p>{t('game.noCode')}</p>
                 )}
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {game.code && (
                 <Button onClick={() => game.code && openExternal.mutate(game.code)}>
-                  DLsite 열기
+                  {t('game.openDlsite')}
                 </Button>
               )}
               {game.code && (
@@ -92,38 +94,38 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                   onClick={() => game.code && crawlMetadata.mutate(game.code)}
                   disabled={crawlMetadata.isPending}
                 >
-                  메타데이터 새로고침
+                  {t('game.refreshMetadata')}
                 </Button>
               )}
               <Button variant="secondary" onClick={() => showItemInFolder.mutate(game.path)}>
-                폴더 열기
+                {t('game.openFolder')}
               </Button>
               {game.kind === 'folder' && (
                 <Button variant="secondary" onClick={() => handleLaunch(game)}>
-                  실행
+                  {t('game.launch')}
                 </Button>
               )}
               <Button variant="secondary" onClick={() => setConfiguringLaunch(true)}>
-                실행 설정
+                {t('launchConfig.title')}
               </Button>
               <Button variant="secondary" onClick={() => setEditingRating(true)}>
-                평점/메모
+                {t('game.ratingMemo')}
               </Button>
               {!game.code && (
                 <Button variant="secondary" onClick={() => setLinkingCode(true)}>
-                  코드 연동
+                  {t('codeLink.dialogTitle')}
                 </Button>
               )}
               {game.code && game.codeSource === 'override' && (
                 <Button variant="secondary" onClick={() => setUnlinkingCode(true)}>
-                  연동 해제
+                  {t('codeLink.unlink')}
                 </Button>
               )}
             </div>
             {crawlMetadata.isPending && (
               <div className="mt-3 flex flex-col gap-1">
                 <IndeterminateProgressBar />
-                <p className="text-xs text-muted-foreground">메타데이터 가져오는 중...</p>
+                <p className="text-xs text-muted-foreground">{t('game.fetchingMetadata')}</p>
               </div>
             )}
           </>

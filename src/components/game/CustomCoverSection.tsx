@@ -6,6 +6,7 @@ import {
   useSetCustomCoverFromClipboard,
   useSetCustomCoverFromFile,
 } from '../../services/gameUserDataService'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface CustomCoverSectionProps {
@@ -20,6 +21,7 @@ interface CustomCoverSectionProps {
 // hook calls unconditional rather than being conditionally rendered by its
 // caller.
 export function CustomCoverSection({ game, hasCustomCover }: CustomCoverSectionProps) {
+  const { t } = useTranslation()
   const pickFile = usePickCustomCoverFile()
   const setFromFile = useSetCustomCoverFromFile()
   const setFromClipboard = useSetCustomCoverFromClipboard()
@@ -38,7 +40,7 @@ export function CustomCoverSection({ game, hasCustomCover }: CustomCoverSectionP
   const handlePasteFromClipboard = (): void => {
     setError(null)
     setFromClipboard.mutate(game, {
-      onError: () => setError('클립보드에 이미지가 없습니다.'),
+      onError: () => setError(t('customCover.noImageInClipboard')),
     })
   }
 
@@ -46,10 +48,10 @@ export function CustomCoverSection({ game, hasCustomCover }: CustomCoverSectionP
 
   return (
     <div className="flex flex-col gap-2 border-t border-border pt-3">
-      <p className="text-xs font-medium text-muted-foreground">표지 이미지</p>
+      <p className="text-xs font-medium text-muted-foreground">{t('customCover.title')}</p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" onClick={handlePickFile} disabled={isPending}>
-          파일에서 선택
+          {t('customCover.pickFile')}
         </Button>
         <Button
           size="sm"
@@ -57,7 +59,7 @@ export function CustomCoverSection({ game, hasCustomCover }: CustomCoverSectionP
           onClick={handlePasteFromClipboard}
           disabled={isPending}
         >
-          붙여넣기
+          {t('customCover.paste')}
         </Button>
         {hasCustomCover && (
           <Button
@@ -66,7 +68,7 @@ export function CustomCoverSection({ game, hasCustomCover }: CustomCoverSectionP
             onClick={() => clearCover.mutate(game)}
             disabled={clearCover.isPending}
           >
-            제거
+            {t('customCover.remove')}
           </Button>
         )}
       </div>

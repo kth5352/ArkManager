@@ -4,6 +4,7 @@ import { useGameCoverImage, useGameMetadata } from '../../services/metadataServi
 import { useGameUserData } from '../../services/gameUserDataService'
 import { usePendingGalleryOpenStore } from '../../stores/pendingGalleryOpenStore'
 import { formatPlaytime } from './formatPlaytime'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
 
 function codeFromKey(key: string): GameCode | null {
@@ -13,6 +14,7 @@ function codeFromKey(key: string): GameCode | null {
 }
 
 function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastPlayedAt: string }) {
+  const { t } = useTranslation()
   const code = codeFromKey(entryKey)
   const { data: metadata } = useGameMetadata(code)
   const { data: userData } = useGameUserData({ code, path: code ? '' : entryKey })
@@ -41,7 +43,7 @@ function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastP
       </div>
       <span className="flex-1">{metadata?.title ?? entryKey}</span>
       <span className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span>{formatPlaytime(userData?.totalPlaytimeMs ?? 0)}</span>
+        <span>{formatPlaytime(userData?.totalPlaytimeMs ?? 0, t)}</span>
         <span>{lastPlayedAt.slice(0, 10)}</span>
       </span>
     </button>
@@ -49,6 +51,7 @@ function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastP
 }
 
 export function RecentlyPlayedPage() {
+  const { t } = useTranslation()
   const { data: recent, isLoading } = useRecentlyPlayed()
 
   if (isLoading || !recent) return null
@@ -56,7 +59,7 @@ export function RecentlyPlayedPage() {
   if (recent.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        아직 플레이한 게임이 없습니다.
+        {t('recentlyPlayed.empty')}
       </div>
     )
   }

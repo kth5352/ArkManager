@@ -1,5 +1,5 @@
 import { useLanguageQuery } from '../services/settingsService'
-import { translations, DEFAULT_LOCALE, type TranslationKey } from './translations'
+import { translations, translate, DEFAULT_LOCALE, type TranslationKey } from './translations'
 
 // t(key) always resolves - a key missing from the current locale's dict
 // (shouldn't happen once a key is added, but guards a partial edit) falls
@@ -15,14 +15,8 @@ export function useTranslation(): {
   const { data: locale = DEFAULT_LOCALE } = useLanguageQuery()
   const dict = translations[locale]
 
-  const t = (key: TranslationKey, params?: Record<string, string | number>): string => {
-    const text = dict[key] ?? translations[DEFAULT_LOCALE][key] ?? key
-    if (!params) return text
-    return Object.entries(params).reduce(
-      (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),
-      text
-    )
+  return {
+    t: (key, params) => translate(dict, key, params),
+    locale,
   }
-
-  return { t, locale }
 }

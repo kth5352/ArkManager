@@ -9,6 +9,7 @@ import {
   DEFAULT_RENAME_PATTERN,
   type RenameTarget,
 } from '../../lib/buildRenamePlan'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { RenameResultDto } from '../../../shared/types/ipc'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -27,6 +28,7 @@ interface RenameDialogProps {
 }
 
 export function RenameDialog({ targets, onClose }: RenameDialogProps) {
+  const { t } = useTranslation()
   const isBulk = targets.length > 1
   const [singleName, setSingleName] = useState(() => targets[0]?.name ?? '')
   const [pattern, setPattern] = useState(DEFAULT_RENAME_PATTERN)
@@ -65,7 +67,9 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
     <Dialog open={targets.length > 0} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isBulk ? `이름 일괄 변경 (${targets.length}개)` : '이름 변경'}</DialogTitle>
+          <DialogTitle>
+            {isBulk ? t('rename.bulkTitle', { count: targets.length }) : t('rename.title')}
+          </DialogTitle>
         </DialogHeader>
 
         {results ? (
@@ -76,11 +80,13 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
                   key={r.path}
                   className={r.success ? 'text-muted-foreground' : 'text-destructive'}
                 >
-                  {r.success ? `완료: ${basename(r.newPath ?? r.path)}` : `실패: ${r.error}`}
+                  {r.success
+                    ? t('rename.completed', { name: basename(r.newPath ?? r.path) })
+                    : t('fileOps.failed', { error: r.error ?? '' })}
                 </li>
               ))}
             </ul>
-            <Button onClick={onClose}>닫기</Button>
+            <Button onClick={onClose}>{t('common.close')}</Button>
           </div>
         ) : isBulk ? (
           <div className="flex flex-col gap-3">
@@ -90,13 +96,7 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
               placeholder={DEFAULT_RENAME_PATTERN}
               autoFocus
             />
-            <p className="text-xs text-muted-foreground">
-              {'{code}'}: 식별코드 · {'{circle}'}: 서클명 · {'{title}'}: 크롤링된 제목 ·{' '}
-              {'{genres}'}: 태그 목록({'{'}태그1, 태그2{'}'}) · {'{name}'}: 원래 이름 · {'{ext}'}:
-              확장자 · {'{index}'}: 순번(1부터, {'{index:2}'}처럼 0으로 채우기 가능). 크롤링되지
-              않은 정보는 빈 값으로 처리되며, {'{ext}'}를 생략하면 파일 확장자는 자동으로
-              유지됩니다.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('rename.tokenHelp')}</p>
             <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2 text-xs">
               {preview.map((p, i) => (
                 <li key={targets[i].path} className="truncate text-muted-foreground">
@@ -105,15 +105,13 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
               ))}
             </ul>
             {hasDuplicateInBatch && (
-              <p className="text-xs text-destructive">
-                변경 후 이름이 서로 중복됩니다. 패턴을 확인하세요.
-              </p>
+              <p className="text-xs text-destructive">{t('rename.duplicateNames')}</p>
             )}
             <Button
               onClick={handleApply}
               disabled={!pattern.trim() || hasDuplicateInBatch || renameEntries.isPending}
             >
-              {renameEntries.isPending ? '변경 중...' : '일괄 변경'}
+              {renameEntries.isPending ? t('rename.changing') : t('rename.bulkApply')}
             </Button>
           </div>
         ) : (
@@ -125,7 +123,7 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
             />
             <Button onClick={handleApply} disabled={!singleName.trim() || renameEntries.isPending}>
-              {renameEntries.isPending ? '변경 중...' : '변경'}
+              {renameEntries.isPending ? t('rename.changing') : t('rename.apply')}
             </Button>
           </div>
         )}

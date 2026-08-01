@@ -18,6 +18,7 @@ import { formatPlaytime } from '../../pages/RecentlyPlayed/formatPlaytime'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
+import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -28,6 +29,7 @@ interface DetailSidebarProps {
 }
 
 export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarProps) {
+  const { t } = useTranslation()
   const { data: persistedWidth } = useSidebarWidthQuery()
   const setSidebarWidth = useSetSidebarWidthMutation()
   const [width, setWidth] = useState(persistedWidth ?? SIDEBAR_WIDTH_DEFAULT)
@@ -119,7 +121,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
       <div className="sticky top-0 z-10 flex items-start justify-between gap-2 border-b border-border bg-card p-4">
         <p className="text-sm font-medium">{game.name}</p>
         <button
-          aria-label="상세 패널 닫기"
+          aria-label={t('game.closeSidebar')}
           onClick={onClose}
           className="shrink-0 text-muted-foreground hover:text-foreground"
         >
@@ -138,15 +140,15 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
             className="text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
             onClick={() => game.code && openExternal.mutate(game.code)}
           >
-            작품번호: {game.code.value}
+            {t('game.codeNumber', { code: game.code.value })}
           </button>
         ) : (
-          <p className="text-xs text-muted-foreground">코드없음</p>
+          <p className="text-xs text-muted-foreground">{t('game.noCode')}</p>
         )}
         {!!userData?.totalPlaytimeMs && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
-            플레이타임: {formatPlaytime(userData.totalPlaytimeMs)}
+            {t('game.playtime', { time: formatPlaytime(userData.totalPlaytimeMs, t) })}
           </div>
         )}
         {!!metadata?.genres?.length && (
@@ -166,7 +168,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         <div className="flex flex-wrap gap-2">
           {game.code && (
             <Button size="sm" onClick={() => game.code && openExternal.mutate(game.code)}>
-              DLsite 열기
+              {t('game.openDlsite')}
             </Button>
           )}
           {game.code && (
@@ -176,31 +178,31 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
               onClick={() => game.code && crawlMetadata.mutate(game.code)}
               disabled={crawlMetadata.isPending}
             >
-              메타데이터 새로고침
+              {t('game.refreshMetadata')}
             </Button>
           )}
           <Button size="sm" variant="secondary" onClick={() => showItemInFolder.mutate(game.path)}>
-            폴더 열기
+            {t('game.openFolder')}
           </Button>
           {game.kind === 'folder' && (
             <Button size="sm" variant="secondary" onClick={handleLaunch}>
-              실행
+              {t('game.launch')}
             </Button>
           )}
           <Button size="sm" variant="secondary" onClick={() => setDialogMode('rename')}>
-            이름 변경
+            {t('selection.rename')}
           </Button>
           <Button size="sm" variant="secondary" onClick={() => setDialogMode('move')}>
-            이동
+            {t('selection.move')}
           </Button>
           <Button size="sm" variant="destructive" onClick={() => setDialogMode('delete')}>
-            삭제
+            {t('common.delete')}
           </Button>
         </div>
         {crawlMetadata.isPending && (
           <div className="flex flex-col gap-1">
             <IndeterminateProgressBar />
-            <p className="text-xs text-muted-foreground">메타데이터 가져오는 중...</p>
+            <p className="text-xs text-muted-foreground">{t('game.fetchingMetadata')}</p>
           </div>
         )}
         <CustomCoverSection game={game} hasCustomCover={!!userData?.customCoverPath} />

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { useMoveEntries, usePickMoveDestination } from '../../services/fileOpsService'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { MoveResultDto } from '../../../shared/types/ipc'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -15,6 +16,7 @@ interface MoveDialogProps {
 // EXPLORER_MOVE_ENTRIES's rekeyPathCodeOverride/rekeyPath) - nothing extra
 // for the user to do here beyond picking the destination.
 export function MoveDialog({ targets, onClose }: MoveDialogProps) {
+  const { t } = useTranslation()
   const [destDir, setDestDir] = useState<string | null>(null)
   const [results, setResults] = useState<MoveResultDto[] | null>(null)
   const pickDestination = usePickMoveDestination()
@@ -27,14 +29,17 @@ export function MoveDialog({ targets, onClose }: MoveDialogProps) {
 
   const handleMove = (): void => {
     if (!destDir) return
-    moveEntries.mutate({ paths: targets.map((t) => t.path), destDir }, { onSuccess: setResults })
+    moveEntries.mutate(
+      { paths: targets.map((target) => target.path), destDir },
+      { onSuccess: setResults }
+    )
   }
 
   return (
     <Dialog open={targets.length > 0} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{targets.length}개 항목 이동</DialogTitle>
+          <DialogTitle>{t('fileOps.moveCount', { count: targets.length })}</DialogTitle>
         </DialogHeader>
 
         {results ? (
@@ -45,32 +50,36 @@ export function MoveDialog({ targets, onClose }: MoveDialogProps) {
                   key={r.path}
                   className={r.success ? 'text-muted-foreground' : 'text-destructive'}
                 >
-                  {r.success ? '완료' : `실패: ${r.error}`} -{' '}
-                  {targets.find((t) => t.path === r.path)?.name ?? r.path}
+                  {r.success ? t('fileOps.done') : t('fileOps.failed', { error: r.error ?? '' })} -{' '}
+                  {targets.find((target) => target.path === r.path)?.name ?? r.path}
                 </li>
               ))}
             </ul>
-            <Button onClick={onClose}>닫기</Button>
+            <Button onClick={onClose}>{t('common.close')}</Button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2 text-xs">
-              {targets.map((t) => (
-                <li key={t.path} className="truncate text-muted-foreground">
-                  {t.name}
+              {targets.map((target) => (
+                <li key={target.path} className="truncate text-muted-foreground">
+                  {target.name}
                 </li>
               ))}
             </ul>
             <Button variant="secondary" onClick={handlePickDestination}>
-              대상 폴더 선택
+              {t('fileOps.pickDestination')}
             </Button>
-            {destDir && <p className="truncate text-xs text-muted-foreground">대상: {destDir}</p>}
+            {destDir && (
+              <p className="truncate text-xs text-muted-foreground">
+                {t('fileOps.destination', { dir: destDir })}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={onClose}>
-                취소
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleMove} disabled={!destDir || moveEntries.isPending}>
-                {moveEntries.isPending ? '이동 중...' : '이동'}
+                {moveEntries.isPending ? t('fileOps.movingEllipsis') : t('fileOps.move')}
               </Button>
             </div>
           </div>

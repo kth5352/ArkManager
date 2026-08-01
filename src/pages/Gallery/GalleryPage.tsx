@@ -30,6 +30,7 @@ import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const CARD_WIDTH = 180
@@ -77,6 +78,7 @@ function GameCard({
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
 }) {
+  const { t } = useTranslation()
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
   const activateSelection = useSelectionStore((s) => s.activate)
@@ -98,7 +100,7 @@ function GameCard({
       className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
     >
       <button
-        aria-label="즐겨찾기 토글"
+        aria-label={t('game.toggleFavorite')}
         onClick={(e) => {
           e.stopPropagation()
           toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
@@ -123,7 +125,7 @@ function GameCard({
           {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
           {!!duplicateCount && (
             <span
-              title={`같은 코드의 파일이 ${duplicateCount}개 있습니다.`}
+              title={t('game.duplicateTitle', { count: duplicateCount })}
               className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
             >
               <Copy className="h-2.5 w-2.5" />
@@ -145,7 +147,7 @@ function GameCard({
         {!!userData?.totalPlaytimeMs && (
           <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
             <Clock className="h-3 w-3" />
-            {formatPlaytime(userData.totalPlaytimeMs)}
+            {formatPlaytime(userData.totalPlaytimeMs, t)}
           </div>
         )}
         <div
@@ -221,6 +223,7 @@ function GameCell({
 }
 
 export function GalleryPage() {
+  const { t } = useTranslation()
   const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('gallery')
   const [zoom, setZoom] = useState(1)
@@ -302,7 +305,7 @@ export function GalleryPage() {
   if (isError && !games) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        라이브러리를 스캔하는 중 오류가 발생했습니다.
+        {t('common.scanError')}
       </div>
     )
   }
@@ -370,9 +373,7 @@ export function GalleryPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           {visibleGames.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-              {games.length === 0
-                ? '등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.'
-                : '표시할 항목이 없습니다.'}
+              {games.length === 0 ? t('common.noGamesFound') : t('common.noItemsToShow')}
             </div>
           ) : (
             <div ref={setContainer} className="h-full w-full p-6">
