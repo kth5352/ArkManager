@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { GameCode } from '../../shared/types/scanner'
 import type { BulkCrawlProgressDto } from '../../shared/types/ipc'
@@ -9,8 +9,25 @@ import type { BulkCrawlProgressDto } from '../../shared/types/ipc'
 // bulkCrawlQueue.ts) already dedupes by code and only ever runs one crawl
 // pass per code per app session.
 export function useTriggerBulkCrawlMissingMetadata(codes: GameCode[]): void {
+  // All three call sites rebuild `codes` with a new array reference on
+  // every render (they .flatMap() it fresh from `games`), and each of those
+  // pages also holds unrelated local state (search query, hovered card)
+  // that re-renders far more often than the actual game list changes -
+  // without this, the effect below re-fires (and re-hits the main
+  // process's per-code SQLite lookup for the whole library, see
+  // bulkCrawlQueue.ts) on every keystroke/hover instead of only when the
+  // set of codes actually changes. Keyed by content (sorted/joined code
+  // values) rather than array identity.
+  const lastSignatureRef = useRef<string | null>(null)
+
   useEffect(() => {
     if (codes.length === 0) return
+    const signature = codes
+      .map((code) => code.value)
+      .sort()
+      .join(',')
+    if (signature === lastSignatureRef.current) return
+    lastSignatureRef.current = signature
     window.api.metadata.crawlMissing(codes)
   }, [codes])
 }
