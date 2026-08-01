@@ -80,10 +80,17 @@ function ColumnResizeHandle({ onResize }: { onResize: (deltaX: number) => void }
     event.stopPropagation()
     const target = event.currentTarget
     target.setPointerCapture(event.pointerId)
-    const startX = event.clientX
+    // Reassigned after every move so each call reports the delta since the
+    // PREVIOUS event, not since the drag started - onResize adds it to the
+    // column's current width (see resizeColumn), so passing the
+    // since-drag-start offset on every single pointermove tick (there are
+    // many per drag) compounded it over and over, growing the column
+    // without bound on the slightest movement.
+    let lastX = event.clientX
 
     const handlePointerMove = (moveEvent: PointerEvent): void => {
-      onResize(moveEvent.clientX - startX)
+      onResize(moveEvent.clientX - lastX)
+      lastX = moveEvent.clientX
     }
     const handlePointerUp = (): void => {
       target.removeEventListener('pointermove', handlePointerMove)
