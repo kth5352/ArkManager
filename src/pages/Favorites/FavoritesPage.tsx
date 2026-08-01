@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Heart } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { useGames } from '../../services/useGames'
+import { useVisibleGames } from '../../hooks/useVisibleGames'
 import {
   useFavoriteKeys,
   useGameUserData,
@@ -62,7 +62,7 @@ function FavoriteCard({ game }: { game: ScannedEntry }) {
 
 export function FavoritesPage() {
   const { t } = useTranslation()
-  const { data: games, isLoading: gamesLoading, isError: gamesError } = useGames()
+  const { data: games, isLoading: gamesLoading, isError: gamesError } = useVisibleGames()
   const { data: favoriteKeys, isLoading: keysLoading } = useFavoriteKeys()
 
   if (gamesError && !games) {
