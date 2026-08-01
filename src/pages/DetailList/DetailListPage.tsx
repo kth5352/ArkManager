@@ -12,6 +12,7 @@ import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
+import { DuplicatesOnlyToggle } from '../../components/layout/DuplicatesOnlyToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -212,6 +213,7 @@ export function DetailListPage() {
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
+  const [duplicatesOnly, setDuplicatesOnly] = useState(false)
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>(DEFAULT_COLUMN_WIDTHS)
 
   // DetailList's own rows show genres as plain (non-clickable) text - this
@@ -271,6 +273,9 @@ export function DetailListPage() {
     fileKindFilter
   )
   const sorted = sortEntries(filtered, sortField, sortDirection)
+  const visible = duplicatesOnly
+    ? sorted.filter((e) => e.code && duplicateGroups.has(e.code.value))
+    : sorted
 
   return (
     <div className="flex h-full flex-col">
@@ -286,13 +291,14 @@ export function DetailListPage() {
           }}
         />
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
+        <DuplicatesOnlyToggle value={duplicatesOnly} onChange={setDuplicatesOnly} />
         <LibraryVisibilityDialog />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
-        <SelectionToolbar allEntries={sorted} />
+        <SelectionToolbar allEntries={visible} />
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          {sorted.length === 0 ? (
+          {visible.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               표시할 항목이 없습니다.
             </div>
@@ -337,13 +343,13 @@ export function DetailListPage() {
                       <List
                         rowComponent={Row}
                         rowProps={{
-                          entries: sorted,
+                          entries: visible,
                           metadataByCode,
                           duplicateGroups,
                           columnWidths,
                           onOpenDetail: openDetail,
                         }}
-                        rowCount={sorted.length}
+                        rowCount={visible.length}
                         rowHeight={ROW_HEIGHT}
                         style={{ height: height - HEADER_HEIGHT, width }}
                       />

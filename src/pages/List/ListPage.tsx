@@ -7,6 +7,7 @@ import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
+import { DuplicatesOnlyToggle } from '../../components/layout/DuplicatesOnlyToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useOpenExternal } from '../../services/shellService'
@@ -200,6 +201,7 @@ export function ListPage() {
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
+  const [duplicatesOnly, setDuplicatesOnly] = useState(false)
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
 
   // Clicking a tag on a row adds it to the include filter alongside
@@ -257,6 +259,9 @@ export function ListPage() {
       : games
   const sortedGames =
     filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
+  const visibleGames = duplicatesOnly
+    ? sortedGames.filter((g) => g.code && duplicateGroups.has(g.code.value))
+    : sortedGames
 
   return (
     <div className="flex h-full flex-col">
@@ -272,13 +277,14 @@ export function ListPage() {
           }}
         />
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
+        <DuplicatesOnlyToggle value={duplicatesOnly} onChange={setDuplicatesOnly} />
         <LibraryVisibilityDialog />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
-        <SelectionToolbar allEntries={sortedGames} />
+        <SelectionToolbar allEntries={visibleGames} />
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          {sortedGames.length === 0 ? (
+          {visibleGames.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               {games.length === 0
                 ? '등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.'
@@ -295,14 +301,14 @@ export function ListPage() {
                     <List
                       rowComponent={Row}
                       rowProps={{
-                        games: sortedGames,
+                        games: visibleGames,
                         metadataByCode,
                         duplicateGroups,
                         onFilterByGenre: filterByGenre,
                         onOpenDetail: openDetail,
                         onHoverChange: setHoveredGame,
                       }}
-                      rowCount={sortedGames.length}
+                      rowCount={visibleGames.length}
                       rowHeight={ROW_HEIGHT}
                       style={{ height, width }}
                     />
