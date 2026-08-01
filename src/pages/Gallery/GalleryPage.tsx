@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Grid, useGridRef, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
-import { Clock, Copy, Heart, Star } from 'lucide-react'
+import { CheckCircle2, Clock, Copy, Heart, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -11,7 +11,11 @@ import { FileKindFilterToggle } from '../../components/layout/FileKindFilterTogg
 import { DuplicatesOnlyToggle } from '../../components/layout/DuplicatesOnlyToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
-import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
+import {
+  useGameUserData,
+  useToggleCleared,
+  useToggleFavorite,
+} from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
 import { useLongPress } from '../../hooks/useLongPress'
@@ -81,6 +85,7 @@ function GameCard({
   const { t } = useTranslation()
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
+  const toggleCleared = useToggleCleared()
   const activateSelection = useSelectionStore((s) => s.activate)
   const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
     activateSelection(game.path)
@@ -108,6 +113,19 @@ function GameCard({
         className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
       >
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
+      </button>
+      <button
+        aria-label={t('game.toggleCleared')}
+        onClick={(e) => {
+          e.stopPropagation()
+          toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+        }}
+        className="absolute right-2 top-9 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+      >
+        <CheckCircle2
+          className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}
+          fill={userData?.isCleared ? 'currentColor' : 'none'}
+        />
       </button>
       <div className="absolute left-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground">
         <FileKindIcon kind={game.kind} name={game.name} className="h-4 w-4" />

@@ -133,6 +133,11 @@ const api = {
         identifier: { code, path },
         isFavorite,
       }),
+    setCleared: (code: GameCode | null, path: string, isCleared: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_SET_CLEARED, {
+        identifier: { code, path },
+        isCleared,
+      }),
     setRatingAndMemo: (
       code: GameCode | null,
       path: string,

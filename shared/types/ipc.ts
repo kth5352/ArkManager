@@ -39,6 +39,7 @@ export const IPC_CHANNELS = {
   METADATA_BULK_CRAWL_PROGRESS: 'metadata:bulk-crawl-progress',
   GAME_USER_DATA_GET: 'game-user-data:get',
   GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
+  GAME_USER_DATA_SET_CLEARED: 'game-user-data:set-cleared',
   GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
   GAME_USER_DATA_LIST_FAVORITE_KEYS: 'game-user-data:list-favorite-keys',
   GAME_USER_DATA_LIST_RECENTLY_PLAYED: 'game-user-data:list-recently-played',
@@ -232,6 +233,12 @@ export const SetFavoriteRequestSchema = z.object({
 })
 export type SetFavoriteRequest = z.infer<typeof SetFavoriteRequestSchema>
 
+export const SetClearedRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  isCleared: z.boolean(),
+})
+export type SetClearedRequest = z.infer<typeof SetClearedRequestSchema>
+
 export const SetRatingAndMemoRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
   rating: z.number().min(1).max(5).nullable(),
@@ -257,6 +264,7 @@ export type UnlinkCodeRequest = z.infer<typeof UnlinkCodeRequestSchema>
 
 export interface GameUserDataDto {
   isFavorite: boolean
+  isCleared: boolean
   rating: number | null
   memo: string | null
   totalPlaytimeMs: number

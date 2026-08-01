@@ -180,6 +180,7 @@ const ko = {
   'time.hoursMinutes': '{hours}시간 {minutes}분',
 
   'game.toggleFavorite': '즐겨찾기 토글',
+  'game.toggleCleared': '클리어 표시 토글',
   'game.duplicateTitle': '같은 코드의 파일이 {count}개 있습니다.',
   'common.scanError': '라이브러리를 스캔하는 중 오류가 발생했습니다.',
   'common.noGamesFound':
@@ -417,6 +418,7 @@ const ja: Record<keyof typeof ko, string> = {
   'time.hoursMinutes': '{hours}時間{minutes}分',
 
   'game.toggleFavorite': 'お気に入り切り替え',
+  'game.toggleCleared': 'クリア表示の切り替え',
   'game.duplicateTitle': '同じコードのファイルが{count}個あります。',
   'common.scanError': 'ライブラリのスキャン中にエラーが発生しました。',
   'common.noGamesFound':
@@ -656,6 +658,7 @@ const en: Record<keyof typeof ko, string> = {
   'time.hoursMinutes': '{hours}h {minutes}m',
 
   'game.toggleFavorite': 'Toggle favorite',
+  'game.toggleCleared': 'Toggle cleared',
   'game.duplicateTitle': '{count} files share this code.',
   'common.scanError': 'An error occurred while scanning the library.',
   'common.noGamesFound':

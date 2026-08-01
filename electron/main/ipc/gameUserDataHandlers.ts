@@ -5,6 +5,7 @@ import {
   GetGameUserDataRequestSchema,
   IPC_CHANNELS,
   LinkCodeRequestSchema,
+  SetClearedRequestSchema,
   SetCustomCoverFromFileRequestSchema,
   SetFavoriteRequestSchema,
   SetRatingAndMemoRequestSchema,
@@ -14,6 +15,7 @@ import {
 import {
   getGameUserData,
   setFavorite,
+  setCleared,
   setRatingAndMemo,
   setCustomCoverPath,
   listFavoriteKeys,
@@ -34,6 +36,7 @@ function toDto(row: ReturnType<typeof getGameUserData>): GameUserDataDto | null 
   if (!row) return null
   return {
     isFavorite: row.isFavorite,
+    isCleared: row.isCleared,
     rating: row.rating,
     memo: row.memo,
     totalPlaytimeMs: row.totalPlaytimeMs,
@@ -57,6 +60,12 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
     const { identifier, isFavorite } = SetFavoriteRequestSchema.parse(payload)
     const { key, keyType } = resolveGameEntryKey(identifier)
     setFavorite(db, key, keyType, isFavorite)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_SET_CLEARED, (_event, payload: unknown) => {
+    const { identifier, isCleared } = SetClearedRequestSchema.parse(payload)
+    const { key, keyType } = resolveGameEntryKey(identifier)
+    setCleared(db, key, keyType, isCleared)
   })
 
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_SET_RATING_AND_MEMO, (_event, payload: unknown) => {

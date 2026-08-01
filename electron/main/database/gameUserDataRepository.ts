@@ -13,6 +13,7 @@ export interface GameUserDataRow {
   key: string
   keyType: GameUserDataKeyType
   isFavorite: boolean
+  isCleared: boolean
   rating: number | null
   memo: string | null
   launchConfig: LaunchConfig | null
@@ -44,6 +45,19 @@ export function setFavorite(
   db.insert(gameUserData)
     .values({ key, keyType, isFavorite, createdAt: now, updatedAt: now })
     .onConflictDoUpdate({ target: gameUserData.key, set: { isFavorite, updatedAt: now } })
+    .run()
+}
+
+export function setCleared(
+  db: AppDatabase,
+  key: string,
+  keyType: GameUserDataKeyType,
+  isCleared: boolean
+): void {
+  const now = new Date().toISOString()
+  db.insert(gameUserData)
+    .values({ key, keyType, isCleared, createdAt: now, updatedAt: now })
+    .onConflictDoUpdate({ target: gameUserData.key, set: { isCleared, updatedAt: now } })
     .run()
 }
 
@@ -171,13 +185,13 @@ export function listFavoriteKeys(db: AppDatabase): string[] {
 
 // Moves a path-keyed row (a code-less file the user later assigned a code
 // to) onto the code as its new primary key, preserving createdAt as well as
-// isFavorite/rating/memo/launchConfig/totalPlaytimeMs/lastPlayedAt/savePath.
+// isFavorite/isCleared/rating/memo/launchConfig/totalPlaytimeMs/lastPlayedAt/savePath.
 // No-op if the old path key was never recorded - nothing to migrate.
 //
 // If the code already has its own row (e.g. crawled/favorited independently
 // before the user linked the path to it), the two rows are merged
 // deterministically rather than one silently clobbering the other:
-//   - isFavorite: true if either side is favorited.
+//   - isFavorite/isCleared: true if either side is favorited/cleared.
 //   - rating/memo/launchConfig/lastPlayedAt/savePath/customCoverPath: the
 //     code row's value wins when set, otherwise falls back to the path
 //     row's value.
@@ -194,6 +208,7 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
 
   const merged = {
     isFavorite: (currentCodeRow?.isFavorite ?? false) || existing.isFavorite,
+    isCleared: (currentCodeRow?.isCleared ?? false) || existing.isCleared,
     rating: currentCodeRow?.rating ?? existing.rating,
     memo: currentCodeRow?.memo ?? existing.memo,
     launchConfig: currentCodeRow?.launchConfig ?? existing.launchConfig,
@@ -214,6 +229,7 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
         key: newCode,
         keyType: 'code',
         isFavorite: merged.isFavorite,
+        isCleared: merged.isCleared,
         rating: merged.rating,
         memo: merged.memo,
         launchConfig: merged.launchConfig ? JSON.stringify(merged.launchConfig) : null,
@@ -228,6 +244,7 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
         target: gameUserData.key,
         set: {
           isFavorite: merged.isFavorite,
+          isCleared: merged.isCleared,
           rating: merged.rating,
           memo: merged.memo,
           launchConfig: merged.launchConfig ? JSON.stringify(merged.launchConfig) : null,
@@ -265,6 +282,7 @@ export function rekeyPath(db: AppDatabase, oldPathKey: string, newPathKey: strin
         key: newPathKey,
         keyType: 'path',
         isFavorite: existing.isFavorite,
+        isCleared: existing.isCleared,
         rating: existing.rating,
         memo: existing.memo,
         launchConfig,
@@ -279,6 +297,7 @@ export function rekeyPath(db: AppDatabase, oldPathKey: string, newPathKey: strin
         target: gameUserData.key,
         set: {
           isFavorite: existing.isFavorite,
+          isCleared: existing.isCleared,
           rating: existing.rating,
           memo: existing.memo,
           launchConfig,

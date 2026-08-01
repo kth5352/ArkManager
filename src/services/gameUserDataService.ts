@@ -45,6 +45,7 @@ export function useToggleFavorite() {
     onSuccess: (_result, { entry, isFavorite }) => {
       queryClient.setQueryData<GameUserDataDto | null>(userDataQueryKey(entry), (prev) => ({
         isFavorite,
+        isCleared: prev?.isCleared ?? false,
         rating: prev?.rating ?? null,
         memo: prev?.memo ?? null,
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
@@ -52,6 +53,31 @@ export function useToggleFavorite() {
         customCoverPath: prev?.customCoverPath ?? null,
       }))
       queryClient.invalidateQueries({ queryKey: ['game-user-data', 'favorite-keys'] })
+    },
+  })
+}
+
+export function useToggleCleared() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      entry,
+      isCleared,
+    }: {
+      entry: Pick<ScannedEntry, 'code' | 'path'>
+      isCleared: boolean
+    }) => window.api.gameUserData.setCleared(entry.code, entry.path, isCleared),
+    onSuccess: (_result, { entry, isCleared }) => {
+      queryClient.setQueryData<GameUserDataDto | null>(userDataQueryKey(entry), (prev) => ({
+        isFavorite: prev?.isFavorite ?? false,
+        isCleared,
+        rating: prev?.rating ?? null,
+        memo: prev?.memo ?? null,
+        totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
+        launchConfig: prev?.launchConfig ?? null,
+        customCoverPath: prev?.customCoverPath ?? null,
+      }))
     },
   })
 }
@@ -72,6 +98,7 @@ export function useSetRatingAndMemo() {
     onSuccess: (_result, { entry, rating, memo }) => {
       queryClient.setQueryData<GameUserDataDto | null>(userDataQueryKey(entry), (prev) => ({
         isFavorite: prev?.isFavorite ?? false,
+        isCleared: prev?.isCleared ?? false,
         rating,
         memo,
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { Clock, Copy, Heart, Star } from 'lucide-react'
+import { CheckCircle2, Clock, Copy, Heart, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -11,7 +11,11 @@ import { DuplicatesOnlyToggle } from '../../components/layout/DuplicatesOnlyTogg
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useOpenExternal } from '../../services/shellService'
-import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
+import {
+  useGameUserData,
+  useToggleCleared,
+  useToggleFavorite,
+} from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
 import { useLongPress } from '../../hooks/useLongPress'
@@ -56,6 +60,7 @@ function GameRow({
   const { t } = useTranslation()
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
+  const toggleCleared = useToggleCleared()
   const openExternal = useOpenExternal()
   const activateSelection = useSelectionStore((s) => s.activate)
   const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
@@ -83,6 +88,19 @@ function GameRow({
         className="shrink-0 text-muted-foreground hover:text-foreground"
       >
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
+      </button>
+      <button
+        aria-label={t('game.toggleCleared')}
+        onClick={(e) => {
+          e.stopPropagation()
+          toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+        }}
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+      >
+        <CheckCircle2
+          className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}
+          fill={userData?.isCleared ? 'currentColor' : 'none'}
+        />
       </button>
       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
         <GameThumbnail entry={game} />

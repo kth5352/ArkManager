@@ -6,6 +6,7 @@ import {
   rekeyToCode,
   rekeyPath,
   setFavorite,
+  setCleared,
   setRatingAndMemo,
   listFavoriteKeys,
   setLaunchConfig,
@@ -97,6 +98,33 @@ describe('gameUserDataRepository', () => {
     expect(after?.isFavorite).toBe(true)
     expect(after?.rating).toBe(4)
     expect(after?.memo).toBe('괜찮음')
+  })
+
+  it('defaults isCleared to false and sets it independently of favorite/rating', () => {
+    touchGameUserData(db, 'RJ01234567', 'code')
+    expect(getGameUserData(db, 'RJ01234567')?.isCleared).toBe(false)
+
+    setCleared(db, 'RJ01234567', 'code', true)
+    const row = getGameUserData(db, 'RJ01234567')
+    expect(row?.isCleared).toBe(true)
+    expect(row?.isFavorite).toBe(false)
+  })
+
+  it('setCleared creates a path-keyed row if it does not exist yet', () => {
+    setCleared(db, 'd:\\games\\some-folder', 'path', true)
+    expect(getGameUserData(db, 'd:\\games\\some-folder')?.isCleared).toBe(true)
+  })
+
+  it('rekeying preserves isCleared, OR-merging with an existing code row', () => {
+    setCleared(db, 'd:\\games\\some-folder', 'path', true)
+    rekeyToCode(db, 'd:\\games\\some-folder', 'RJ08888889')
+    expect(getGameUserData(db, 'RJ08888889')?.isCleared).toBe(true)
+
+    setCleared(db, 'd:\\games\\another-folder', 'path', false)
+    touchGameUserData(db, 'RJ08888890', 'code')
+    setCleared(db, 'RJ08888890', 'code', true)
+    rekeyToCode(db, 'd:\\games\\another-folder', 'RJ08888890')
+    expect(getGameUserData(db, 'RJ08888890')?.isCleared).toBe(true)
   })
 
   it('lists only the keys currently marked as favorite', () => {
@@ -224,6 +252,7 @@ describe('gameUserDataRepository', () => {
 
   it('rekeys a path-keyed row onto a new path, preserving its data', () => {
     setFavorite(db, 'd:\\games\\old-folder', 'path', true)
+    setCleared(db, 'd:\\games\\old-folder', 'path', true)
     setRatingAndMemo(db, 'd:\\games\\old-folder', 'path', 5, '메모')
     recordPlaySession(db, 'd:\\games\\old-folder', 'path', 60_000)
     setCustomCoverPath(db, 'd:\\games\\old-folder', 'path', 'C:\\covers\\a.webp')
@@ -234,6 +263,7 @@ describe('gameUserDataRepository', () => {
     const after = getGameUserData(db, 'd:\\archive\\old-folder')
     expect(after?.keyType).toBe('path')
     expect(after?.isFavorite).toBe(true)
+    expect(after?.isCleared).toBe(true)
     expect(after?.rating).toBe(5)
     expect(after?.memo).toBe('메모')
     expect(after?.totalPlaytimeMs).toBe(60_000)

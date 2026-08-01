@@ -1,6 +1,6 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, ImagePlus, X } from 'lucide-react'
+import { CheckCircle2, Clock, ImagePlus, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
@@ -17,6 +17,7 @@ import {
   useGameUserData,
   usePickCustomCoverFile,
   useSetCustomCoverFromFile,
+  useToggleCleared,
 } from '../../services/gameUserDataService'
 import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
 import { formatPlaytime } from '../../pages/RecentlyPlayed/formatPlaytime'
@@ -47,6 +48,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   const { data: userData } = useGameUserData(game ?? { code: null, path: '' })
   const pickCoverFile = usePickCustomCoverFile()
   const setCoverFromFile = useSetCustomCoverFromFile()
+  const toggleCleared = useToggleCleared()
   // A failed launch (no saved config yet) opens the centered modal dialog
   // instead of expanding LaunchConfigSection inline - more discoverable/less
   // easy to miss than an inline section quietly expanding somewhere in an
@@ -72,7 +74,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   }
 
   const handleClickCover = async (): Promise<void> => {
-    if (!game || game.code) return
+    if (!game || game.code || pickCoverFile.isPending) return
     const sourcePath = await pickCoverFile.mutateAsync()
     if (!sourcePath) return
     setCoverFromFile.mutate({ entry: game, sourcePath })
@@ -148,21 +150,32 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         </button>
       </div>
       <div className="flex flex-col gap-3 p-4">
-        <button
-          type="button"
-          onClick={handleClickCover}
-          disabled={!canChangeCover || pickCoverFile.isPending}
-          aria-label={canChangeCover ? t('customCover.clickToChange') : undefined}
-          className={`group relative aspect-[3/4] w-full overflow-hidden rounded-md bg-muted ${canChangeCover ? 'cursor-pointer' : 'cursor-default'}`}
+        <div
+          onClick={canChangeCover ? handleClickCover : undefined}
+          className={`group relative aspect-[3/4] w-full overflow-hidden rounded-md bg-muted ${canChangeCover ? 'cursor-pointer' : ''}`}
         >
           <GameThumbnail entry={game} />
           {canChangeCover && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
               <ImagePlus className="h-6 w-6" />
               <span className="px-2 text-center text-xs">{t('customCover.clickToChange')}</span>
             </div>
           )}
-        </button>
+          <button
+            type="button"
+            aria-label={t('game.toggleCleared')}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+            }}
+            className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+          >
+            <CheckCircle2
+              className={`h-5 w-5 ${userData?.isCleared ? 'text-green-500' : ''}`}
+              fill={userData?.isCleared ? 'currentColor' : 'none'}
+            />
+          </button>
+        </div>
         {metadata?.title && metadata.title !== game.name && (
           <p className="text-sm text-muted-foreground">{metadata.title}</p>
         )}

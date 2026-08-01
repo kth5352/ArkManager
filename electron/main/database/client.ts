@@ -93,6 +93,7 @@ export function createDbClient(filePath: string) {
       key TEXT PRIMARY KEY,
       key_type TEXT NOT NULL,
       is_favorite INTEGER NOT NULL DEFAULT 0,
+      is_cleared INTEGER NOT NULL DEFAULT 0,
       rating INTEGER,
       memo TEXT,
       launch_config TEXT,
@@ -106,6 +107,7 @@ export function createDbClient(filePath: string) {
   `)
   ensureColumns(sqlite, 'game_user_data', [
     { name: 'is_favorite', ddl: 'is_favorite INTEGER NOT NULL DEFAULT 0' },
+    { name: 'is_cleared', ddl: 'is_cleared INTEGER NOT NULL DEFAULT 0' },
     { name: 'rating', ddl: 'rating INTEGER' },
     { name: 'memo', ddl: 'memo TEXT' },
     { name: 'launch_config', ddl: 'launch_config TEXT' },
