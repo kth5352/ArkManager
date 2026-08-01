@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { extname } from 'node:path'
+import { extname, resolve } from 'node:path'
 import { protocol } from 'electron'
 import { findThumbnailPath } from './scanner/thumbnail'
 import { listLibraries, normalizeLibraryPath } from './database/librariesRepository'
@@ -57,10 +57,17 @@ function normalizeForComparison(path: string): string {
 // compromised or buggy renderer from requesting thumb://.../C:/Users/x/Documents
 // and reading back whatever image happens to live there. Requiring entryPath
 // to fall under a currently registered library closes that gap.
+//
+// entryPath must be resolved (via node:path's resolve, which collapses `.`/
+// `..` segments) before the prefix comparison - otherwise a path like
+// "C:/Games/LibraryA/../../Windows/system.ini" still starts with the
+// library's own prefix as a raw string, even though it actually points
+// outside it once the OS resolves the `..` segments during the real file
+// access that follows this check.
 export function isPathWithinAnyLibrary(entryPath: string, libraryPaths: string[]): boolean {
-  const normalizedEntry = normalizeForComparison(entryPath)
+  const normalizedEntry = normalizeForComparison(resolve(entryPath))
   return libraryPaths.some((libraryPath) => {
-    const normalizedLibrary = normalizeForComparison(libraryPath)
+    const normalizedLibrary = normalizeForComparison(resolve(libraryPath))
     return (
       normalizedEntry === normalizedLibrary || normalizedEntry.startsWith(`${normalizedLibrary}/`)
     )

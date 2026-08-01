@@ -29,4 +29,20 @@ describe('isPathWithinAnyLibrary', () => {
   it('rejects when no libraries are registered', () => {
     expect(isPathWithinAnyLibrary('D:\\Games\\RJ01234567', [])).toBe(false)
   })
+
+  it('rejects a path that escapes the library root via .. segments', () => {
+    expect(
+      isPathWithinAnyLibrary('D:\\Games\\LibraryA\\..\\..\\Windows\\system.ini', [
+        'D:\\Games\\LibraryA',
+      ])
+    ).toBe(false)
+  })
+
+  it('accepts a path containing .. segments that still resolves inside the library', () => {
+    expect(
+      isPathWithinAnyLibrary('D:\\Games\\LibraryA\\..\\LibraryA\\RJ01234567', [
+        'D:\\Games\\LibraryA',
+      ])
+    ).toBe(true)
+  })
 })
