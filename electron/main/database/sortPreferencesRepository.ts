@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { sortPreferences } from './schema'
 
-export type SortField = 'name' | 'mtime'
+export type SortField = 'name' | 'mtime' | 'extension'
 export type SortDirection = 'asc' | 'desc'
 export type SortPage = 'gallery' | 'list' | 'explorer' | 'detail-list'
 

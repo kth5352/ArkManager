@@ -15,6 +15,7 @@ interface PageToolbarProps {
 const SORT_FIELD_LABELS: Record<SortField, string> = {
   name: '이름',
   mtime: '변경시간',
+  extension: '확장자',
 }
 
 export function PageToolbar({
@@ -36,6 +37,7 @@ export function PageToolbar({
         <SelectContent>
           <SelectItem value="name">{SORT_FIELD_LABELS.name}</SelectItem>
           <SelectItem value="mtime">{SORT_FIELD_LABELS.mtime}</SelectItem>
+          <SelectItem value="extension">{SORT_FIELD_LABELS.extension}</SelectItem>
         </SelectContent>
       </Select>
       <Button

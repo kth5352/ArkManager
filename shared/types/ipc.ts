@@ -119,7 +119,7 @@ export type SaveExplorerTabsRequest = z.infer<typeof SaveExplorerTabsRequestSche
 export const SortPageSchema = z.enum(['gallery', 'list', 'explorer', 'detail-list'])
 export type SortPage = z.infer<typeof SortPageSchema>
 
-export const SortFieldSchema = z.enum(['name', 'mtime'])
+export const SortFieldSchema = z.enum(['name', 'mtime', 'extension'])
 export type SortField = z.infer<typeof SortFieldSchema>
 
 export const SortDirectionSchema = z.enum(['asc', 'desc'])
