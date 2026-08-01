@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface UseLongPressOptions {
   thresholdMs?: number
@@ -45,6 +45,14 @@ export function useLongPress(
     firedRef.current = false
     return true
   }
+
+  // react-window recycles/unmounts rows during scroll - a pointer-down
+  // whose timer is still pending when the row scrolls away used to keep
+  // running, firing onLongPress ~thresholdMs later for whatever entry that
+  // row happened to be showing at press-time (a stale closure), silently
+  // activating selection mode on an entry the user isn't even looking at
+  // anymore.
+  useEffect(() => clearTimer, [])
 
   return {
     handlers: { onPointerDown, onPointerUp: clearTimer, onPointerLeave: clearTimer },
