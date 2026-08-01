@@ -6,6 +6,9 @@ import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
+import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
+import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
+import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { DuplicatesOnlyToggle } from '../../components/layout/DuplicatesOnlyToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
@@ -49,6 +52,9 @@ function GameRow({
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
+  onRename,
+  onMove,
+  onDelete,
 }: {
   game: ScannedEntry
   genres: string[]
@@ -56,6 +62,9 @@ function GameRow({
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
 }) {
   const { t } = useTranslation()
   const { data: userData } = useGameUserData(game)
@@ -68,112 +77,123 @@ function GameRow({
   )
 
   return (
-    <div
-      {...longPressHandlers}
-      className="flex cursor-pointer items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent"
-      onClick={() => {
-        if (consumeLongPressClick()) return
-        onOpenDetail(game)
-      }}
-      onMouseEnter={() => onHoverChange(game)}
-      onMouseLeave={() => onHoverChange(null)}
-    >
-      <SelectionCheckbox path={game.path} className="h-4 w-4 shrink-0 rounded-sm" />
-      <button
-        aria-label={t('game.toggleFavorite')}
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
-        }}
-        className="shrink-0 text-muted-foreground hover:text-foreground"
-      >
-        <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
-      </button>
-      <button
-        aria-label={t('game.toggleCleared')}
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
-        }}
-        className="shrink-0 text-muted-foreground hover:text-foreground"
-      >
-        <CheckCircle2
-          className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}
-          fill={userData?.isCleared ? 'currentColor' : 'none'}
-        />
-      </button>
-      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-        <GameThumbnail entry={game} />
-        <div className="absolute bottom-0.5 right-0.5 rounded-full bg-background/70 p-0.5 text-muted-foreground">
-          <FileKindIcon kind={game.kind} name={game.name} className="h-3 w-3" />
-        </div>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="min-w-0 line-clamp-2 break-words text-sm font-medium">{game.name}</p>
-          {genres.length > 0 && (
-            <div className="flex shrink-0 gap-1">
-              {genres.slice(0, 3).map((genre) => (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          {...longPressHandlers}
+          className="flex cursor-pointer items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent"
+          onClick={() => {
+            if (consumeLongPressClick()) return
+            onOpenDetail(game)
+          }}
+          onMouseEnter={() => onHoverChange(game)}
+          onMouseLeave={() => onHoverChange(null)}
+        >
+          <SelectionCheckbox path={game.path} className="h-4 w-4 shrink-0 rounded-sm" />
+          <button
+            aria-label={t('game.toggleFavorite')}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
+            }}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            aria-label={t('game.toggleCleared')}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+            }}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <CheckCircle2
+              className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}
+              fill={userData?.isCleared ? 'currentColor' : 'none'}
+            />
+          </button>
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
+            <GameThumbnail entry={game} />
+            <div className="absolute bottom-0.5 right-0.5 rounded-full bg-background/70 p-0.5 text-muted-foreground">
+              <FileKindIcon kind={game.kind} name={game.name} className="h-3 w-3" />
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="min-w-0 line-clamp-2 break-words text-sm font-medium">{game.name}</p>
+              {genres.length > 0 && (
+                <div className="flex shrink-0 gap-1">
+                  {genres.slice(0, 3).map((genre) => (
+                    <button
+                      key={genre}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onFilterByGenre(genre)
+                      }}
+                      className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {game.code ? (
                 <button
-                  key={genre}
+                  className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onFilterByGenre(genre)
+                    if (game.code) openExternal.mutate(game.code)
                   }}
-                  className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
                 >
-                  {genre}
+                  {game.code.value}
                 </button>
+              ) : (
+                <p className="truncate text-xs text-muted-foreground">{t('game.noCode')}</p>
+              )}
+              {!!duplicateCount && (
+                <span
+                  title={t('game.duplicateTitle', { count: duplicateCount })}
+                  className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                  {duplicateCount}
+                </span>
+              )}
+            </div>
+          </div>
+          <span className="w-24 shrink-0 text-xs text-muted-foreground">
+            {formatMtime(game.mtimeMs)}
+          </span>
+          {userData?.rating != null && (
+            <div className="flex w-16 shrink-0 gap-0.5">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Star
+                  key={value}
+                  className="h-3 w-3 text-yellow-500"
+                  fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
+                />
               ))}
             </div>
           )}
-        </div>
-        <div className="flex items-center gap-1">
-          {game.code ? (
-            <button
-              className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (game.code) openExternal.mutate(game.code)
-              }}
-            >
-              {game.code.value}
-            </button>
-          ) : (
-            <p className="truncate text-xs text-muted-foreground">{t('game.noCode')}</p>
-          )}
-          {!!duplicateCount && (
-            <span
-              title={t('game.duplicateTitle', { count: duplicateCount })}
-              className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
-            >
-              <Copy className="h-2.5 w-2.5" />
-              {duplicateCount}
+          {!!userData?.totalPlaytimeMs && (
+            <span className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {formatPlaytime(userData.totalPlaytimeMs, t)}
             </span>
           )}
         </div>
-      </div>
-      <span className="w-24 shrink-0 text-xs text-muted-foreground">
-        {formatMtime(game.mtimeMs)}
-      </span>
-      {userData?.rating != null && (
-        <div className="flex w-16 shrink-0 gap-0.5">
-          {[1, 2, 3, 4, 5].map((value) => (
-            <Star
-              key={value}
-              className="h-3 w-3 text-yellow-500"
-              fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
-            />
-          ))}
-        </div>
-      )}
-      {!!userData?.totalPlaytimeMs && (
-        <span className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          {formatPlaytime(userData.totalPlaytimeMs, t)}
-        </span>
-      )}
-    </div>
+      </ContextMenuTrigger>
+      <GameEntryContextMenu
+        entry={game}
+        onOpenDetail={onOpenDetail}
+        onRename={onRename}
+        onMove={onMove}
+        onDelete={onDelete}
+      />
+    </ContextMenu>
   )
 }
 
@@ -184,6 +204,9 @@ interface ListRowProps {
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
 }
 
 function Row({
@@ -195,6 +218,9 @@ function Row({
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
+  onRename,
+  onMove,
+  onDelete,
 }: RowComponentProps<ListRowProps>) {
   const game = games[index]
   if (!game) return null
@@ -209,6 +235,9 @@ function Row({
         onFilterByGenre={onFilterByGenre}
         onOpenDetail={onOpenDetail}
         onHoverChange={onHoverChange}
+        onRename={onRename}
+        onMove={onMove}
+        onDelete={onDelete}
       />
     </div>
   )
@@ -237,6 +266,7 @@ export function ListPage() {
   }
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
+  const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   useFavoriteShortcut(hoveredGame)
   const scanProgress = useScanProgress(isLoading)
 
@@ -326,6 +356,9 @@ export function ListPage() {
                         onFilterByGenre: filterByGenre,
                         onOpenDetail: openDetail,
                         onHoverChange: setHoveredGame,
+                        onRename: openRename,
+                        onMove: openMove,
+                        onDelete: openDelete,
                       }}
                       rowCount={visibleGames.length}
                       rowHeight={ROW_HEIGHT}
@@ -339,6 +372,7 @@ export function ListPage() {
         </div>
         {detailSidebarElement}
       </div>
+      {dialogElement}
     </div>
   )
 }

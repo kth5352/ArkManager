@@ -7,6 +7,9 @@ import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
+import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
+import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
+import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { DuplicatesOnlyToggle } from '../../components/layout/DuplicatesOnlyToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
@@ -73,6 +76,9 @@ function GameCard({
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
+  onRename,
+  onMove,
+  onDelete,
 }: {
   game: ScannedEntry
   genres: string[]
@@ -81,6 +87,9 @@ function GameCard({
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
 }) {
   const { t } = useTranslation()
   const { data: userData } = useGameUserData(game)
@@ -92,103 +101,116 @@ function GameCard({
   )
 
   return (
-    <motion.div
-      {...longPressHandlers}
-      onMouseEnter={() => onHoverChange(game)}
-      onMouseLeave={() => onHoverChange(null)}
-      onClick={() => {
-        if (consumeLongPressClick()) return
-        onOpenDetail(game)
-      }}
-      whileHover={{ scale: 1.05 }}
-      transition={{ duration: 0.15 }}
-      className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
-    >
-      <button
-        aria-label={t('game.toggleFavorite')}
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
-        }}
-        className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
-      >
-        <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
-      </button>
-      <button
-        aria-label={t('game.toggleCleared')}
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
-        }}
-        className="absolute right-2 top-9 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
-      >
-        <CheckCircle2
-          className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}
-          fill={userData?.isCleared ? 'currentColor' : 'none'}
-        />
-      </button>
-      <div className="absolute left-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground">
-        <FileKindIcon kind={game.kind} name={game.name} className="h-4 w-4" />
-      </div>
-      <SelectionCheckbox
-        path={game.path}
-        className="absolute left-2 top-9 z-10 h-4 w-4 rounded-sm"
-      />
-      <div className="aspect-[3/4] w-full bg-muted">
-        <GameThumbnail entry={game} />
-      </div>
-      <div className="shrink-0 p-2">
-        <p className="line-clamp-2 break-words text-sm font-medium">{game.name}</p>
-        <div className="flex items-center gap-1">
-          {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
-          {!!duplicateCount && (
-            <span
-              title={t('game.duplicateTitle', { count: duplicateCount })}
-              className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
-            >
-              <Copy className="h-2.5 w-2.5" />
-              {duplicateCount}
-            </span>
-          )}
-        </div>
-        {userData?.rating != null && (
-          <div className="mt-0.5 flex gap-0.5">
-            {[1, 2, 3, 4, 5].map((value) => (
-              <Star
-                key={value}
-                className="h-3 w-3 text-yellow-500"
-                fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
-              />
-            ))}
-          </div>
-        )}
-        {!!userData?.totalPlaytimeMs && (
-          <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {formatPlaytime(userData.totalPlaytimeMs, t)}
-          </div>
-        )}
-        <div
-          style={{ height: GENRE_ROW_HEIGHT }}
-          className="mt-1 flex items-center gap-1 overflow-hidden"
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <motion.div
+          {...longPressHandlers}
+          onMouseEnter={() => onHoverChange(game)}
+          onMouseLeave={() => onHoverChange(null)}
+          onClick={() => {
+            if (consumeLongPressClick()) return
+            onOpenDetail(game)
+          }}
+          whileHover={{ scale: 1.05 }}
+          transition={{ duration: 0.15 }}
+          className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
         >
-          {genres
-            .slice(0, Math.max(1, Math.floor((cardWidth - 16) / GENRE_BADGE_WIDTH_ESTIMATE)))
-            .map((genre) => (
-              <button
-                key={genre}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onFilterByGenre(genre)
-                }}
-                className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
-              >
-                {genre}
-              </button>
-            ))}
-        </div>
-      </div>
-    </motion.div>
+          <button
+            aria-label={t('game.toggleFavorite')}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
+            }}
+            className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+          >
+            <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            aria-label={t('game.toggleCleared')}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+            }}
+            className="absolute right-2 top-9 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+          >
+            <CheckCircle2
+              className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}
+              fill={userData?.isCleared ? 'currentColor' : 'none'}
+            />
+          </button>
+          <div className="absolute left-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground">
+            <FileKindIcon kind={game.kind} name={game.name} className="h-4 w-4" />
+          </div>
+          <SelectionCheckbox
+            path={game.path}
+            className="absolute left-2 top-9 z-10 h-4 w-4 rounded-sm"
+          />
+          <div className="aspect-[3/4] w-full bg-muted">
+            <GameThumbnail entry={game} />
+          </div>
+          <div className="shrink-0 p-2">
+            <p className="line-clamp-2 break-words text-sm font-medium">{game.name}</p>
+            <div className="flex items-center gap-1">
+              {game.code && (
+                <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>
+              )}
+              {!!duplicateCount && (
+                <span
+                  title={t('game.duplicateTitle', { count: duplicateCount })}
+                  className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                  {duplicateCount}
+                </span>
+              )}
+            </div>
+            {userData?.rating != null && (
+              <div className="mt-0.5 flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <Star
+                    key={value}
+                    className="h-3 w-3 text-yellow-500"
+                    fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
+                  />
+                ))}
+              </div>
+            )}
+            {!!userData?.totalPlaytimeMs && (
+              <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {formatPlaytime(userData.totalPlaytimeMs, t)}
+              </div>
+            )}
+            <div
+              style={{ height: GENRE_ROW_HEIGHT }}
+              className="mt-1 flex items-center gap-1 overflow-hidden"
+            >
+              {genres
+                .slice(0, Math.max(1, Math.floor((cardWidth - 16) / GENRE_BADGE_WIDTH_ESTIMATE)))
+                .map((genre) => (
+                  <button
+                    key={genre}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onFilterByGenre(genre)
+                    }}
+                    className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                  >
+                    {genre}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </motion.div>
+      </ContextMenuTrigger>
+      <GameEntryContextMenu
+        entry={game}
+        onOpenDetail={onOpenDetail}
+        onRename={onRename}
+        onMove={onMove}
+        onDelete={onDelete}
+      />
+    </ContextMenu>
   )
 }
 
@@ -202,6 +224,9 @@ interface GridCellProps {
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
 }
 
 function GameCell({
@@ -217,6 +242,9 @@ function GameCell({
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
+  onRename,
+  onMove,
+  onDelete,
 }: CellComponentProps<GridCellProps>) {
   const index = rowIndex * columnCount + columnIndex
   const game = games[index]
@@ -234,6 +262,9 @@ function GameCell({
           onFilterByGenre={onFilterByGenre}
           onHoverChange={onHoverChange}
           onOpenDetail={onOpenDetail}
+          onRename={onRename}
+          onMove={onMove}
+          onDelete={onDelete}
         />
       </div>
     </div>
@@ -265,6 +296,7 @@ export function GalleryPage() {
   }
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
+  const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   useFavoriteShortcut(hoveredGame)
   const scanProgress = useScanProgress(isLoading)
 
@@ -444,6 +476,9 @@ export function GalleryPage() {
                         onFilterByGenre: filterByGenre,
                         onHoverChange: setHoveredGame,
                         onOpenDetail: openDetail,
+                        onRename: openRename,
+                        onMove: openMove,
+                        onDelete: openDelete,
                       }}
                       columnCount={columnCount}
                       columnWidth={effectiveColumnWidth}
@@ -463,6 +498,7 @@ export function GalleryPage() {
         </div>
         {detailSidebarElement}
       </div>
+      {dialogElement}
     </div>
   )
 }

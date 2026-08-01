@@ -17,9 +17,12 @@ import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibili
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
+import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
+import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { HoverTooltip } from '../../components/ui/hover-tooltip'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
+import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { useLongPress } from '../../hooks/useLongPress'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useScanProgress } from '../../hooks/useScanProgress'
@@ -126,6 +129,9 @@ interface DetailListRowProps {
   duplicateGroups: Map<string, ScannedEntry[]>
   columnWidths: ColumnWidths
   onOpenDetail: (entry: ScannedEntry) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
 }
 
 function Row({
@@ -136,6 +142,9 @@ function Row({
   duplicateGroups,
   columnWidths,
   onOpenDetail,
+  onRename,
+  onMove,
+  onDelete,
 }: RowComponentProps<DetailListRowProps>) {
   const { t } = useTranslation()
   const entry = entries[index]
@@ -149,65 +158,80 @@ function Row({
   const duplicates = entry.code ? duplicateGroups.get(entry.code.value) : undefined
 
   return (
-    <div
-      style={style}
-      {...longPressHandlers}
-      className="flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
-      onClick={() => {
-        if (consumeLongPressClick()) return
-        onOpenDetail(entry)
-      }}
-    >
-      <SelectionCheckbox path={entry.path} className="h-3.5 w-3.5 shrink-0 rounded-sm" />
-      <FileKindIcon kind={entry.kind} name={entry.name} className="h-3.5 w-3.5 shrink-0" />
-      <HoverTooltip
-        content={entry.code?.value ?? '-'}
-        className="shrink-0"
-        style={{ width: columnWidths.code }}
-      >
-        <span className="block truncate">{entry.code?.value ?? '-'}</span>
-      </HoverTooltip>
-      <HoverTooltip content={entry.name} className="min-w-0 flex-1">
-        <span className="block truncate text-foreground">{entry.name}</span>
-      </HoverTooltip>
-      {duplicates && (
-        <span
-          className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
-          title={t('detailList.duplicateTooltip', {
-            count: duplicates.length - 1,
-            paths: duplicates
-              .filter((d) => d.path !== entry.path)
-              .map((d) => d.path)
-              .join('\n'),
-          })}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          style={style}
+          {...longPressHandlers}
+          className="flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
+          onClick={() => {
+            if (consumeLongPressClick()) return
+            onOpenDetail(entry)
+          }}
         >
-          <Copy className="h-3 w-3" />
-          {duplicates.length}
-        </span>
-      )}
-      <HoverTooltip content={entry.path} className="shrink-0" style={{ width: columnWidths.path }}>
-        <span className="block truncate">{entry.path}</span>
-      </HoverTooltip>
-      <HoverTooltip
-        content={genres.join(', ') || t('detailList.none')}
-        className="shrink-0"
-        style={{ width: columnWidths.genres }}
-      >
-        <span className="block truncate">{genres.join(', ')}</span>
-      </HoverTooltip>
-      <span className="w-24 shrink-0">{formatDate(entry.mtimeMs)}</span>
-      <span className="w-20 shrink-0">{formatSize(entry.size)}</span>
-      <span className="flex w-16 shrink-0 gap-0.5">
-        {userData?.rating != null &&
-          [1, 2, 3, 4, 5].map((value) => (
-            <Star
-              key={value}
-              className="h-3 w-3 text-yellow-500"
-              fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
-            />
-          ))}
-      </span>
-    </div>
+          <SelectionCheckbox path={entry.path} className="h-3.5 w-3.5 shrink-0 rounded-sm" />
+          <FileKindIcon kind={entry.kind} name={entry.name} className="h-3.5 w-3.5 shrink-0" />
+          <HoverTooltip
+            content={entry.code?.value ?? '-'}
+            className="shrink-0"
+            style={{ width: columnWidths.code }}
+          >
+            <span className="block truncate">{entry.code?.value ?? '-'}</span>
+          </HoverTooltip>
+          <HoverTooltip content={entry.name} className="min-w-0 flex-1">
+            <span className="block truncate text-foreground">{entry.name}</span>
+          </HoverTooltip>
+          {duplicates && (
+            <span
+              className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
+              title={t('detailList.duplicateTooltip', {
+                count: duplicates.length - 1,
+                paths: duplicates
+                  .filter((d) => d.path !== entry.path)
+                  .map((d) => d.path)
+                  .join('\n'),
+              })}
+            >
+              <Copy className="h-3 w-3" />
+              {duplicates.length}
+            </span>
+          )}
+          <HoverTooltip
+            content={entry.path}
+            className="shrink-0"
+            style={{ width: columnWidths.path }}
+          >
+            <span className="block truncate">{entry.path}</span>
+          </HoverTooltip>
+          <HoverTooltip
+            content={genres.join(', ') || t('detailList.none')}
+            className="shrink-0"
+            style={{ width: columnWidths.genres }}
+          >
+            <span className="block truncate">{genres.join(', ')}</span>
+          </HoverTooltip>
+          <span className="w-24 shrink-0">{formatDate(entry.mtimeMs)}</span>
+          <span className="w-20 shrink-0">{formatSize(entry.size)}</span>
+          <span className="flex w-16 shrink-0 gap-0.5">
+            {userData?.rating != null &&
+              [1, 2, 3, 4, 5].map((value) => (
+                <Star
+                  key={value}
+                  className="h-3 w-3 text-yellow-500"
+                  fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
+                />
+              ))}
+          </span>
+        </div>
+      </ContextMenuTrigger>
+      <GameEntryContextMenu
+        entry={entry}
+        onOpenDetail={onOpenDetail}
+        onRename={onRename}
+        onMove={onMove}
+        onDelete={onDelete}
+      />
+    </ContextMenu>
   )
 }
 
@@ -231,6 +255,7 @@ export function DetailListPage() {
   }
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
+  const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   const scanProgress = useScanProgress(isLoading)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
@@ -356,6 +381,9 @@ export function DetailListPage() {
                           duplicateGroups,
                           columnWidths,
                           onOpenDetail: openDetail,
+                          onRename: openRename,
+                          onMove: openMove,
+                          onDelete: openDelete,
                         }}
                         rowCount={visible.length}
                         rowHeight={ROW_HEIGHT}
@@ -370,6 +398,7 @@ export function DetailListPage() {
         </div>
         {detailSidebarElement}
       </div>
+      {dialogElement}
     </div>
   )
 }

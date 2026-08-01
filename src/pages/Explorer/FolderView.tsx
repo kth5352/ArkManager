@@ -1,19 +1,13 @@
 import { useState } from 'react'
 import { Music } from 'lucide-react'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '../../components/ui/context-menu'
+import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
-import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
+import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
 import { useFolderScan, useFolderScanRecursive } from '../../services/scannerService'
-import { useLaunchGame } from '../../services/launchService'
-import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
+import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { isMediaFile } from '../../../shared/isMediaFile'
@@ -22,7 +16,7 @@ import { SearchHeader } from '../../components/layout/SearchHeader'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import { Skeleton } from '../../components/ui/skeleton'
 import { filterEntries } from '../../lib/filterEntries'
-import { useCrawlGameMetadata, useGameMetadataMany } from '../../services/metadataService'
+import { useGameMetadataMany } from '../../services/metadataService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { relativePath } from './relativePath'
@@ -35,98 +29,22 @@ interface FolderViewProps {
   onNavigate: (path: string) => void
 }
 
-function FolderEntryContextMenu({
-  entry,
-  onOpenInNewTab,
-  onOpenDetail,
-}: {
-  entry: ScannedEntry
-  onOpenInNewTab: (entry: ScannedEntry) => void
-  onOpenDetail: (entry: ScannedEntry) => void
-}) {
-  const { t } = useTranslation()
-  const openExternal = useOpenExternal()
-  const showItemInFolder = useShowItemInFolder()
-  const crawlMetadata = useCrawlGameMetadata()
-  const launchGame = useLaunchGame()
-  const { data: userData } = useGameUserData(entry)
-  const toggleFavorite = useToggleFavorite()
-
-  if (entry.code) {
-    return (
-      <ContextMenuContent>
-        {entry.kind === 'folder' && (
-          <ContextMenuItem onSelect={() => launchGame.mutate(entry)}>
-            {t('game.launch')}
-          </ContextMenuItem>
-        )}
-        <ContextMenuItem onSelect={() => entry.code && openExternal.mutate(entry.code)}>
-          {t('explorer.openDlsitePage')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => showItemInFolder.mutate(entry.path)}>
-          {t('game.openFolder')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => navigator.clipboard.writeText(entry.code?.value ?? '')}>
-          {t('explorer.copyRjNumber')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => navigator.clipboard.writeText(entry.name)}>
-          {t('explorer.copyTitle')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('edit custom title', entry.path)}>
-          {t('explorer.editCustomTitle')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => entry.code && crawlMetadata.mutate(entry.code)}>
-          {t('game.refreshMetadata')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('extract archive', entry.path)}>
-          {t('explorer.extractArchive')}
-        </ContextMenuItem>
-        <ContextMenuItem
-          onSelect={() =>
-            toggleFavorite.mutate({ entry, isFavorite: !(userData?.isFavorite ?? false) })
-          }
-        >
-          {userData?.isFavorite ? t('explorer.unfavorite') : t('explorer.favorite')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>
-          {t('game.ratingMemo')}
-        </ContextMenuItem>
-      </ContextMenuContent>
-    )
-  }
-
-  if (entry.kind === 'folder') {
-    return (
-      <ContextMenuContent>
-        <ContextMenuItem onSelect={() => onOpenInNewTab(entry)}>
-          {t('explorer.openInNewTab')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => showItemInFolder.mutate(entry.path)}>
-          {t('explorer.openInOsExplorer')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => console.log('pin favorite', entry.path)}>
-          {t('explorer.pinFavorite')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>
-          {t('codeLink.dialogTitle')}
-        </ContextMenuItem>
-      </ContextMenuContent>
-    )
-  }
-
-  return null
-}
-
 function FolderEntryRow({
   entry,
   onOpenInNewTab,
   onEntryClick,
   onOpenDetail,
+  onRename,
+  onMove,
+  onDelete,
 }: {
   entry: ScannedEntry
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
 }) {
   return (
     <ContextMenu>
@@ -146,10 +64,13 @@ function FolderEntryRow({
           <span className="truncate">{entry.name}</span>
         </li>
       </ContextMenuTrigger>
-      <FolderEntryContextMenu
+      <GameEntryContextMenu
         entry={entry}
-        onOpenInNewTab={onOpenInNewTab}
         onOpenDetail={onOpenDetail}
+        onOpenInNewTab={onOpenInNewTab}
+        onRename={onRename}
+        onMove={onMove}
+        onDelete={onDelete}
       />
     </ContextMenu>
   )
@@ -184,6 +105,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
     ...shallowEntries,
     ...recursiveEntries,
   ])
+  const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
 
   const codes = recursiveEntries.flatMap((e) => (e.code ? [e.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -304,11 +226,15 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
               onOpenInNewTab={openInNewTab}
               onEntryClick={handleEntryClick}
               onOpenDetail={openDetail}
+              onRename={openRename}
+              onMove={openMove}
+              onDelete={openDelete}
             />
           ))}
         </ul>
       )}
       {detailOverlayElement}
+      {dialogElement}
     </div>
   )
 }
