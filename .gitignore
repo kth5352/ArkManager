@@ -7,3 +7,8 @@ dist/
 drizzle/
 *.tsbuildinfo
 .superpowers/
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
