@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Pause, Play, Repeat, Repeat1, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useTranslation } from '../../i18n/useTranslation'
@@ -39,6 +40,20 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
     ? 'text-white/70 hover:text-white'
     : 'text-muted-foreground hover:text-foreground'
   const mainText = dark ? 'text-white hover:text-white/80' : 'text-foreground hover:text-primary'
+
+  // Seeking is async (media:// re-fetches a byte range for the new position,
+  // see mediaProtocol.ts) - onTimeUpdate keeps firing with the pre-seek
+  // position for a moment after handleSeek runs, which would otherwise snap
+  // this controlled slider straight back to where it just was, mid-drag.
+  // While the user is actively dragging, the slider shows this local value
+  // instead of playback.currentTime (never touched by onTimeUpdate), so it
+  // can't fight the drag - only committed as a real seek on release.
+  const [dragValue, setDragValue] = useState<number | null>(null)
+  const commitDrag = (): void => {
+    if (dragValue === null) return
+    playback.handleSeek(dragValue)
+    setDragValue(null)
+  }
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -95,8 +110,10 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
             // doesn't drag correctly, which is what made seeking silently
             // do nothing until the duration happened to resolve.
             max={Number.isFinite(playback.duration) ? playback.duration : 0}
-            value={playback.currentTime}
-            onChange={(e) => playback.handleSeek(Number(e.target.value))}
+            value={dragValue ?? playback.currentTime}
+            onChange={(e) => setDragValue(Number(e.target.value))}
+            onPointerUp={commitDrag}
+            onKeyUp={commitDrag}
             className="h-1 w-full"
           />
           <span
