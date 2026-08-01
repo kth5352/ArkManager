@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Grid, type CellComponentProps } from 'react-window'
+import { useEffect, useRef, useState } from 'react'
+import { Grid, useGridRef, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
 import { Clock, Copy, Heart, Star } from 'lucide-react'
@@ -216,6 +216,17 @@ export function GalleryPage() {
   useFavoriteShortcut(hoveredGame)
   const scanProgress = useScanProgress(isLoading)
 
+  // Toggling the detail sidebar or resizing the window changes the grid's
+  // available width, which changes columnCount, which reflows every card
+  // into a different row/column - the same pixel scrollTop then shows a
+  // completely different set of games, which reads as "jumping to a random
+  // position". gridRef + onCellsRendered/onResize below re-anchor the
+  // scroll position to the same game (by absolute index) across a
+  // columnCount change instead of leaving scrollTop untouched.
+  const gridRef = useGridRef(null)
+  const visibleAnchorRef = useRef({ rowStartIndex: 0, columnStartIndex: 0 })
+  const prevColumnCountRef = useRef<number | null>(null)
+
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
@@ -337,8 +348,25 @@ export function GalleryPage() {
                   const effectiveColumnWidth = cardWidth + gap + extraPerColumn
                   const rowCount = Math.ceil(sortedGames.length / columnCount)
 
+                  const handleGridResize = (): void => {
+                    const prevColumnCount = prevColumnCountRef.current
+                    if (prevColumnCount !== null && prevColumnCount !== columnCount) {
+                      const anchor = visibleAnchorRef.current
+                      const anchorIndex =
+                        anchor.rowStartIndex * prevColumnCount + anchor.columnStartIndex
+                      const newRowIndex = Math.floor(anchorIndex / columnCount)
+                      gridRef.current?.scrollToRow({
+                        index: newRowIndex,
+                        align: 'start',
+                        behavior: 'instant',
+                      })
+                    }
+                    prevColumnCountRef.current = columnCount
+                  }
+
                   return (
                     <Grid
+                      gridRef={gridRef}
                       cellComponent={GameCell}
                       cellProps={{
                         games: sortedGames,
@@ -355,6 +383,10 @@ export function GalleryPage() {
                       columnWidth={effectiveColumnWidth}
                       rowCount={rowCount}
                       rowHeight={cardHeight + gap}
+                      onCellsRendered={(visible) => {
+                        visibleAnchorRef.current = visible
+                      }}
+                      onResize={handleGridResize}
                       style={{ height, width, overflowX: 'hidden' }}
                     />
                   )
