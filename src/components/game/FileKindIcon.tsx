@@ -1,5 +1,5 @@
 import { Archive, File, Folder } from 'lucide-react'
-import { isArchiveFile } from '../../lib/isArchiveFile'
+import { isArchiveFile } from '../../../shared/isArchiveFile'
 
 interface FileKindIconProps {
   kind: 'folder' | 'file'

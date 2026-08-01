@@ -1,4 +1,4 @@
-import { isArchiveFile } from './isArchiveFile'
+import { isArchiveFile } from '../../shared/isArchiveFile'
 
 export interface FilterableMetadata {
   title: string | null

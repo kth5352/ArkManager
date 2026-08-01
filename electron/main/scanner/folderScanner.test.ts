@@ -170,6 +170,35 @@ describe('scanLibraryRecursive', () => {
     expect(entries.map((e) => e.name)).toEqual(['MyGame'])
   })
 
+  it('walks into a code-less folder holding multiple loose archives instead of collapsing it into one leaf', async () => {
+    // Mirrors a real series folder like D:\ark\미연시\아마카노 - none of the
+    // archives carry a recognizable code in their own filename, but there
+    // are several of them directly inside, each its own distinct game/
+    // edition rather than one game's own asset folder.
+    await mkdir(join(dir, '아마카노'))
+    await writeFile(join(dir, '아마카노', '①아마카노.7z'), '')
+    await writeFile(join(dir, '아마카노', '②아마카노 Second Season.7z'), '')
+    await writeFile(join(dir, '아마카노', '③아마카노 Second Season Plus.7z'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    const names = entries.map((e) => e.name).sort()
+    expect(names).toEqual([
+      '①아마카노.7z',
+      '②아마카노 Second Season.7z',
+      '③아마카노 Second Season Plus.7z',
+    ])
+    expect(entries.every((e) => e.code === null)).toBe(true)
+  })
+
+  it('still collapses a code-less folder with only one archive directly inside it', async () => {
+    await mkdir(join(dir, 'MyGame'))
+    await writeFile(join(dir, 'MyGame', 'data.7z'), '')
+    await writeFile(join(dir, 'MyGame', 'readme.txt'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((e) => e.name)).toEqual(['MyGame'])
+  })
+
   it('still walks a pure code-less container folder to find the game folder nested inside it', async () => {
     // "Circle" has no files directly (only the MyGame subfolder), so it's
     // still walked into - MyGame has a file directly (game.exe) alongside

@@ -1,6 +1,7 @@
 import { lstat, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { GameCodeType, ScannedEntry } from '../../../shared/types/scanner'
+import { isArchiveFile } from '../../../shared/isArchiveFile'
 import { normalizeLibraryPath } from '../database/librariesRepository'
 import { extractCode } from './codeRecognition'
 
@@ -108,18 +109,28 @@ async function scanNonImageChildren(
 // individually. A folder with zero direct files but only subfolders is
 // still walked either way - that's the shape of a circle/category folder
 // holding further category or game folders.
+//
+// hasMultipleArchiveFiles overrides the collapse even when neither of the
+// above applies - a folder holding 2+ still-compressed archives directly
+// (e.g. a series folder with "①타이틀.7z", "②타이틀 Plus.7z", ... none of
+// which happen to carry a recognizable code in their own name) is a
+// multi-game container, not one game's own root: a real single game's
+// root never has more than one archive sitting directly inside it.
 function classifyChildren(children: ScannedEntry[]): {
   hasSingletonCodedChild: boolean
   hasDirectFile: boolean
+  hasMultipleArchiveFiles: boolean
 } {
   const codeCounts = new Map<string, number>()
+  let archiveFileCount = 0
   for (const child of children) {
-    if (!child.code) continue
-    codeCounts.set(child.code.value, (codeCounts.get(child.code.value) ?? 0) + 1)
+    if (child.code) codeCounts.set(child.code.value, (codeCounts.get(child.code.value) ?? 0) + 1)
+    if (child.kind === 'file' && isArchiveFile(child.name)) archiveFileCount += 1
   }
   return {
     hasSingletonCodedChild: [...codeCounts.values()].some((count) => count === 1),
     hasDirectFile: children.some((c) => c.kind === 'file'),
+    hasMultipleArchiveFiles: archiveFileCount >= 2,
   }
 }
 
@@ -186,8 +197,9 @@ async function scanChildren(
       continue
     }
 
-    const { hasSingletonCodedChild, hasDirectFile } = classifyChildren(nestedChildren)
-    if (hasDirectFile && !hasSingletonCodedChild) {
+    const { hasSingletonCodedChild, hasDirectFile, hasMultipleArchiveFiles } =
+      classifyChildren(nestedChildren)
+    if (hasDirectFile && !hasSingletonCodedChild && !hasMultipleArchiveFiles) {
       results.push(entry)
       continue
     }
