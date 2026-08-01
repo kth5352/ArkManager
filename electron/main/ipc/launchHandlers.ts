@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { dialog, ipcMain } from 'electron'
 import {
   IPC_CHANNELS,
   LaunchGameRequestSchema,
@@ -15,6 +15,7 @@ import {
   recordPlaySession,
   setLaunchConfig,
 } from '../database/gameUserDataRepository'
+import { getSetting } from '../database/settingsRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
 
@@ -25,7 +26,17 @@ export function registerLaunchHandlers(db: AppDatabase): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE, async () => {
-    return (await detectLocaleEmulator()) !== null
+    const overridePath = getSetting(db, 'locale-emulator-path')
+    return (await detectLocaleEmulator(overridePath)) !== null
+  })
+
+  ipcMain.handle(IPC_CHANNELS.LAUNCH_PICK_LOCALE_EMULATOR_PATH, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'LEProc.exe', extensions: ['exe'] }],
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
   })
 
   ipcMain.handle(IPC_CHANNELS.LAUNCH_SET_CONFIG, (_event, payload: unknown) => {
@@ -45,7 +56,8 @@ export function registerLaunchHandlers(db: AppDatabase): void {
 
     startSession(key, keyType)
     try {
-      const { sessionMs } = await launchGame(userData.launchConfig)
+      const overridePath = getSetting(db, 'locale-emulator-path')
+      const { sessionMs } = await launchGame(userData.launchConfig, overridePath)
       recordPlaySession(db, key, keyType, sessionMs)
       return { sessionMs }
     } finally {

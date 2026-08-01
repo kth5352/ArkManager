@@ -2,8 +2,11 @@ import { spawn } from 'node:child_process'
 import { detectLocaleEmulator } from './localeEmulator'
 import type { LaunchConfig } from '../database/gameUserDataRepository'
 
-export async function launchGame(config: LaunchConfig): Promise<{ sessionMs: number }> {
-  const [command, args] = await resolveCommand(config)
+export async function launchGame(
+  config: LaunchConfig,
+  localeEmulatorOverridePath?: string | null
+): Promise<{ sessionMs: number }> {
+  const [command, args] = await resolveCommand(config, localeEmulatorOverridePath)
   const start = Date.now()
 
   return new Promise((resolve, reject) => {
@@ -14,12 +17,15 @@ export async function launchGame(config: LaunchConfig): Promise<{ sessionMs: num
   })
 }
 
-async function resolveCommand(config: LaunchConfig): Promise<[string, string[]]> {
+async function resolveCommand(
+  config: LaunchConfig,
+  localeEmulatorOverridePath?: string | null
+): Promise<[string, string[]]> {
   if (config.launchMode === 'normal') {
     return [config.executablePath, []]
   }
 
-  const leProcPath = await detectLocaleEmulator()
+  const leProcPath = await detectLocaleEmulator(localeEmulatorOverridePath)
   if (!leProcPath) {
     throw new Error('Locale Emulator가 설치되어 있지 않습니다.')
   }

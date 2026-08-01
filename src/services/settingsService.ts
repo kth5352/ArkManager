@@ -63,3 +63,28 @@ export function useSetSidebarWidthMutation() {
     },
   })
 }
+
+export const LOCALE_EMULATOR_PATH_QUERY_KEY = ['settings', 'locale-emulator-path'] as const
+
+// Empty string means "no manual override" - detectLocaleEmulator (main
+// process) falls back to auto-detecting known install locations in that
+// case, same as before this setting existed.
+export function useLocaleEmulatorPathQuery() {
+  return useQuery({
+    queryKey: LOCALE_EMULATOR_PATH_QUERY_KEY,
+    queryFn: async (): Promise<string> => {
+      const value = await window.api.settings.getLocaleEmulatorPath()
+      return value ?? ''
+    },
+  })
+}
+
+export function useSetLocaleEmulatorPathMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (path: string) => window.api.settings.setLocaleEmulatorPath(path),
+    onSuccess: (_data, path) => {
+      queryClient.setQueryData(LOCALE_EMULATOR_PATH_QUERY_KEY, path)
+    },
+  })
+}

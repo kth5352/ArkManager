@@ -11,11 +11,19 @@ export function useListExecutables(folderPath: string) {
   })
 }
 
+export const LOCALE_EMULATOR_AVAILABLE_QUERY_KEY = ['locale-emulator-available'] as const
+
 export function useLocaleEmulatorAvailable() {
   return useQuery<boolean>({
-    queryKey: ['locale-emulator-available'],
+    queryKey: LOCALE_EMULATOR_AVAILABLE_QUERY_KEY,
     queryFn: () => window.api.launch.isLocaleEmulatorAvailable(),
     staleTime: Infinity,
+  })
+}
+
+export function usePickLocaleEmulatorPath() {
+  return useMutation({
+    mutationFn: () => window.api.launch.pickLocaleEmulatorPath(),
   })
 }
 

@@ -32,6 +32,10 @@ const api = {
         .then((value: string | null) => (value === null ? null : Number(value))),
     setSidebarWidth: (width: number): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'sidebar-width', value: String(width) }),
+    getLocaleEmulatorPath: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale-emulator-path' }),
+    setLocaleEmulatorPath: (path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'locale-emulator-path', value: path }),
   },
   libraries: {
     list: (): Promise<LibraryWithStatus[]> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_LIST),
@@ -136,6 +140,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_LIST_EXECUTABLES, { folderPath }),
     isLocaleEmulatorAvailable: (): Promise<boolean> =>
       ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE),
+    pickLocaleEmulatorPath: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_PICK_LOCALE_EMULATOR_PATH),
     setConfig: (code: GameCode | null, path: string, config: LaunchConfigDto): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.LAUNCH_SET_CONFIG, { identifier: { code, path }, config }),
     launch: (code: GameCode | null, path: string): Promise<{ sessionMs: number }> =>

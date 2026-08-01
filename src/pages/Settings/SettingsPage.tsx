@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,15 @@ import {
   useRemoveLibrary,
 } from '../../services/librariesService'
 import { useClearCache } from '../../services/cacheService'
+import {
+  LOCALE_EMULATOR_AVAILABLE_QUERY_KEY,
+  useLocaleEmulatorAvailable,
+  usePickLocaleEmulatorPath,
+} from '../../services/launchService'
+import {
+  useLocaleEmulatorPathQuery,
+  useSetLocaleEmulatorPathMutation,
+} from '../../services/settingsService'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useState, type DragEvent } from 'react'
 
@@ -188,6 +198,68 @@ function ClearCacheDialog() {
   )
 }
 
+function LocaleEmulatorSection() {
+  const queryClient = useQueryClient()
+  const { data: available, isLoading: isCheckingAvailable } = useLocaleEmulatorAvailable()
+  const { data: overridePath = '' } = useLocaleEmulatorPathQuery()
+  const setPath = useSetLocaleEmulatorPathMutation()
+  const pickPath = usePickLocaleEmulatorPath()
+
+  // Auto-detect only checks known install folders (Program Files, per-user
+  // Programs) - a custom install location needs this manual override, since
+  // there's no officially documented registry key to search instead.
+  const handlePick = async (): Promise<void> => {
+    const path = await pickPath.mutateAsync()
+    if (!path) return
+    setPath.mutate(path, {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: LOCALE_EMULATOR_AVAILABLE_QUERY_KEY }),
+    })
+  }
+
+  const handleReset = (): void => {
+    setPath.mutate('', {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: LOCALE_EMULATOR_AVAILABLE_QUERY_KEY }),
+    })
+  }
+
+  return (
+    <div className="mt-4 border-t border-border pt-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold">Locale Emulator</h2>
+          <p className="text-xs text-muted-foreground">
+            {isCheckingAvailable
+              ? '확인 중...'
+              : available
+                ? '설치가 감지되었습니다.'
+                : '설치가 감지되지 않았습니다. 설치 위치를 직접 지정해 보세요.'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {overridePath && (
+            <Button variant="ghost" size="sm" onClick={handleReset} disabled={setPath.isPending}>
+              초기화
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handlePick}
+            disabled={pickPath.isPending || setPath.isPending}
+          >
+            LEProc.exe 위치 지정
+          </Button>
+        </div>
+      </div>
+      {overridePath && (
+        <p className="mt-2 truncate text-xs text-muted-foreground">지정된 경로: {overridePath}</p>
+      )}
+    </div>
+  )
+}
+
 export function SettingsPage() {
   const { data: libraries, isLoading } = useLibraries()
   const removeLibrary = useRemoveLibrary()
@@ -236,6 +308,8 @@ export function SettingsPage() {
         </div>
         <ClearCacheDialog />
       </div>
+
+      <LocaleEmulatorSection />
     </div>
   )
 }

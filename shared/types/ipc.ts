@@ -42,6 +42,7 @@ export const IPC_CHANNELS = {
   GAME_USER_DATA_UNLINK_CODE: 'game-user-data:unlink-code',
   LAUNCH_LIST_EXECUTABLES: 'launch:list-executables',
   LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE: 'launch:is-locale-emulator-available',
+  LAUNCH_PICK_LOCALE_EMULATOR_PATH: 'launch:pick-locale-emulator-path',
   LAUNCH_SET_CONFIG: 'launch:set-config',
   LAUNCH_GAME: 'launch:launch-game',
   SAVE_PICK_FOLDER: 'save:pick-folder',
@@ -53,7 +54,7 @@ export const IPC_CHANNELS = {
 export const ThemeSchema = z.enum(['light', 'dark'])
 export type Theme = z.infer<typeof ThemeSchema>
 
-export const SettingKeySchema = z.enum(['theme', 'sidebar-width'])
+export const SettingKeySchema = z.enum(['theme', 'sidebar-width', 'locale-emulator-path'])
 
 export const GetSettingRequestSchema = z.object({
   key: SettingKeySchema,
