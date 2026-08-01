@@ -105,8 +105,19 @@ function ColumnResizeHandle({ onResize }: { onResize: (deltaX: number) => void }
     <div
       onPointerDown={handlePointerDown}
       onClick={(e) => e.stopPropagation()}
-      className="absolute right-0 top-0 z-10 h-full w-1 shrink-0 cursor-col-resize hover:bg-primary/40"
-    />
+      // The visible divider is a thin line flush with the cell's right
+      // edge, but the clickable hit area is wider (w-3, extending inward
+      // from that edge) - a target this short (just the header row's
+      // height) and only 1px wide was hard to land a real mouse cursor on
+      // precisely, which reads identically to "resize doesn't work" if the
+      // drag never actually starts. Must stay flush with (not extend past)
+      // the cell's own right edge - HeaderCell has `truncate`
+      // (overflow: hidden), which would clip an outward-extending hit area
+      // right where a user's cursor naturally lands on the boundary.
+      className="group absolute right-0 top-0 z-10 flex h-full w-3 shrink-0 cursor-col-resize justify-end"
+    >
+      <div className="pointer-events-none h-full w-px group-hover:bg-primary/40" />
+    </div>
   )
 }
 
