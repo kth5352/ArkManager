@@ -20,6 +20,7 @@ import {
   registerThumbnailProtocolHandler,
   registerThumbnailProtocolScheme,
 } from './thumbnailProtocol'
+import { registerMediaProtocolHandler, registerMediaProtocolScheme } from './mediaProtocol'
 
 // better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
@@ -43,6 +44,7 @@ if (!gotSingleInstanceLock) {
   // Must happen before app.whenReady() - Electron requires privileged scheme
   // registration at module load time.
   registerThumbnailProtocolScheme()
+  registerMediaProtocolScheme()
 
   // Without this, the running window/taskbar icon falls back to Electron's
   // own generic icon even once build.icon (package.json) gives the packaged
@@ -137,6 +139,7 @@ if (!gotSingleInstanceLock) {
     registerSaveHandlers(db)
     registerCacheHandlers(db)
     registerThumbnailProtocolHandler(db)
+    registerMediaProtocolHandler(db)
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a

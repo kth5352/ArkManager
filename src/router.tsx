@@ -15,6 +15,7 @@ import { SettingsPage } from './pages/Settings/SettingsPage'
 import { DlsiteSearchPage } from './pages/DlsiteSearch/DlsiteSearchPage'
 import { FavoritesPage } from './pages/Favorites/FavoritesPage'
 import { RecentlyPlayedPage } from './pages/RecentlyPlayed/RecentlyPlayedPage'
+import { MediaPage } from './pages/Media/MediaPage'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -69,6 +70,11 @@ const recentlyPlayedRoute = createRoute({
   path: '/recently-played',
   component: RecentlyPlayedPage,
 })
+const mediaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/media',
+  component: MediaPage,
+})
 
 const routeTree = rootRoute.addChildren([
   galleryRoute,
@@ -79,6 +85,7 @@ const routeTree = rootRoute.addChildren([
   dlsiteSearchRoute,
   favoritesRoute,
   recentlyPlayedRoute,
+  mediaRoute,
   settingsRoute,
 ])
 

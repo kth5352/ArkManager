@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Music } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -14,6 +15,8 @@ import { useLaunchGame } from '../../services/launchService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { useScanProgress } from '../../hooks/useScanProgress'
+import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
+import { isMediaFile } from '../../../shared/isMediaFile'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
@@ -127,6 +130,9 @@ function FolderEntryRow({
               <GameThumbnail entry={entry} />
             </div>
           )}
+          {entry.kind === 'file' && isMediaFile(entry.name) && (
+            <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
           <span className="truncate">{entry.name}</span>
         </li>
       </ContextMenuTrigger>
@@ -183,12 +189,25 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
     addTab({ label: entry.name, path: entry.path })
   }
 
+  const playNow = useMediaPlayerStore((s) => s.playNow)
+
   // Coded entries (file or folder) and code-less files open the detail
   // overlay. Code-less folders still navigate into them - clicking through
   // folders to find a game is Explorer's core browsing model, and a
   // code-less folder is exactly what a user browses through on their way to
   // linking a code (via the right-click "코드 연동" item above, not a click).
+  // A video/audio file plays instead, regardless of whether it happens to
+  // have a code - there's no useful DLsite detail for a media file, and
+  // every other media file currently listed in this same folder becomes the
+  // playlist (in on-screen order) so next/prev walk through them.
   const handleEntryClick = (entry: ScannedEntry): void => {
+    if (entry.kind === 'file' && isMediaFile(entry.name)) {
+      const siblings = shallowEntries
+        .filter((e) => e.kind === 'file' && isMediaFile(e.name))
+        .map((e) => ({ path: e.path, name: e.name }))
+      playNow({ path: entry.path, name: entry.name }, siblings)
+      return
+    }
     if (entry.code) {
       openDetail(entry)
     } else if (entry.kind === 'folder') {

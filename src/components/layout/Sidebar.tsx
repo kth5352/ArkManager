@@ -1,5 +1,15 @@
 import { Link } from '@tanstack/react-router'
-import { FolderTree, Heart, History, LayoutGrid, List, Rows3, Search, Settings } from 'lucide-react'
+import {
+  FolderTree,
+  Heart,
+  History,
+  LayoutGrid,
+  List,
+  Music,
+  Rows3,
+  Search,
+  Settings,
+} from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { Button } from '../ui/button'
 import logoUrl from '../../../LOGO.png'
@@ -12,6 +22,7 @@ const navItems = [
   { to: '/dlsite-search', label: 'DLsite 검색', icon: Search },
   { to: '/favorites', label: '즐겨찾기', icon: Heart },
   { to: '/recently-played', label: '최근 플레이', icon: History },
+  { to: '/media', label: '미디어', icon: Music },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const
 
