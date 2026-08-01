@@ -105,14 +105,21 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
       latestWidth = clampSidebarWidth(startWidth + (startX - moveEvent.clientX))
       setWidth(latestWidth)
     }
-    const handlePointerUp = (): void => {
+    // pointercancel (an OS-level gesture interruption, window blur mid-drag,
+    // etc.) needs the same cleanup as a normal pointerup - without it, these
+    // listeners stayed attached to `target` forever, silently misfiring
+    // (with a stale startX/startWidth from the abandoned drag) the next
+    // time the user so much as hovered the thin resize handle.
+    const finishDrag = (): void => {
       target.removeEventListener('pointermove', handlePointerMove)
-      target.removeEventListener('pointerup', handlePointerUp)
+      target.removeEventListener('pointerup', finishDrag)
+      target.removeEventListener('pointercancel', finishDrag)
       setSidebarWidth.mutate(latestWidth)
     }
 
     target.addEventListener('pointermove', handlePointerMove)
-    target.addEventListener('pointerup', handlePointerUp)
+    target.addEventListener('pointerup', finishDrag)
+    target.addEventListener('pointercancel', finishDrag)
   }
 
   if (!game) return null
