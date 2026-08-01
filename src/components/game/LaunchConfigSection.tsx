@@ -13,22 +13,18 @@ import type { LaunchConfigDto } from '../../../shared/types/ipc'
 
 interface LaunchConfigSectionProps {
   game: ScannedEntry
-  expanded: boolean
-  onExpandedChange: (expanded: boolean) => void
 }
 
-// Collapsible, starts collapsed (see DetailSidebar's per-game key resetting
-// this section's local state on every selection change - `expanded` itself
-// is controlled by the parent so it can also force this section open when
-// launching fails for lack of a saved config, not just via the toggle
-// button below). Field set and explicit-save behavior mirror
-// LaunchConfigDialog.tsx exactly - this is used less often than
-// rating/memo, so an explicit save button stays appropriate here.
-export function LaunchConfigSection({
-  game,
-  expanded,
-  onExpandedChange,
-}: LaunchConfigSectionProps) {
+// Collapsible, starts collapsed - `expanded` is local (DetailSidebar's
+// per-game key already resets this section's whole local state on every
+// selection change). A failed launch attempt (no saved config yet) opens
+// LaunchConfigDialog as a centered modal instead of forcing this section
+// open, so `expanded` no longer needs to be controlled by the parent. Field
+// set and explicit-save behavior mirror LaunchConfigDialog.tsx exactly -
+// this is used less often than rating/memo, so an explicit save button
+// stays appropriate here.
+export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
+  const [expanded, setExpanded] = useState(false)
   const folderPath = game.kind === 'folder' ? game.path : ''
   const { data: executables } = useListExecutables(folderPath)
   const { data: leAvailable } = useLocaleEmulatorAvailable()
@@ -73,7 +69,7 @@ export function LaunchConfigSection({
     <div className="border-t border-border pt-3">
       <button
         className="flex w-full items-center gap-1 text-xs font-medium text-muted-foreground"
-        onClick={() => onExpandedChange(!expanded)}
+        onClick={() => setExpanded(!expanded)}
       >
         <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
         실행 설정

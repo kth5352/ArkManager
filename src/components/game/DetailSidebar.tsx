@@ -4,6 +4,7 @@ import { Button } from '../ui/button'
 import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
 import { LaunchConfigSection } from './LaunchConfigSection'
+import { LaunchConfigDialog } from './LaunchConfigDialog'
 import { CodeLinkSection } from './CodeLinkSection'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
@@ -29,28 +30,25 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
   const { data: metadata } = useGameMetadata(game?.code ?? null)
-  const [launchConfigExpanded, setLaunchConfigExpanded] = useState(false)
-  const [launchConfigExpandedForPath, setLaunchConfigExpandedForPath] = useState(game?.path)
+  // A failed launch (no saved config yet) opens the centered modal dialog
+  // instead of expanding LaunchConfigSection inline - more discoverable/less
+  // easy to miss than an inline section quietly expanding somewhere in an
+  // already-scrolled sidebar. Not reset via a path-tracking hook the way
+  // launchConfigExpanded's old auto-expand-on-failure used to need - the
+  // dialog itself is keyed by game identity below, which unmounts (closes)
+  // it on any game switch.
+  const [configuringLaunch, setConfiguringLaunch] = useState(false)
 
   if (persistedWidth !== syncedWidth) {
     setSyncedWidth(persistedWidth)
     if (persistedWidth !== undefined) setWidth(persistedWidth)
   }
 
-  // Resets to collapsed on every game switch, same as LaunchConfigSection's
-  // other local state would if this lived there - it's lifted up here only
-  // so handleLaunch (below) can force it open when a launch attempt fails
-  // for lack of a saved config.
-  if (game?.path !== launchConfigExpandedForPath) {
-    setLaunchConfigExpandedForPath(game?.path)
-    setLaunchConfigExpanded(false)
-  }
-
   const handleLaunch = (): void => {
     if (!game) return
     launchGame.mutate(game, {
       onError: (error) => {
-        if (isNoLaunchConfigError(error)) setLaunchConfigExpanded(true)
+        if (isNoLaunchConfigError(error)) setConfiguringLaunch(true)
       },
     })
   }
@@ -168,13 +166,14 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
           </div>
         )}
         <RatingMemoSection game={game} />
-        <LaunchConfigSection
-          game={game}
-          expanded={launchConfigExpanded}
-          onExpandedChange={setLaunchConfigExpanded}
-        />
+        <LaunchConfigSection game={game} />
         <CodeLinkSection game={game} />
       </div>
+      <LaunchConfigDialog
+        key={configuringLaunch ? game.path : 'closed'}
+        entry={configuringLaunch ? game : null}
+        onClose={() => setConfiguringLaunch(false)}
+      />
     </div>
   )
 }
