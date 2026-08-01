@@ -1,6 +1,6 @@
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { useState } from 'react'
+import { useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Copy, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { useGameMetadataMany } from '../../services/metadataService'
@@ -14,6 +14,7 @@ import { PageToolbar } from '../../components/layout/PageToolbar'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
+import { HoverTooltip } from '../../components/ui/hover-tooltip'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useScanProgress } from '../../hooks/useScanProgress'
@@ -22,6 +23,27 @@ import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndic
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 32
+const HEADER_HEIGHT = 28
+const MIN_COLUMN_WIDTH = 60
+
+// Only the free-text columns are resizable - code/date/size/rating are
+// always short, fixed-format content that never benefits from it. Values
+// here match this table's previous hardcoded Tailwind widths (w-28/w-64/
+// w-40), just as explicit pixel state instead, since a drag-to-resize
+// handle needs a real number to adjust rather than a Tailwind class.
+interface ColumnWidths {
+  code: number
+  name: number
+  path: number
+  genres: number
+}
+
+const DEFAULT_COLUMN_WIDTHS: ColumnWidths = {
+  code: 112,
+  name: 300,
+  path: 256,
+  genres: 160,
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`
@@ -39,10 +61,64 @@ function formatDate(mtimeMs: number): string {
   return new Date(mtimeMs).toISOString().slice(0, 10)
 }
 
+// The draggable divider sits on a column's right edge and grows/shrinks
+// that same column - unlike DetailSidebar's single left-edge handle, this
+// table has one of these per resizable column, so which column to update is
+// a parameter rather than baked into one handler.
+function ColumnResizeHandle({ onResize }: { onResize: (deltaX: number) => void }) {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+    const startX = event.clientX
+
+    const handlePointerMove = (moveEvent: PointerEvent): void => {
+      onResize(moveEvent.clientX - startX)
+    }
+    const handlePointerUp = (): void => {
+      target.removeEventListener('pointermove', handlePointerMove)
+      target.removeEventListener('pointerup', handlePointerUp)
+    }
+
+    target.addEventListener('pointermove', handlePointerMove)
+    target.addEventListener('pointerup', handlePointerUp)
+  }
+
+  return (
+    <div
+      onPointerDown={handlePointerDown}
+      onClick={(e) => e.stopPropagation()}
+      className="absolute right-0 top-0 z-10 h-full w-1 shrink-0 cursor-col-resize hover:bg-primary/40"
+    />
+  )
+}
+
+function HeaderCell({
+  label,
+  width,
+  onResize,
+}: {
+  label: string
+  width: number
+  onResize: (deltaX: number) => void
+}) {
+  return (
+    <div
+      style={{ width }}
+      className="relative shrink-0 truncate pr-2 text-xs font-medium text-foreground"
+    >
+      {label}
+      <ColumnResizeHandle onResize={onResize} />
+    </div>
+  )
+}
+
 interface DetailListRowProps {
   entries: ScannedEntry[]
   metadataByCode: Record<string, { genres: string[] }>
   duplicateGroups: Map<string, ScannedEntry[]>
+  columnWidths: ColumnWidths
   onOpenDetail: (entry: ScannedEntry) => void
 }
 
@@ -52,6 +128,7 @@ function Row({
   entries,
   metadataByCode,
   duplicateGroups,
+  columnWidths,
   onOpenDetail,
 }: RowComponentProps<DetailListRowProps>) {
   const entry = entries[index]
@@ -67,8 +144,16 @@ function Row({
       onClick={() => onOpenDetail(entry)}
     >
       <FileKindIcon kind={entry.kind} name={entry.name} className="h-3.5 w-3.5 shrink-0" />
-      <span className="w-28 shrink-0 truncate">{entry.code?.value ?? '-'}</span>
-      <span className="min-w-0 flex-1 truncate text-foreground">{entry.name}</span>
+      <HoverTooltip
+        content={entry.code?.value ?? '-'}
+        className="shrink-0"
+        style={{ width: columnWidths.code }}
+      >
+        <span className="block truncate">{entry.code?.value ?? '-'}</span>
+      </HoverTooltip>
+      <HoverTooltip content={entry.name} className="min-w-0 flex-1">
+        <span className="block truncate text-foreground">{entry.name}</span>
+      </HoverTooltip>
       {duplicates && (
         <span
           className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
@@ -81,8 +166,16 @@ function Row({
           {duplicates.length}
         </span>
       )}
-      <span className="w-64 shrink-0 truncate">{entry.path}</span>
-      <span className="w-40 shrink-0 truncate">{genres.join(', ')}</span>
+      <HoverTooltip content={entry.path} className="shrink-0" style={{ width: columnWidths.path }}>
+        <span className="block truncate">{entry.path}</span>
+      </HoverTooltip>
+      <HoverTooltip
+        content={genres.join(', ') || '없음'}
+        className="shrink-0"
+        style={{ width: columnWidths.genres }}
+      >
+        <span className="block truncate">{genres.join(', ')}</span>
+      </HoverTooltip>
       <span className="w-24 shrink-0">{formatDate(entry.mtimeMs)}</span>
       <span className="w-20 shrink-0">{formatSize(entry.size)}</span>
       <span className="flex w-16 shrink-0 gap-0.5">
@@ -106,6 +199,7 @@ export function DetailListPage() {
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
+  const [columnWidths, setColumnWidths] = useState<ColumnWidths>(DEFAULT_COLUMN_WIDTHS)
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
   const scanProgress = useScanProgress(isLoading)
 
@@ -117,6 +211,13 @@ export function DetailListPage() {
   // results - "this game has another copy elsewhere" should stay true
   // regardless of what's currently visible.
   const duplicateGroups = groupDuplicatesByCode(games ?? [])
+
+  const resizeColumn = (column: keyof ColumnWidths, deltaX: number): void => {
+    setColumnWidths((prev) => ({
+      ...prev,
+      [column]: Math.max(MIN_COLUMN_WIDTH, prev[column] + deltaX),
+    }))
+  }
 
   if (isError && !games) {
     return (
@@ -173,28 +274,60 @@ export function DetailListPage() {
               표시할 항목이 없습니다.
             </div>
           ) : (
-            <div className="h-full w-full">
-              <AutoSizer
-                style={{ height: '100%', width: '100%' }}
-                renderProp={({ height, width }) => {
-                  if (height === undefined || width === undefined) return null
-                  return (
-                    <List
-                      rowComponent={Row}
-                      rowProps={{
-                        entries: sorted,
-                        metadataByCode,
-                        duplicateGroups,
-                        onOpenDetail: openDetail,
-                      }}
-                      rowCount={sorted.length}
-                      rowHeight={ROW_HEIGHT}
-                      style={{ height, width }}
-                    />
-                  )
-                }}
-              />
-            </div>
+            <>
+              <div
+                style={{ height: HEADER_HEIGHT }}
+                className="flex shrink-0 items-center gap-4 border-b border-border bg-muted/40 px-4"
+              >
+                <span className="h-3.5 w-3.5 shrink-0" />
+                <HeaderCell
+                  label="코드"
+                  width={columnWidths.code}
+                  onResize={(delta) => resizeColumn('code', delta)}
+                />
+                <HeaderCell
+                  label="이름"
+                  width={columnWidths.name}
+                  onResize={(delta) => resizeColumn('name', delta)}
+                />
+                <HeaderCell
+                  label="경로"
+                  width={columnWidths.path}
+                  onResize={(delta) => resizeColumn('path', delta)}
+                />
+                <HeaderCell
+                  label="장르"
+                  width={columnWidths.genres}
+                  onResize={(delta) => resizeColumn('genres', delta)}
+                />
+                <span className="w-24 shrink-0 text-xs font-medium">수정일</span>
+                <span className="w-20 shrink-0 text-xs font-medium">크기</span>
+                <span className="w-16 shrink-0 text-xs font-medium">평점</span>
+              </div>
+              <div className="h-full w-full">
+                <AutoSizer
+                  style={{ height: '100%', width: '100%' }}
+                  renderProp={({ height, width }) => {
+                    if (height === undefined || width === undefined) return null
+                    return (
+                      <List
+                        rowComponent={Row}
+                        rowProps={{
+                          entries: sorted,
+                          metadataByCode,
+                          duplicateGroups,
+                          columnWidths,
+                          onOpenDetail: openDetail,
+                        }}
+                        rowCount={sorted.length}
+                        rowHeight={ROW_HEIGHT}
+                        style={{ height: height - HEADER_HEIGHT, width }}
+                      />
+                    )
+                  }}
+                />
+              </div>
+            </>
           )}
         </div>
         {detailSidebarElement}
