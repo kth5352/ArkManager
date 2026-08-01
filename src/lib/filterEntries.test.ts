@@ -3,6 +3,7 @@ import { filterEntries } from './filterEntries'
 
 interface TestEntry {
   name: string
+  kind: 'folder' | 'file'
   code: { type: 'RJ' | 'VJ' | 'ST'; value: string } | null
 }
 
@@ -12,9 +13,9 @@ const metadataByCode = {
 }
 
 const entries: TestEntry[] = [
-  { name: 'alpha.zip', code: { type: 'RJ', value: 'RJ01111111' } },
-  { name: 'beta.zip', code: { type: 'RJ', value: 'RJ02222222' } },
-  { name: 'no-code-file.txt', code: null },
+  { name: 'alpha.zip', kind: 'file', code: { type: 'RJ', value: 'RJ01111111' } },
+  { name: 'beta.zip', kind: 'file', code: { type: 'RJ', value: 'RJ02222222' } },
+  { name: 'no-code-file.txt', kind: 'file', code: null },
 ]
 
 describe('filterEntries', () => {
@@ -86,5 +87,33 @@ describe('filterEntries', () => {
     expect(
       filterEntries(entries, metadataByCode, '', ['액션'], ['판타지']).map((e) => e.name)
     ).toEqual([])
+  })
+
+  describe('fileKindFilter', () => {
+    const mixedEntries: TestEntry[] = [
+      { name: 'archive.zip', kind: 'file', code: null },
+      { name: 'extracted-folder', kind: 'folder', code: null },
+      { name: 'loose-file.exe', kind: 'file', code: null },
+    ]
+
+    it('defaults to showing everything', () => {
+      expect(filterEntries(mixedEntries, metadataByCode, '', [], []).map((e) => e.name)).toEqual([
+        'archive.zip',
+        'extracted-folder',
+        'loose-file.exe',
+      ])
+    })
+
+    it('archive-only shows only archive-extension files, not folders or other files', () => {
+      expect(
+        filterEntries(mixedEntries, metadataByCode, '', [], [], 'archive-only').map((e) => e.name)
+      ).toEqual(['archive.zip'])
+    })
+
+    it('no-archive hides archive files but keeps folders and other files', () => {
+      expect(
+        filterEntries(mixedEntries, metadataByCode, '', [], [], 'no-archive').map((e) => e.name)
+      ).toEqual(['extracted-folder', 'loose-file.exe'])
+    })
   })
 })

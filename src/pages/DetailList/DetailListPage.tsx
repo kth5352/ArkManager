@@ -7,9 +7,11 @@ import { useGameMetadataMany } from '../../services/metadataService'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
-import { filterEntries } from '../../lib/filterEntries'
+import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
+import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
+import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useScanProgress } from '../../hooks/useScanProgress'
@@ -59,6 +61,7 @@ function Row({
       className="flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
       onClick={() => onOpenDetail(entry)}
     >
+      <FileKindIcon kind={entry.kind} name={entry.name} className="h-3.5 w-3.5 shrink-0" />
       <span className="w-28 shrink-0 truncate">{entry.code?.value ?? '-'}</span>
       <span className="min-w-0 flex-1 truncate text-foreground">{entry.name}</span>
       <span className="w-64 shrink-0 truncate">{entry.path}</span>
@@ -85,6 +88,7 @@ export function DetailListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
   const scanProgress = useScanProgress(isLoading)
 
@@ -114,7 +118,14 @@ export function DetailListPage() {
     )
   }
 
-  const filtered = filterEntries(games, metadataByCode, searchQuery, includedGenres, excludedGenres)
+  const filtered = filterEntries(
+    games,
+    metadataByCode,
+    searchQuery,
+    includedGenres,
+    excludedGenres,
+    fileKindFilter
+  )
   const sorted = sortEntries(filtered, sortField, sortDirection)
 
   return (
@@ -130,6 +141,7 @@ export function DetailListPage() {
             setExcludedGenres(nextExcluded)
           }}
         />
+        <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>
       <div className="flex min-h-0 flex-1">

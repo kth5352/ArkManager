@@ -1,3 +1,5 @@
+import { isArchiveFile } from './isArchiveFile'
+
 export interface FilterableMetadata {
   title: string | null
   circle: string | null
@@ -6,20 +8,28 @@ export interface FilterableMetadata {
 
 export interface FilterableEntry {
   name: string
+  kind: 'folder' | 'file'
   code: { type: 'RJ' | 'VJ' | 'ST'; value: string } | null
 }
+
+export type FileKindFilter = 'all' | 'archive-only' | 'no-archive'
 
 export function filterEntries<T extends FilterableEntry>(
   entries: T[],
   metadataByCode: Record<string, FilterableMetadata>,
   query: string,
   includedGenres: string[],
-  excludedGenres: string[]
+  excludedGenres: string[],
+  fileKindFilter: FileKindFilter = 'all'
 ): T[] {
   const normalizedQuery = query.trim().toLowerCase()
 
   return entries.filter((entry) => {
     const metadata = entry.code ? metadataByCode[entry.code.value] : undefined
+    const isArchive = entry.kind === 'file' && isArchiveFile(entry.name)
+
+    if (fileKindFilter === 'archive-only' && !isArchive) return false
+    if (fileKindFilter === 'no-archive' && isArchive) return false
 
     // Unlike excludedGenres below, an entry with no metadata (genres
     // unknown) can never be confirmed to have every included genre - err on

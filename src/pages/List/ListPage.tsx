@@ -4,6 +4,8 @@ import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
+import { FileKindIcon } from '../../components/game/FileKindIcon'
+import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
@@ -16,7 +18,7 @@ import { SearchHeader } from '../../components/layout/SearchHeader'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
-import { filterEntries } from '../../lib/filterEntries'
+import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -61,8 +63,11 @@ function GameRow({
       >
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
       </button>
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
+      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
         <GameThumbnail entry={game} />
+        <div className="absolute bottom-0.5 right-0.5 rounded-full bg-background/70 p-0.5 text-muted-foreground">
+          <FileKindIcon kind={game.kind} name={game.name} className="h-3 w-3" />
+        </div>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -155,6 +160,7 @@ export function ListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
   useFavoriteShortcut(hoveredGame)
@@ -195,7 +201,14 @@ export function ListPage() {
 
   const filteredGames =
     games.length > 0
-      ? filterEntries(games, metadataByCode, searchQuery, includedGenres, excludedGenres)
+      ? filterEntries(
+          games,
+          metadataByCode,
+          searchQuery,
+          includedGenres,
+          excludedGenres,
+          fileKindFilter
+        )
       : games
   const sortedGames =
     filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
@@ -213,6 +226,7 @@ export function ListPage() {
             setExcludedGenres(nextExcluded)
           }}
         />
+        <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>
       <div className="flex min-h-0 flex-1">

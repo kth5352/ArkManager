@@ -5,6 +5,8 @@ import { motion } from 'framer-motion'
 import { Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
+import { FileKindIcon } from '../../components/game/FileKindIcon'
+import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
@@ -16,7 +18,7 @@ import { SearchHeader } from '../../components/layout/SearchHeader'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
-import { filterEntries } from '../../lib/filterEntries'
+import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -67,6 +69,9 @@ function GameCard({
       >
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
       </button>
+      <div className="absolute left-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground">
+        <FileKindIcon kind={game.kind} name={game.name} className="h-4 w-4" />
+      </div>
       <div className="aspect-[3/4] w-full bg-muted">
         <GameThumbnail entry={game} />
       </div>
@@ -156,6 +161,7 @@ export function GalleryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
+  const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
   useFavoriteShortcut(hoveredGame)
@@ -225,7 +231,14 @@ export function GalleryPage() {
 
   const filteredGames =
     games.length > 0
-      ? filterEntries(games, metadataByCode, searchQuery, includedGenres, excludedGenres)
+      ? filterEntries(
+          games,
+          metadataByCode,
+          searchQuery,
+          includedGenres,
+          excludedGenres,
+          fileKindFilter
+        )
       : games
   const sortedGames =
     filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
@@ -243,6 +256,7 @@ export function GalleryPage() {
             setExcludedGenres(nextExcluded)
           }}
         />
+        <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
         <PageToolbar
           sortField={sortField}
           sortDirection={sortDirection}
