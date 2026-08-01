@@ -176,6 +176,7 @@ const ko = {
   'rename.tokenHelp':
     '{code}: 식별코드 · {circle}: 서클명 · {title}: 크롤링된 제목 · {genres}: 태그 목록({태그1, 태그2}) · {name}: 원래 이름 · {ext}: 확장자 · {index}: 순번(1부터, {index:2}처럼 0으로 채우기 가능). 크롤링되지 않은 정보는 빈 값으로 처리되며, {ext}를 생략하면 파일 확장자는 자동으로 유지됩니다.',
   'rename.duplicateNames': '변경 후 이름이 서로 중복됩니다. 패턴을 확인하세요.',
+  'rename.emptyNames': '일부 항목의 결과 이름이 비어 있습니다. 패턴을 확인하세요.',
   'rename.changing': '변경 중...',
   'rename.bulkApply': '일괄 변경',
   'rename.apply': '변경',
@@ -437,6 +438,7 @@ const ja: Record<keyof typeof ko, string> = {
   'rename.tokenHelp':
     '{code}: 識別コード · {circle}: サークル名 · {title}: クロールしたタイトル · {genres}: タグ一覧（{タグ1, タグ2}） · {name}: 元の名前 · {ext}: 拡張子 · {index}: 連番（1から、{index:2}のように0埋め可能）。クロールされていない情報は空値になり、{ext}を省略するとファイルの拡張子は自動的に維持されます。',
   'rename.duplicateNames': '変更後の名前が重複します。パターンを確認してください。',
+  'rename.emptyNames': '一部の項目の結果名が空です。パターンを確認してください。',
   'rename.changing': '変更中...',
   'rename.bulkApply': '一括変更',
   'rename.apply': '変更',
@@ -700,6 +702,7 @@ const en: Record<keyof typeof ko, string> = {
   'rename.tokenHelp':
     '{code}: identifier code · {circle}: circle name · {title}: crawled title · {genres}: tag list ({tag1, tag2}) · {name}: original name · {ext}: extension · {index}: position (1-based, use {index:2} to zero-pad). Fields with no crawled data become empty; omitting {ext} keeps the original file extension automatically.',
   'rename.duplicateNames': 'The resulting names would collide. Please check your pattern.',
+  'rename.emptyNames': 'Some items would end up with an empty name. Please check your pattern.',
   'rename.changing': 'Renaming...',
   'rename.bulkApply': 'Apply to All',
   'rename.apply': 'Apply',

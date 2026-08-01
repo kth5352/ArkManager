@@ -52,6 +52,13 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
 
   const preview = isBulk ? buildRenamePlan(richTargets, pattern) : []
   const hasDuplicateInBatch = new Set(preview.map((p) => p.newName)).size !== preview.length
+  // A pattern like "{circle}" collapses to an empty string for a target
+  // with no crawled circle - buildRenamePlan trims whitespace-only results
+  // down to '', which isSafeFileName (the main process's own check) rejects
+  // outright. Without flagging this in the preview, Apply stayed enabled
+  // and the failure only surfaced afterward as a per-row error, the same
+  // gap hasDuplicateInBatch already closes for name collisions.
+  const hasEmptyNameInBatch = preview.some((p) => p.newName === '')
 
   const handleApply = (): void => {
     const renames = isBulk
@@ -107,9 +114,17 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
             {hasDuplicateInBatch && (
               <p className="text-xs text-destructive">{t('rename.duplicateNames')}</p>
             )}
+            {hasEmptyNameInBatch && (
+              <p className="text-xs text-destructive">{t('rename.emptyNames')}</p>
+            )}
             <Button
               onClick={handleApply}
-              disabled={!pattern.trim() || hasDuplicateInBatch || renameEntries.isPending}
+              disabled={
+                !pattern.trim() ||
+                hasDuplicateInBatch ||
+                hasEmptyNameInBatch ||
+                renameEntries.isPending
+              }
             >
               {renameEntries.isPending ? t('rename.changing') : t('rename.bulkApply')}
             </Button>
