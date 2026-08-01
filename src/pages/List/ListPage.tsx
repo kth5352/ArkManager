@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { Clock, Heart, Star } from 'lucide-react'
-import { useGames } from '../../services/useGames'
+import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
+import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
@@ -162,7 +163,7 @@ function Row({
 }
 
 export function ListPage() {
-  const { data: games, isLoading, isError } = useGames()
+  const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
@@ -234,6 +235,7 @@ export function ListPage() {
           }}
         />
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
+        <LibraryVisibilityDialog />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>
       <div className="flex min-h-0 flex-1">

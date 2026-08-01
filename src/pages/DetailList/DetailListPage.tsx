@@ -2,7 +2,7 @@ import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { useState } from 'react'
 import { Star } from 'lucide-react'
-import { useGames } from '../../services/useGames'
+import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { useSortPreference } from '../../services/sortService'
@@ -11,6 +11,7 @@ import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
+import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
@@ -83,7 +84,7 @@ function Row({
 }
 
 export function DetailListPage() {
-  const { data: games, isLoading, isError } = useGames()
+  const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('detail-list')
   const [searchQuery, setSearchQuery] = useState('')
   const [includedGenres, setIncludedGenres] = useState<string[]>([])
@@ -142,6 +143,7 @@ export function DetailListPage() {
           }}
         />
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
+        <LibraryVisibilityDialog />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
       </div>
       <div className="flex min-h-0 flex-1">

@@ -3,10 +3,11 @@ import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
 import { Clock, Heart, Star } from 'lucide-react'
-import { useGames } from '../../services/useGames'
+import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
+import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
@@ -161,7 +162,7 @@ function GameCell({
 }
 
 export function GalleryPage() {
-  const { data: games, isLoading, isError } = useGames()
+  const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('gallery')
   const [zoom, setZoom] = useState(1)
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
@@ -264,6 +265,7 @@ export function GalleryPage() {
           }}
         />
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
+        <LibraryVisibilityDialog />
         <PageToolbar
           sortField={sortField}
           sortDirection={sortDirection}
