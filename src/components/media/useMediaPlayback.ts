@@ -140,24 +140,29 @@ export function useMediaPlayback({
   // the window (not scoped to a focused player element) so these work no
   // matter which page happens to be showing while media plays in the
   // background, matching a real media player's keyboard behavior. Skipped
-  // entirely while focus is on a text field/button/etc, so this doesn't
-  // steal keys from search boxes, other range inputs (including this same
-  // component's own seek/volume sliders), or a focused button's own Space
-  // handling. Seeking only makes sense with a live element to seek (isHost);
-  // volume works from either window since it's shared control-plane state
-  // (see mediaPlayerStore.ts) that the actual host applies via the effect
-  // above regardless of which window changed it.
+  // entirely while focus is on a text field, so this doesn't steal keys
+  // from search boxes or other range inputs (including this same
+  // component's own seek/volume sliders). Space is additionally skipped
+  // while a button/link is focused specifically - a focused button/link
+  // also activates on a Space keypress natively, so handling it here too
+  // would double-toggle play/pause. Arrow keys don't have that native
+  // activation behavior on a button, so they must NOT be skipped there too
+  // (doing so used to silently disable seek/volume shortcuts app-wide the
+  // moment any button, e.g. the transport bar's own Play/Pause button, was
+  // clicked and left focused). Seeking only makes sense with a live element
+  // to seek (isHost); volume works from either window since it's shared
+  // control-plane state (see mediaPlayerStore.ts) that the actual host
+  // applies via the effect above regardless of which window changed it.
   useEffect(() => {
     if (!track) return
     const handleKeyDown = (event: KeyboardEvent): void => {
       const active = document.activeElement as HTMLElement | null
-      if (
-        active &&
-        (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(active.tagName) ||
-          active.isContentEditable)
-      ) {
-        return
-      }
+      const isTextInput =
+        !!active &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName) || active.isContentEditable)
+      if (isTextInput) return
+
+      const isFocusedButtonLike = !!active && ['BUTTON', 'A'].includes(active.tagName)
 
       if (event.key === 'ArrowLeft' && isHost && elRef.current) {
         event.preventDefault()
@@ -173,7 +178,7 @@ export function useMediaPlayback({
       } else if (event.key === 'ArrowDown') {
         event.preventDefault()
         setVolume(volume - 0.05)
-      } else if (event.key === ' ') {
+      } else if (event.key === ' ' && !isFocusedButtonLike) {
         event.preventDefault()
         togglePlay()
       }
