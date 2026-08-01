@@ -307,8 +307,17 @@ export function GalleryPage() {
     const match = games.find(
       (g) => g.code?.value === pendingOpenKey || normalizeLibraryPath(g.path) === pendingOpenKey
     )
-    if (match) openDetail(match)
-    clearPendingOpenKey()
+    // Only consumed once a match is actually found - clearing it
+    // unconditionally used to silently drop the deep-link with no retry
+    // whenever `games` was still a stale cached snapshot (e.g. right after
+    // RecentlyPlayedPage/FavoritesPage navigated here for an entry that was
+    // scanned moments earlier) that hadn't picked up the target entry yet.
+    // Leaving it set lets this effect retry on the next `games` update
+    // instead.
+    if (match) {
+      openDetail(match)
+      clearPendingOpenKey()
+    }
   }, [pendingOpenKey, games, openDetail, clearPendingOpenKey])
 
   // Toggling the detail sidebar or resizing the window changes the grid's
