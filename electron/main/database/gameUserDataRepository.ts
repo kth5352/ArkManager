@@ -19,6 +19,7 @@ export interface GameUserDataRow {
   totalPlaytimeMs: number
   lastPlayedAt: string | null
   savePath: string | null
+  customCoverPath: string | null
   createdAt: string
   updatedAt: string
 }
@@ -105,6 +106,23 @@ export function setSavePath(
     .run()
 }
 
+// customCoverPath: null clears it (see clearCustomCoverImage's caller) -
+// distinct from omitting the column entirely, which onConflictDoUpdate's
+// `set` always includes here since this is the one function whose whole
+// purpose is setting-or-clearing this specific column.
+export function setCustomCoverPath(
+  db: AppDatabase,
+  key: string,
+  keyType: GameUserDataKeyType,
+  customCoverPath: string | null
+): void {
+  const now = new Date().toISOString()
+  db.insert(gameUserData)
+    .values({ key, keyType, customCoverPath, createdAt: now, updatedAt: now })
+    .onConflictDoUpdate({ target: gameUserData.key, set: { customCoverPath, updatedAt: now } })
+    .run()
+}
+
 // Ensures a row exists for `key` and refreshes updatedAt - later tasks
 // (D/B group features) call this alongside writing the actual user-data
 // columns they add via their own migration.
@@ -160,8 +178,9 @@ export function listFavoriteKeys(db: AppDatabase): string[] {
 // before the user linked the path to it), the two rows are merged
 // deterministically rather than one silently clobbering the other:
 //   - isFavorite: true if either side is favorited.
-//   - rating/memo/launchConfig/lastPlayedAt/savePath: the code row's value
-//     wins when set, otherwise falls back to the path row's value.
+//   - rating/memo/launchConfig/lastPlayedAt/savePath/customCoverPath: the
+//     code row's value wins when set, otherwise falls back to the path
+//     row's value.
 //   - totalPlaytimeMs: the code row's value wins when non-zero, otherwise
 //     falls back to the path row's value (does not sum - the two totals
 //     aren't known to be non-overlapping).
@@ -184,6 +203,7 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
         : existing.totalPlaytimeMs,
     lastPlayedAt: currentCodeRow?.lastPlayedAt ?? existing.lastPlayedAt,
     savePath: currentCodeRow?.savePath ?? existing.savePath,
+    customCoverPath: currentCodeRow?.customCoverPath ?? existing.customCoverPath,
     createdAt: currentCodeRow?.createdAt ?? existing.createdAt,
   }
 
@@ -200,6 +220,7 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
         totalPlaytimeMs: merged.totalPlaytimeMs,
         lastPlayedAt: merged.lastPlayedAt,
         savePath: merged.savePath,
+        customCoverPath: merged.customCoverPath,
         createdAt: merged.createdAt,
         updatedAt: now,
       })
@@ -213,6 +234,7 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
           totalPlaytimeMs: merged.totalPlaytimeMs,
           lastPlayedAt: merged.lastPlayedAt,
           savePath: merged.savePath,
+          customCoverPath: merged.customCoverPath,
           updatedAt: now,
         },
       })

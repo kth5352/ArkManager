@@ -42,6 +42,11 @@ export const IPC_CHANNELS = {
   GAME_USER_DATA_LIST_RECENTLY_PLAYED: 'game-user-data:list-recently-played',
   GAME_USER_DATA_LINK_CODE: 'game-user-data:link-code',
   GAME_USER_DATA_UNLINK_CODE: 'game-user-data:unlink-code',
+  GAME_USER_DATA_PICK_CUSTOM_COVER_FILE: 'game-user-data:pick-custom-cover-file',
+  GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE: 'game-user-data:set-custom-cover-from-file',
+  GAME_USER_DATA_SET_CUSTOM_COVER_FROM_CLIPBOARD: 'game-user-data:set-custom-cover-from-clipboard',
+  GAME_USER_DATA_CLEAR_CUSTOM_COVER: 'game-user-data:clear-custom-cover',
+  GAME_USER_DATA_GET_CUSTOM_COVER_IMAGE: 'game-user-data:get-custom-cover-image',
   LAUNCH_LIST_EXECUTABLES: 'launch:list-executables',
   LAUNCH_IS_LOCALE_EMULATOR_AVAILABLE: 'launch:is-locale-emulator-available',
   LAUNCH_PICK_LOCALE_EMULATOR_PATH: 'launch:pick-locale-emulator-path',
@@ -251,7 +256,14 @@ export interface GameUserDataDto {
   memo: string | null
   totalPlaytimeMs: number
   launchConfig: LaunchConfigDto | null
+  customCoverPath: string | null
 }
+
+export const SetCustomCoverFromFileRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  path: z.string(),
+})
+export type SetCustomCoverFromFileRequest = z.infer<typeof SetCustomCoverFromFileRequestSchema>
 
 export const LaunchConfigSchema = z.object({
   executablePath: z.string(),

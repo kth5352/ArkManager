@@ -47,6 +47,7 @@ export const gameUserData = sqliteTable('game_user_data', {
   totalPlaytimeMs: integer('total_playtime_ms').notNull().default(0),
   lastPlayedAt: text('last_played_at'),
   savePath: text('save_path'),
+  customCoverPath: text('custom_cover_path'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })

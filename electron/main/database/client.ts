@@ -99,6 +99,7 @@ export function createDbClient(filePath: string) {
       total_playtime_ms INTEGER NOT NULL DEFAULT 0,
       last_played_at TEXT,
       save_path TEXT,
+      custom_cover_path TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
@@ -111,6 +112,7 @@ export function createDbClient(filePath: string) {
     { name: 'total_playtime_ms', ddl: 'total_playtime_ms INTEGER NOT NULL DEFAULT 0' },
     { name: 'last_played_at', ddl: 'last_played_at TEXT' },
     { name: 'save_path', ddl: 'save_path TEXT' },
+    { name: 'custom_cover_path', ddl: 'custom_cover_path TEXT' },
   ])
 
   sqlite.exec(`

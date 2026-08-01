@@ -142,6 +142,29 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_LINK_CODE, { path, code }),
     unlinkCode: (path: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_UNLINK_CODE, { path }),
+    pickCustomCoverFile: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_PICK_CUSTOM_COVER_FILE),
+    setCustomCoverFromFile: (
+      code: GameCode | null,
+      path: string,
+      sourcePath: string
+    ): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE, {
+        identifier: { code, path },
+        path: sourcePath,
+      }),
+    setCustomCoverFromClipboard: (code: GameCode | null, path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_SET_CUSTOM_COVER_FROM_CLIPBOARD, {
+        identifier: { code, path },
+      }),
+    clearCustomCover: (code: GameCode | null, path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_CLEAR_CUSTOM_COVER, {
+        identifier: { code, path },
+      }),
+    getCustomCoverImage: (code: GameCode | null, path: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_GET_CUSTOM_COVER_IMAGE, {
+        identifier: { code, path },
+      }),
   },
   launch: {
     listExecutables: (folderPath: string): Promise<string[]> =>

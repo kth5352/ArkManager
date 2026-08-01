@@ -10,6 +10,7 @@ import {
   setLaunchConfig,
   recordPlaySession,
   setSavePath,
+  setCustomCoverPath,
   listRecentlyPlayedKeys,
 } from './gameUserDataRepository'
 
@@ -157,7 +158,7 @@ describe('gameUserDataRepository', () => {
     expect(after?.savePath).toBe('d:\\saves\\some-folder')
   })
 
-  it('rekeying onto an existing code-keyed row merges without losing either side\'s data', () => {
+  it("rekeying onto an existing code-keyed row merges without losing either side's data", () => {
     // The code already has its own accumulated data (e.g. crawled/favorited independently).
     setFavorite(db, 'RJ07777777', 'code', true)
     setRatingAndMemo(db, 'RJ07777777', 'code', 4, 'code-side memo')
@@ -188,6 +189,36 @@ describe('gameUserDataRepository', () => {
     rekeyToCode(db, 'd:\\games\\another-folder', 'RJ08888888')
 
     expect(getGameUserData(db, 'RJ08888888')?.isFavorite).toBe(true)
+  })
+
+  it('stores and clears a custom cover path independently of other fields', () => {
+    setCustomCoverPath(
+      db,
+      'd:\\games\\some-folder',
+      'path',
+      'C:\\userdata\\custom-covers\\abc.webp'
+    )
+    expect(getGameUserData(db, 'd:\\games\\some-folder')?.customCoverPath).toBe(
+      'C:\\userdata\\custom-covers\\abc.webp'
+    )
+
+    setCustomCoverPath(db, 'd:\\games\\some-folder', 'path', null)
+    expect(getGameUserData(db, 'd:\\games\\some-folder')?.customCoverPath).toBeNull()
+  })
+
+  it('rekeying preserves a custom cover path', () => {
+    setCustomCoverPath(
+      db,
+      'd:\\games\\some-folder',
+      'path',
+      'C:\\userdata\\custom-covers\\abc.webp'
+    )
+
+    rekeyToCode(db, 'd:\\games\\some-folder', 'RJ06666666')
+
+    expect(getGameUserData(db, 'RJ06666666')?.customCoverPath).toBe(
+      'C:\\userdata\\custom-covers\\abc.webp'
+    )
   })
 
   it('lists keys with a recorded play session, most recent first', () => {

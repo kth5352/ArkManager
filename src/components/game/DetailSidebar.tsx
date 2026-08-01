@@ -6,6 +6,7 @@ import { RatingMemoSection } from './RatingMemoSection'
 import { LaunchConfigSection } from './LaunchConfigSection'
 import { LaunchConfigDialog } from './LaunchConfigDialog'
 import { CodeLinkSection } from './CodeLinkSection'
+import { CustomCoverSection } from './CustomCoverSection'
 import { RenameDialog } from './RenameDialog'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
@@ -198,6 +199,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
             <p className="text-xs text-muted-foreground">메타데이터 가져오는 중...</p>
           </div>
         )}
+        <CustomCoverSection game={game} hasCustomCover={!!userData?.customCoverPath} />
         <RatingMemoSection game={game} />
         <LaunchConfigSection game={game} />
         <CodeLinkSection game={game} />

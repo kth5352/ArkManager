@@ -7,6 +7,10 @@ function identifierKey(entry: Pick<ScannedEntry, 'code' | 'path'>): string {
   return entry.code ? entry.code.value : entry.path
 }
 
+function customCoverImageQueryKey(entry: Pick<ScannedEntry, 'code' | 'path'>) {
+  return ['game-user-data', 'custom-cover-image', identifierKey(entry)] as const
+}
+
 export function userDataQueryKey(entry: Pick<ScannedEntry, 'code' | 'path'>) {
   return ['game-user-data', identifierKey(entry)] as const
 }
@@ -45,6 +49,7 @@ export function useToggleFavorite() {
         memo: prev?.memo ?? null,
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
         launchConfig: prev?.launchConfig ?? null,
+        customCoverPath: prev?.customCoverPath ?? null,
       }))
       queryClient.invalidateQueries({ queryKey: ['game-user-data', 'favorite-keys'] })
     },
@@ -71,6 +76,7 @@ export function useSetRatingAndMemo() {
         memo,
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
         launchConfig: prev?.launchConfig ?? null,
+        customCoverPath: prev?.customCoverPath ?? null,
       }))
     },
   })
@@ -128,5 +134,65 @@ export function useUnlinkCode() {
       queryClient.invalidateQueries({ queryKey: ['folder-scan'] })
       queryClient.invalidateQueries({ queryKey: ['folder-scan-recursive'] })
     },
+  })
+}
+
+// Only fetched once a game_user_data row is known to have a customCoverPath
+// set (see GameThumbnail) - most entries never have one, so this stays an
+// opt-in query rather than bloating every useGameUserData fetch with a
+// base64-encoded image.
+export function useCustomCoverImage(entry: Pick<ScannedEntry, 'code' | 'path'> | null) {
+  return useQuery<string | null>({
+    queryKey: entry
+      ? customCoverImageQueryKey(entry)
+      : ['game-user-data', 'custom-cover-image', 'none'],
+    queryFn: () => window.api.gameUserData.getCustomCoverImage(entry!.code, entry!.path),
+    enabled: entry !== null,
+  })
+}
+
+function invalidateCustomCover(
+  queryClient: ReturnType<typeof useQueryClient>,
+  entry: Pick<ScannedEntry, 'code' | 'path'>
+): void {
+  queryClient.invalidateQueries({ queryKey: userDataQueryKey(entry) })
+  queryClient.invalidateQueries({ queryKey: customCoverImageQueryKey(entry) })
+}
+
+export function usePickCustomCoverFile() {
+  return useMutation({
+    mutationFn: (): Promise<string | null> => window.api.gameUserData.pickCustomCoverFile(),
+  })
+}
+
+export function useSetCustomCoverFromFile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      entry,
+      sourcePath,
+    }: {
+      entry: Pick<ScannedEntry, 'code' | 'path'>
+      sourcePath: string
+    }) => window.api.gameUserData.setCustomCoverFromFile(entry.code, entry.path, sourcePath),
+    onSuccess: (_result, { entry }) => invalidateCustomCover(queryClient, entry),
+  })
+}
+
+export function useSetCustomCoverFromClipboard() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (entry: Pick<ScannedEntry, 'code' | 'path'>) =>
+      window.api.gameUserData.setCustomCoverFromClipboard(entry.code, entry.path),
+    onSuccess: (_result, entry) => invalidateCustomCover(queryClient, entry),
+  })
+}
+
+export function useClearCustomCover() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (entry: Pick<ScannedEntry, 'code' | 'path'>) =>
+      window.api.gameUserData.clearCustomCover(entry.code, entry.path),
+    onSuccess: (_result, entry) => invalidateCustomCover(queryClient, entry),
   })
 }
