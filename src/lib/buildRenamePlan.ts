@@ -36,10 +36,13 @@ export const DEFAULT_RENAME_PATTERN = '{code} [{circle}] {title} {genres}'
 // (original extension including the dot, empty for folders), {index}
 // (1-based position), {index:N} (1-based, zero-padded to N digits), {code}
 // (game code, e.g. RJ01234567), {circle} (crawled circle name), {title}
-// (crawled title, falls back to {name} if not crawled yet), {genres}
-// (crawled genre tags, rendered as "{tag1, tag2}" including the braces - a
-// code-less or not-yet-crawled entry substitutes an empty string, not the
-// braces). A file whose pattern omits {ext} keeps its original extension
+// (crawled title, falls back to {name} if not crawled yet), {genres} (the
+// first 3 crawled genre tags, rendered as "{tag1, tag2, tag3}" including the
+// braces - a code-less or not-yet-crawled entry substitutes an empty
+// string, not the braces; capped at 3 rather than every tag DLsite lists,
+// since a game can carry a dozen+ and the filename would otherwise balloon
+// past what's actually useful for skimming a file listing). A file whose
+// pattern omits {ext} keeps its original extension
 // appended automatically, matching the common "batch rename" expectation
 // that a short pattern like "Game {index}" doesn't strip every file's
 // extension.
@@ -49,7 +52,7 @@ export function buildRenamePlan(targets: RenameTarget[], pattern: string): Renam
   return targets.map((target, i) => {
     const { base, ext } = splitExtension(target.name, target.kind)
     const index = i + 1
-    const genresText = target.genres?.length ? `{${target.genres.join(', ')}}` : ''
+    const genresText = target.genres?.length ? `{${target.genres.slice(0, 3).join(', ')}}` : ''
     let newName = pattern
       .replace(/\{name\}/g, base)
       .replace(/\{index:(\d+)\}/g, (_match, digits: string) =>

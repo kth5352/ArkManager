@@ -69,6 +69,25 @@ describe('buildRenamePlan', () => {
     ])
   })
 
+  it('caps {genres} at the first 3 tags rather than writing every crawled genre', () => {
+    const plan = buildRenamePlan(
+      [
+        {
+          name: 'old.zip',
+          kind: 'file',
+          code: 'RJ123456',
+          circle: 'ABC studio',
+          title: '제목',
+          genres: ['하나', '둘', '셋', '넷', '다섯'],
+        },
+      ],
+      DEFAULT_RENAME_PATTERN
+    )
+    expect(plan).toEqual([
+      { oldName: 'old.zip', newName: 'RJ123456 [ABC studio] 제목 {하나, 둘, 셋}.zip' },
+    ])
+  })
+
   it('omits an empty {genres} substitution entirely instead of leaving empty braces', () => {
     const plan = buildRenamePlan(
       [{ name: 'old.zip', kind: 'file', code: 'RJ123456', circle: 'ABC studio', title: '제목' }],
