@@ -9,6 +9,7 @@ import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataS
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
 import { useScanProgress } from '../../hooks/useScanProgress'
+import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { Skeleton } from '../../components/ui/skeleton'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
@@ -161,6 +162,8 @@ export function GalleryPage() {
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
+  const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
+  useTriggerBulkCrawlMissingMetadata(gameCodes)
 
   const toggleGenreFilter = (genre: string): void => {
     setExcludedGenres((current) =>

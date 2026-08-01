@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   IPC_CHANNELS,
+  type BulkCrawlProgressDto,
   type DlsiteSearchResultDto,
   type GameMetadataDto,
   type GameUserDataDto,
@@ -91,6 +92,16 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_COVER_IMAGE, { code }),
     searchDlsite: (query: string): Promise<DlsiteSearchResultDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_DLSITE, { query }),
+    crawlMissing: (codes: GameCode[]): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_MISSING, { codes }),
+    // See scanner.onScanProgress - same shape (subscribe, return an
+    // unsubscribe function), no request id: there's only ever one bulk crawl
+    // queue for the whole app.
+    onBulkCrawlProgress: (callback: (progress: BulkCrawlProgressDto) => void): (() => void) => {
+      const listener = (_event: unknown, payload: BulkCrawlProgressDto): void => callback(payload)
+      ipcRenderer.on(IPC_CHANNELS.METADATA_BULK_CRAWL_PROGRESS, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.METADATA_BULK_CRAWL_PROGRESS, listener)
+    },
   },
   gameUserData: {
     get: (code: GameCode | null, path: string): Promise<GameUserDataDto | null> =>

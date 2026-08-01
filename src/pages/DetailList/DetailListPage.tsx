@@ -13,6 +13,7 @@ import { PageToolbar } from '../../components/layout/PageToolbar'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useScanProgress } from '../../hooks/useScanProgress'
+import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -88,6 +89,8 @@ export function DetailListPage() {
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
+  const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
+  useTriggerBulkCrawlMissingMetadata(gameCodes)
 
   if (isError && !games) {
     return (

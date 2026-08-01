@@ -2,9 +2,12 @@ import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRouterState } from '@tanstack/react-router'
 import { Sidebar } from './Sidebar'
+import { BulkCrawlProgressBanner } from './BulkCrawlProgressBanner'
+import { useBulkCrawlProgress } from '../../hooks/useBulkCrawlMissingMetadata'
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const bulkCrawlProgress = useBulkCrawlProgress()
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -23,6 +26,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </motion.div>
         </AnimatePresence>
       </main>
+      <BulkCrawlProgressBanner progress={bulkCrawlProgress} />
     </div>
   )
 }

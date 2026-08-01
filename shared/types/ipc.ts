@@ -26,6 +26,13 @@ export const IPC_CHANNELS = {
   METADATA_GET_MANY: 'metadata:get-many',
   METADATA_GET_COVER_IMAGE: 'metadata:get-cover-image',
   METADATA_SEARCH_DLSITE: 'metadata:search-dlsite',
+  // Enqueues codes with no game_metadata row yet for background crawling,
+  // one at a time with a delay between requests (see bulkCrawlQueue.ts) -
+  // fire-and-forget, resolves once the codes are queued, not once crawled.
+  METADATA_CRAWL_MISSING: 'metadata:crawl-missing',
+  // Push-only, main -> renderer: fired after each queued code finishes
+  // crawling (success or failure). No request/response schema.
+  METADATA_BULK_CRAWL_PROGRESS: 'metadata:bulk-crawl-progress',
   GAME_USER_DATA_GET: 'game-user-data:get',
   GAME_USER_DATA_SET_FAVORITE: 'game-user-data:set-favorite',
   GAME_USER_DATA_SET_RATING_AND_MEMO: 'game-user-data:set-rating-and-memo',
@@ -178,6 +185,16 @@ export interface DlsiteSearchResultDto {
   code: z.infer<typeof GameCodeSchema>
   title: string
   thumbnailUrl: string | null
+}
+
+export const CrawlMissingMetadataRequestSchema = z.object({
+  codes: z.array(GameCodeSchema),
+})
+export type CrawlMissingMetadataRequest = z.infer<typeof CrawlMissingMetadataRequestSchema>
+
+export interface BulkCrawlProgressDto {
+  completed: number
+  total: number
 }
 
 export interface GameMetadataDto {

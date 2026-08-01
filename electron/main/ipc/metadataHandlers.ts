@@ -6,12 +6,14 @@ import {
   GetManyMetadataRequestSchema,
   GetCoverImageRequestSchema,
   SearchDlsiteRequestSchema,
+  CrawlMissingMetadataRequestSchema,
   IPC_CHANNELS,
   type GameMetadataDto,
 } from '../../../shared/types/ipc'
 import { crawlGameMetadata } from '../metadata/crawlGameMetadata'
 import { crawlDlsiteSearch } from '../metadata/crawlDlsiteSearch'
 import { cacheCoverImage } from '../metadata/cacheCoverImage'
+import { createBulkCrawlQueue } from '../metadata/bulkCrawlQueue'
 import {
   getGameMetadata,
   saveGameMetadata,
@@ -34,6 +36,8 @@ function toDto(row: ReturnType<typeof getGameMetadata>): GameMetadataDto | null 
 }
 
 export function registerMetadataHandlers(db: AppDatabase): void {
+  const bulkCrawlQueue = createBulkCrawlQueue(db, join(app.getPath('userData'), 'cache', 'covers'))
+
   ipcMain.handle(IPC_CHANNELS.METADATA_GET, (_event, payload: unknown) => {
     const { code } = GetMetadataRequestSchema.parse(payload)
     return toDto(getGameMetadata(db, code.value))
@@ -85,5 +89,12 @@ export function registerMetadataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_DLSITE, async (_event, payload: unknown) => {
     const { query } = SearchDlsiteRequestSchema.parse(payload)
     return crawlDlsiteSearch(query)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.METADATA_CRAWL_MISSING, (event, payload: unknown) => {
+    const { codes } = CrawlMissingMetadataRequestSchema.parse(payload)
+    bulkCrawlQueue.enqueue(codes, (progress) => {
+      event.sender.send(IPC_CHANNELS.METADATA_BULK_CRAWL_PROGRESS, progress)
+    })
   })
 }
