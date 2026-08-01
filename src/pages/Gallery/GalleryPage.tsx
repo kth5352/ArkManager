@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Grid, useGridRef, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
@@ -282,22 +282,31 @@ export function GalleryPage() {
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [duplicatesOnly, setDuplicatesOnly] = useState(false)
-  const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
+  // A ref, not state - hover fires on every mouse move over the grid, and
+  // its only consumer (useFavoriteShortcut, for the "press F to favorite
+  // the hovered card" shortcut) only ever needs the CURRENT value at
+  // keydown time, not to re-render anything. Making this state used to
+  // re-render GalleryPage (rebuilding the whole filtered/sorted game list
+  // and Grid cellProps) on every single mouse move across the grid.
+  const hoveredGameRef = useRef<ScannedEntry | null>(null)
+  const handleHoverChange = useCallback((game: ScannedEntry | null) => {
+    hoveredGameRef.current = game
+  }, [])
 
   // Clicking a tag on a card adds it to the include filter, alongside
   // whatever other tags (from other card clicks, or the SearchHeader's own
   // filter-composer input) are already active - clicking a tag that's
   // already active removes it instead, so tag clicks double as an on/off
   // toggle rather than a one-at-a-time replace.
-  const filterByGenre = (genre: string): void => {
+  const filterByGenre = useCallback((genre: string) => {
     setIncludedGenres((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
     )
-  }
+  }, [])
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
-  useFavoriteShortcut(hoveredGame)
+  useFavoriteShortcut(hoveredGameRef)
   const scanProgress = useScanProgress(isLoading)
 
   const pendingOpenKey = usePendingGalleryOpenStore((s) => s.pendingKey)
@@ -483,7 +492,7 @@ export function GalleryPage() {
                         metadataByCode,
                         duplicateGroups,
                         onFilterByGenre: filterByGenre,
-                        onHoverChange: setHoveredGame,
+                        onHoverChange: handleHoverChange,
                         onOpenDetail: openDetail,
                         onRename: openRename,
                         onMove: openMove,

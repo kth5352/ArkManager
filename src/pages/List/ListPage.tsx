@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { CheckCircle2, Clock, Copy, Heart, Star } from 'lucide-react'
@@ -252,22 +252,28 @@ export function ListPage() {
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [duplicatesOnly, setDuplicatesOnly] = useState(false)
-  const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
+  // A ref, not state - see GalleryPage's identical comment: hover fires on
+  // every mouse move, and its only consumer (useFavoriteShortcut) only ever
+  // needs the CURRENT value at keydown time, not to re-render anything.
+  const hoveredGameRef = useRef<ScannedEntry | null>(null)
+  const handleHoverChange = useCallback((game: ScannedEntry | null) => {
+    hoveredGameRef.current = game
+  }, [])
 
   // Clicking a tag on a row adds it to the include filter alongside
   // whatever's already active (other tag clicks, or SearchHeader's own
   // filter-composer input) - clicking an already-active tag removes it,
   // so tag clicks double as an on/off toggle rather than a one-at-a-time
   // replace.
-  const filterByGenre = (genre: string): void => {
+  const filterByGenre = useCallback((genre: string) => {
     setIncludedGenres((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
     )
-  }
+  }, [])
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
-  useFavoriteShortcut(hoveredGame)
+  useFavoriteShortcut(hoveredGameRef)
   const scanProgress = useScanProgress(isLoading)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
@@ -355,7 +361,7 @@ export function ListPage() {
                         duplicateGroups,
                         onFilterByGenre: filterByGenre,
                         onOpenDetail: openDetail,
-                        onHoverChange: setHoveredGame,
+                        onHoverChange: handleHoverChange,
                         onRename: openRename,
                         onMove: openMove,
                         onDelete: openDelete,
