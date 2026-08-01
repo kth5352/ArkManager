@@ -189,7 +189,19 @@ export function GalleryPage() {
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
-  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
+
+  // Clicking a tag on a card adds it to the include filter, alongside
+  // whatever other tags (from other card clicks, or the SearchHeader's own
+  // filter-composer input) are already active - clicking a tag that's
+  // already active removes it instead, so tag clicks double as an on/off
+  // toggle rather than a one-at-a-time replace.
+  const filterByGenre = (genre: string): void => {
+    setIncludedGenres((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    )
+  }
+
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   useFavoriteShortcut(hoveredGame)
   const scanProgress = useScanProgress(isLoading)
 
@@ -198,14 +210,6 @@ export function GalleryPage() {
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
   const duplicateGroups = groupDuplicatesByCode(games ?? [])
-
-  // Clicking a tag on a card is a quick "show me only this" shortcut, not
-  // an incremental toggle - it replaces whatever include filter was active
-  // (the SearchHeader's own filter-composer input, below, is additive and
-  // meant for building up several terms deliberately).
-  const filterByGenre = (genre: string): void => {
-    setIncludedGenres([genre])
-  }
 
   useEffect(() => {
     // `container` is a callback ref (state), not a plain object ref - this

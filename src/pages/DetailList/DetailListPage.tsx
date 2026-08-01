@@ -200,7 +200,16 @@ export function DetailListPage() {
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>(DEFAULT_COLUMN_WIDTHS)
-  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
+
+  // DetailList's own rows show genres as plain (non-clickable) text - this
+  // only drives tag clicks inside the detail sidebar opened from a row.
+  const filterByGenre = (genre: string): void => {
+    setIncludedGenres((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    )
+  }
+
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const scanProgress = useScanProgress(isLoading)
 
   const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))

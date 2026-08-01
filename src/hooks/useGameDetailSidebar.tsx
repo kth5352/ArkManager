@@ -6,7 +6,10 @@ import type { ScannedEntry } from '../../shared/types/scanner'
 // Gallery/List/DetailList only - see useGameDetailOverlay for Explorer's
 // popup equivalent. Both share useSelectedGameEntry's selection/live-refresh
 // logic.
-export function useGameDetailSidebar(entries: ScannedEntry[]): {
+export function useGameDetailSidebar(
+  entries: ScannedEntry[],
+  onFilterByGenre?: (genre: string) => void
+): {
   openDetail: (entry: ScannedEntry) => void
   detailSidebarElement: JSX.Element
 } {
@@ -14,6 +17,8 @@ export function useGameDetailSidebar(entries: ScannedEntry[]): {
 
   return {
     openDetail,
-    detailSidebarElement: <DetailSidebar game={selectedGame} onClose={close} />,
+    detailSidebarElement: (
+      <DetailSidebar game={selectedGame} onClose={close} onFilterByGenre={onFilterByGenre} />
+    ),
   }
 }

@@ -188,7 +188,19 @@ export function ListPage() {
   const [excludedGenres, setExcludedGenres] = useState<string[]>([])
   const [fileKindFilter, setFileKindFilter] = useState<FileKindFilter>('all')
   const [hoveredGame, setHoveredGame] = useState<ScannedEntry | null>(null)
-  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [])
+
+  // Clicking a tag on a row adds it to the include filter alongside
+  // whatever's already active (other tag clicks, or SearchHeader's own
+  // filter-composer input) - clicking an already-active tag removes it,
+  // so tag clicks double as an on/off toggle rather than a one-at-a-time
+  // replace.
+  const filterByGenre = (genre: string): void => {
+    setIncludedGenres((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    )
+  }
+
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   useFavoriteShortcut(hoveredGame)
   const scanProgress = useScanProgress(isLoading)
 
@@ -197,13 +209,6 @@ export function ListPage() {
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
   const duplicateGroups = groupDuplicatesByCode(games ?? [])
-
-  // Clicking a tag on a row is a quick "show me only this" shortcut, not an
-  // incremental toggle - see SearchHeader's own filter-composer input for
-  // the additive multi-term case.
-  const filterByGenre = (genre: string): void => {
-    setIncludedGenres([genre])
-  }
 
   if (isError && !games) {
     return (

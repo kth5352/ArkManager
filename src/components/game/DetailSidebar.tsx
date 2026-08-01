@@ -20,9 +20,10 @@ import type { ScannedEntry } from '../../../shared/types/scanner'
 interface DetailSidebarProps {
   game: ScannedEntry | null
   onClose: () => void
+  onFilterByGenre?: (genre: string) => void
 }
 
-export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
+export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarProps) {
   const { data: persistedWidth } = useSidebarWidthQuery()
   const setSidebarWidth = useSetSidebarWidthMutation()
   const [width, setWidth] = useState(persistedWidth ?? SIDEBAR_WIDTH_DEFAULT)
@@ -141,6 +142,20 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             플레이타임: {formatPlaytime(userData.totalPlaytimeMs)}
+          </div>
+        )}
+        {!!metadata?.genres?.length && (
+          <div className="flex flex-wrap gap-1">
+            {metadata.genres.map((genre) => (
+              <button
+                key={genre}
+                onClick={() => onFilterByGenre?.(genre)}
+                disabled={!onFilterByGenre}
+                className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground enabled:hover:bg-accent"
+              >
+                {genre}
+              </button>
+            ))}
           </div>
         )}
         <div className="flex flex-wrap gap-2">
