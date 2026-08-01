@@ -13,6 +13,8 @@ import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
+import { useLongPress } from '../../hooks/useLongPress'
+import { useSelectionStore } from '../../stores/selectionStore'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { Skeleton } from '../../components/ui/skeleton'
@@ -66,12 +68,20 @@ function GameCard({
 }) {
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
+  const activateSelection = useSelectionStore((s) => s.activate)
+  const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
+    activateSelection(game.path)
+  )
 
   return (
     <motion.div
+      {...longPressHandlers}
       onMouseEnter={() => onHoverChange(game)}
       onMouseLeave={() => onHoverChange(null)}
-      onClick={() => onOpenDetail(game)}
+      onClick={() => {
+        if (consumeLongPressClick()) return
+        onOpenDetail(game)
+      }}
       whileHover={{ scale: 1.05 }}
       transition={{ duration: 0.15 }}
       className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"

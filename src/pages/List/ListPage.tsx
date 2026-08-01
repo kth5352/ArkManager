@@ -13,6 +13,8 @@ import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
+import { useLongPress } from '../../hooks/useLongPress'
+import { useSelectionStore } from '../../stores/selectionStore'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { Skeleton } from '../../components/ui/skeleton'
@@ -52,11 +54,19 @@ function GameRow({
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
   const openExternal = useOpenExternal()
+  const activateSelection = useSelectionStore((s) => s.activate)
+  const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
+    activateSelection(game.path)
+  )
 
   return (
     <div
+      {...longPressHandlers}
       className="flex cursor-pointer items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent"
-      onClick={() => onOpenDetail(game)}
+      onClick={() => {
+        if (consumeLongPressClick()) return
+        onOpenDetail(game)
+      }}
       onMouseEnter={() => onHoverChange(game)}
       onMouseLeave={() => onHoverChange(null)}
     >

@@ -11,39 +11,58 @@ interface SelectionToolbarProps {
   allEntries: ScannedEntry[]
 }
 
-// Renders nothing while selection is empty - Gallery/List/DetailList mount
-// this unconditionally in their toolbar row, so it only ever takes up space
-// once the user has actually checked something.
+// Pushed to the far right of the toolbar row via ml-auto - while inactive
+// this is just the one small "선택" entry point; once active it becomes the
+// full selection cluster ending in "취소", so both states read as
+// consistently anchored to the top-right rather than jumping position.
 export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
+  const isActive = useSelectionStore((s) => s.isActive)
   const selectedPaths = useSelectionStore((s) => s.selectedPaths)
+  const activate = useSelectionStore((s) => s.activate)
+  const deactivate = useSelectionStore((s) => s.deactivate)
   const selectAll = useSelectionStore((s) => s.selectAll)
-  const clear = useSelectionStore((s) => s.clear)
   const [dialogMode, setDialogMode] = useState<'rename' | 'delete' | null>(null)
 
-  if (selectedPaths.size === 0) return null
+  if (!isActive) {
+    return (
+      <Button size="sm" variant="ghost" className="ml-auto" onClick={() => activate()}>
+        선택
+      </Button>
+    )
+  }
 
   const selectedEntries = allEntries.filter((e) => selectedPaths.has(e.path))
 
   const closeDialog = (): void => {
     setDialogMode(null)
-    clear()
+    deactivate()
   }
 
   return (
     <>
-      <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
+      <div className="ml-auto flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
         <span className="mr-1 text-muted-foreground">{selectedPaths.size}개 선택됨</span>
         <Button size="sm" variant="ghost" onClick={() => selectAll(allEntries.map((e) => e.path))}>
           전체 선택
         </Button>
-        <Button size="sm" variant="ghost" onClick={clear}>
-          선택 해제
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => setDialogMode('rename')}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setDialogMode('rename')}
+          disabled={selectedPaths.size === 0}
+        >
           이름 변경
         </Button>
-        <Button size="sm" variant="destructive" onClick={() => setDialogMode('delete')}>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => setDialogMode('delete')}
+          disabled={selectedPaths.size === 0}
+        >
           삭제
+        </Button>
+        <Button size="sm" variant="ghost" onClick={deactivate}>
+          취소
         </Button>
       </div>
       <RenameDialog

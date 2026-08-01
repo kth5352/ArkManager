@@ -19,6 +19,8 @@ import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { HoverTooltip } from '../../components/ui/hover-tooltip'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
+import { useLongPress } from '../../hooks/useLongPress'
+import { useSelectionStore } from '../../stores/selectionStore'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
@@ -135,6 +137,10 @@ function Row({
 }: RowComponentProps<DetailListRowProps>) {
   const entry = entries[index]
   const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
+  const activateSelection = useSelectionStore((s) => s.activate)
+  const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() => {
+    if (entry) activateSelection(entry.path)
+  })
   if (!entry) return null
   const genres = entry.code ? (metadataByCode[entry.code.value]?.genres ?? []) : []
   const duplicates = entry.code ? duplicateGroups.get(entry.code.value) : undefined
@@ -142,8 +148,12 @@ function Row({
   return (
     <div
       style={style}
+      {...longPressHandlers}
       className="flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
-      onClick={() => onOpenDetail(entry)}
+      onClick={() => {
+        if (consumeLongPressClick()) return
+        onOpenDetail(entry)
+      }}
     >
       <SelectionCheckbox path={entry.path} className="h-3.5 w-3.5 shrink-0 rounded-sm" />
       <FileKindIcon kind={entry.kind} name={entry.name} className="h-3.5 w-3.5 shrink-0" />
