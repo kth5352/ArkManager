@@ -6,6 +6,7 @@ import {
   RenameEntriesRequestSchema,
   SaveExplorerTabsRequestSchema,
   type MoveResultDto,
+  type RenameResultDto,
 } from '../../../shared/types/ipc'
 import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 import { loadExplorerTabs, saveExplorerTabs } from '../database/explorerTabsRepository'
@@ -15,6 +16,27 @@ import { moveEntries } from '../fileOps/moveEntries'
 import { rekeyPath } from '../database/gameUserDataRepository'
 import { rekeyPathCodeOverride } from '../database/pathCodeOverridesRepository'
 import type { AppDatabase } from '../database/client'
+
+// A manually-linked code (path_code_overrides) and a code-less entry's
+// favorite/rating/memo/playtime/customCoverPath (game_user_data, path-keyed)
+// are both keyed by the exact normalized path they were recorded at - any
+// operation that changes an entry's path (move OR rename) must carry both
+// over to the new path, or they'd silently orphan at a path nothing lives at
+// anymore. A coded entry needs neither: its game_user_data key is the code
+// itself, unaffected by where the file sits.
+function rekeyPathsForResults(
+  db: AppDatabase,
+  results: (RenameResultDto | MoveResultDto)[]
+): void {
+  for (const result of results) {
+    if (!result.success || !result.newPath) continue
+    const oldKey = normalizeLibraryPath(result.path)
+    const newKey = normalizeLibraryPath(result.newPath)
+    if (oldKey === newKey) continue
+    rekeyPathCodeOverride(db, oldKey, newKey)
+    rekeyPath(db, oldKey, newKey)
+  }
+}
 
 export function registerExplorerHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.EXPLORER_LOAD_TABS, () => {
@@ -26,9 +48,11 @@ export function registerExplorerHandlers(db: AppDatabase): void {
     saveExplorerTabs(db, tabs)
   })
 
-  ipcMain.handle(IPC_CHANNELS.EXPLORER_RENAME_ENTRIES, (_event, payload: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.EXPLORER_RENAME_ENTRIES, async (_event, payload: unknown) => {
     const { renames } = RenameEntriesRequestSchema.parse(payload)
-    return renameEntries(renames)
+    const results = await renameEntries(renames)
+    rekeyPathsForResults(db, results)
+    return results
   })
 
   ipcMain.handle(IPC_CHANNELS.EXPLORER_DELETE_ENTRIES, (_event, payload: unknown) => {
@@ -47,23 +71,7 @@ export function registerExplorerHandlers(db: AppDatabase): void {
     async (_event, payload: unknown): Promise<MoveResultDto[]> => {
       const { paths, destDir } = MoveEntriesRequestSchema.parse(payload)
       const results = await moveEntries(paths, destDir)
-
-      // A manually-linked code (path_code_overrides) and a code-less entry's
-      // favorite/rating/memo/playtime/customCoverPath (game_user_data,
-      // path-keyed) are both keyed by the exact normalized path they were
-      // recorded at - each successful move must carry both over to the new
-      // path, or they'd silently orphan at a path nothing lives at anymore.
-      // A coded entry needs neither: its game_user_data key is the code
-      // itself, unaffected by where the file sits.
-      for (const result of results) {
-        if (!result.success || !result.newPath) continue
-        const oldKey = normalizeLibraryPath(result.path)
-        const newKey = normalizeLibraryPath(result.newPath)
-        if (oldKey === newKey) continue
-        rekeyPathCodeOverride(db, oldKey, newKey)
-        rekeyPath(db, oldKey, newKey)
-      }
-
+      rekeyPathsForResults(db, results)
       return results
     }
   )
