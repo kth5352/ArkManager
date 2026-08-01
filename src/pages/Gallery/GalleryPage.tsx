@@ -51,9 +51,16 @@ const ZOOM_MIN = 0.6
 const ZOOM_MAX = 1.8
 const ZOOM_STEP = 0.05
 
+// Rough width of one genre badge (label + its own padding) plus the gap
+// before the next one - used to decide how many badges actually fit at the
+// card's current zoom level instead of always trying 3 and letting
+// overflow-hidden hard-clip whichever one lands mid-way through the edge.
+const GENRE_BADGE_WIDTH_ESTIMATE = 60
+
 function GameCard({
   game,
   genres,
+  cardWidth,
   duplicateCount,
   onFilterByGenre,
   onHoverChange,
@@ -61,6 +68,7 @@ function GameCard({
 }: {
   game: ScannedEntry
   genres: string[]
+  cardWidth: number
   duplicateCount: number | undefined
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
@@ -141,18 +149,20 @@ function GameCard({
           style={{ height: GENRE_ROW_HEIGHT }}
           className="mt-1 flex items-center gap-1 overflow-hidden"
         >
-          {genres.slice(0, 3).map((genre) => (
-            <button
-              key={genre}
-              onClick={(e) => {
-                e.stopPropagation()
-                onFilterByGenre(genre)
-              }}
-              className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
-            >
-              {genre}
-            </button>
-          ))}
+          {genres
+            .slice(0, Math.max(1, Math.floor((cardWidth - 16) / GENRE_BADGE_WIDTH_ESTIMATE)))
+            .map((genre) => (
+              <button
+                key={genre}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onFilterByGenre(genre)
+                }}
+                className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+              >
+                {genre}
+              </button>
+            ))}
         </div>
       </div>
     </motion.div>
@@ -196,6 +206,7 @@ function GameCell({
         <GameCard
           game={game}
           genres={genres}
+          cardWidth={cardWidth}
           duplicateCount={duplicateCount}
           onFilterByGenre={onFilterByGenre}
           onHoverChange={onHoverChange}
