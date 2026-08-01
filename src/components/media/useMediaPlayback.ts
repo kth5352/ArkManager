@@ -1,0 +1,164 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
+import { buildMediaUrl } from '../../services/mediaProtocolService'
+import { isVideoFile } from '../../../shared/isMediaFile'
+
+export interface MediaPlaybackState {
+  track: MediaTrack
+  isVideo: boolean
+  currentTime: number
+  duration: number
+  isPlaying: boolean
+  error: string | null
+  handleSeek: (value: number) => void
+  mediaElementProps: {
+    src: string
+    playsInline: boolean
+    onTimeUpdate: () => void
+    onLoadedMetadata: () => void
+    onEnded: () => void
+    onPlay: () => void
+    onPause: () => void
+    onError: () => void
+  }
+}
+
+interface UseMediaPlaybackOptions {
+  // Only the hosting window actually drives the underlying element (calls
+  // play()/pause(), applies volume, reports time) - the other window still
+  // sees playlist/currentIndex/isPlaying/volume live (shared control
+  // plane, see mediaPlayerStore.ts), but must not mount a real element at
+  // all, or the same file would load/decode in two windows at once.
+  isHost: boolean
+  // True only for the detached player window - periodically reports
+  // currentTime to the main process so a reattach (closing that window)
+  // can hand a reasonably fresh seek position back to the main window.
+  reportTimeToMainProcess?: boolean
+}
+
+// Shared by the docked bar (audio), the fullscreen video overlay, and the
+// detached player window - owns the actual <video>/<audio> element's ref,
+// local playback-position state, and the effects that keep it in sync with
+// the store's play/pause intent. All hooks run unconditionally on every
+// call (never skipped based on isHost or whether a track is playing) so
+// this stays safe to call from a component that itself must never change
+// its own hook count - see `playback` being possibly null instead.
+//
+// Returns `mediaRef` as a sibling of `playback` rather than a field on it -
+// `react-hooks/refs` flags any further property access on an object that
+// also carries a ref-setter as "accessing a ref during render", even for
+// unrelated plain-data fields on that same object (track.name, currentTime,
+// etc.), so the two need to stay clearly separate values.
+export function useMediaPlayback({
+  isHost,
+  reportTimeToMainProcess = false,
+}: UseMediaPlaybackOptions): {
+  mediaRef: (el: HTMLVideoElement | HTMLAudioElement | null) => void
+  playback: MediaPlaybackState | null
+} {
+  const playlist = useMediaPlayerStore((s) => s.playlist)
+  const currentIndex = useMediaPlayerStore((s) => s.currentIndex)
+  const isPlaying = useMediaPlayerStore((s) => s.isPlaying)
+  const volume = useMediaPlayerStore((s) => s.volume)
+  const setPlaying = useMediaPlayerStore((s) => s.setPlaying)
+  const next = useMediaPlayerStore((s) => s.next)
+  const consumeHandoffTime = useMediaPlayerStore((s) => s.consumeHandoffTime)
+
+  const elRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null)
+  // Memoized so the ref identity is stable across renders - an inline
+  // `(el) => { elRef.current = el }` defined fresh every render makes React
+  // call it with null then the element again on every single re-render
+  // (e.g. every currentTime tick), which is wasted churn on a hot path.
+  const setMediaRef = useCallback((el: HTMLVideoElement | HTMLAudioElement | null) => {
+    elRef.current = el
+  }, [])
+
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [resetForPath, setResetForPath] = useState<string | null>(null)
+
+  const track = currentIndex !== null ? (playlist[currentIndex] ?? null) : null
+
+  // Resets displayed time/duration/error when the track changes - adjusted
+  // during render (React's documented pattern for "state that depends on a
+  // changing value from outside") rather than in an effect, since setState
+  // directly in an effect body causes an extra cascading render for no
+  // benefit here.
+  if (track && track.path !== resetForPath) {
+    setResetForPath(track.path)
+    setCurrentTime(0)
+    setDuration(0)
+    setError(null)
+  }
+
+  // Play/pause intent lives in the store (so Explorer, the Media page, and
+  // the other window's remote transport controls can all trigger it
+  // without touching the DOM element directly); this effect is what
+  // actually drives the element to match that intent. A rejected play()
+  // (e.g. blocked by an autoplay policy) used to be swallowed silently,
+  // leaving isPlaying stuck true with nothing actually audible/visible and
+  // no way to tell why - now surfaced via `error` instead.
+  useEffect(() => {
+    const el = elRef.current
+    if (!el || !track || !isHost) return
+    if (isPlaying) {
+      el.play()
+        .then(() => setError(null))
+        .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+    } else {
+      el.pause()
+    }
+  }, [isPlaying, track, isHost])
+
+  useEffect(() => {
+    if (isHost && elRef.current) elRef.current.volume = volume
+  }, [isHost, volume])
+
+  // Applies a cross-window handoff seek exactly once - after this window
+  // has become the host for this track, consuming the one-shot value so no
+  // other window (or a later render here) reapplies it again.
+  useEffect(() => {
+    if (!isHost || !track) return
+    const seconds = consumeHandoffTime()
+    if (seconds !== null && elRef.current) elRef.current.currentTime = seconds
+  }, [isHost, track, consumeHandoffTime])
+
+  useEffect(() => {
+    if (!isHost || !reportTimeToMainProcess || !isPlaying) return
+    const interval = setInterval(() => {
+      if (elRef.current) window.api.media.reportTime(elRef.current.currentTime)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [isHost, reportTimeToMainProcess, isPlaying])
+
+  if (!track) return { mediaRef: setMediaRef, playback: null }
+
+  const handleSeek = (value: number): void => {
+    if (elRef.current) elRef.current.currentTime = value
+    setCurrentTime(value)
+  }
+
+  return {
+    mediaRef: setMediaRef,
+    playback: {
+      track,
+      isVideo: isVideoFile(track.name),
+      currentTime,
+      duration,
+      isPlaying,
+      error,
+      handleSeek,
+      mediaElementProps: {
+        src: buildMediaUrl(track.path),
+        playsInline: true,
+        onTimeUpdate: () => elRef.current && setCurrentTime(elRef.current.currentTime),
+        onLoadedMetadata: () => elRef.current && setDuration(elRef.current.duration),
+        onEnded: () => next(),
+        onPlay: () => setPlaying(true),
+        onPause: () => setPlaying(false),
+        onError: () => setError('media-error'),
+      },
+    },
+  }
+}

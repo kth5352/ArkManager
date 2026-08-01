@@ -12,6 +12,7 @@ import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
 import { registerCacheHandlers } from './ipc/cacheHandlers'
+import { registerMediaWindowHandlers } from './ipc/mediaWindowHandlers'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
 import { rewriteCoverImagePathPrefix } from './database/gameMetadataRepository'
@@ -34,6 +35,7 @@ if (!gotSingleInstanceLock) {
   app.quit()
 } else {
   let mainWindow: BrowserWindow | null = null
+  let closePlayerWindow: (() => void) | null = null
 
   app.on('second-instance', () => {
     if (!mainWindow) return
@@ -105,6 +107,11 @@ if (!gotSingleInstanceLock) {
     mainWindow = win
     win.on('closed', () => {
       if (mainWindow === win) mainWindow = null
+      // Closing the main window with a detached player still open would
+      // otherwise strand it as the only window left, with no way back to
+      // the actual app (no tray icon, no way to reopen the main window on
+      // Windows) - closing the app closes everything.
+      closePlayerWindow?.()
     })
   }
 
@@ -140,6 +147,7 @@ if (!gotSingleInstanceLock) {
     registerCacheHandlers(db)
     registerThumbnailProtocolHandler(db)
     registerMediaProtocolHandler(db)
+    closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a

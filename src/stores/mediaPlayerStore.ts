@@ -10,6 +10,23 @@ interface MediaPlayerState {
   currentIndex: number | null
   isPlaying: boolean
   volume: number
+  // True once playback has been detached into its own Electron window (see
+  // useMediaPlayerSync) - the main window stops mounting a real <video>/
+  // <audio> element while this is true (only one window may ever host
+  // actual playback at a time), but playlist/currentIndex/isPlaying/volume
+  // stay live here as a shared "control plane" so the main window's
+  // transport buttons keep working as remote controls for the detached
+  // window's player.
+  isDetached: boolean
+  // One-shot seek position handed off across a detach/reattach transition -
+  // set by whichever window WAS hosting playback right before the switch,
+  // consumed (read once, then cleared back to null via consumeHandoffTime)
+  // by whichever window becomes the new host, once its own media element
+  // has loaded. Not kept continuously in sync like the fields above -
+  // currentTime/duration otherwise live as local component state in
+  // MediaPlayerCore, not in this store, since they change too often
+  // (~4x/sec) to broadcast across windows.
+  handoffTimeSeconds: number | null
   // Plays `track` immediately. `siblings` (when given, e.g. the other media
   // files in the same folder) replaces the whole playlist so next/prev walk
   // through them in listing order; omitted, the playlist becomes just this
@@ -24,17 +41,23 @@ interface MediaPlayerState {
   removeFromPlaylist: (index: number) => void
   clearPlaylist: () => void
   setVolume: (volume: number) => void
+  setDetached: (isDetached: boolean, handoffTimeSeconds?: number) => void
+  consumeHandoffTime: () => number | null
 }
 
 // Global (not persisted) - playback should survive navigating between pages,
 // the same way a real media player's transport bar does. Mounted once as
-// MediaPlayerBar in AppLayout; Explorer/the dedicated Media page only ever
-// call these actions, never render <video>/<audio> themselves.
+// MediaPlayerHost in AppLayout (plus, once detached, PlayerWindowPage in
+// its own BrowserWindow - see useMediaPlayerSync for how this store stays
+// in sync across the two); Explorer/the dedicated Media page only ever call
+// these actions, never render <video>/<audio> themselves.
 export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   playlist: [],
   currentIndex: null,
   isPlaying: false,
   volume: 1,
+  isDetached: false,
+  handoffTimeSeconds: null,
 
   playNow: (track, siblings) => {
     const list = siblings ?? [track]
@@ -92,4 +115,13 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
 
   clearPlaylist: () => set({ playlist: [], currentIndex: null, isPlaying: false }),
   setVolume: (volume) => set({ volume: Math.min(1, Math.max(0, volume)) }),
+
+  setDetached: (isDetached, handoffTimeSeconds) =>
+    set({ isDetached, handoffTimeSeconds: handoffTimeSeconds ?? null }),
+
+  consumeHandoffTime: () => {
+    const { handoffTimeSeconds } = get()
+    if (handoffTimeSeconds !== null) set({ handoffTimeSeconds: null })
+    return handoffTimeSeconds
+  },
 }))

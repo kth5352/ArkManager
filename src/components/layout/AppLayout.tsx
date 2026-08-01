@@ -4,11 +4,13 @@ import { useRouterState } from '@tanstack/react-router'
 import { Sidebar } from './Sidebar'
 import { BulkCrawlProgressBanner } from './BulkCrawlProgressBanner'
 import { useBulkCrawlProgress } from '../../hooks/useBulkCrawlMissingMetadata'
-import { MediaPlayerBar } from '../media/MediaPlayerBar'
+import { MediaPlayerHost } from '../media/MediaPlayerHost'
+import { useMediaPlayerSync } from '../../hooks/useMediaPlayerSync'
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const bulkCrawlProgress = useBulkCrawlProgress()
+  useMediaPlayerSync()
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -29,7 +31,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </AnimatePresence>
         </main>
       </div>
-      <MediaPlayerBar />
+      <MediaPlayerHost />
       <BulkCrawlProgressBanner progress={bulkCrawlProgress} />
     </div>
   )

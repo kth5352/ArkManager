@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
 import { router } from './router'
+import { PlayerWindowPage } from './pages/PlayerWindow/PlayerWindowPage'
 import { readPersistedThemeSync, seedThemeQueryData } from './services/settingsService'
 import './globals.css'
 
@@ -25,10 +26,19 @@ seedThemeQueryData(queryClient, initialTheme)
 const rootEl = document.getElementById('root')
 if (!rootEl) throw new Error('Root element #root not found')
 
+// The detached media player (see electron/main/ipc/mediaWindowHandlers.ts)
+// loads this exact same renderer bundle at a distinguishing hash - routed
+// here, before the TanStack Router/AppLayout/Sidebar ever get involved,
+// since that window has none of the app's normal chrome, just the player.
+// Going through the router instead would double-mount MediaPlayerHost
+// (AppLayout's own) alongside PlayerWindowPage's, both trying to host
+// playback in the same window at once.
+const isPlayerWindow = window.location.hash.startsWith('#/player-window')
+
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      {isPlayerWindow ? <PlayerWindowPage /> : <RouterProvider router={router} />}
     </QueryClientProvider>
   </StrictMode>
 )
