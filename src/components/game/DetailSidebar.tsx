@@ -6,6 +6,7 @@ import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
 import { LaunchConfigSection } from './LaunchConfigSection'
 import { LaunchConfigDialog } from './LaunchConfigDialog'
+import { SaveDataSection } from './SaveDataSection'
 import { CodeLinkSection } from './CodeLinkSection'
 import { CustomCoverSection } from './CustomCoverSection'
 import { RenameDialog } from './RenameDialog'
@@ -121,7 +122,8 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   // this component's own hooks (width, drag state) must persist across a
   // game switch (the sidebar shouldn't snap back to a different width just
   // because the user clicked a different card), while everything rendered
-  // inside - RatingMemoSection/LaunchConfigSection/CodeLinkSection's local
+  // inside - RatingMemoSection/LaunchConfigSection/SaveDataSection/
+  // CodeLinkSection's local
   // state (rating draft, memo draft, expanded/collapsed, confirm steps) -
   // should reset per game. Keying only the inner tree gives both at once.
   const canChangeCover = !game.code
@@ -252,6 +254,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         <CustomCoverSection game={game} hasCustomCover={!!userData?.customCoverPath} />
         <RatingMemoSection game={game} />
         <LaunchConfigSection game={game} />
+        <SaveDataSection game={game} />
         <CodeLinkSection game={game} />
       </div>
       <LaunchConfigDialog

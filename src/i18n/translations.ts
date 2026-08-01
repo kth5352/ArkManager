@@ -135,6 +135,7 @@ const ko = {
   'launchConfig.manageSaves': '세이브 관리',
 
   'saveManager.title': '세이브 관리',
+  'saveManager.sectionTitle': '세이브 데이터 관리',
   'saveManager.noSavePath': '먼저 세이브 폴더를 지정하세요.',
   'saveManager.saveNew': '지금 저장 (새 스냅샷)',
   'saveManager.noSnapshots': '저장된 스냅샷이 없습니다.',
@@ -391,6 +392,7 @@ const ja: Record<keyof typeof ko, string> = {
   'launchConfig.manageSaves': 'セーブ管理',
 
   'saveManager.title': 'セーブ管理',
+  'saveManager.sectionTitle': 'セーブデータ管理',
   'saveManager.noSavePath': '先にセーブフォルダを指定してください。',
   'saveManager.saveNew': '今すぐ保存(新しいスナップショット)',
   'saveManager.noSnapshots': '保存されたスナップショットがありません。',
@@ -645,6 +647,7 @@ const en: Record<keyof typeof ko, string> = {
   'launchConfig.manageSaves': 'Manage Saves',
 
   'saveManager.title': 'Manage Saves',
+  'saveManager.sectionTitle': 'Save Data',
   'saveManager.noSavePath': 'Set a save folder first.',
   'saveManager.saveNew': 'Save Now (New Snapshot)',
   'saveManager.noSnapshots': 'No snapshots saved yet.',
