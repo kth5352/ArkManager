@@ -28,7 +28,7 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
 
   if (!isActive) {
     return (
-      <Button size="sm" variant="ghost" className="ml-auto" onClick={() => activate()}>
+      <Button size="sm" variant="ghost" className="ml-auto shrink-0" onClick={() => activate()}>
         {t('selection.select')}
       </Button>
     )
@@ -43,8 +43,8 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
 
   return (
     <>
-      <div className="ml-auto flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
-        <span className="mr-1 text-muted-foreground">
+      <div className="ml-auto flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
+        <span className="mr-1 whitespace-nowrap text-muted-foreground">
           {t('selection.selectedCount', { count: selectedPaths.size })}
         </span>
         <Button size="sm" variant="ghost" onClick={() => selectAll(allEntries.map((e) => e.path))}>
