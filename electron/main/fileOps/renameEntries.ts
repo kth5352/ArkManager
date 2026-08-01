@@ -2,12 +2,30 @@ import { access, rename } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { RenameResultDto } from '../../../shared/types/ipc'
 
-function isSafeFileName(name: string): boolean {
+// Windows treats these as reserved device names regardless of extension -
+// matched against the part before the first dot, so "CON.txt" is just as
+// invalid as "CON" itself.
+const RESERVED_DEVICE_NAME = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i
+
+// Returns the actual name to use (surrounding whitespace trimmed, same as
+// the validation below already treats it) or null if the name can't be
+// used at all. Renaming used to validate this trimmed value but then join()
+// the caller's ORIGINAL, untrimmed newName into the real path - a name with
+// trailing whitespace passed validation (trim() made it look non-empty) but
+// the actual rename() call still received the untrimmed string, silently
+// landing on a different name on disk than what was validated/previewed.
+function sanitizedFileName(name: string): string | null {
   const trimmed = name.trim()
-  if (trimmed === '' || trimmed === '.' || trimmed === '..') return false
+  if (trimmed === '' || trimmed === '.' || trimmed === '..') return null
   // A path separator would move the entry into a different folder entirely
   // (or escape it via "..\") instead of just renaming it in place.
-  return !trimmed.includes('/') && !trimmed.includes('\\')
+  if (trimmed.includes('/') || trimmed.includes('\\')) return null
+  // Windows silently strips a trailing dot when the entry is actually
+  // created, so the name that lands on disk would otherwise quietly differ
+  // from what the user typed/previewed.
+  if (trimmed.endsWith('.')) return null
+  if (RESERVED_DEVICE_NAME.test(trimmed.split('.')[0])) return null
+  return trimmed
 }
 
 // Windows' filesystem is case-insensitive, so a plain existence check on
@@ -28,12 +46,13 @@ export async function renameEntries(
   const results: RenameResultDto[] = []
 
   for (const { path, newName } of renames) {
-    if (!isSafeFileName(newName)) {
+    const safeName = sanitizedFileName(newName)
+    if (safeName === null) {
       results.push({ path, success: false, error: '올바르지 않은 이름입니다.' })
       continue
     }
 
-    const newPath = join(dirname(path), newName)
+    const newPath = join(dirname(path), safeName)
 
     if (!isCaseOnlyChange(path, newPath)) {
       const alreadyExists = await access(newPath)

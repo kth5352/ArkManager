@@ -78,6 +78,40 @@ describe('renameEntries', () => {
     expect(results[0].success).toBe(false)
   })
 
+  it('rejects a Windows-reserved device name, with or without an extension', async () => {
+    const path = join(dir, 'a.zip')
+    await writeFile(path, '')
+
+    const results = await renameEntries([
+      { path, newName: 'CON' },
+      { path, newName: 'con.txt' },
+      { path, newName: 'LPT1' },
+    ])
+
+    expect(results.every((r) => r.success === false)).toBe(true)
+    expect(await readdir(dir)).toEqual(['a.zip'])
+  })
+
+  it('rejects a name with a trailing dot', async () => {
+    const path = join(dir, 'a.zip')
+    await writeFile(path, '')
+
+    const results = await renameEntries([{ path, newName: 'trailing dot.' }])
+
+    expect(results[0].success).toBe(false)
+    expect(await readdir(dir)).toEqual(['a.zip'])
+  })
+
+  it('uses the trimmed name for the actual rename, not just for validation', async () => {
+    const path = join(dir, 'a.zip')
+    await writeFile(path, '')
+
+    const results = await renameEntries([{ path, newName: '  padded name  ' }])
+
+    expect(results[0]).toMatchObject({ success: true, newPath: join(dir, 'padded name') })
+    expect(await readdir(dir)).toEqual(['padded name'])
+  })
+
   it('processes a batch, continuing past a per-item failure', async () => {
     const pathA = join(dir, 'a.zip')
     const pathB = join(dir, 'b.zip')
