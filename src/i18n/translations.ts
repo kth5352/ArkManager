@@ -138,6 +138,7 @@ const ko = {
   'customCover.pickFile': '파일에서 선택',
   'customCover.paste': '붙여넣기',
   'customCover.remove': '제거',
+  'customCover.clickToChange': '클릭해서 표지 이미지 선택',
 
   'fileOps.done': '완료',
   'fileOps.failed': '실패: {error}',
@@ -377,6 +378,7 @@ const ja: Record<keyof typeof ko, string> = {
   'customCover.pickFile': 'ファイルから選択',
   'customCover.paste': '貼り付け',
   'customCover.remove': '削除',
+  'customCover.clickToChange': 'クリックして表紙画像を選択',
 
   'fileOps.done': '完了',
   'fileOps.failed': '失敗: {error}',
@@ -614,6 +616,7 @@ const en: Record<keyof typeof ko, string> = {
   'customCover.pickFile': 'Pick from File',
   'customCover.paste': 'Paste',
   'customCover.remove': 'Remove',
+  'customCover.clickToChange': 'Click to choose a cover image',
 
   'fileOps.done': 'Done',
   'fileOps.failed': 'Failed: {error}',

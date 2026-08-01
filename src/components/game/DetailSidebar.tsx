@@ -1,5 +1,6 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { Clock, X } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Clock, ImagePlus, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
@@ -12,7 +13,11 @@ import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { MoveDialog } from './MoveDialog'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
-import { useGameUserData } from '../../services/gameUserDataService'
+import {
+  useGameUserData,
+  usePickCustomCoverFile,
+  useSetCustomCoverFromFile,
+} from '../../services/gameUserDataService'
 import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
 import { formatPlaytime } from '../../pages/RecentlyPlayed/formatPlaytime'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
@@ -40,6 +45,8 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   const crawlMetadata = useCrawlGameMetadata()
   const { data: metadata } = useGameMetadata(game?.code ?? null)
   const { data: userData } = useGameUserData(game ?? { code: null, path: '' })
+  const pickCoverFile = usePickCustomCoverFile()
+  const setCoverFromFile = useSetCustomCoverFromFile()
   // A failed launch (no saved config yet) opens the centered modal dialog
   // instead of expanding LaunchConfigSection inline - more discoverable/less
   // easy to miss than an inline section quietly expanding somewhere in an
@@ -62,6 +69,13 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         if (isNoLaunchConfigError(error)) setConfiguringLaunch(true)
       },
     })
+  }
+
+  const handleClickCover = async (): Promise<void> => {
+    if (!game || game.code) return
+    const sourcePath = await pickCoverFile.mutateAsync()
+    if (!sourcePath) return
+    setCoverFromFile.mutate({ entry: game, sourcePath })
   }
 
   useEffect(() => {
@@ -108,10 +122,15 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   // inside - RatingMemoSection/LaunchConfigSection/CodeLinkSection's local
   // state (rating draft, memo draft, expanded/collapsed, confirm steps) -
   // should reset per game. Keying only the inner tree gives both at once.
+  const canChangeCover = !game.code
+
   return (
-    <div
+    <motion.div
       key={game.path}
       style={{ width }}
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
       className="relative flex h-full shrink-0 flex-col overflow-y-auto border-l border-border bg-card"
     >
       <div
@@ -129,9 +148,21 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         </button>
       </div>
       <div className="flex flex-col gap-3 p-4">
-        <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-muted">
+        <button
+          type="button"
+          onClick={handleClickCover}
+          disabled={!canChangeCover || pickCoverFile.isPending}
+          aria-label={canChangeCover ? t('customCover.clickToChange') : undefined}
+          className={`group relative aspect-[3/4] w-full overflow-hidden rounded-md bg-muted ${canChangeCover ? 'cursor-pointer' : 'cursor-default'}`}
+        >
           <GameThumbnail entry={game} />
-        </div>
+          {canChangeCover && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <ImagePlus className="h-6 w-6" />
+              <span className="px-2 text-center text-xs">{t('customCover.clickToChange')}</span>
+            </div>
+          )}
+        </button>
         {metadata?.title && metadata.title !== game.name && (
           <p className="text-sm text-muted-foreground">{metadata.title}</p>
         )}
@@ -230,6 +261,6 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         targets={dialogMode === 'move' ? [game] : []}
         onClose={() => setDialogMode(null)}
       />
-    </div>
+    </motion.div>
   )
 }
