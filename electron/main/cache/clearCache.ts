@@ -9,10 +9,10 @@ export interface ClearCacheOptions {
 // directory - on Windows, that folder is the same physical directory as
 // Chromium's own "Cache" (case-insensitive filesystem, see
 // migrateUserDataFolder.ts's own note on this), which the running app still
-// has open. userData/saves (see saveHandlers.ts's SAVE_BACKUP_NOW - one
-// subfolder per game, each a full copy of that game's save files) is the
-// one thing here that can't be recreated from DLsite - only deleted when
-// the caller explicitly opts in.
+// has open. userData/saves (see saveHandlers.ts - one subfolder per game,
+// each containing one timestamped snapshot subfolder per backup taken) is
+// the one thing here that can't be recreated from DLsite - only deleted
+// when the caller explicitly opts in.
 export async function clearCache(userDataPath: string, options: ClearCacheOptions): Promise<void> {
   await rm(join(userDataPath, 'cache', 'covers'), { recursive: true, force: true })
 

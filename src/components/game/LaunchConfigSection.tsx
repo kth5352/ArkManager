@@ -7,7 +7,8 @@ import {
   useSetLaunchConfig,
 } from '../../services/launchService'
 import { useGameUserData } from '../../services/gameUserDataService'
-import { useBackupSaveNow, usePickSaveFolder, useSetSavePath } from '../../services/saveService'
+import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
+import { SaveManagerDialog } from './SaveManagerDialog'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../../shared/types/ipc'
@@ -27,6 +28,7 @@ interface LaunchConfigSectionProps {
 export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const [showSaveManager, setShowSaveManager] = useState(false)
   const folderPath = game.kind === 'folder' ? game.path : ''
   const { data: executables } = useListExecutables(folderPath)
   const { data: leAvailable } = useLocaleEmulatorAvailable()
@@ -34,7 +36,6 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
   const setLaunchConfig = useSetLaunchConfig()
   const pickSaveFolder = usePickSaveFolder()
   const setSavePath = useSetSavePath()
-  const backupSaveNow = useBackupSaveNow()
 
   const [selectedExe, setSelectedExe] = useState(userData?.launchConfig?.executablePath ?? '')
   const [launchMode, setLaunchMode] = useState<LaunchConfigDto['launchMode']>(
@@ -61,10 +62,6 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
   const handlePickSaveFolder = async (): Promise<void> => {
     const path = await pickSaveFolder.mutateAsync()
     if (path) setSavePath.mutate({ entry: game, savePath: path })
-  }
-
-  const handleBackupNow = (): void => {
-    backupSaveNow.mutate(game)
   }
 
   return (
@@ -134,13 +131,8 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
                   <Button size="sm" variant="secondary" onClick={handlePickSaveFolder}>
                     {t('launchConfig.pickSaveFolder')}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={handleBackupNow}
-                    disabled={backupSaveNow.isPending}
-                  >
-                    {t('launchConfig.backupNow')}
+                  <Button size="sm" variant="secondary" onClick={() => setShowSaveManager(true)}>
+                    {t('launchConfig.manageSaves')}
                   </Button>
                 </div>
               </div>
@@ -148,6 +140,11 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
           )}
         </div>
       )}
+      <SaveManagerDialog
+        entry={showSaveManager ? game : null}
+        savePath={userData?.savePath ?? null}
+        onClose={() => setShowSaveManager(false)}
+      />
     </div>
   )
 }

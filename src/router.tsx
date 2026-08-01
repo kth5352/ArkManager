@@ -16,6 +16,7 @@ import { DlsiteSearchPage } from './pages/DlsiteSearch/DlsiteSearchPage'
 import { FavoritesPage } from './pages/Favorites/FavoritesPage'
 import { RecentlyPlayedPage } from './pages/RecentlyPlayed/RecentlyPlayedPage'
 import { MediaPage } from './pages/Media/MediaPage'
+import { SavesPage } from './pages/Saves/SavesPage'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -75,6 +76,11 @@ const mediaRoute = createRoute({
   path: '/media',
   component: MediaPage,
 })
+const savesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/saves',
+  component: SavesPage,
+})
 
 const routeTree = rootRoute.addChildren([
   galleryRoute,
@@ -86,6 +92,7 @@ const routeTree = rootRoute.addChildren([
   favoritesRoute,
   recentlyPlayedRoute,
   mediaRoute,
+  savesRoute,
   settingsRoute,
 ])
 

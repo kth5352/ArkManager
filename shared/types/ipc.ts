@@ -57,7 +57,11 @@ export const IPC_CHANNELS = {
   LAUNCH_GAME: 'launch:launch-game',
   SAVE_PICK_FOLDER: 'save:pick-folder',
   SAVE_SET_PATH: 'save:set-path',
-  SAVE_BACKUP_NOW: 'save:backup-now',
+  SAVE_LIST_SNAPSHOTS: 'save:list-snapshots',
+  SAVE_CREATE_SNAPSHOT: 'save:create-snapshot',
+  SAVE_RESTORE_SNAPSHOT: 'save:restore-snapshot',
+  SAVE_DIFF: 'save:diff',
+  SAVE_LIST_GAMES_WITH_SAVE_PATH: 'save:list-games-with-save-path',
   CACHE_CLEAR: 'cache:clear',
 } as const
 
@@ -270,6 +274,7 @@ export interface GameUserDataDto {
   totalPlaytimeMs: number
   launchConfig: LaunchConfigDto | null
   customCoverPath: string | null
+  savePath: string | null
 }
 
 export const SetCustomCoverFromFileRequestSchema = z.object({
@@ -302,9 +307,37 @@ export const SetSavePathRequestSchema = z.object({
   savePath: z.string(),
 })
 
-export const BackupSaveNowRequestSchema = z.object({
+export const SaveSnapshotRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
 })
+
+export interface SaveSnapshotDto {
+  timestamp: string
+  fileCount: number
+  totalSizeBytes: number
+}
+
+export const RestoreSaveSnapshotRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  timestamp: z.string(),
+})
+
+export const SaveDiffRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  timestamp: z.string().nullable(),
+})
+
+export type SaveDiffStatus = 'added' | 'removed' | 'modified'
+
+export interface SaveDiffEntryDto {
+  relativePath: string
+  status: SaveDiffStatus
+}
+
+export interface GameWithSavePathDto {
+  key: string
+  savePath: string
+}
 
 export const ClearCacheRequestSchema = z.object({
   deleteSaveBackups: z.boolean(),

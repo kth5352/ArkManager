@@ -7,6 +7,7 @@ import {
   List,
   Music,
   Rows3,
+  Save,
   Search,
   Settings,
 } from 'lucide-react'
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/favorites', labelKey: 'nav.favorites', icon: Heart },
   { to: '/recently-played', labelKey: 'nav.recentlyPlayed', icon: History },
   { to: '/media', labelKey: 'nav.media', icon: Music },
+  { to: '/saves', labelKey: 'nav.saves', icon: Save },
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ] as const satisfies { to: string; labelKey: TranslationKey; icon: unknown }[]
 

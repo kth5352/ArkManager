@@ -42,6 +42,7 @@ function toDto(row: ReturnType<typeof getGameUserData>): GameUserDataDto | null 
     totalPlaytimeMs: row.totalPlaytimeMs,
     launchConfig: row.launchConfig,
     customCoverPath: row.customCoverPath,
+    savePath: row.savePath,
   }
 }
 

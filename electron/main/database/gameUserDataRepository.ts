@@ -183,6 +183,20 @@ export function listFavoriteKeys(db: AppDatabase): string[] {
     .map((row) => row.key)
 }
 
+export interface SavePathEntry {
+  key: string
+  savePath: string
+}
+
+export function listGamesWithSavePath(db: AppDatabase): SavePathEntry[] {
+  return db
+    .select({ key: gameUserData.key, savePath: gameUserData.savePath })
+    .from(gameUserData)
+    .where(isNotNull(gameUserData.savePath))
+    .all()
+    .map((row) => ({ key: row.key, savePath: row.savePath! }))
+}
+
 // Moves a path-keyed row (a code-less file the user later assigned a code
 // to) onto the code as its new primary key, preserving createdAt as well as
 // isFavorite/isCleared/rating/memo/launchConfig/totalPlaytimeMs/lastPlayedAt/savePath.

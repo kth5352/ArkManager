@@ -6,6 +6,7 @@ import {
   type DlsiteSearchResultDto,
   type GameMetadataDto,
   type GameUserDataDto,
+  type GameWithSavePathDto,
   type LaunchConfigDto,
   type Library,
   type LibraryWithStatus,
@@ -13,6 +14,8 @@ import {
   type MoveResultDto,
   type PersistedExplorerTab,
   type RenameResultDto,
+  type SaveDiffEntryDto,
+  type SaveSnapshotDto,
   type SortPage,
   type SortPreference,
   type Theme,
@@ -197,8 +200,23 @@ const api = {
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SAVE_PICK_FOLDER),
     setPath: (code: GameCode | null, path: string, savePath: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_SET_PATH, { identifier: { code, path }, savePath }),
-    backupNow: (code: GameCode | null, path: string): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.SAVE_BACKUP_NOW, { identifier: { code, path } }),
+    listSnapshots: (code: GameCode | null, path: string): Promise<SaveSnapshotDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_LIST_SNAPSHOTS, { identifier: { code, path } }),
+    createSnapshot: (code: GameCode | null, path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_CREATE_SNAPSHOT, { identifier: { code, path } }),
+    restoreSnapshot: (code: GameCode | null, path: string, timestamp: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_RESTORE_SNAPSHOT, {
+        identifier: { code, path },
+        timestamp,
+      }),
+    diff: (
+      code: GameCode | null,
+      path: string,
+      timestamp: string | null
+    ): Promise<SaveDiffEntryDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_DIFF, { identifier: { code, path }, timestamp }),
+    listGamesWithSavePath: (): Promise<GameWithSavePathDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_LIST_GAMES_WITH_SAVE_PATH),
   },
   cache: {
     clear: (deleteSaveBackups: boolean): Promise<void> =>

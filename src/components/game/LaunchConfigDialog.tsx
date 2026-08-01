@@ -7,7 +7,8 @@ import {
   useSetLaunchConfig,
 } from '../../services/launchService'
 import { useGameUserData } from '../../services/gameUserDataService'
-import { useBackupSaveNow, usePickSaveFolder, useSetSavePath } from '../../services/saveService'
+import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
+import { SaveManagerDialog } from './SaveManagerDialog'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../../shared/types/ipc'
@@ -26,7 +27,7 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
   const setLaunchConfig = useSetLaunchConfig()
   const pickSaveFolder = usePickSaveFolder()
   const setSavePath = useSetSavePath()
-  const backupSaveNow = useBackupSaveNow()
+  const [showSaveManager, setShowSaveManager] = useState(false)
 
   const [selectedExe, setSelectedExe] = useState(userData?.launchConfig?.executablePath ?? '')
   const [launchMode, setLaunchMode] = useState<LaunchConfigDto['launchMode']>(
@@ -52,11 +53,6 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
     if (!entry) return
     const path = await pickSaveFolder.mutateAsync()
     if (path) setSavePath.mutate({ entry, savePath: path })
-  }
-
-  const handleBackupNow = (): void => {
-    if (!entry) return
-    backupSaveNow.mutate(entry)
   }
 
   return (
@@ -125,18 +121,18 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
               <Button variant="secondary" onClick={handlePickSaveFolder}>
                 {t('launchConfig.pickSaveFolder')}
               </Button>
-              <Button
-                variant="secondary"
-                onClick={handleBackupNow}
-                disabled={backupSaveNow.isPending}
-                className="ml-2"
-              >
-                {t('launchConfig.backupNow')}
+              <Button variant="secondary" onClick={() => setShowSaveManager(true)} className="ml-2">
+                {t('launchConfig.manageSaves')}
               </Button>
             </div>
           </>
         )}
       </DialogContent>
+      <SaveManagerDialog
+        entry={showSaveManager ? entry : null}
+        savePath={userData?.savePath ?? null}
+        onClose={() => setShowSaveManager(false)}
+      />
     </Dialog>
   )
 }

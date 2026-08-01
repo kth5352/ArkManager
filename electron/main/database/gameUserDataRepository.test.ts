@@ -8,6 +8,7 @@ import {
   setFavorite,
   setCleared,
   setRatingAndMemo,
+  listGamesWithSavePath,
   listFavoriteKeys,
   setLaunchConfig,
   recordPlaySession,
@@ -133,6 +134,16 @@ describe('gameUserDataRepository', () => {
     setFavorite(db, 'd:\\games\\folder', 'path', true)
 
     expect(listFavoriteKeys(db).sort()).toEqual(['RJ01111111', 'd:\\games\\folder'].sort())
+  })
+
+  it('lists only the games that have a save path set', () => {
+    setSavePath(db, 'RJ01111111', 'code', 'C:\\saves\\rj01111111')
+    setFavorite(db, 'RJ02222222', 'code', true)
+    touchGameUserData(db, 'RJ03333333', 'code')
+
+    expect(listGamesWithSavePath(db)).toEqual([
+      { key: 'RJ01111111', savePath: 'C:\\saves\\rj01111111' },
+    ])
   })
 
   it('stores and retrieves a launch config', () => {

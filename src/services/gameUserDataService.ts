@@ -51,6 +51,7 @@ export function useToggleFavorite() {
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
         launchConfig: prev?.launchConfig ?? null,
         customCoverPath: prev?.customCoverPath ?? null,
+        savePath: prev?.savePath ?? null,
       }))
       queryClient.invalidateQueries({ queryKey: ['game-user-data', 'favorite-keys'] })
     },
@@ -77,6 +78,7 @@ export function useToggleCleared() {
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
         launchConfig: prev?.launchConfig ?? null,
         customCoverPath: prev?.customCoverPath ?? null,
+        savePath: prev?.savePath ?? null,
       }))
     },
   })
@@ -104,6 +106,7 @@ export function useSetRatingAndMemo() {
         totalPlaytimeMs: prev?.totalPlaytimeMs ?? 0,
         launchConfig: prev?.launchConfig ?? null,
         customCoverPath: prev?.customCoverPath ?? null,
+        savePath: prev?.savePath ?? null,
       }))
     },
   })

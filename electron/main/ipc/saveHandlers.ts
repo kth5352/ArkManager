@@ -1,15 +1,35 @@
 import { app, dialog, ipcMain } from 'electron'
 import { join } from 'node:path'
 import {
-  BackupSaveNowRequestSchema,
   IPC_CHANNELS,
+  RestoreSaveSnapshotRequestSchema,
+  SaveDiffRequestSchema,
+  SaveSnapshotRequestSchema,
   SetSavePathRequestSchema,
+  type GameWithSavePathDto,
+  type SaveDiffEntryDto,
+  type SaveSnapshotDto,
 } from '../../../shared/types/ipc'
-import { backupSave } from '../save/backupSave'
+import { createSnapshot } from '../save/createSnapshot'
+import { listSnapshots } from '../save/listSnapshots'
+import { restoreSnapshot } from '../save/restoreSnapshot'
+import { diffSaveFolders } from '../save/diffSaveFolders'
 import { keyToSafeDirName } from '../save/keyToSafeDirName'
-import { getGameUserData, setSavePath } from '../database/gameUserDataRepository'
+import {
+  getGameUserData,
+  listGamesWithSavePath,
+  setSavePath,
+} from '../database/gameUserDataRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import type { AppDatabase } from '../database/client'
+
+// Every snapshot for a game lives under its own backup-root subfolder
+// (userData/saves/{safeKey}/{timestamp}/) - key is the DB lookup key (raw
+// for path-type games), which must NOT be used raw as a filesystem
+// directory segment (see keyToSafeDirName).
+function backupRootDir(key: string): string {
+  return join(app.getPath('userData'), 'saves', keyToSafeDirName(key))
+}
 
 export function registerSaveHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SAVE_PICK_FOLDER, async () => {
@@ -24,18 +44,52 @@ export function registerSaveHandlers(db: AppDatabase): void {
     setSavePath(db, key, keyType, savePath)
   })
 
-  ipcMain.handle(IPC_CHANNELS.SAVE_BACKUP_NOW, async (_event, payload: unknown) => {
-    const { identifier } = BackupSaveNowRequestSchema.parse(payload)
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_LIST_SNAPSHOTS,
+    async (_event, payload: unknown): Promise<SaveSnapshotDto[]> => {
+      const { identifier } = SaveSnapshotRequestSchema.parse(payload)
+      const { key } = resolveGameEntryKey(identifier)
+      return listSnapshots(backupRootDir(key))
+    }
+  )
+
+  ipcMain.handle(IPC_CHANNELS.SAVE_CREATE_SNAPSHOT, async (_event, payload: unknown) => {
+    const { identifier } = SaveSnapshotRequestSchema.parse(payload)
     const { key } = resolveGameEntryKey(identifier)
 
     const userData = getGameUserData(db, key)
     if (!userData?.savePath) {
       throw new Error('백업할 세이브 경로가 지정되어 있지 않습니다.')
     }
-
-    // key is the DB lookup key (raw for path-type games) - it must NOT be
-    // used raw as a filesystem directory segment (see keyToSafeDirName).
-    const backupDir = join(app.getPath('userData'), 'saves', keyToSafeDirName(key))
-    await backupSave(userData.savePath, backupDir)
+    await createSnapshot(userData.savePath, backupRootDir(key))
   })
+
+  ipcMain.handle(IPC_CHANNELS.SAVE_RESTORE_SNAPSHOT, async (_event, payload: unknown) => {
+    const { identifier, timestamp } = RestoreSaveSnapshotRequestSchema.parse(payload)
+    const { key } = resolveGameEntryKey(identifier)
+
+    const userData = getGameUserData(db, key)
+    if (!userData?.savePath) {
+      throw new Error('복원할 세이브 경로가 지정되어 있지 않습니다.')
+    }
+    await restoreSnapshot(backupRootDir(key), timestamp, userData.savePath)
+  })
+
+  ipcMain.handle(
+    IPC_CHANNELS.SAVE_DIFF,
+    async (_event, payload: unknown): Promise<SaveDiffEntryDto[]> => {
+      const { identifier, timestamp } = SaveDiffRequestSchema.parse(payload)
+      const { key } = resolveGameEntryKey(identifier)
+
+      const userData = getGameUserData(db, key)
+      if (!userData?.savePath) return []
+
+      const snapshotDir = timestamp ? join(backupRootDir(key), timestamp) : null
+      return diffSaveFolders(snapshotDir, userData.savePath)
+    }
+  )
+
+  ipcMain.handle(IPC_CHANNELS.SAVE_LIST_GAMES_WITH_SAVE_PATH, (): GameWithSavePathDto[] =>
+    listGamesWithSavePath(db)
+  )
 }
