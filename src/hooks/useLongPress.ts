@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 
 interface UseLongPressOptions {
   thresholdMs?: number
@@ -6,7 +6,7 @@ interface UseLongPressOptions {
 
 interface UseLongPressResult {
   handlers: {
-    onPointerDown: () => void
+    onPointerDown: (event: ReactPointerEvent) => void
     onPointerUp: () => void
     onPointerLeave: () => void
   }
@@ -31,7 +31,12 @@ export function useLongPress(
     timerRef.current = null
   }
 
-  const onPointerDown = (): void => {
+  const onPointerDown = (event: ReactPointerEvent): void => {
+    // button === 0 is the primary button (left-click, touch, pen) for every
+    // pointer type - a right-click (button 2) also fires pointerdown, and
+    // without this a long right-click held while the native context menu is
+    // already open could still fire onLongPress once the timer elapses.
+    if (event.button !== 0) return
     firedRef.current = false
     clearTimer()
     timerRef.current = setTimeout(() => {
