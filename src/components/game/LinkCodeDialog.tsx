@@ -5,6 +5,7 @@ import { Input } from '../ui/input'
 import { useLinkCode } from '../../services/gameUserDataService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { parseCodeInput } from '../../pages/DlsiteSearch/parseCodeInput'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface LinkCodeDialogProps {
@@ -13,6 +14,7 @@ interface LinkCodeDialogProps {
 }
 
 export function LinkCodeDialog({ entry, onClose }: LinkCodeDialogProps) {
+  const { t } = useTranslation()
   const [input, setInput] = useState('')
   // A linked code is hard to correct once committed (see DetailOverlay -
   // the "코드 연동" button only shows while the entry is still code-less), so
@@ -48,38 +50,36 @@ export function LinkCodeDialog({ entry, onClose }: LinkCodeDialogProps) {
     <Dialog open={entry !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>코드 연동 {entry ? `- ${entry.name}` : ''}</DialogTitle>
+          <DialogTitle>
+            {t('codeLink.dialogTitle')} {entry ? `- ${entry.name}` : ''}
+          </DialogTitle>
         </DialogHeader>
         {!confirming ? (
           <>
-            <p className="text-xs text-muted-foreground">
-              폴더명을 직접 바꾸면 기존 즐겨찾기/평점 기록이 유지되지 않습니다. 데이터를 유지하려면
-              여기서 코드를 연동하세요.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('codeLink.linkHint')}</p>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="RJ01234567"
+              placeholder={t('codeLink.codePlaceholder')}
             />
             <Button onClick={() => setConfirming(true)} disabled={!parsedCode}>
-              다음
+              {t('codeLink.next')}
             </Button>
           </>
         ) : (
           <>
             <p className="text-sm">
-              <span className="font-medium">{parsedCode?.value}</span>(으)로 연동합니다. 잘못
-              연동했다면 나중에 상세 화면의 &quot;연동 해제&quot;로 연동을 해제할 수 있습니다.
+              {t('codeLink.confirmLinkMessage', { code: parsedCode?.value ?? '' })}
             </p>
             {linkCode.isError && (
-              <p className="text-xs text-destructive">연동에 실패했습니다. 다시 시도해주세요.</p>
+              <p className="text-xs text-destructive">{t('codeLink.linkFailed')}</p>
             )}
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => setConfirming(false)}>
-                뒤로
+                {t('codeLink.back')}
               </Button>
               <Button onClick={handleConfirm} disabled={!parsedCode || linkCode.isPending}>
-                연동 확정
+                {t('codeLink.confirmLink')}
               </Button>
             </div>
           </>

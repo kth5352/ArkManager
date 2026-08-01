@@ -3,6 +3,7 @@ import { Star } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { useGameUserData, useSetRatingAndMemo } from '../../services/gameUserDataService'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { GameUserDataDto } from '../../../shared/types/ipc'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -12,6 +13,7 @@ interface RatingMemoDialogProps {
 }
 
 export function RatingMemoDialog({ entry, onClose }: RatingMemoDialogProps) {
+  const { t } = useTranslation()
   const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
   const setRatingAndMemo = useSetRatingAndMemo()
 
@@ -35,7 +37,9 @@ export function RatingMemoDialog({ entry, onClose }: RatingMemoDialogProps) {
     <Dialog open={entry !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>평점 / 메모 {entry ? `- ${entry.name}` : ''}</DialogTitle>
+          <DialogTitle>
+            {t('ratingMemo.dialogTitle')} {entry ? `- ${entry.name}` : ''}
+          </DialogTitle>
         </DialogHeader>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((value) => (
@@ -50,10 +54,10 @@ export function RatingMemoDialog({ entry, onClose }: RatingMemoDialogProps) {
         <textarea
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
-          placeholder="메모"
+          placeholder={t('ratingMemo.memoPlaceholder')}
           className="min-h-24 w-full rounded-md border border-border bg-background p-2 text-sm"
         />
-        <Button onClick={handleSave}>저장</Button>
+        <Button onClick={handleSave}>{t('common.save')}</Button>
       </DialogContent>
     </Dialog>
   )

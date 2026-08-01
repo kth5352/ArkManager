@@ -5,6 +5,7 @@ import { Input } from '../ui/input'
 import { useLinkCode, useUnlinkCode } from '../../services/gameUserDataService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { parseCodeInput } from '../../pages/DlsiteSearch/parseCodeInput'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface CodeLinkSectionProps {
@@ -18,6 +19,7 @@ interface CodeLinkSectionProps {
 // for that case either - this just also explains why, instead of showing
 // nothing at all).
 export function CodeLinkSection({ game }: CodeLinkSectionProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -27,7 +29,7 @@ export function CodeLinkSection({ game }: CodeLinkSectionProps) {
         onClick={() => setExpanded((current) => !current)}
       >
         <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        코드 연동 관리
+        {t('codeLink.manage')}
       </button>
       {expanded &&
         (game.code && game.codeSource === 'override' ? (
@@ -35,15 +37,14 @@ export function CodeLinkSection({ game }: CodeLinkSectionProps) {
         ) : !game.code ? (
           <LinkSection game={game} />
         ) : (
-          <p className="mt-2 text-xs text-muted-foreground">
-            파일명에서 인식된 코드는 연동 해제를 지원하지 않습니다.
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{t('codeLink.filenameCodeNoUnlink')}</p>
         ))}
     </div>
   )
 }
 
 function LinkSection({ game }: { game: ScannedEntry }) {
+  const { t } = useTranslation()
   const [input, setInput] = useState('')
   const [confirming, setConfirming] = useState(false)
   const linkCode = useLinkCode()
@@ -69,35 +70,31 @@ function LinkSection({ game }: { game: ScannedEntry }) {
     <div className="mt-2 flex flex-col gap-2">
       {!confirming ? (
         <>
-          <p className="text-xs text-muted-foreground">
-            폴더명을 직접 바꾸면 기존 즐겨찾기/평점 기록이 유지되지 않습니다. 데이터를 유지하려면
-            여기서 코드를 연동하세요.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('codeLink.linkHint')}</p>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="RJ01234567"
+            placeholder={t('codeLink.codePlaceholder')}
             className="h-8 text-xs"
           />
           <Button size="sm" onClick={() => setConfirming(true)} disabled={!parsedCode}>
-            다음
+            {t('codeLink.next')}
           </Button>
         </>
       ) : (
         <>
           <p className="text-xs">
-            <span className="font-medium">{parsedCode?.value}</span>(으)로 연동합니다. 잘못
-            연동했다면 나중에 &quot;연동 해제&quot;로 연동을 해제할 수 있습니다.
+            {t('codeLink.confirmLinkMessage', { code: parsedCode?.value ?? '' })}
           </p>
           {linkCode.isError && (
-            <p className="text-xs text-destructive">연동에 실패했습니다. 다시 시도해주세요.</p>
+            <p className="text-xs text-destructive">{t('codeLink.linkFailed')}</p>
           )}
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => setConfirming(false)}>
-              뒤로
+              {t('codeLink.back')}
             </Button>
             <Button size="sm" onClick={handleConfirm} disabled={!parsedCode || linkCode.isPending}>
-              연동 확정
+              {t('codeLink.confirmLink')}
             </Button>
           </div>
         </>
@@ -107,6 +104,7 @@ function LinkSection({ game }: { game: ScannedEntry }) {
 }
 
 function UnlinkSection({ game }: { game: ScannedEntry }) {
+  const { t } = useTranslation()
   const [confirming, setConfirming] = useState(false)
   const unlinkCode = useUnlinkCode()
 
@@ -118,7 +116,7 @@ function UnlinkSection({ game }: { game: ScannedEntry }) {
     return (
       <div className="mt-2">
         <Button size="sm" variant="secondary" onClick={() => setConfirming(true)}>
-          연동 해제
+          {t('codeLink.unlink')}
         </Button>
       </div>
     )
@@ -127,20 +125,17 @@ function UnlinkSection({ game }: { game: ScannedEntry }) {
   return (
     <div className="mt-2 flex flex-col gap-2">
       <p className="text-xs">
-        <span className="font-medium">{game.code?.value}</span> 연동을 해제합니다. 이후 이 폴더는
-        다시 코드없는 항목으로 표시됩니다.
+        {t('codeLink.confirmUnlinkMessage1', { code: game.code?.value ?? '' })}
       </p>
       <p className="text-xs text-muted-foreground">
-        지금까지 쌓인 즐겨찾기·평점·메모·플레이타임 기록은 삭제되지 않고 {game.code?.value} 코드에
-        그대로 남습니다. 같은 코드로 다시 연동하면 기록이 복원되지만, 다른 코드로 연동하면 이 기록을
-        다시 찾을 수 없게 됩니다.
+        {t('codeLink.confirmUnlinkMessage2', { code: game.code?.value ?? '' })}
       </p>
       <div className="flex gap-2">
         <Button size="sm" variant="secondary" onClick={() => setConfirming(false)}>
-          취소
+          {t('common.cancel')}
         </Button>
         <Button size="sm" onClick={handleConfirm} disabled={unlinkCode.isPending}>
-          연동 해제
+          {t('codeLink.unlink')}
         </Button>
       </div>
     </div>

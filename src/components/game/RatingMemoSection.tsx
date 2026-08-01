@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Star } from 'lucide-react'
 import { useGameUserData, useSetRatingAndMemo } from '../../services/gameUserDataService'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface RatingMemoSectionProps {
@@ -13,6 +14,7 @@ interface RatingMemoSectionProps {
 // (there's no separate "rating only" endpoint), so each save sends
 // whichever field didn't just change alongside the one that did.
 export function RatingMemoSection({ game }: RatingMemoSectionProps) {
+  const { t } = useTranslation()
   const { data: userData } = useGameUserData(game)
   const setRatingAndMemo = useSetRatingAndMemo()
 
@@ -73,7 +75,7 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
 
   return (
     <div className="flex flex-col gap-1 border-t border-border pt-3">
-      <p className="text-xs font-medium text-muted-foreground">평점</p>
+      <p className="text-xs font-medium text-muted-foreground">{t('ratingMemo.rating')}</p>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((value) => (
           <button key={value} onClick={() => handleRatingClick(value)}>
@@ -84,16 +86,20 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
           </button>
         ))}
       </div>
-      <p className="mt-2 text-xs font-medium text-muted-foreground">메모</p>
+      <p className="mt-2 text-xs font-medium text-muted-foreground">{t('ratingMemo.memo')}</p>
       <textarea
         value={memo}
         onChange={(e) => handleMemoChange(e.target.value)}
         onBlur={handleMemoBlur}
-        placeholder="메모"
+        placeholder={t('ratingMemo.memoPlaceholder')}
         className="min-h-20 w-full rounded-md border border-border bg-background p-2 text-sm"
       />
       <p className="h-4 text-xs text-muted-foreground">
-        {setRatingAndMemo.isPending ? '저장 중...' : justSaved ? '저장됨' : ''}
+        {setRatingAndMemo.isPending
+          ? t('ratingMemo.saving')
+          : justSaved
+            ? t('ratingMemo.saved')
+            : ''}
       </p>
     </div>
   )

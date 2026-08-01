@@ -91,6 +91,47 @@ const ko = {
   'selection.selectAll': '전체 선택',
   'selection.rename': '이름 변경',
   'selection.move': '이동',
+
+  'codeLink.manage': '코드 연동 관리',
+  'codeLink.filenameCodeNoUnlink': '파일명에서 인식된 코드는 연동 해제를 지원하지 않습니다.',
+  'codeLink.linkHint':
+    '폴더명을 직접 바꾸면 기존 즐겨찾기/평점 기록이 유지되지 않습니다. 데이터를 유지하려면 여기서 코드를 연동하세요.',
+  'codeLink.codePlaceholder': 'RJ01234567',
+  'codeLink.next': '다음',
+  'codeLink.confirmLinkMessage':
+    '{code}(으)로 연동합니다. 잘못 연동했다면 나중에 "연동 해제"로 연동을 해제할 수 있습니다.',
+  'codeLink.linkFailed': '연동에 실패했습니다. 다시 시도해주세요.',
+  'codeLink.back': '뒤로',
+  'codeLink.confirmLink': '연동 확정',
+  'codeLink.unlink': '연동 해제',
+  'codeLink.confirmUnlinkMessage1':
+    '{code} 연동을 해제합니다. 이후 이 폴더는 다시 코드없는 항목으로 표시됩니다.',
+  'codeLink.confirmUnlinkMessage2':
+    '지금까지 쌓인 즐겨찾기·평점·메모·플레이타임 기록은 삭제되지 않고 {code} 코드에 그대로 남습니다. 같은 코드로 다시 연동하면 기록이 복원되지만, 다른 코드로 연동하면 이 기록을 다시 찾을 수 없게 됩니다.',
+  'codeLink.dialogTitle': '코드 연동',
+  'codeLink.unlinkDialogTitle': '연동 해제',
+
+  'ratingMemo.rating': '평점',
+  'ratingMemo.memo': '메모',
+  'ratingMemo.memoPlaceholder': '메모',
+  'ratingMemo.saving': '저장 중...',
+  'ratingMemo.saved': '저장됨',
+  'ratingMemo.dialogTitle': '평점 / 메모',
+
+  'launchConfig.title': '실행 설정',
+  'launchConfig.dialogTitle': '실행/저장 설정',
+  'launchConfig.archiveNotSupported':
+    '압축파일은 실행 설정을 지원하지 않습니다. 먼저 압축을 해제해 주세요.',
+  'launchConfig.executable': '실행파일',
+  'launchConfig.noExeFound': 'exe 파일을 찾을 수 없습니다.',
+  'launchConfig.launchMode': '실행 방식',
+  'launchConfig.normalLaunch': '일반 실행',
+  'launchConfig.localeEmulatorLaunch': 'Locale Emulator로 실행',
+  'launchConfig.notInstalled': ' (설치되어 있지 않음)',
+  'launchConfig.saveLaunchConfig': '실행 설정 저장',
+  'launchConfig.saveBackupLocation': '세이브 파일 백업 위치',
+  'launchConfig.pickSaveFolder': '세이브 폴더 지정',
+  'launchConfig.backupNow': '지금 백업',
 } as const
 
 const ja: Record<keyof typeof ko, string> = {
@@ -178,6 +219,47 @@ const ja: Record<keyof typeof ko, string> = {
   'selection.selectAll': 'すべて選択',
   'selection.rename': '名前変更',
   'selection.move': '移動',
+
+  'codeLink.manage': 'コード連携管理',
+  'codeLink.filenameCodeNoUnlink': 'ファイル名から認識されたコードは連携解除に対応していません。',
+  'codeLink.linkHint':
+    'フォルダ名を直接変更すると、既存のお気に入り/評価の記録が維持されません。データを維持するには、ここでコードを連携してください。',
+  'codeLink.codePlaceholder': 'RJ01234567',
+  'codeLink.next': '次へ',
+  'codeLink.confirmLinkMessage':
+    '{code}に連携します。連携を間違えた場合は、後で「連携解除」で解除できます。',
+  'codeLink.linkFailed': '連携に失敗しました。もう一度お試しください。',
+  'codeLink.back': '戻る',
+  'codeLink.confirmLink': '連携確定',
+  'codeLink.unlink': '連携解除',
+  'codeLink.confirmUnlinkMessage1':
+    '{code}の連携を解除します。以降、このフォルダは再びコードなし項目として表示されます。',
+  'codeLink.confirmUnlinkMessage2':
+    'これまで蓄積されたお気に入り・評価・メモ・プレイ時間の記録は削除されず、{code}コードにそのまま残ります。同じコードで再連携すると記録が復元されますが、別のコードで連携するとこの記録は見つけられなくなります。',
+  'codeLink.dialogTitle': 'コード連携',
+  'codeLink.unlinkDialogTitle': '連携解除',
+
+  'ratingMemo.rating': '評価',
+  'ratingMemo.memo': 'メモ',
+  'ratingMemo.memoPlaceholder': 'メモ',
+  'ratingMemo.saving': '保存中...',
+  'ratingMemo.saved': '保存済み',
+  'ratingMemo.dialogTitle': '評価 / メモ',
+
+  'launchConfig.title': '実行設定',
+  'launchConfig.dialogTitle': '実行/保存設定',
+  'launchConfig.archiveNotSupported':
+    '圧縮ファイルは実行設定に対応していません。先に解凍してください。',
+  'launchConfig.executable': '実行ファイル',
+  'launchConfig.noExeFound': 'exeファイルが見つかりません。',
+  'launchConfig.launchMode': '実行方式',
+  'launchConfig.normalLaunch': '通常実行',
+  'launchConfig.localeEmulatorLaunch': 'Locale Emulatorで実行',
+  'launchConfig.notInstalled': '（インストールされていません）',
+  'launchConfig.saveLaunchConfig': '実行設定を保存',
+  'launchConfig.saveBackupLocation': 'セーブファイルのバックアップ場所',
+  'launchConfig.pickSaveFolder': 'セーブフォルダ指定',
+  'launchConfig.backupNow': '今すぐバックアップ',
 }
 
 const en: Record<keyof typeof ko, string> = {
@@ -266,6 +348,47 @@ const en: Record<keyof typeof ko, string> = {
   'selection.selectAll': 'Select all',
   'selection.rename': 'Rename',
   'selection.move': 'Move',
+
+  'codeLink.manage': 'Manage code link',
+  'codeLink.filenameCodeNoUnlink': 'A code recognized from the filename cannot be unlinked.',
+  'codeLink.linkHint':
+    "Renaming the folder directly won't keep existing favorite/rating records. Link a code here to keep your data.",
+  'codeLink.codePlaceholder': 'RJ01234567',
+  'codeLink.next': 'Next',
+  'codeLink.confirmLinkMessage':
+    'This will link to {code}. If linked by mistake, you can unlink it later with "Unlink".',
+  'codeLink.linkFailed': 'Failed to link. Please try again.',
+  'codeLink.back': 'Back',
+  'codeLink.confirmLink': 'Confirm Link',
+  'codeLink.unlink': 'Unlink',
+  'codeLink.confirmUnlinkMessage1':
+    'This will unlink {code}. This folder will show as code-less again afterward.',
+  'codeLink.confirmUnlinkMessage2':
+    'Favorite/rating/memo/playtime data accumulated so far is not deleted and stays under code {code}. Re-linking the same code restores it, but linking a different code makes this data unreachable.',
+  'codeLink.dialogTitle': 'Link Code',
+  'codeLink.unlinkDialogTitle': 'Unlink',
+
+  'ratingMemo.rating': 'Rating',
+  'ratingMemo.memo': 'Memo',
+  'ratingMemo.memoPlaceholder': 'Memo',
+  'ratingMemo.saving': 'Saving...',
+  'ratingMemo.saved': 'Saved',
+  'ratingMemo.dialogTitle': 'Rating / Memo',
+
+  'launchConfig.title': 'Launch Settings',
+  'launchConfig.dialogTitle': 'Launch/Save Settings',
+  'launchConfig.archiveNotSupported':
+    'Archive files do not support launch settings. Please extract it first.',
+  'launchConfig.executable': 'Executable',
+  'launchConfig.noExeFound': 'No .exe file found.',
+  'launchConfig.launchMode': 'Launch Mode',
+  'launchConfig.normalLaunch': 'Normal',
+  'launchConfig.localeEmulatorLaunch': 'Run with Locale Emulator',
+  'launchConfig.notInstalled': ' (not installed)',
+  'launchConfig.saveLaunchConfig': 'Save Launch Settings',
+  'launchConfig.saveBackupLocation': 'Save Backup Location',
+  'launchConfig.pickSaveFolder': 'Pick Save Folder',
+  'launchConfig.backupNow': 'Backup Now',
 }
 
 export const translations = { ko, ja, en }

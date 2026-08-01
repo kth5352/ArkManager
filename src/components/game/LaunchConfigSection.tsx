@@ -8,6 +8,7 @@ import {
 } from '../../services/launchService'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { useBackupSaveNow, usePickSaveFolder, useSetSavePath } from '../../services/saveService'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../../shared/types/ipc'
 
@@ -24,6 +25,7 @@ interface LaunchConfigSectionProps {
 // this is used less often than rating/memo, so an explicit save button
 // stays appropriate here.
 export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const folderPath = game.kind === 'folder' ? game.path : ''
   const { data: executables } = useListExecutables(folderPath)
@@ -72,18 +74,16 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
         onClick={() => setExpanded(!expanded)}
       >
         <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        실행 설정
+        {t('launchConfig.title')}
       </button>
       {expanded && (
         <div className="mt-2 flex flex-col gap-3">
           {game.kind !== 'folder' ? (
-            <p className="text-xs text-muted-foreground">
-              압축파일은 실행 설정을 지원하지 않습니다. 먼저 압축을 해제해 주세요.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('launchConfig.archiveNotSupported')}</p>
           ) : (
             <>
               <div className="flex flex-col gap-1">
-                <p className="text-xs font-medium">실행파일</p>
+                <p className="text-xs font-medium">{t('launchConfig.executable')}</p>
                 {(executables ?? []).map((exe) => (
                   <label key={exe} className="flex items-center gap-2 text-xs">
                     <input
@@ -96,12 +96,12 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
                   </label>
                 ))}
                 {(executables ?? []).length === 0 && (
-                  <p className="text-xs text-muted-foreground">exe 파일을 찾을 수 없습니다.</p>
+                  <p className="text-xs text-muted-foreground">{t('launchConfig.noExeFound')}</p>
                 )}
               </div>
 
               <div className="flex flex-col gap-1">
-                <p className="text-xs font-medium">실행 방식</p>
+                <p className="text-xs font-medium">{t('launchConfig.launchMode')}</p>
                 <label className="flex items-center gap-2 text-xs">
                   <input
                     type="radio"
@@ -109,7 +109,7 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
                     checked={launchMode === 'normal'}
                     onChange={() => setLaunchMode('normal')}
                   />
-                  일반 실행
+                  {t('launchConfig.normalLaunch')}
                 </label>
                 <label className="flex items-center gap-2 text-xs">
                   <input
@@ -119,19 +119,20 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
                     onChange={() => setLaunchMode('locale-emulator')}
                     disabled={!leAvailable}
                   />
-                  Locale Emulator로 실행{!leAvailable && ' (설치되어 있지 않음)'}
+                  {t('launchConfig.localeEmulatorLaunch')}
+                  {!leAvailable && t('launchConfig.notInstalled')}
                 </label>
               </div>
 
               <Button size="sm" onClick={handleSaveLaunchConfig} disabled={!selectedExe}>
-                실행 설정 저장
+                {t('launchConfig.saveLaunchConfig')}
               </Button>
 
               <div className="border-t border-border pt-3">
-                <p className="text-xs font-medium">세이브 파일 백업 위치</p>
+                <p className="text-xs font-medium">{t('launchConfig.saveBackupLocation')}</p>
                 <div className="mt-1 flex gap-2">
                   <Button size="sm" variant="secondary" onClick={handlePickSaveFolder}>
-                    세이브 폴더 지정
+                    {t('launchConfig.pickSaveFolder')}
                   </Button>
                   <Button
                     size="sm"
@@ -139,7 +140,7 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
                     onClick={handleBackupNow}
                     disabled={backupSaveNow.isPending}
                   >
-                    지금 백업
+                    {t('launchConfig.backupNow')}
                   </Button>
                 </div>
               </div>
