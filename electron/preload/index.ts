@@ -9,6 +9,7 @@ import {
   type LaunchConfigDto,
   type Library,
   type LibraryWithStatus,
+  type Locale,
   type MoveResultDto,
   type PersistedExplorerTab,
   type RenameResultDto,
@@ -39,6 +40,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale-emulator-path' }),
     setLocaleEmulatorPath: (path: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'locale-emulator-path', value: path }),
+    getLocale: (): Promise<Locale | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale' }),
+    setLocale: (value: Locale): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'locale', value }),
   },
   libraries: {
     list: (): Promise<LibraryWithStatus[]> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_LIST),

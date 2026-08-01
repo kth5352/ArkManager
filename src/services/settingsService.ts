@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import type { Theme } from '../../shared/types/ipc'
+import type { Locale, Theme } from '../../shared/types/ipc'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../lib/clampSidebarWidth'
+import { DEFAULT_LOCALE } from '../i18n/translations'
 
 export const THEME_QUERY_KEY = ['settings', 'theme'] as const
 
@@ -85,6 +86,32 @@ export function useSetLocaleEmulatorPathMutation() {
     mutationFn: (path: string) => window.api.settings.setLocaleEmulatorPath(path),
     onSuccess: (_data, path) => {
       queryClient.setQueryData(LOCALE_EMULATOR_PATH_QUERY_KEY, path)
+    },
+  })
+}
+
+// Named "language" (not "locale") in this file's exports to avoid reading
+// like the unrelated Locale Emulator feature above - the underlying setting
+// key is still 'locale' (the standard i18n term), see shared/types/ipc.ts's
+// LocaleSchema.
+export const LANGUAGE_QUERY_KEY = ['settings', 'locale'] as const
+
+export function useLanguageQuery() {
+  return useQuery({
+    queryKey: LANGUAGE_QUERY_KEY,
+    queryFn: async (): Promise<Locale> => {
+      const value = await window.api.settings.getLocale()
+      return value ?? DEFAULT_LOCALE
+    },
+  })
+}
+
+export function useSetLanguageMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (locale: Locale) => window.api.settings.setLocale(locale),
+    onSuccess: (_data, locale) => {
+      queryClient.setQueryData(LANGUAGE_QUERY_KEY, locale)
     },
   })
 }

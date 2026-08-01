@@ -63,7 +63,10 @@ export const IPC_CHANNELS = {
 export const ThemeSchema = z.enum(['light', 'dark'])
 export type Theme = z.infer<typeof ThemeSchema>
 
-export const SettingKeySchema = z.enum(['theme', 'sidebar-width', 'locale-emulator-path'])
+export const LocaleSchema = z.enum(['ko', 'ja', 'en'])
+export type Locale = z.infer<typeof LocaleSchema>
+
+export const SettingKeySchema = z.enum(['theme', 'sidebar-width', 'locale-emulator-path', 'locale'])
 
 export const GetSettingRequestSchema = z.object({
   key: SettingKeySchema,

@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import {
   GetSettingRequestSchema,
   IPC_CHANNELS,
+  LocaleSchema,
   SetSettingRequestSchema,
   ThemeSchema,
 } from '../../../shared/types/ipc'
@@ -16,6 +17,13 @@ import type { AppDatabase } from '../database/client'
 function parseStoredTheme(raw: string | undefined): 'light' | 'dark' | null {
   if (raw === undefined) return null
   const result = ThemeSchema.safeParse(raw)
+  return result.success ? result.data : null
+}
+
+// Same self-healing principle as parseStoredTheme, for 'locale'.
+function parseStoredLocale(raw: string | undefined): 'ko' | 'ja' | 'en' | null {
+  if (raw === undefined) return null
+  const result = LocaleSchema.safeParse(raw)
   return result.success ? result.data : null
 }
 
@@ -37,6 +45,7 @@ export function registerSettingsHandlers(db: AppDatabase): void {
     const { key } = GetSettingRequestSchema.parse(payload)
     if (key === 'theme') return parseStoredTheme(getSetting(db, key))
     if (key === 'sidebar-width') return parseStoredSidebarWidth(getSetting(db, key))
+    if (key === 'locale') return parseStoredLocale(getSetting(db, key))
     return getSetting(db, key) ?? null
   })
 
