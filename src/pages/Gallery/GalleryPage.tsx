@@ -27,7 +27,17 @@ import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const CARD_WIDTH = 180
 const GAP = 16
-const CARD_TEXT_BLOCK_HEIGHT = 16 + 36 + 20 + 20 // 마지막 +20은 제목 2번째 줄분
+// Genre badges used to wrap onto a 2nd/3rd line with no height reserved for
+// them at all (only the title/code/rating/playtime rows were accounted
+// for), so react-window's fixed rowHeight cut them off - see GENRE_ROW below,
+// which reserves one line and keeps the badges from wrapping in the first
+// place (single-line + overflow-hidden instead of flex-wrap).
+const GENRE_ROW_HEIGHT = 22
+// Windows' native (non-overlay) scrollbar is ~17px wide - reserving this
+// from the column-layout math keeps it from being drawn on top of the
+// rightmost card whenever the grid's content overflows vertically.
+const SCROLLBAR_GUTTER = 17
+const CARD_TEXT_BLOCK_HEIGHT = 16 + 36 + 20 + 20 + GENRE_ROW_HEIGHT // 마지막 +20은 제목 2번째 줄분
 
 function computeCardHeight(cardWidth: number): number {
   return cardWidth * (4 / 3) + CARD_TEXT_BLOCK_HEIGHT
@@ -111,22 +121,23 @@ function GameCard({
             {formatPlaytime(userData.totalPlaytimeMs)}
           </div>
         )}
-        {genres.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {genres.slice(0, 3).map((genre) => (
-              <button
-                key={genre}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onFilterByGenre(genre)
-                }}
-                className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
-              >
-                {genre}
-              </button>
-            ))}
-          </div>
-        )}
+        <div
+          style={{ height: GENRE_ROW_HEIGHT }}
+          className="mt-1 flex items-center gap-1 overflow-hidden"
+        >
+          {genres.slice(0, 3).map((genre) => (
+            <button
+              key={genre}
+              onClick={(e) => {
+                e.stopPropagation()
+                onFilterByGenre(genre)
+              }}
+              className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+            >
+              {genre}
+            </button>
+          ))}
+        </div>
       </div>
     </motion.div>
   )
@@ -312,9 +323,17 @@ export function GalleryPage() {
                 renderProp={({ height, width }) => {
                   if (height === undefined || width === undefined) return null
 
-                  const columnCount = Math.max(1, Math.floor(width / (cardWidth + gap)))
+                  // Columns are laid out against (width - scrollbar gutter),
+                  // not the raw container width - Grid's own vertical
+                  // scrollbar (native, drawn inside that same width once
+                  // content overflows) would otherwise sit on top of the
+                  // rightmost column instead of beside it, since the column
+                  // math didn't leave it any room to render into.
+                  const availableWidth = Math.max(0, width - SCROLLBAR_GUTTER)
+                  const columnCount = Math.max(1, Math.floor(availableWidth / (cardWidth + gap)))
                   const usedWidth = columnCount * (cardWidth + gap)
-                  const extraPerColumn = columnCount > 0 ? (width - usedWidth) / columnCount : 0
+                  const extraPerColumn =
+                    columnCount > 0 ? (availableWidth - usedWidth) / columnCount : 0
                   const effectiveColumnWidth = cardWidth + gap + extraPerColumn
                   const rowCount = Math.ceil(sortedGames.length / columnCount)
 
