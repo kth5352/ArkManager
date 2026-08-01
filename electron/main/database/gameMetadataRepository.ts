@@ -63,6 +63,14 @@ export function saveGameMetadata(db: AppDatabase, code: string, data: CrawledGam
     .run()
 }
 
+// "캐시 삭제" (Settings) - wipes every crawled DLsite row (title/circle/
+// genres/cover path). Never touches game_user_data - favorites, ratings,
+// memos, launch configs, playtime, and save paths are the user's own data,
+// not re-downloadable cache, and must survive this untouched.
+export function clearAllGameMetadata(db: AppDatabase): void {
+  db.delete(gameMetadata).run()
+}
+
 export function setGameMetadataCoverPath(
   db: AppDatabase,
   code: string,

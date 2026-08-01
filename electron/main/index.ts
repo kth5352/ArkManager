@@ -11,6 +11,7 @@ import { registerMetadataHandlers } from './ipc/metadataHandlers'
 import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
+import { registerCacheHandlers } from './ipc/cacheHandlers'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
 import { rewriteCoverImagePathPrefix } from './database/gameMetadataRepository'
@@ -134,6 +135,7 @@ if (!gotSingleInstanceLock) {
     registerGameUserDataHandlers(db)
     registerLaunchHandlers(db)
     registerSaveHandlers(db)
+    registerCacheHandlers(db)
     registerThumbnailProtocolHandler(db)
 
     // A game launched via LAUNCH_GAME only persists its playtime after the

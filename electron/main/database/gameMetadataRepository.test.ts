@@ -6,7 +6,9 @@ import {
   setGameMetadataCoverPath,
   getManyGameMetadata,
   rewriteCoverImagePathPrefix,
+  clearAllGameMetadata,
 } from './gameMetadataRepository'
+import { getGameUserData, setFavorite } from './gameUserDataRepository'
 
 describe('gameMetadataRepository', () => {
   let db: AppDatabase
@@ -72,6 +74,45 @@ describe('gameMetadataRepository', () => {
 
   it('returns an empty map for an empty code list', () => {
     expect(getManyGameMetadata(db, []).size).toBe(0)
+  })
+
+  describe('clearAllGameMetadata', () => {
+    it('deletes every crawled metadata row', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+      saveGameMetadata(db, 'RJ02222222', {
+        title: 'B',
+        circle: 'B',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+
+      clearAllGameMetadata(db)
+
+      expect(getGameMetadata(db, 'RJ01111111')).toBeUndefined()
+      expect(getGameMetadata(db, 'RJ02222222')).toBeUndefined()
+    })
+
+    it('does not touch game_user_data (favorites/ratings/playtime are not cache)', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+      })
+      setFavorite(db, 'RJ01111111', 'code', true)
+
+      clearAllGameMetadata(db)
+
+      expect(getGameUserData(db, 'RJ01111111')?.isFavorite).toBe(true)
+    })
   })
 
   describe('rewriteCoverImagePathPrefix', () => {

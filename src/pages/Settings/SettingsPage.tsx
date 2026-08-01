@@ -16,6 +16,7 @@ import {
   usePickLibraryFolder,
   useRemoveLibrary,
 } from '../../services/librariesService'
+import { useClearCache } from '../../services/cacheService'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useState, type DragEvent } from 'react'
 
@@ -121,6 +122,72 @@ function AddLibraryDialog() {
   )
 }
 
+function ClearCacheDialog() {
+  const [open, setOpen] = useState(false)
+  const [deleteSaveBackups, setDeleteSaveBackups] = useState(false)
+  const clearCache = useClearCache()
+
+  const handleOpenChange = (nextOpen: boolean): void => {
+    if (!nextOpen) setDeleteSaveBackups(false)
+    clearCache.reset()
+    setOpen(nextOpen)
+  }
+
+  const handleConfirm = (): void => {
+    clearCache.mutate(deleteSaveBackups, { onSuccess: () => setOpen(false) })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="destructive">캐시 삭제</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>캐시 삭제</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 text-sm">
+          <p>
+            DLsite에서 크롤링한 작품 정보(제목/서클/장르)와 캐시된 표지 이미지를 삭제합니다. 언제든
+            "메타데이터 새로고침"으로 다시 받아올 수 있습니다.
+          </p>
+          <p className="text-muted-foreground">
+            즐겨찾기, 평점, 메모, 실행 설정, 플레이타임은 삭제되지 않습니다.
+          </p>
+          <label className="flex items-start gap-2 rounded-md border border-border p-3">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={deleteSaveBackups}
+              onChange={(e) => setDeleteSaveBackups(e.target.checked)}
+            />
+            <span>
+              <span className="block font-medium">세이브 백업 파일도 함께 삭제</span>
+              <span className="block text-xs text-muted-foreground">
+                세이브 백업은 DLsite에서 다시 받을 수 없습니다. 원본 세이브 파일이 그대로 남아있는
+                경우에만 체크하세요.
+              </span>
+            </span>
+          </label>
+          {clearCache.isError && (
+            <p className="text-xs text-destructive">
+              캐시를 삭제하지 못했습니다. 다시 시도해 주세요.
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              취소
+            </Button>
+            <Button variant="destructive" onClick={handleConfirm} disabled={clearCache.isPending}>
+              {clearCache.isPending ? '삭제 중...' : '삭제'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function SettingsPage() {
   const { data: libraries, isLoading } = useLibraries()
   const removeLibrary = useRemoveLibrary()
@@ -159,6 +226,16 @@ export function SettingsPage() {
           ))}
         </ul>
       )}
+
+      <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+        <div>
+          <h2 className="text-sm font-semibold">캐시 관리</h2>
+          <p className="text-xs text-muted-foreground">
+            크롤링한 DLsite 정보와 캐시된 표지 이미지를 삭제합니다.
+          </p>
+        </div>
+        <ClearCacheDialog />
+      </div>
     </div>
   )
 }

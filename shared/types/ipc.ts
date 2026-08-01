@@ -40,6 +40,7 @@ export const IPC_CHANNELS = {
   SAVE_PICK_FOLDER: 'save:pick-folder',
   SAVE_SET_PATH: 'save:set-path',
   SAVE_BACKUP_NOW: 'save:backup-now',
+  CACHE_CLEAR: 'cache:clear',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -259,3 +260,8 @@ export const SetSavePathRequestSchema = z.object({
 export const BackupSaveNowRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
 })
+
+export const ClearCacheRequestSchema = z.object({
+  deleteSaveBackups: z.boolean(),
+})
+export type ClearCacheRequest = z.infer<typeof ClearCacheRequestSchema>

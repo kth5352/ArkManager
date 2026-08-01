@@ -137,6 +137,10 @@ const api = {
     backupNow: (code: GameCode | null, path: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_BACKUP_NOW, { identifier: { code, path } }),
   },
+  cache: {
+    clear: (deleteSaveBackups: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.CACHE_CLEAR, { deleteSaveBackups }),
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)
