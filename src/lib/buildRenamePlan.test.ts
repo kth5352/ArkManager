@@ -119,4 +119,28 @@ describe('buildRenamePlan', () => {
       { oldName: 'MyGame', newName: 'RJ123456 [ABC studio] 게임제목 {애니메이션}' },
     ])
   })
+
+  it('sanitizes Windows-invalid characters out of crawled circle/title text', () => {
+    const plan = buildRenamePlan(
+      [
+        {
+          name: 'old.zip',
+          kind: 'file',
+          code: 'RJ123456',
+          circle: 'Circle: "Best"?',
+          title: 'Title <1> | 2 * 3 / 4 \\ 5',
+        },
+      ],
+      '{circle} {title}'
+    )
+    expect(plan).toEqual([{ oldName: 'old.zip', newName: 'Circle Best Title 1 2 3 4 5.zip' }])
+  })
+
+  it('sanitizes Windows-invalid characters out of crawled genre tags', () => {
+    const plan = buildRenamePlan(
+      [{ name: 'old.zip', kind: 'file', genres: ['A/B', 'C"D'] }],
+      '{genres}'
+    )
+    expect(plan).toEqual([{ oldName: 'old.zip', newName: '{A B, C D}.zip' }])
+  })
 })

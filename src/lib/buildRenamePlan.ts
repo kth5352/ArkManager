@@ -15,6 +15,21 @@ export interface RenamePlanEntry {
   newName: string
 }
 
+// Crawled DLsite text (circle/title/genres) is untrusted foreign text and
+// routinely contains characters Windows filenames can't hold (`:`, `"`,
+// `<`, `>`, `|`, `*`, and path separators `/`/`\`) - substituting it in raw
+// let a rename pattern that looked fine in the preview fail with a raw OS
+// error at apply time (renameEntries.ts's own isSafeFileName check only
+// rejects an entirely empty/./.. name or an embedded separator, not this).
+// Replaced with a space (collapsed by the whitespace cleanup below) rather
+// than dropped outright, so e.g. "Title: Subtitle" stays two readable words
+// instead of running together as "TitleSubtitle".
+const WINDOWS_INVALID_FILENAME_CHARS = /[<>:"/\\|?*]/g
+
+function sanitizeForFileName(value: string): string {
+  return value.replace(WINDOWS_INVALID_FILENAME_CHARS, ' ')
+}
+
 function splitExtension(name: string, kind: 'file' | 'folder'): { base: string; ext: string } {
   if (kind === 'folder') return { base: name, ext: '' }
   const dotIndex = name.lastIndexOf('.')
@@ -52,7 +67,9 @@ export function buildRenamePlan(targets: RenameTarget[], pattern: string): Renam
   return targets.map((target, i) => {
     const { base, ext } = splitExtension(target.name, target.kind)
     const index = i + 1
-    const genresText = target.genres?.length ? `{${target.genres.slice(0, 3).join(', ')}}` : ''
+    const genresText = target.genres?.length
+      ? sanitizeForFileName(`{${target.genres.slice(0, 3).join(', ')}}`)
+      : ''
     let newName = pattern
       .replace(/\{name\}/g, base)
       .replace(/\{index:(\d+)\}/g, (_match, digits: string) =>
@@ -60,8 +77,8 @@ export function buildRenamePlan(targets: RenameTarget[], pattern: string): Renam
       )
       .replace(/\{index\}/g, String(index))
       .replace(/\{code\}/g, target.code ?? '')
-      .replace(/\{circle\}/g, target.circle ?? '')
-      .replace(/\{title\}/g, target.title ?? base)
+      .replace(/\{circle\}/g, sanitizeForFileName(target.circle ?? ''))
+      .replace(/\{title\}/g, sanitizeForFileName(target.title ?? base))
       .replace(/\{genres\}/g, genresText)
       .replace(/\{ext\}/g, ext)
       // Missing metadata (e.g. no circle crawled) leaves behind runs of
