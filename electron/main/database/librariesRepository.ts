@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { libraries } from './schema'
+import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 
 export interface Library {
   id: string
@@ -12,10 +13,10 @@ export interface Library {
 // Windows filesystems are case-insensitive, so "D:\Games" and "d:\games" refer
 // to the same folder. Lowercasing (and trimming a trailing slash) before the
 // path hits the `unique` constraint stops a user from registering the same
-// library twice under different casing.
-export function normalizeLibraryPath(path: string): string {
-  return path.toLowerCase().replace(/[\\/]+$/, '')
-}
+// library twice under different casing. Re-exported here (moved to shared/
+// so the renderer can use the exact same normalization) so every existing
+// `from '../database/librariesRepository'` import keeps working.
+export { normalizeLibraryPath }
 
 export function listLibraries(db: AppDatabase): Library[] {
   return db.select().from(libraries).all()

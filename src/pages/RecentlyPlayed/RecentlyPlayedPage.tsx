@@ -1,6 +1,8 @@
+import { useNavigate } from '@tanstack/react-router'
 import { useRecentlyPlayed } from '../../services/gameUserDataService'
 import { useGameCoverImage, useGameMetadata } from '../../services/metadataService'
 import { useGameUserData } from '../../services/gameUserDataService'
+import { usePendingGalleryOpenStore } from '../../stores/pendingGalleryOpenStore'
 import { formatPlaytime } from './formatPlaytime'
 import type { GameCode } from '../../../shared/types/scanner'
 
@@ -19,9 +21,19 @@ function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastP
   // design) is staying useful after the game's own files are gone, so it
   // must never touch the filesystem path at all.
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? code : null)
+  const navigate = useNavigate()
+  const setPendingKey = usePendingGalleryOpenStore((s) => s.setPendingKey)
+
+  const handleClick = (): void => {
+    setPendingKey(entryKey)
+    navigate({ to: '/' })
+  }
 
   return (
-    <div className="flex items-center gap-3 border-b border-border px-4 py-2 text-sm">
+    <button
+      onClick={handleClick}
+      className="flex w-full items-center gap-3 border-b border-border px-4 py-2 text-left text-sm transition-colors hover:bg-accent"
+    >
       <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
         {coverImage && (
           <img src={coverImage} alt="" className="h-full w-full object-cover" draggable={false} />
@@ -32,7 +44,7 @@ function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastP
         <span>{formatPlaytime(userData?.totalPlaytimeMs ?? 0)}</span>
         <span>{lastPlayedAt.slice(0, 10)}</span>
       </span>
-    </div>
+    </button>
   )
 }
 

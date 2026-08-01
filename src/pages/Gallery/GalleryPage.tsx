@@ -15,6 +15,8 @@ import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
 import { useLongPress } from '../../hooks/useLongPress'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { usePendingGalleryOpenStore } from '../../stores/pendingGalleryOpenStore'
+import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { Skeleton } from '../../components/ui/skeleton'
@@ -242,6 +244,17 @@ export function GalleryPage() {
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   useFavoriteShortcut(hoveredGame)
   const scanProgress = useScanProgress(isLoading)
+
+  const pendingOpenKey = usePendingGalleryOpenStore((s) => s.pendingKey)
+  const clearPendingOpenKey = usePendingGalleryOpenStore((s) => s.clearPendingKey)
+  useEffect(() => {
+    if (!pendingOpenKey || !games) return
+    const match = games.find(
+      (g) => g.code?.value === pendingOpenKey || normalizeLibraryPath(g.path) === pendingOpenKey
+    )
+    if (match) openDetail(match)
+    clearPendingOpenKey()
+  }, [pendingOpenKey, games, openDetail, clearPendingOpenKey])
 
   // Toggling the detail sidebar or resizing the window changes the grid's
   // available width, which changes columnCount, which reflows every card
