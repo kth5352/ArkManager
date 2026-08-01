@@ -16,6 +16,7 @@ export interface MediaPlaybackState {
     playsInline: boolean
     onTimeUpdate: () => void
     onLoadedMetadata: () => void
+    onDurationChange: () => void
     onEnded: () => void
     onPlay: () => void
     onPause: () => void
@@ -154,6 +155,15 @@ export function useMediaPlayback({
         playsInline: true,
         onTimeUpdate: () => elRef.current && setCurrentTime(elRef.current.currentTime),
         onLoadedMetadata: () => elRef.current && setDuration(elRef.current.duration),
+        // media:// serves through Electron's net.fetch (see mediaProtocol.ts)
+        // rather than a plain file:// load - the element's `duration` is
+        // often still Infinity/NaN at loadedmetadata time (the real length
+        // isn't known from headers alone yet) and only resolves once more of
+        // the stream has been read. durationchange fires again whenever that
+        // resolves, which loadedmetadata alone would miss entirely -
+        // formatTime's "not finite -> 0:00" fallback was otherwise the only
+        // value ever shown.
+        onDurationChange: () => elRef.current && setDuration(elRef.current.duration),
         onEnded: () => next(),
         onPlay: () => setPlaying(true),
         onPause: () => setPlaying(false),

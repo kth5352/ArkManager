@@ -75,7 +75,12 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
           <input
             type="range"
             min={0}
-            max={playback.duration || 0}
+            // `playback.duration || 0` would leave this as Infinity while
+            // the real duration isn't known yet (see useMediaPlayback's
+            // durationchange handling) - a range input with max="Infinity"
+            // doesn't drag correctly, which is what made seeking silently
+            // do nothing until the duration happened to resolve.
+            max={Number.isFinite(playback.duration) ? playback.duration : 0}
             value={playback.currentTime}
             onChange={(e) => playback.handleSeek(Number(e.target.value))}
             className="h-1 w-full"
