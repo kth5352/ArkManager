@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
-import { Clock, Heart, Star } from 'lucide-react'
+import { Clock, Copy, Heart, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -20,6 +20,7 @@ import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndic
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
+import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -39,12 +40,14 @@ const ZOOM_STEP = 0.05
 function GameCard({
   game,
   genres,
+  duplicateCount,
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
 }: {
   game: ScannedEntry
   genres: string[]
+  duplicateCount: number | undefined
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
@@ -79,7 +82,18 @@ function GameCard({
       </div>
       <div className="shrink-0 p-2">
         <p className="line-clamp-2 break-words text-sm font-medium">{game.name}</p>
-        {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
+        <div className="flex items-center gap-1">
+          {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
+          {!!duplicateCount && (
+            <span
+              title={`같은 코드의 파일이 ${duplicateCount}개 있습니다.`}
+              className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
+            >
+              <Copy className="h-2.5 w-2.5" />
+              {duplicateCount}
+            </span>
+          )}
+        </div>
         {userData?.rating != null && (
           <div className="mt-0.5 flex gap-0.5">
             {[1, 2, 3, 4, 5].map((value) => (
@@ -124,6 +138,7 @@ interface GridCellProps {
   gap: number
   cardWidth: number
   metadataByCode: Record<string, { genres: string[] }>
+  duplicateGroups: Map<string, ScannedEntry[]>
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
@@ -138,6 +153,7 @@ function GameCell({
   gap,
   cardWidth,
   metadataByCode,
+  duplicateGroups,
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
@@ -146,12 +162,14 @@ function GameCell({
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
+  const duplicateCount = game.code ? duplicateGroups.get(game.code.value)?.length : undefined
   return (
     <div style={{ ...style, padding: gap / 2, display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: cardWidth }}>
         <GameCard
           game={game}
           genres={genres}
+          duplicateCount={duplicateCount}
           onFilterByGenre={onFilterByGenre}
           onHoverChange={onHoverChange}
           onOpenDetail={onOpenDetail}
@@ -179,6 +197,7 @@ export function GalleryPage() {
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
+  const duplicateGroups = groupDuplicatesByCode(games ?? [])
 
   // Clicking a tag on a card is a quick "show me only this" shortcut, not
   // an incremental toggle - it replaces whatever include filter was active
@@ -304,6 +323,7 @@ export function GalleryPage() {
                         gap,
                         cardWidth,
                         metadataByCode,
+                        duplicateGroups,
                         onFilterByGenre: filterByGenre,
                         onHoverChange: setHoveredGame,
                         onOpenDetail: openDetail,

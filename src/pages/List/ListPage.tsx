@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { Clock, Heart, Star } from 'lucide-react'
+import { Clock, Copy, Heart, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -20,6 +20,7 @@ import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndic
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
+import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -34,12 +35,14 @@ function formatMtime(mtimeMs: number): string {
 function GameRow({
   game,
   genres,
+  duplicateCount,
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
 }: {
   game: ScannedEntry
   genres: string[]
+  duplicateCount: number | undefined
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
@@ -91,19 +94,30 @@ function GameRow({
             </div>
           )}
         </div>
-        {game.code ? (
-          <button
-            className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (game.code) openExternal.mutate(game.code)
-            }}
-          >
-            {game.code.value}
-          </button>
-        ) : (
-          <p className="truncate text-xs text-muted-foreground">코드없음</p>
-        )}
+        <div className="flex items-center gap-1">
+          {game.code ? (
+            <button
+              className="truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (game.code) openExternal.mutate(game.code)
+              }}
+            >
+              {game.code.value}
+            </button>
+          ) : (
+            <p className="truncate text-xs text-muted-foreground">코드없음</p>
+          )}
+          {!!duplicateCount && (
+            <span
+              title={`같은 코드의 파일이 ${duplicateCount}개 있습니다.`}
+              className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 text-[10px] text-destructive"
+            >
+              <Copy className="h-2.5 w-2.5" />
+              {duplicateCount}
+            </span>
+          )}
+        </div>
       </div>
       <span className="w-24 shrink-0 text-xs text-muted-foreground">
         {formatMtime(game.mtimeMs)}
@@ -132,6 +146,7 @@ function GameRow({
 interface ListRowProps {
   games: ScannedEntry[]
   metadataByCode: Record<string, { genres: string[] }>
+  duplicateGroups: Map<string, ScannedEntry[]>
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
@@ -142,6 +157,7 @@ function Row({
   style,
   games,
   metadataByCode,
+  duplicateGroups,
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
@@ -149,11 +165,13 @@ function Row({
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
+  const duplicateCount = game.code ? duplicateGroups.get(game.code.value)?.length : undefined
   return (
     <div style={style}>
       <GameRow
         game={game}
         genres={genres}
+        duplicateCount={duplicateCount}
         onFilterByGenre={onFilterByGenre}
         onOpenDetail={onOpenDetail}
         onHoverChange={onHoverChange}
@@ -178,6 +196,7 @@ export function ListPage() {
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
+  const duplicateGroups = groupDuplicatesByCode(games ?? [])
 
   // Clicking a tag on a row is a quick "show me only this" shortcut, not an
   // incremental toggle - see SearchHeader's own filter-composer input for
@@ -259,6 +278,7 @@ export function ListPage() {
                       rowProps={{
                         games: sortedGames,
                         metadataByCode,
+                        duplicateGroups,
                         onFilterByGenre: filterByGenre,
                         onOpenDetail: openDetail,
                         onHoverChange: setHoveredGame,

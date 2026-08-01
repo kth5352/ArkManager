@@ -1,13 +1,14 @@
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { useState } from 'react'
-import { Star } from 'lucide-react'
+import { Copy, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
+import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
@@ -41,6 +42,7 @@ function formatDate(mtimeMs: number): string {
 interface DetailListRowProps {
   entries: ScannedEntry[]
   metadataByCode: Record<string, { genres: string[] }>
+  duplicateGroups: Map<string, ScannedEntry[]>
   onOpenDetail: (entry: ScannedEntry) => void
 }
 
@@ -49,12 +51,14 @@ function Row({
   style,
   entries,
   metadataByCode,
+  duplicateGroups,
   onOpenDetail,
 }: RowComponentProps<DetailListRowProps>) {
   const entry = entries[index]
   const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
   if (!entry) return null
   const genres = entry.code ? (metadataByCode[entry.code.value]?.genres ?? []) : []
+  const duplicates = entry.code ? duplicateGroups.get(entry.code.value) : undefined
 
   return (
     <div
@@ -65,6 +69,18 @@ function Row({
       <FileKindIcon kind={entry.kind} name={entry.name} className="h-3.5 w-3.5 shrink-0" />
       <span className="w-28 shrink-0 truncate">{entry.code?.value ?? '-'}</span>
       <span className="min-w-0 flex-1 truncate text-foreground">{entry.name}</span>
+      {duplicates && (
+        <span
+          className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
+          title={`같은 코드의 다른 사본 ${duplicates.length - 1}개:\n${duplicates
+            .filter((d) => d.path !== entry.path)
+            .map((d) => d.path)
+            .join('\n')}`}
+        >
+          <Copy className="h-3 w-3" />
+          {duplicates.length}
+        </span>
+      )}
       <span className="w-64 shrink-0 truncate">{entry.path}</span>
       <span className="w-40 shrink-0 truncate">{genres.join(', ')}</span>
       <span className="w-24 shrink-0">{formatDate(entry.mtimeMs)}</span>
@@ -97,6 +113,10 @@ export function DetailListPage() {
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
+  // Computed from the full unfiltered library, not the current search/filter
+  // results - "this game has another copy elsewhere" should stay true
+  // regardless of what's currently visible.
+  const duplicateGroups = groupDuplicatesByCode(games ?? [])
 
   if (isError && !games) {
     return (
@@ -161,7 +181,12 @@ export function DetailListPage() {
                   return (
                     <List
                       rowComponent={Row}
-                      rowProps={{ entries: sorted, metadataByCode, onOpenDetail: openDetail }}
+                      rowProps={{
+                        entries: sorted,
+                        metadataByCode,
+                        duplicateGroups,
+                        onOpenDetail: openDetail,
+                      }}
                       rowCount={sorted.length}
                       rowHeight={ROW_HEIGHT}
                       style={{ height, width }}
