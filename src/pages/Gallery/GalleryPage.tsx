@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
-import { Heart, Star } from 'lucide-react'
+import { Clock, Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -20,6 +20,7 @@ import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
+import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const CARD_WIDTH = 180
@@ -87,6 +88,12 @@ function GameCard({
                 fill={value <= (userData.rating ?? 0) ? 'currentColor' : 'none'}
               />
             ))}
+          </div>
+        )}
+        {!!userData?.totalPlaytimeMs && (
+          <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {formatPlaytime(userData.totalPlaytimeMs)}
           </div>
         )}
         {genres.length > 0 && (

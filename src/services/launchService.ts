@@ -51,9 +51,21 @@ export function useLaunchGame() {
       // totalPlaytimeMs. Update this entry's own cache slot directly with
       // the sessionMs the backend just persisted, so it doesn't wait out
       // useGameUserData's 5-minute staleTime.
-      queryClient.setQueryData<GameUserDataDto | null>(userDataQueryKey(entry), (prev) =>
-        prev ? { ...prev, totalPlaytimeMs: prev.totalPlaytimeMs + result.sessionMs } : prev
+      const updated = queryClient.setQueryData<GameUserDataDto | null>(
+        userDataQueryKey(entry),
+        (prev) =>
+          prev ? { ...prev, totalPlaytimeMs: prev.totalPlaytimeMs + result.sessionMs } : prev
       )
+      // A game launched for the first time ever has no existing cache entry
+      // (prev is null/undefined) - the update above silently no-ops then,
+      // since there's no safe way to guess the other fields (isFavorite/
+      // rating/memo/launchConfig) well enough to fabricate a whole object.
+      // Force a refetch instead of leaving the UI showing no playtime at all
+      // until the next natural 5-minute staleTime refetch - this is exactly
+      // the case that made tracking look broken on a game's first launch.
+      if (updated === undefined || updated === null) {
+        queryClient.invalidateQueries({ queryKey: userDataQueryKey(entry) })
+      }
       queryClient.invalidateQueries({ queryKey: ['game-user-data', 'recently-played'] })
     },
   })

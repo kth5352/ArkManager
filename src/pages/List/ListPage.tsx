@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { Heart, Star } from 'lucide-react'
+import { Clock, Heart, Star } from 'lucide-react'
 import { useGames } from '../../services/useGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -20,6 +20,7 @@ import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { useGameMetadataMany } from '../../services/metadataService'
+import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 84 // 64 + 20 (제목 2번째 줄분)
@@ -116,6 +117,12 @@ function GameRow({
             />
           ))}
         </div>
+      )}
+      {!!userData?.totalPlaytimeMs && (
+        <span className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          {formatPlaytime(userData.totalPlaytimeMs)}
+        </span>
       )}
     </div>
   )

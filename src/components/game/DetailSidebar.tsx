@@ -1,5 +1,5 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { X } from 'lucide-react'
+import { Clock, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
@@ -8,7 +8,9 @@ import { LaunchConfigDialog } from './LaunchConfigDialog'
 import { CodeLinkSection } from './CodeLinkSection'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
+import { useGameUserData } from '../../services/gameUserDataService'
 import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
+import { formatPlaytime } from '../../pages/RecentlyPlayed/formatPlaytime'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
@@ -30,6 +32,7 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
   const { data: metadata } = useGameMetadata(game?.code ?? null)
+  const { data: userData } = useGameUserData(game ?? { code: null, path: '' })
   // A failed launch (no saved config yet) opens the centered modal dialog
   // instead of expanding LaunchConfigSection inline - more discoverable/less
   // easy to miss than an inline section quietly expanding somewhere in an
@@ -133,6 +136,12 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
           </button>
         ) : (
           <p className="text-xs text-muted-foreground">코드없음</p>
+        )}
+        {!!userData?.totalPlaytimeMs && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            플레이타임: {formatPlaytime(userData.totalPlaytimeMs)}
+          </div>
         )}
         <div className="flex flex-wrap gap-2">
           {game.code && (
