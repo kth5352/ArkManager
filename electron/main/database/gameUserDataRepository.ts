@@ -241,3 +241,54 @@ export function rekeyToCode(db: AppDatabase, oldPathKey: string, newCode: string
       .run()
   })
 }
+
+// Moves a path-keyed row onto the entry's new path after it's physically
+// moved on disk (see moveEntries.ts / EXPLORER_MOVE_ENTRIES) - a coded
+// entry never needs this (its key is the code, unaffected by location), but
+// a code-less entry's favorite/rating/memo/playtime/customCoverPath would
+// otherwise silently orphan at the old path once the file itself is gone
+// from there. Any pre-existing row at the new path is overwritten outright
+// (not merged like rekeyToCode) - two entries already having independent
+// history at the exact same destination path is not a real scenario a
+// filesystem move can produce.
+export function rekeyPath(db: AppDatabase, oldPathKey: string, newPathKey: string): void {
+  const existing = getGameUserData(db, oldPathKey)
+  if (!existing || existing.keyType !== 'path' || oldPathKey === newPathKey) return
+
+  const now = new Date().toISOString()
+  const launchConfig = existing.launchConfig ? JSON.stringify(existing.launchConfig) : null
+
+  db.transaction((tx) => {
+    tx.delete(gameUserData).where(eq(gameUserData.key, oldPathKey)).run()
+    tx.insert(gameUserData)
+      .values({
+        key: newPathKey,
+        keyType: 'path',
+        isFavorite: existing.isFavorite,
+        rating: existing.rating,
+        memo: existing.memo,
+        launchConfig,
+        totalPlaytimeMs: existing.totalPlaytimeMs,
+        lastPlayedAt: existing.lastPlayedAt,
+        savePath: existing.savePath,
+        customCoverPath: existing.customCoverPath,
+        createdAt: existing.createdAt,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: gameUserData.key,
+        set: {
+          isFavorite: existing.isFavorite,
+          rating: existing.rating,
+          memo: existing.memo,
+          launchConfig,
+          totalPlaytimeMs: existing.totalPlaytimeMs,
+          lastPlayedAt: existing.lastPlayedAt,
+          savePath: existing.savePath,
+          customCoverPath: existing.customCoverPath,
+          updatedAt: now,
+        },
+      })
+      .run()
+  })
+}

@@ -4,6 +4,7 @@ import {
   getGameUserData,
   touchGameUserData,
   rekeyToCode,
+  rekeyPath,
   setFavorite,
   setRatingAndMemo,
   listFavoriteKeys,
@@ -219,6 +220,36 @@ describe('gameUserDataRepository', () => {
     expect(getGameUserData(db, 'RJ06666666')?.customCoverPath).toBe(
       'C:\\userdata\\custom-covers\\abc.webp'
     )
+  })
+
+  it('rekeys a path-keyed row onto a new path, preserving its data', () => {
+    setFavorite(db, 'd:\\games\\old-folder', 'path', true)
+    setRatingAndMemo(db, 'd:\\games\\old-folder', 'path', 5, '메모')
+    recordPlaySession(db, 'd:\\games\\old-folder', 'path', 60_000)
+    setCustomCoverPath(db, 'd:\\games\\old-folder', 'path', 'C:\\covers\\a.webp')
+
+    rekeyPath(db, 'd:\\games\\old-folder', 'd:\\archive\\old-folder')
+
+    expect(getGameUserData(db, 'd:\\games\\old-folder')).toBeUndefined()
+    const after = getGameUserData(db, 'd:\\archive\\old-folder')
+    expect(after?.keyType).toBe('path')
+    expect(after?.isFavorite).toBe(true)
+    expect(after?.rating).toBe(5)
+    expect(after?.memo).toBe('메모')
+    expect(after?.totalPlaytimeMs).toBe(60_000)
+    expect(after?.customCoverPath).toBe('C:\\covers\\a.webp')
+  })
+
+  it('rekeyPath is a no-op when there is nothing at the old path', () => {
+    expect(() => rekeyPath(db, 'd:\\nope', 'd:\\elsewhere')).not.toThrow()
+    expect(getGameUserData(db, 'd:\\elsewhere')).toBeUndefined()
+  })
+
+  it('rekeyPath does not touch a code-keyed row', () => {
+    setFavorite(db, 'RJ01234567', 'code', true)
+    rekeyPath(db, 'RJ01234567', 'd:\\somewhere')
+    expect(getGameUserData(db, 'RJ01234567')?.isFavorite).toBe(true)
+    expect(getGameUserData(db, 'd:\\somewhere')).toBeUndefined()
   })
 
   it('lists keys with a recorded play session, most recent first', () => {

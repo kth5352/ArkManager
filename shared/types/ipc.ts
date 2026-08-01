@@ -19,6 +19,8 @@ export const IPC_CHANNELS = {
   EXPLORER_LOAD_TABS: 'explorer:load-tabs',
   EXPLORER_RENAME_ENTRIES: 'explorer:rename-entries',
   EXPLORER_DELETE_ENTRIES: 'explorer:delete-entries',
+  EXPLORER_PICK_MOVE_DESTINATION: 'explorer:pick-move-destination',
+  EXPLORER_MOVE_ENTRIES: 'explorer:move-entries',
   SORT_GET: 'sort:get',
   SORT_SET: 'sort:set',
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
@@ -318,5 +320,18 @@ export type DeleteEntriesRequest = z.infer<typeof DeleteEntriesRequestSchema>
 export interface DeleteResultDto {
   path: string
   success: boolean
+  error?: string
+}
+
+export const MoveEntriesRequestSchema = z.object({
+  paths: z.array(z.string()),
+  destDir: z.string(),
+})
+export type MoveEntriesRequest = z.infer<typeof MoveEntriesRequestSchema>
+
+export interface MoveResultDto {
+  path: string
+  success: boolean
+  newPath?: string
   error?: string
 }

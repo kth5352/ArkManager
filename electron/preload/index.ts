@@ -9,6 +9,7 @@ import {
   type LaunchConfigDto,
   type Library,
   type LibraryWithStatus,
+  type MoveResultDto,
   type PersistedExplorerTab,
   type RenameResultDto,
   type SortPage,
@@ -77,6 +78,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_RENAME_ENTRIES, { renames }),
     deleteEntries: (paths: string[]): Promise<DeleteResultDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_DELETE_ENTRIES, { paths }),
+    pickMoveDestination: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_PICK_MOVE_DESTINATION),
+    moveEntries: (paths: string[], destDir: string): Promise<MoveResultDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_MOVE_ENTRIES, { paths, destDir }),
   },
   sort: {
     get: (page: SortPage): Promise<SortPreference | null> =>

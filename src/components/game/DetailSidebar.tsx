@@ -9,6 +9,7 @@ import { CodeLinkSection } from './CodeLinkSection'
 import { CustomCoverSection } from './CustomCoverSection'
 import { RenameDialog } from './RenameDialog'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
+import { MoveDialog } from './MoveDialog'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import { useGameUserData } from '../../services/gameUserDataService'
@@ -45,7 +46,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   // dialog itself is keyed by game identity below, which unmounts (closes)
   // it on any game switch.
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
-  const [dialogMode, setDialogMode] = useState<'rename' | 'delete' | null>(null)
+  const [dialogMode, setDialogMode] = useState<'rename' | 'delete' | 'move' | null>(null)
 
   if (persistedWidth !== syncedWidth) {
     setSyncedWidth(persistedWidth)
@@ -189,6 +190,9 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
           <Button size="sm" variant="secondary" onClick={() => setDialogMode('rename')}>
             이름 변경
           </Button>
+          <Button size="sm" variant="secondary" onClick={() => setDialogMode('move')}>
+            이동
+          </Button>
           <Button size="sm" variant="destructive" onClick={() => setDialogMode('delete')}>
             삭제
           </Button>
@@ -217,6 +221,11 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
       <DeleteConfirmDialog
         key={dialogMode === 'delete' ? game.path : 'closed'}
         targets={dialogMode === 'delete' ? [game] : []}
+        onClose={() => setDialogMode(null)}
+      />
+      <MoveDialog
+        key={dialogMode === 'move' ? game.path : 'closed'}
+        targets={dialogMode === 'move' ? [game] : []}
         onClose={() => setDialogMode(null)}
       />
     </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '../ui/button'
 import { RenameDialog } from '../game/RenameDialog'
 import { DeleteConfirmDialog } from '../game/DeleteConfirmDialog'
+import { MoveDialog } from '../game/MoveDialog'
 import { useSelectionStore } from '../../stores/selectionStore'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -21,7 +22,7 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
   const activate = useSelectionStore((s) => s.activate)
   const deactivate = useSelectionStore((s) => s.deactivate)
   const selectAll = useSelectionStore((s) => s.selectAll)
-  const [dialogMode, setDialogMode] = useState<'rename' | 'delete' | null>(null)
+  const [dialogMode, setDialogMode] = useState<'rename' | 'delete' | 'move' | null>(null)
 
   if (!isActive) {
     return (
@@ -55,6 +56,14 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
         </Button>
         <Button
           size="sm"
+          variant="secondary"
+          onClick={() => setDialogMode('move')}
+          disabled={selectedPaths.size === 0}
+        >
+          이동
+        </Button>
+        <Button
+          size="sm"
           variant="destructive"
           onClick={() => setDialogMode('delete')}
           disabled={selectedPaths.size === 0}
@@ -73,6 +82,11 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
       <DeleteConfirmDialog
         key={dialogMode === 'delete' ? selectedEntries.map((e) => e.path).join('|') : 'closed'}
         targets={dialogMode === 'delete' ? selectedEntries : []}
+        onClose={closeDialog}
+      />
+      <MoveDialog
+        key={dialogMode === 'move' ? selectedEntries.map((e) => e.path).join('|') : 'closed'}
+        targets={dialogMode === 'move' ? selectedEntries : []}
         onClose={closeDialog}
       />
     </>

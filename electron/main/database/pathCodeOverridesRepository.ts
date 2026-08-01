@@ -39,3 +39,26 @@ export function listPathCodeOverrides(db: AppDatabase): Map<string, string> {
 export function deletePathCodeOverride(db: AppDatabase, normalizedPath: string): void {
   db.delete(pathCodeOverrides).where(eq(pathCodeOverrides.path, normalizedPath)).run()
 }
+
+// Moves a manually-linked code from its old path to its new one after the
+// underlying file/folder is physically moved (see moveEntries.ts /
+// EXPLORER_MOVE_ENTRIES) - without this, a moved code-less-by-filename entry
+// would silently lose its code link, since the override is keyed by the
+// exact normalized path it was created at. No-op if the old path was never
+// linked to a code.
+export function rekeyPathCodeOverride(
+  db: AppDatabase,
+  oldNormalizedPath: string,
+  newNormalizedPath: string
+): void {
+  const code = getPathCodeOverride(db, oldNormalizedPath)
+  if (!code) return
+
+  db.transaction((tx) => {
+    tx.delete(pathCodeOverrides).where(eq(pathCodeOverrides.path, oldNormalizedPath)).run()
+    tx.insert(pathCodeOverrides)
+      .values({ path: newNormalizedPath, code, createdAt: new Date().toISOString() })
+      .onConflictDoUpdate({ target: pathCodeOverrides.path, set: { code } })
+      .run()
+  })
+}
