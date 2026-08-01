@@ -96,7 +96,7 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
             <Button onClick={onClose}>{t('common.close')}</Button>
           </div>
         ) : isBulk ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-3">
             <Input
               value={pattern}
               onChange={(e) => setPattern(e.target.value)}
@@ -104,9 +104,17 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
               autoFocus
             />
             <p className="text-xs text-muted-foreground">{t('rename.tokenHelp')}</p>
-            <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2 text-xs">
+            {/* min-w-0 is required on both this list and its <li> children -
+                a flex item's default min-width is auto, so without it a long
+                filename's intrinsic (unwrapped) width overrides truncate's
+                own overflow-hidden and pushes this list - and everything
+                sharing its flex chain, up to the dialog itself, which has no
+                overflow clipping of its own - wider than the dialog's
+                max-w-lg, spilling content out past its right edge instead of
+                actually truncating with an ellipsis. */}
+            <ul className="flex min-w-0 max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2 text-xs">
               {preview.map((p, i) => (
-                <li key={targets[i].path} className="truncate text-muted-foreground">
+                <li key={targets[i].path} className="min-w-0 truncate text-muted-foreground">
                   {p.oldName} → <span className="text-foreground">{p.newName}</span>
                 </li>
               ))}
