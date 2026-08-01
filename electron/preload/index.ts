@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   IPC_CHANNELS,
   type BulkCrawlProgressDto,
+  type DeleteResultDto,
   type DlsiteSearchResultDto,
   type GameMetadataDto,
   type GameUserDataDto,
@@ -9,6 +10,7 @@ import {
   type Library,
   type LibraryWithStatus,
   type PersistedExplorerTab,
+  type RenameResultDto,
   type SortPage,
   type SortPreference,
   type Theme,
@@ -69,6 +71,12 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_SAVE_TABS, { tabs }),
     load: (): Promise<PersistedExplorerTab[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_LOAD_TABS),
+  },
+  fileOps: {
+    renameEntries: (renames: { path: string; newName: string }[]): Promise<RenameResultDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_RENAME_ENTRIES, { renames }),
+    deleteEntries: (paths: string[]): Promise<DeleteResultDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.EXPLORER_DELETE_ENTRIES, { paths }),
   },
   sort: {
     get: (page: SortPage): Promise<SortPreference | null> =>

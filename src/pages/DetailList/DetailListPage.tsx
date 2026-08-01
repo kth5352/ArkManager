@@ -13,7 +13,9 @@ import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
+import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
+import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { HoverTooltip } from '../../components/ui/hover-tooltip'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
@@ -143,6 +145,7 @@ function Row({
       className="flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
       onClick={() => onOpenDetail(entry)}
     >
+      <SelectionCheckbox path={entry.path} className="h-3.5 w-3.5 shrink-0 rounded-sm" />
       <FileKindIcon kind={entry.kind} name={entry.name} className="h-3.5 w-3.5 shrink-0" />
       <HoverTooltip
         content={entry.code?.value ?? '-'}
@@ -275,6 +278,7 @@ export function DetailListPage() {
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
         <LibraryVisibilityDialog />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+        <SelectionToolbar allEntries={sorted} />
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
@@ -288,6 +292,7 @@ export function DetailListPage() {
                 style={{ height: HEADER_HEIGHT }}
                 className="flex shrink-0 items-center gap-4 border-b border-border bg-muted/40 px-4"
               >
+                <span className="h-3.5 w-3.5 shrink-0" />
                 <span className="h-3.5 w-3.5 shrink-0" />
                 <HeaderCell
                   label="코드"

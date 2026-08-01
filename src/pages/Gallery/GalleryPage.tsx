@@ -6,8 +6,10 @@ import { Clock, Copy, Heart, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
+import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
+import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
@@ -87,6 +89,10 @@ function GameCard({
       <div className="absolute left-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground">
         <FileKindIcon kind={game.kind} name={game.name} className="h-4 w-4" />
       </div>
+      <SelectionCheckbox
+        path={game.path}
+        className="absolute left-2 top-9 z-10 h-4 w-4 rounded-sm"
+      />
       <div className="aspect-[3/4] w-full bg-muted">
         <GameThumbnail entry={game} />
       </div>
@@ -318,6 +324,7 @@ export function GalleryPage() {
           zoom={zoom}
           onZoomChange={setZoom}
         />
+        <SelectionToolbar allEntries={sortedGames} />
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">

@@ -5,8 +5,10 @@ import { Clock, Copy, Heart, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
+import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
 import { LibraryVisibilityDialog } from '../../components/layout/LibraryVisibilityDialog'
+import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useOpenExternal } from '../../services/shellService'
 import { useGameUserData, useToggleFavorite } from '../../services/gameUserDataService'
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
@@ -58,6 +60,7 @@ function GameRow({
       onMouseEnter={() => onHoverChange(game)}
       onMouseLeave={() => onHoverChange(null)}
     >
+      <SelectionCheckbox path={game.path} className="h-4 w-4 shrink-0 rounded-sm" />
       <button
         aria-label="즐겨찾기 토글"
         onClick={(e) => {
@@ -261,6 +264,7 @@ export function ListPage() {
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
         <LibraryVisibilityDialog />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+        <SelectionToolbar allEntries={sortedGames} />
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">

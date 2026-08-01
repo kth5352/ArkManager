@@ -17,6 +17,8 @@ export const IPC_CHANNELS = {
   SCANNER_SCAN_PROGRESS: 'scanner:scan-progress',
   EXPLORER_SAVE_TABS: 'explorer:save-tabs',
   EXPLORER_LOAD_TABS: 'explorer:load-tabs',
+  EXPLORER_RENAME_ENTRIES: 'explorer:rename-entries',
+  EXPLORER_DELETE_ENTRIES: 'explorer:delete-entries',
   SORT_GET: 'sort:get',
   SORT_SET: 'sort:set',
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
@@ -283,3 +285,26 @@ export const ClearCacheRequestSchema = z.object({
   deleteSaveBackups: z.boolean(),
 })
 export type ClearCacheRequest = z.infer<typeof ClearCacheRequestSchema>
+
+export const RenameEntriesRequestSchema = z.object({
+  renames: z.array(z.object({ path: z.string(), newName: z.string() })),
+})
+export type RenameEntriesRequest = z.infer<typeof RenameEntriesRequestSchema>
+
+export interface RenameResultDto {
+  path: string
+  success: boolean
+  newPath?: string
+  error?: string
+}
+
+export const DeleteEntriesRequestSchema = z.object({
+  paths: z.array(z.string()),
+})
+export type DeleteEntriesRequest = z.infer<typeof DeleteEntriesRequestSchema>
+
+export interface DeleteResultDto {
+  path: string
+  success: boolean
+  error?: string
+}

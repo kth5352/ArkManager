@@ -6,6 +6,8 @@ import { RatingMemoSection } from './RatingMemoSection'
 import { LaunchConfigSection } from './LaunchConfigSection'
 import { LaunchConfigDialog } from './LaunchConfigDialog'
 import { CodeLinkSection } from './CodeLinkSection'
+import { RenameDialog } from './RenameDialog'
+import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
 import { useGameUserData } from '../../services/gameUserDataService'
@@ -42,6 +44,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   // dialog itself is keyed by game identity below, which unmounts (closes)
   // it on any game switch.
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'rename' | 'delete' | null>(null)
 
   if (persistedWidth !== syncedWidth) {
     setSyncedWidth(persistedWidth)
@@ -182,6 +185,12 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
               실행
             </Button>
           )}
+          <Button size="sm" variant="secondary" onClick={() => setDialogMode('rename')}>
+            이름 변경
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => setDialogMode('delete')}>
+            삭제
+          </Button>
         </div>
         {crawlMetadata.isPending && (
           <div className="flex flex-col gap-1">
@@ -197,6 +206,16 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         key={configuringLaunch ? game.path : 'closed'}
         entry={configuringLaunch ? game : null}
         onClose={() => setConfiguringLaunch(false)}
+      />
+      <RenameDialog
+        key={dialogMode === 'rename' ? game.path : 'closed'}
+        targets={dialogMode === 'rename' ? [game] : []}
+        onClose={() => setDialogMode(null)}
+      />
+      <DeleteConfirmDialog
+        key={dialogMode === 'delete' ? game.path : 'closed'}
+        targets={dialogMode === 'delete' ? [game] : []}
+        onClose={() => setDialogMode(null)}
       />
     </div>
   )
