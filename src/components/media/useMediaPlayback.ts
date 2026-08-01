@@ -166,12 +166,22 @@ export function useMediaPlayback({
 
       if (event.key === 'ArrowLeft' && isHost && elRef.current) {
         event.preventDefault()
-        elRef.current.currentTime = Math.max(0, elRef.current.currentTime - 5)
+        const value = Math.max(0, elRef.current.currentTime - 5)
+        elRef.current.currentTime = value
+        // Seeking over media:// is async (see mediaProtocolService.ts) -
+        // onTimeUpdate briefly still reports the pre-seek position, so the
+        // displayed time must be updated here too, same as handleSeek does
+        // for a drag-seek - otherwise the on-screen time only catches up
+        // once onTimeUpdate eventually fires, lagging a beat behind a
+        // keyboard seek specifically.
+        setCurrentTime(value)
       } else if (event.key === 'ArrowRight' && isHost && elRef.current) {
         event.preventDefault()
         const el = elRef.current
         const max = Number.isFinite(el.duration) ? el.duration : Infinity
-        el.currentTime = Math.min(max, el.currentTime + 5)
+        const value = Math.min(max, el.currentTime + 5)
+        el.currentTime = value
+        setCurrentTime(value)
       } else if (event.key === 'ArrowUp') {
         event.preventDefault()
         setVolume(volume + 0.05)
