@@ -21,8 +21,10 @@ import { useExplorerStore, type ExplorerTab } from '../../stores/explorerStore'
 import { useLibraries } from '../../services/librariesService'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useShowItemInFolder } from '../../services/shellService'
+import { useTranslation } from '../../i18n/useTranslation'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
+  const { t } = useTranslation()
   const activeTabId = useExplorerStore((s) => s.activeTabId)
   const setActiveTab = useExplorerStore((s) => s.setActiveTab)
   const closeTab = useExplorerStore((s) => s.closeTab)
@@ -54,7 +56,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
         >
           <span>{tab.label}</span>
           <button
-            aria-label="탭 닫기"
+            aria-label={t('tabBar.closeTab')}
             onClick={(e) => {
               e.stopPropagation()
               closeTab(tab.id)
@@ -66,19 +68,23 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onSelect={() => closeTab(tab.id)}>탭 닫기</ContextMenuItem>
-        <ContextMenuItem onSelect={() => closeOtherTabs(tab.id)}>다른 탭 모두 닫기</ContextMenuItem>
-        <ContextMenuItem onSelect={() => duplicateTab(tab.id)}>탭 복제</ContextMenuItem>
+        <ContextMenuItem onSelect={() => closeTab(tab.id)}>{t('tabBar.closeTab')}</ContextMenuItem>
+        <ContextMenuItem onSelect={() => closeOtherTabs(tab.id)}>
+          {t('tabBar.closeOtherTabs')}
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => duplicateTab(tab.id)}>
+          {t('tabBar.duplicateTab')}
+        </ContextMenuItem>
         <ContextMenuItem
           onSelect={() => {
             queryClient.invalidateQueries({ queryKey: ['folder-scan', tab.path] })
             queryClient.invalidateQueries({ queryKey: ['folder-scan-recursive', tab.path] })
           }}
         >
-          이 폴더 새로고침
+          {t('tabBar.refreshFolder')}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => showItemInFolder.mutate(tab.path)}>
-          탐색기(OS)에서 폴더 열기
+          {t('tabBar.openInOsExplorer')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -86,6 +92,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
 }
 
 export function TabBar() {
+  const { t } = useTranslation()
   const tabs = useExplorerStore((s) => s.tabs)
   const activeTabId = useExplorerStore((s) => s.activeTabId)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
@@ -135,7 +142,7 @@ export function TabBar() {
     // library happens to be first in the registration list - only falls
     // back to that when there's no active tab yet (e.g. the very first tab).
     const activeTab = tabs.find((tab) => tab.id === activeTabId)
-    addTab({ label: '새 탭', path: activeTab?.path ?? libraries?.[0]?.path ?? '' })
+    addTab({ label: t('tabBar.newTab'), path: activeTab?.path ?? libraries?.[0]?.path ?? '' })
   }
 
   const handleOpenFolder = async (): Promise<void> => {
@@ -154,16 +161,16 @@ export function TabBar() {
           <button
             onClick={handleAddTab}
             disabled={!hasLibraries}
-            aria-label="새 탭 추가"
-            title={hasLibraries ? '새 탭 추가' : '먼저 설정에서 라이브러리를 등록하세요'}
+            aria-label={t('tabBar.addTab')}
+            title={hasLibraries ? t('tabBar.addTab') : t('tabBar.registerLibraryFirst')}
             className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           >
             <Plus className="h-4 w-4" />
           </button>
           <button
             onClick={handleOpenFolder}
-            aria-label="폴더 열기"
-            title="폴더 열기"
+            aria-label={t('tabBar.openFolder')}
+            title={t('tabBar.openFolder')}
             className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <FolderOpen className="h-4 w-4" />

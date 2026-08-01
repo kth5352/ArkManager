@@ -2,15 +2,17 @@ import { useGames } from '../../services/useGames'
 import { useFavoriteKeys } from '../../services/gameUserDataService'
 import { Skeleton } from '../../components/ui/skeleton'
 import { filterFavorites } from '../../lib/filterFavorites'
+import { useTranslation } from '../../i18n/useTranslation'
 
 export function FavoritesPage() {
+  const { t } = useTranslation()
   const { data: games, isLoading: gamesLoading, isError: gamesError } = useGames()
   const { data: favoriteKeys, isLoading: keysLoading } = useFavoriteKeys()
 
   if (gamesError && !games) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        라이브러리를 스캔하는 중 오류가 발생했습니다.
+        {t('common.scanError')}
       </div>
     )
   }
@@ -30,7 +32,7 @@ export function FavoritesPage() {
   if (favorites.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        즐겨찾기한 게임이 없습니다.
+        {t('favorites.empty')}
       </div>
     )
   }

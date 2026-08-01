@@ -10,10 +10,12 @@ import {
 } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../../components/ui/progress-bar'
 import { parseCodeInput } from './parseCodeInput'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
 import type { DlsiteSearchResultDto } from '../../../shared/types/ipc'
 
 export function DlsiteSearchPage() {
+  const { t } = useTranslation()
   const [input, setInput] = useState('')
   const [activeCode, setActiveCode] = useState<GameCode | null>(null)
 
@@ -56,10 +58,10 @@ export function DlsiteSearchPage() {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="식별코드 또는 작품 제목"
+          placeholder={t('dlsiteSearch.placeholder')}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
         />
-        <Button onClick={handleSearch}>검색</Button>
+        <Button onClick={handleSearch}>{t('dlsiteSearch.search')}</Button>
       </div>
 
       {activeCode && searchDlsite.data !== undefined && (
@@ -68,23 +70,23 @@ export function DlsiteSearchPage() {
           onClick={() => setActiveCode(null)}
         >
           <ArrowLeft className="h-3 w-3" />
-          검색 결과로 돌아가기
+          {t('dlsiteSearch.backToResults')}
         </button>
       )}
 
       {searchDlsite.isPending && (
         <div className="flex max-w-xs flex-col gap-1">
           <IndeterminateProgressBar />
-          <p className="text-xs text-muted-foreground">DLsite에서 검색하는 중...</p>
+          <p className="text-xs text-muted-foreground">{t('dlsiteSearch.searching')}</p>
         </div>
       )}
 
       {searchDlsite.isError && (
-        <p className="text-sm text-muted-foreground">검색 중 오류가 발생했습니다.</p>
+        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.searchError')}</p>
       )}
 
       {showingResultsList && searchDlsite.data!.length === 0 && (
-        <p className="text-sm text-muted-foreground">검색 결과가 없습니다.</p>
+        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.noResults')}</p>
       )}
 
       {showingResultsList && searchDlsite.data!.length > 0 && (
@@ -117,14 +119,16 @@ export function DlsiteSearchPage() {
       {crawlAndSave.isPending && (
         <div className="flex max-w-xs flex-col gap-1">
           <IndeterminateProgressBar />
-          <p className="text-xs text-muted-foreground">DLsite에서 정보를 가져오는 중...</p>
+          <p className="text-xs text-muted-foreground">{t('dlsiteSearch.fetchingInfo')}</p>
         </div>
       )}
 
-      {activeCode && isLoading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}
+      {activeCode && isLoading && (
+        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+      )}
 
       {activeCode && !isLoading && !metadata && (
-        <p className="text-sm text-muted-foreground">작품을 찾을 수 없습니다.</p>
+        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.notFound')}</p>
       )}
 
       {metadata && (

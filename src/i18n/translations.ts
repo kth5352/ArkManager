@@ -186,6 +186,28 @@ const ko = {
   'common.noItemsToShow': '표시할 항목이 없습니다.',
 
   'recentlyPlayed.empty': '아직 플레이한 게임이 없습니다.',
+
+  'detail.placeholder': '게임을 선택하면 상세 정보가 여기에 표시됩니다.',
+  'favorites.empty': '즐겨찾기한 게임이 없습니다.',
+
+  'tabBar.closeTab': '탭 닫기',
+  'tabBar.closeOtherTabs': '다른 탭 모두 닫기',
+  'tabBar.duplicateTab': '탭 복제',
+  'tabBar.refreshFolder': '이 폴더 새로고침',
+  'tabBar.openInOsExplorer': '탐색기(OS)에서 폴더 열기',
+  'tabBar.newTab': '새 탭',
+  'tabBar.addTab': '새 탭 추가',
+  'tabBar.registerLibraryFirst': '먼저 설정에서 라이브러리를 등록하세요',
+  'tabBar.openFolder': '폴더 열기',
+
+  'dlsiteSearch.placeholder': '식별코드 또는 작품 제목',
+  'dlsiteSearch.search': '검색',
+  'dlsiteSearch.backToResults': '검색 결과로 돌아가기',
+  'dlsiteSearch.searching': 'DLsite에서 검색하는 중...',
+  'dlsiteSearch.searchError': '검색 중 오류가 발생했습니다.',
+  'dlsiteSearch.noResults': '검색 결과가 없습니다.',
+  'dlsiteSearch.fetchingInfo': 'DLsite에서 정보를 가져오는 중...',
+  'dlsiteSearch.notFound': '작품을 찾을 수 없습니다.',
 } as const
 
 const ja: Record<keyof typeof ko, string> = {
@@ -365,6 +387,28 @@ const ja: Record<keyof typeof ko, string> = {
   'common.noItemsToShow': '表示する項目がありません。',
 
   'recentlyPlayed.empty': 'まだプレイしたゲームがありません。',
+
+  'detail.placeholder': 'ゲームを選択すると詳細情報がここに表示されます。',
+  'favorites.empty': 'お気に入りのゲームがありません。',
+
+  'tabBar.closeTab': 'タブを閉じる',
+  'tabBar.closeOtherTabs': '他のタブをすべて閉じる',
+  'tabBar.duplicateTab': 'タブを複製',
+  'tabBar.refreshFolder': 'このフォルダを更新',
+  'tabBar.openInOsExplorer': 'エクスプローラー（OS）でフォルダを開く',
+  'tabBar.newTab': '新しいタブ',
+  'tabBar.addTab': '新しいタブを追加',
+  'tabBar.registerLibraryFirst': 'まず設定でライブラリを登録してください',
+  'tabBar.openFolder': 'フォルダを開く',
+
+  'dlsiteSearch.placeholder': '識別コードまたは作品タイトル',
+  'dlsiteSearch.search': '検索',
+  'dlsiteSearch.backToResults': '検索結果に戻る',
+  'dlsiteSearch.searching': 'DLsiteで検索中...',
+  'dlsiteSearch.searchError': '検索中にエラーが発生しました。',
+  'dlsiteSearch.noResults': '検索結果がありません。',
+  'dlsiteSearch.fetchingInfo': 'DLsiteから情報を取得中...',
+  'dlsiteSearch.notFound': '作品が見つかりません。',
 }
 
 const en: Record<keyof typeof ko, string> = {
@@ -546,6 +590,28 @@ const en: Record<keyof typeof ko, string> = {
   'common.noItemsToShow': 'No items to show.',
 
   'recentlyPlayed.empty': "You haven't played any games yet.",
+
+  'detail.placeholder': 'Select a game to see its details here.',
+  'favorites.empty': 'No favorite games.',
+
+  'tabBar.closeTab': 'Close Tab',
+  'tabBar.closeOtherTabs': 'Close Other Tabs',
+  'tabBar.duplicateTab': 'Duplicate Tab',
+  'tabBar.refreshFolder': 'Refresh This Folder',
+  'tabBar.openInOsExplorer': 'Open Folder in OS Explorer',
+  'tabBar.newTab': 'New Tab',
+  'tabBar.addTab': 'Add Tab',
+  'tabBar.registerLibraryFirst': 'Register a library in Settings first',
+  'tabBar.openFolder': 'Open Folder',
+
+  'dlsiteSearch.placeholder': 'Identifier code or title',
+  'dlsiteSearch.search': 'Search',
+  'dlsiteSearch.backToResults': 'Back to results',
+  'dlsiteSearch.searching': 'Searching DLsite...',
+  'dlsiteSearch.searchError': 'An error occurred while searching.',
+  'dlsiteSearch.noResults': 'No results found.',
+  'dlsiteSearch.fetchingInfo': 'Fetching info from DLsite...',
+  'dlsiteSearch.notFound': 'Title not found.',
 }
 
 export const translations = { ko, ja, en }
