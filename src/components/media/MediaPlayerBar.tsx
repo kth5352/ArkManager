@@ -4,6 +4,7 @@ import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { buildMediaUrl } from '../../services/mediaProtocolService'
 import { isVideoFile } from '../../../shared/isMediaFile'
 import { cn } from '../../lib/utils'
+import { useTranslation } from '../../i18n/useTranslation'
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -17,6 +18,7 @@ function formatTime(seconds: number): string {
 // navigation because this component (and the store backing it) lives above
 // the router's <Outlet>, not inside any one page.
 export function MediaPlayerBar() {
+  const { t } = useTranslation()
   const playlist = useMediaPlayerStore((s) => s.playlist)
   const currentIndex = useMediaPlayerStore((s) => s.currentIndex)
   const isPlaying = useMediaPlayerStore((s) => s.isPlaying)
@@ -102,14 +104,14 @@ export function MediaPlayerBar() {
       <button
         onClick={prev}
         disabled={playlist.length < 2}
-        aria-label="이전 트랙"
+        aria-label={t('media.previousTrack')}
         className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
       >
         <SkipBack className="h-4 w-4" />
       </button>
       <button
         onClick={togglePlay}
-        aria-label={isPlaying ? '일시정지' : '재생'}
+        aria-label={isPlaying ? t('media.pause') : t('media.play')}
         className="shrink-0 text-foreground hover:text-primary"
       >
         {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
@@ -117,7 +119,7 @@ export function MediaPlayerBar() {
       <button
         onClick={next}
         disabled={playlist.length < 2}
-        aria-label="다음 트랙"
+        aria-label={t('media.nextTrack')}
         className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
       >
         <SkipForward className="h-4 w-4" />
@@ -158,7 +160,7 @@ export function MediaPlayerBar() {
 
       <button
         onClick={() => setShowPlaylist((v) => !v)}
-        aria-label="재생목록"
+        aria-label={t('media.playlist')}
         className={cn(
           'shrink-0 text-muted-foreground hover:text-foreground',
           showPlaylist && 'text-foreground'
@@ -168,7 +170,7 @@ export function MediaPlayerBar() {
       </button>
       <button
         onClick={clearPlaylist}
-        aria-label="재생목록 닫기"
+        aria-label={t('media.closePlaylist')}
         className="shrink-0 text-muted-foreground hover:text-destructive"
       >
         <X className="h-4 w-4" />
@@ -176,20 +178,20 @@ export function MediaPlayerBar() {
 
       {showPlaylist && (
         <div className="absolute bottom-full right-3 z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-md">
-          {playlist.map((t, i) => (
+          {playlist.map((playlistTrack, i) => (
             <div
-              key={t.path}
+              key={playlistTrack.path}
               className={cn(
                 'flex items-center gap-1 rounded px-2 py-1 text-xs',
                 i === currentIndex ? 'bg-accent' : 'hover:bg-accent/50'
               )}
             >
               <button className="min-w-0 flex-1 truncate text-left" onClick={() => playAt(i)}>
-                {t.name}
+                {playlistTrack.name}
               </button>
               <button
                 onClick={() => removeFromPlaylist(i)}
-                aria-label="재생목록에서 제거"
+                aria-label={t('media.removeFromPlaylist')}
                 className="shrink-0 text-muted-foreground hover:text-destructive"
               >
                 <X className="h-3 w-3" />
