@@ -56,7 +56,7 @@ export function DlsiteSearchPage() {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="RJ01169914 또는 작품 제목"
+          placeholder="식별코드 또는 작품 제목"
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
         />
         <Button onClick={handleSearch}>검색</Button>

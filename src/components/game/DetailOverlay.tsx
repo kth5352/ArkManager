@@ -8,7 +8,7 @@ import { UnlinkCodeDialog } from './UnlinkCodeDialog'
 import { GameThumbnail } from './GameThumbnail'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
-import { useCrawlGameMetadata } from '../../services/metadataService'
+import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -23,6 +23,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const showItemInFolder = useShowItemInFolder()
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
+  const { data: metadata } = useGameMetadata(game?.code ?? null)
   const [editingRating, setEditingRating] = useState(false)
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
   const [linkingCode, setLinkingCode] = useState(false)
@@ -66,6 +67,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                 <GameThumbnail entry={game} />
               </div>
               <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                {metadata?.title && metadata.title !== game.name && <p>{metadata.title}</p>}
                 {game.code ? (
                   <button
                     className="text-left underline-offset-2 hover:underline"

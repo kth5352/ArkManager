@@ -7,7 +7,7 @@ import { LaunchConfigSection } from './LaunchConfigSection'
 import { CodeLinkSection } from './CodeLinkSection'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
-import { useCrawlGameMetadata } from '../../services/metadataService'
+import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
@@ -28,6 +28,7 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
   const showItemInFolder = useShowItemInFolder()
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
+  const { data: metadata } = useGameMetadata(game?.code ?? null)
   const [launchConfigExpanded, setLaunchConfigExpanded] = useState(false)
   const [launchConfigExpandedForPath, setLaunchConfigExpandedForPath] = useState(game?.path)
 
@@ -106,22 +107,25 @@ export function DetailSidebar({ game, onClose }: DetailSidebarProps) {
     >
       <div
         onPointerDown={handleResizePointerDown}
-        className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-primary/40"
+        className="absolute left-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-primary/40"
       />
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-2 border-b border-border bg-card p-4">
+        <p className="text-sm font-medium">{game.name}</p>
+        <button
+          aria-label="상세 패널 닫기"
+          onClick={onClose}
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
       <div className="flex flex-col gap-3 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium">{game.name}</p>
-          <button
-            aria-label="상세 패널 닫기"
-            onClick={onClose}
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
         <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-muted">
           <GameThumbnail entry={game} />
         </div>
+        {metadata?.title && metadata.title !== game.name && (
+          <p className="text-sm text-muted-foreground">{metadata.title}</p>
+        )}
         {game.code ? (
           <button
             className="text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
