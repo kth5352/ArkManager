@@ -28,17 +28,17 @@ export function useEntryActionDialogs(): {
     dialogElement: (
       <>
         <RenameDialog
-          key={dialog?.type === 'rename' ? dialog.entry.path : 'closed'}
+          key={dialog?.type === 'rename' ? dialog.entry.path : 'rename-closed'}
           targets={dialog?.type === 'rename' ? [dialog.entry] : []}
           onClose={close}
         />
         <MoveDialog
-          key={dialog?.type === 'move' ? dialog.entry.path : 'closed'}
+          key={dialog?.type === 'move' ? dialog.entry.path : 'move-closed'}
           targets={dialog?.type === 'move' ? [dialog.entry] : []}
           onClose={close}
         />
         <DeleteConfirmDialog
-          key={dialog?.type === 'delete' ? dialog.entry.path : 'closed'}
+          key={dialog?.type === 'delete' ? dialog.entry.path : 'delete-closed'}
           targets={dialog?.type === 'delete' ? [dialog.entry] : []}
           onClose={close}
         />

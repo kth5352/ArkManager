@@ -8,6 +8,8 @@ function toSyncState(state: MediaSyncState): MediaSyncState {
     currentIndex: state.currentIndex,
     isPlaying: state.isPlaying,
     volume: state.volume,
+    previousVolume: state.previousVolume,
+    repeatMode: state.repeatMode,
     isDetached: state.isDetached,
     handoffTimeSeconds: state.handoffTimeSeconds,
   }

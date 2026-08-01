@@ -5,11 +5,25 @@ export interface MediaTrack {
   name: string
 }
 
+export type RepeatMode = 'off' | 'all' | 'one'
+
 interface MediaPlayerState {
   playlist: MediaTrack[]
   currentIndex: number | null
   isPlaying: boolean
   volume: number
+  // Remembers the volume from just before muting, so unmuting restores it
+  // instead of jumping to some arbitrary default - "muted" itself is just
+  // volume === 0, not a separate flag, so nothing else needs to branch on
+  // it.
+  previousVolume: number
+  // Cycles off -> all -> one -> off. 'one' is handled by the caller
+  // (useMediaPlayback's onEnded, not next()/prev() - a skip button press
+  // should always move to the adjacent track regardless of this mode,
+  // matching every other media player's convention; only a track ending
+  // naturally loops it). 'off' vs 'all' is this store's own concern: `next`
+  // stops instead of wrapping past the last track when off.
+  repeatMode: RepeatMode
   // True once playback has been detached into its own Electron window (see
   // useMediaPlayerSync) - the main window stops mounting a real <video>/
   // <audio> element while this is true (only one window may ever host
@@ -41,8 +55,10 @@ interface MediaPlayerState {
   removeFromPlaylist: (index: number) => void
   clearPlaylist: () => void
   setVolume: (volume: number) => void
+  toggleMute: () => void
   setDetached: (isDetached: boolean, handoffTimeSeconds?: number) => void
   consumeHandoffTime: () => number | null
+  cycleRepeatMode: () => void
 }
 
 // Global (not persisted) - playback should survive navigating between pages,
@@ -56,8 +72,10 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   currentIndex: null,
   isPlaying: false,
   volume: 1,
+  previousVolume: 1,
   isDetached: false,
   handoffTimeSeconds: null,
+  repeatMode: 'off',
 
   playNow: (track, siblings) => {
     const list = siblings ?? [track]
@@ -81,8 +99,13 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   playAt: (index) => set({ currentIndex: index, isPlaying: true }),
 
   next: () => {
-    const { playlist, currentIndex } = get()
+    const { playlist, currentIndex, repeatMode } = get()
     if (currentIndex === null || playlist.length === 0) return
+    const isLast = currentIndex === playlist.length - 1
+    if (isLast && repeatMode === 'off') {
+      set({ isPlaying: false })
+      return
+    }
     set({ currentIndex: (currentIndex + 1) % playlist.length, isPlaying: true })
   },
 
@@ -116,6 +139,12 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   clearPlaylist: () => set({ playlist: [], currentIndex: null, isPlaying: false }),
   setVolume: (volume) => set({ volume: Math.min(1, Math.max(0, volume)) }),
 
+  toggleMute: () => {
+    const { volume, previousVolume } = get()
+    if (volume > 0) set({ volume: 0, previousVolume: volume })
+    else set({ volume: previousVolume > 0 ? previousVolume : 1 })
+  },
+
   setDetached: (isDetached, handoffTimeSeconds) =>
     set({ isDetached, handoffTimeSeconds: handoffTimeSeconds ?? null }),
 
@@ -124,4 +153,9 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
     if (handoffTimeSeconds !== null) set({ handoffTimeSeconds: null })
     return handoffTimeSeconds
   },
+
+  cycleRepeatMode: () =>
+    set((state) => ({
+      repeatMode: state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off',
+    })),
 }))

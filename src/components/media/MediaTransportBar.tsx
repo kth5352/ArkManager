@@ -1,6 +1,7 @@
-import { Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react'
+import { Pause, Play, Repeat, Repeat1, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useTranslation } from '../../i18n/useTranslation'
+import { cn } from '../../lib/utils'
 import type { MediaPlaybackState } from './useMediaPlayback'
 
 function formatTime(seconds: number): string {
@@ -30,6 +31,9 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
   const prev = useMediaPlayerStore((s) => s.prev)
   const volume = useMediaPlayerStore((s) => s.volume)
   const setVolume = useMediaPlayerStore((s) => s.setVolume)
+  const toggleMute = useMediaPlayerStore((s) => s.toggleMute)
+  const repeatMode = useMediaPlayerStore((s) => s.repeatMode)
+  const cycleRepeatMode = useMediaPlayerStore((s) => s.cycleRepeatMode)
 
   const mutedText = dark
     ? 'text-white/70 hover:text-white'
@@ -60,6 +64,16 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
         className={`shrink-0 disabled:opacity-40 ${mutedText}`}
       >
         <SkipForward className="h-4 w-4" />
+      </button>
+      <button
+        onClick={cycleRepeatMode}
+        aria-label={t('media.repeatMode')}
+        className={cn(
+          'shrink-0',
+          repeatMode === 'off' ? mutedText : dark ? 'text-white' : 'text-primary'
+        )}
+      >
+        {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
       </button>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -97,7 +111,9 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Volume2 className={`h-4 w-4 ${dark ? 'text-white/70' : 'text-muted-foreground'}`} />
+        <button onClick={toggleMute} aria-label={t('media.toggleMute')} className={mutedText}>
+          {volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
         <input
           type="range"
           min={0}

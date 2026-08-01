@@ -54,6 +54,8 @@ export function MediaPlayerHost() {
       currentIndex: state.currentIndex,
       isPlaying: state.isPlaying,
       volume: state.volume,
+      previousVolume: state.previousVolume,
+      repeatMode: state.repeatMode,
       isDetached: true,
       handoffTimeSeconds: seconds,
     })

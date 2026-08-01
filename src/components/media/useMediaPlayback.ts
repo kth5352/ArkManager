@@ -61,8 +61,11 @@ export function useMediaPlayback({
   const currentIndex = useMediaPlayerStore((s) => s.currentIndex)
   const isPlaying = useMediaPlayerStore((s) => s.isPlaying)
   const volume = useMediaPlayerStore((s) => s.volume)
+  const repeatMode = useMediaPlayerStore((s) => s.repeatMode)
   const setPlaying = useMediaPlayerStore((s) => s.setPlaying)
+  const togglePlay = useMediaPlayerStore((s) => s.togglePlay)
   const next = useMediaPlayerStore((s) => s.next)
+  const setVolume = useMediaPlayerStore((s) => s.setVolume)
   const consumeHandoffTime = useMediaPlayerStore((s) => s.consumeHandoffTime)
 
   const elRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null)
@@ -133,6 +136,52 @@ export function useMediaPlayback({
     return () => clearInterval(interval)
   }, [isHost, reportTimeToMainProcess, isPlaying])
 
+  // Left/Right seek +-5s, Up/Down volume +-5%, Space play/pause - global to
+  // the window (not scoped to a focused player element) so these work no
+  // matter which page happens to be showing while media plays in the
+  // background, matching a real media player's keyboard behavior. Skipped
+  // entirely while focus is on a text field/button/etc, so this doesn't
+  // steal keys from search boxes, other range inputs (including this same
+  // component's own seek/volume sliders), or a focused button's own Space
+  // handling. Seeking only makes sense with a live element to seek (isHost);
+  // volume works from either window since it's shared control-plane state
+  // (see mediaPlayerStore.ts) that the actual host applies via the effect
+  // above regardless of which window changed it.
+  useEffect(() => {
+    if (!track) return
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      const active = document.activeElement as HTMLElement | null
+      if (
+        active &&
+        (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(active.tagName) ||
+          active.isContentEditable)
+      ) {
+        return
+      }
+
+      if (event.key === 'ArrowLeft' && isHost && elRef.current) {
+        event.preventDefault()
+        elRef.current.currentTime = Math.max(0, elRef.current.currentTime - 5)
+      } else if (event.key === 'ArrowRight' && isHost && elRef.current) {
+        event.preventDefault()
+        const el = elRef.current
+        const max = Number.isFinite(el.duration) ? el.duration : Infinity
+        el.currentTime = Math.min(max, el.currentTime + 5)
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setVolume(volume + 0.05)
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setVolume(volume - 0.05)
+      } else if (event.key === ' ') {
+        event.preventDefault()
+        togglePlay()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [track, isHost, volume, setVolume, togglePlay])
+
   if (!track) return { mediaRef: setMediaRef, playback: null }
 
   const handleSeek = (value: number): void => {
@@ -164,7 +213,21 @@ export function useMediaPlayback({
         // formatTime's "not finite -> 0:00" fallback was otherwise the only
         // value ever shown.
         onDurationChange: () => elRef.current && setDuration(elRef.current.duration),
-        onEnded: () => next(),
+        // A track ending naturally respects repeatMode's 'one' case by
+        // looping the same element - next() only knows about 'off' vs 'all'
+        // (whether to stop or wrap at the end of the playlist), since an
+        // explicit skip-forward click should always move to the next track
+        // regardless of 'one' (see mediaPlayerStore.ts's own comment).
+        onEnded: () => {
+          if (repeatMode === 'one' && elRef.current) {
+            elRef.current.currentTime = 0
+            elRef.current
+              .play()
+              .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+            return
+          }
+          next()
+        },
         onPlay: () => setPlaying(true),
         onPause: () => setPlaying(false),
         onError: () => setError('media-error'),

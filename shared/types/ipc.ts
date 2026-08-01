@@ -406,11 +406,15 @@ export interface MediaTrackDto {
 // process. Deliberately excludes currentTime/duration, which change too
 // often (~4x/sec during playback) to broadcast this way and stay local to
 // whichever window is actually hosting playback.
+export type MediaRepeatMode = 'off' | 'all' | 'one'
+
 export interface MediaSyncState {
   playlist: MediaTrackDto[]
   currentIndex: number | null
   isPlaying: boolean
   volume: number
+  previousVolume: number
+  repeatMode: MediaRepeatMode
   isDetached: boolean
   handoffTimeSeconds: number | null
 }
