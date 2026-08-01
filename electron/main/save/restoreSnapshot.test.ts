@@ -37,4 +37,14 @@ describe('restoreSnapshot', () => {
     const filesAfter = await readdir(targetDir)
     expect(filesAfter).toEqual(['save1.dat'])
   })
+
+  it('leaves the live save folder untouched when the snapshot does not exist', async () => {
+    await writeFile(join(targetDir, 'existing-save.dat'), 'must survive a bad restore')
+
+    await expect(restoreSnapshot(backupRootDir, 'does-not-exist', targetDir)).rejects.toThrow()
+
+    expect(await readFile(join(targetDir, 'existing-save.dat'), 'utf-8')).toBe(
+      'must survive a bad restore'
+    )
+  })
 })
