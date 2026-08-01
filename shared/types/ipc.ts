@@ -407,21 +407,30 @@ export interface MediaTrackDto {
   name: string
 }
 
+export const MediaTrackSchema = z.object({
+  path: z.string(),
+  name: z.string(),
+})
+
 // The media player's cross-window control-plane snapshot (see
 // src/stores/mediaPlayerStore.ts and useMediaPlayerSync) - relayed as-is
 // between the main window and the detached player window through the main
 // process. Deliberately excludes currentTime/duration, which change too
 // often (~4x/sec during playback) to broadcast this way and stay local to
 // whichever window is actually hosting playback.
-export type MediaRepeatMode = 'off' | 'all' | 'one'
+export const MediaRepeatModeSchema = z.enum(['off', 'all', 'one'])
+export type MediaRepeatMode = z.infer<typeof MediaRepeatModeSchema>
 
-export interface MediaSyncState {
-  playlist: MediaTrackDto[]
-  currentIndex: number | null
-  isPlaying: boolean
-  volume: number
-  previousVolume: number
-  repeatMode: MediaRepeatMode
-  isDetached: boolean
-  handoffTimeSeconds: number | null
-}
+export const MediaSyncStateSchema = z.object({
+  playlist: z.array(MediaTrackSchema),
+  currentIndex: z.number().nullable(),
+  isPlaying: z.boolean(),
+  volume: z.number(),
+  previousVolume: z.number(),
+  repeatMode: MediaRepeatModeSchema,
+  isDetached: z.boolean(),
+  handoffTimeSeconds: z.number().nullable(),
+})
+export type MediaSyncState = z.infer<typeof MediaSyncStateSchema>
+
+export const MediaReportTimeRequestSchema = z.number()

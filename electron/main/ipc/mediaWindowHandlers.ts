@@ -1,6 +1,10 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
-import { IPC_CHANNELS, type MediaSyncState } from '../../../shared/types/ipc'
+import {
+  IPC_CHANNELS,
+  MediaReportTimeRequestSchema,
+  MediaSyncStateSchema,
+} from '../../../shared/types/ipc'
 
 // Detached video playback lives in its own BrowserWindow (see
 // FullscreenVideoOverlay's "새 창으로 분리" button) - only one at a time; a
@@ -19,7 +23,8 @@ let lastKnownTimeSeconds = 0
 export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow | null): {
   closePlayerWindow: () => void
 } {
-  ipcMain.handle(IPC_CHANNELS.MEDIA_OPEN_PLAYER_WINDOW, (_event, initialState: MediaSyncState) => {
+  ipcMain.handle(IPC_CHANNELS.MEDIA_OPEN_PLAYER_WINDOW, (_event, payload: unknown) => {
+    const initialState = MediaSyncStateSchema.parse(payload)
     if (playerWindow) {
       playerWindow.focus()
       return
@@ -65,7 +70,8 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
   // CRAWL_PROGRESS's own "no request/response schema" push-event pattern) -
   // whichever window changes the shared control-plane state broadcasts it,
   // this just forwards to every OTHER currently open window.
-  ipcMain.on(IPC_CHANNELS.MEDIA_STATE_BROADCAST, (event, state: MediaSyncState) => {
+  ipcMain.on(IPC_CHANNELS.MEDIA_STATE_BROADCAST, (event, payload: unknown) => {
+    const state = MediaSyncStateSchema.parse(payload)
     for (const win of BrowserWindow.getAllWindows()) {
       if (win.webContents.id !== event.sender.id) {
         win.webContents.send(IPC_CHANNELS.MEDIA_STATE_SYNC, state)
@@ -73,8 +79,8 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
     }
   })
 
-  ipcMain.on(IPC_CHANNELS.MEDIA_REPORT_TIME, (_event, seconds: number) => {
-    lastKnownTimeSeconds = seconds
+  ipcMain.on(IPC_CHANNELS.MEDIA_REPORT_TIME, (_event, payload: unknown) => {
+    lastKnownTimeSeconds = MediaReportTimeRequestSchema.parse(payload)
   })
 
   return {
