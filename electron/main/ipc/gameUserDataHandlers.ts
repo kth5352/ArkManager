@@ -51,6 +51,15 @@ function customCoverCacheDir(): string {
 }
 
 export function registerGameUserDataHandlers(db: AppDatabase): void {
+  // GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE trusts this path enough to
+  // readFile() it directly (see below) - without pinning it to whatever the
+  // native file picker most recently actually returned, a compromised or
+  // buggy renderer could pass any locally-readable path and get it copied
+  // into the app's cache and re-exposed as this entry's cover, an arbitrary
+  // local-file-read primitive. One-shot (cleared after use) since the
+  // renderer's own flow is always pick-then-immediately-set for exactly one
+  // entry (see CustomCoverSection.tsx's handlePickFile).
+  let lastPickedCustomCoverPath: string | null = null
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_GET, (_event, payload: unknown) => {
     const { identifier } = GetGameUserDataRequestSchema.parse(payload)
     const { key } = resolveGameEntryKey(identifier)
@@ -109,13 +118,18 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
       filters: [{ name: '이미지', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
     })
     if (result.canceled || result.filePaths.length === 0) return null
-    return result.filePaths[0]
+    lastPickedCustomCoverPath = result.filePaths[0]
+    return lastPickedCustomCoverPath
   })
 
   ipcMain.handle(
     IPC_CHANNELS.GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE,
     async (_event, payload: unknown) => {
       const { identifier, path } = SetCustomCoverFromFileRequestSchema.parse(payload)
+      if (path !== lastPickedCustomCoverPath) {
+        throw new Error('선택된 파일이 아닙니다.')
+      }
+      lastPickedCustomCoverPath = null
       const { key, keyType } = resolveGameEntryKey(identifier)
       const buffer = await readFile(path)
       const savedPath = await saveCustomCoverImage(customCoverCacheDir(), key, buffer)
