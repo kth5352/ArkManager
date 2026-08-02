@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useGameCoverImage, useGameMetadata } from '../../services/metadataService'
 import { useGamesWithSavePath, useSaveSnapshots } from '../../services/saveService'
+import { useGames } from '../../services/useGames'
 import { SaveManagerDialog } from '../../components/game/SaveManagerDialog'
 import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
 import { useTranslation } from '../../i18n/useTranslation'
@@ -13,18 +14,42 @@ interface ManagingEntry {
   savePath: string
 }
 
+// A code-linked game's row is keyed by its code, not a path (it isn't tied
+// to one - the same code could be relinked to a different folder later), so
+// game_user_data never stores a path for it. detectGameVersion (used for
+// this dialog's auto-version-detect and restore-time mismatch check) needs
+// the game's actual folder on disk, though - resolved here from whatever
+// library scan is already in the React Query cache (the same one Gallery/
+// List/DetailList populate), not from anything persisted. A code with no
+// currently-scanned match (its library was removed, or hasn't been scanned
+// yet) falls back to '' - the same degraded-but-safe behavior as before
+// this lookup existed (detectGameVersion treats an empty/nonexistent folder
+// path as "nothing detected", not an error).
+function usePathByCode(): Map<string, string> {
+  const { data: scannedGames } = useGames()
+  return useMemo(() => {
+    const map = new Map<string, string>()
+    for (const entry of scannedGames ?? []) {
+      if (entry.code) map.set(entry.code.value, entry.path)
+    }
+    return map
+  }, [scannedGames])
+}
+
 function SaveEntryRow({
   entryKey,
   savePath,
+  pathByCode,
   onManage,
 }: {
   entryKey: string
   savePath: string
+  pathByCode: Map<string, string>
   onManage: (entry: ManagingEntry) => void
 }) {
   const { t } = useTranslation()
   const code = parseCodeInput(entryKey)
-  const entry = { code, path: code ? '' : entryKey }
+  const entry = { code, path: code ? (pathByCode.get(code.value) ?? '') : entryKey }
   const { data: metadata } = useGameMetadata(code)
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? code : null)
   const { data: snapshots } = useSaveSnapshots(entry)
@@ -56,6 +81,7 @@ function SaveEntryRow({
 export function SavesPage() {
   const { t } = useTranslation()
   const { data: games, isLoading } = useGamesWithSavePath()
+  const pathByCode = usePathByCode()
   const [managing, setManaging] = useState<ManagingEntry | null>(null)
   const [search, setSearch] = useState('')
 
@@ -88,6 +114,7 @@ export function SavesPage() {
           key={game.key}
           entryKey={game.key}
           savePath={game.savePath}
+          pathByCode={pathByCode}
           onManage={setManaging}
         />
       ))}
