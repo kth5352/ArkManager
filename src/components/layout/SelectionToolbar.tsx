@@ -78,18 +78,27 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
           {t('common.cancel')}
         </Button>
       </div>
+      {/* Each dialog's own fallback key must be unique across these three
+          siblings, not just per-dialog - dialogMode is only ever one value
+          at a time, so the other two both fell back to the exact same
+          literal 'closed' key simultaneously, tripping React's "two
+          children with the same key" warning on every render. */}
       <RenameDialog
-        key={dialogMode === 'rename' ? selectedEntries.map((e) => e.path).join('|') : 'closed'}
+        key={
+          dialogMode === 'rename' ? selectedEntries.map((e) => e.path).join('|') : 'rename-closed'
+        }
         targets={dialogMode === 'rename' ? selectedEntries : []}
         onClose={closeDialog}
       />
       <DeleteConfirmDialog
-        key={dialogMode === 'delete' ? selectedEntries.map((e) => e.path).join('|') : 'closed'}
+        key={
+          dialogMode === 'delete' ? selectedEntries.map((e) => e.path).join('|') : 'delete-closed'
+        }
         targets={dialogMode === 'delete' ? selectedEntries : []}
         onClose={closeDialog}
       />
       <MoveDialog
-        key={dialogMode === 'move' ? selectedEntries.map((e) => e.path).join('|') : 'closed'}
+        key={dialogMode === 'move' ? selectedEntries.map((e) => e.path).join('|') : 'move-closed'}
         targets={dialogMode === 'move' ? selectedEntries : []}
         onClose={closeDialog}
       />
