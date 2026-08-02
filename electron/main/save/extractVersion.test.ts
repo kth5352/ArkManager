@@ -29,4 +29,8 @@ describe('extractVersionFromName', () => {
   it('returns the first match when multiple are present', () => {
     expect(extractVersionFromName('1.2.3_to_2.0.0_patch')).toBe('1.2.3')
   })
+
+  it('extracts 4-digit CalVer-style versions', () => {
+    expect(extractVersionFromName('MyGame_2024.11.1_release')).toBe('2024.11.1')
+  })
 })
