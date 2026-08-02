@@ -57,6 +57,7 @@ export function SavesPage() {
   const { t } = useTranslation()
   const { data: games, isLoading } = useGamesWithSavePath()
   const [managing, setManaging] = useState<ManagingEntry | null>(null)
+  const [search, setSearch] = useState('')
 
   if (isLoading || !games) return null
 
@@ -68,9 +69,21 @@ export function SavesPage() {
     )
   }
 
+  const filteredGames = search.trim()
+    ? games.filter((game) => game.key.toLowerCase().includes(search.trim().toLowerCase()))
+    : games
+
   return (
     <div className="flex flex-col">
-      {games.map((game) => (
+      <div className="border-b border-border p-2">
+        <input
+          className="w-full rounded border border-border bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground"
+          placeholder={t('saveManager.searchPlaceholder')}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      {filteredGames.map((game) => (
         <SaveEntryRow
           key={game.key}
           entryKey={game.key}
