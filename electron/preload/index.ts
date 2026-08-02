@@ -21,6 +21,7 @@ import {
   type SortPreference,
   type Theme,
   type UpdateStatus,
+  type VersionMismatchDto,
 } from '../../shared/types/ipc'
 import type { GameCode, ScannedEntry } from '../../shared/types/scanner'
 
@@ -224,6 +225,38 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_DIFF, { identifier: { code, path }, timestamp }),
     listGamesWithSavePath: (): Promise<GameWithSavePathDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_LIST_GAMES_WITH_SAVE_PATH),
+    setSnapshotLabel: (
+      code: GameCode | null,
+      path: string,
+      timestamp: string,
+      updates: { memo?: string; version?: string }
+    ): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_SET_SNAPSHOT_LABEL, {
+        identifier: { code, path },
+        timestamp,
+        ...updates,
+      }),
+    deleteSnapshot: (code: GameCode | null, path: string, timestamp: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_DELETE_SNAPSHOT, {
+        identifier: { code, path },
+        timestamp,
+      }),
+    deleteAllSnapshots: (code: GameCode | null, path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_DELETE_ALL_SNAPSHOTS, { identifier: { code, path } }),
+    showSnapshotInFolder: (code: GameCode | null, path: string, timestamp: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_SHOW_SNAPSHOT_IN_FOLDER, {
+        identifier: { code, path },
+        timestamp,
+      }),
+    checkVersionMismatch: (
+      code: GameCode | null,
+      path: string,
+      timestamp: string
+    ): Promise<VersionMismatchDto> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_CHECK_VERSION_MISMATCH, {
+        identifier: { code, path },
+        timestamp,
+      }),
   },
   media: {
     openPlayerWindow: (initialState: MediaSyncState): Promise<void> =>

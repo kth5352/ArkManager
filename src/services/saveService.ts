@@ -6,6 +6,7 @@ import type {
   GameWithSavePathDto,
   SaveDiffEntryDto,
   SaveSnapshotDto,
+  VersionMismatchDto,
 } from '../../shared/types/ipc'
 
 function identifierKey(entry: Pick<ScannedEntry, 'code' | 'path'>): string {
@@ -100,5 +101,75 @@ export function useGamesWithSavePath() {
   return useQuery<GameWithSavePathDto[]>({
     queryKey: ['games-with-save-path'],
     queryFn: () => window.api.save.listGamesWithSavePath(),
+  })
+}
+
+export function useSetSnapshotLabel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      entry,
+      timestamp,
+      updates,
+    }: {
+      entry: Pick<ScannedEntry, 'code' | 'path'>
+      timestamp: string
+      updates: { memo?: string; version?: string }
+    }) => window.api.save.setSnapshotLabel(entry.code, entry.path, timestamp, updates),
+    onSuccess: (_result, { entry }) => {
+      queryClient.invalidateQueries({ queryKey: ['save-snapshots', identifierKey(entry)] })
+    },
+  })
+}
+
+export function useDeleteSnapshot() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      entry,
+      timestamp,
+    }: {
+      entry: Pick<ScannedEntry, 'code' | 'path'>
+      timestamp: string
+    }) => window.api.save.deleteSnapshot(entry.code, entry.path, timestamp),
+    onSuccess: (_result, { entry }) => {
+      queryClient.invalidateQueries({ queryKey: ['save-snapshots', identifierKey(entry)] })
+    },
+  })
+}
+
+export function useDeleteAllSnapshots() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (entry: Pick<ScannedEntry, 'code' | 'path'>) =>
+      window.api.save.deleteAllSnapshots(entry.code, entry.path),
+    onSuccess: (_result, entry) => {
+      queryClient.invalidateQueries({ queryKey: ['save-snapshots', identifierKey(entry)] })
+    },
+  })
+}
+
+export function useShowSnapshotInFolder() {
+  return useMutation({
+    mutationFn: ({
+      entry,
+      timestamp,
+    }: {
+      entry: Pick<ScannedEntry, 'code' | 'path'>
+      timestamp: string
+    }) => window.api.save.showSnapshotInFolder(entry.code, entry.path, timestamp),
+  })
+}
+
+export function useCheckVersionMismatch() {
+  return useMutation({
+    mutationFn: ({
+      entry,
+      timestamp,
+    }: {
+      entry: Pick<ScannedEntry, 'code' | 'path'>
+      timestamp: string
+    }): Promise<VersionMismatchDto> =>
+      window.api.save.checkVersionMismatch(entry.code, entry.path, timestamp),
   })
 }

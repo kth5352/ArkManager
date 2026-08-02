@@ -62,6 +62,11 @@ export const IPC_CHANNELS = {
   SAVE_RESTORE_SNAPSHOT: 'save:restore-snapshot',
   SAVE_DIFF: 'save:diff',
   SAVE_LIST_GAMES_WITH_SAVE_PATH: 'save:list-games-with-save-path',
+  SAVE_SET_SNAPSHOT_LABEL: 'save:set-snapshot-label',
+  SAVE_DELETE_SNAPSHOT: 'save:delete-snapshot',
+  SAVE_DELETE_ALL_SNAPSHOTS: 'save:delete-all-snapshots',
+  SAVE_SHOW_SNAPSHOT_IN_FOLDER: 'save:show-snapshot-in-folder',
+  SAVE_CHECK_VERSION_MISMATCH: 'save:check-version-mismatch',
   MEDIA_OPEN_PLAYER_WINDOW: 'media:open-player-window',
   MEDIA_PLAYER_WINDOW_CLOSED: 'media:player-window-closed',
   MEDIA_STATE_BROADCAST: 'media:state-broadcast',
@@ -341,6 +346,8 @@ export interface SaveSnapshotDto {
   timestamp: string
   fileCount: number
   totalSizeBytes: number
+  memo: string | null
+  version: string | null
 }
 
 // Must match timestampToDirName's output exactly (createSnapshot.ts) - this
@@ -359,6 +366,38 @@ export const SaveDiffRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
   timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN).nullable(),
 })
+
+export const SetSnapshotLabelRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN),
+  memo: z.string().optional(),
+  version: z.string().optional(),
+})
+
+export const DeleteSnapshotRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN),
+})
+
+export const DeleteAllSnapshotsRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+})
+
+export const ShowSnapshotInFolderRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN),
+})
+
+export const CheckVersionMismatchRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN),
+})
+
+export interface VersionMismatchDto {
+  snapshotVersion: string | null
+  currentVersion: string | null
+  isSnapshotNewer: boolean
+}
 
 export type SaveDiffStatus = 'added' | 'removed' | 'modified'
 
