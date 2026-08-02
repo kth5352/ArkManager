@@ -36,6 +36,12 @@ import {
   useSetLanguageMutation,
   useSetLocaleEmulatorPathMutation,
 } from '../../services/settingsService'
+import {
+  useAppVersion,
+  useCheckForUpdates,
+  useInstallUpdate,
+  useUpdateStatus,
+} from '../../services/updateService'
 import { useTranslation } from '../../i18n/useTranslation'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useState, type DragEvent } from 'react'
@@ -265,6 +271,70 @@ function LocaleEmulatorSection() {
   )
 }
 
+function UpdateSection() {
+  const { t } = useTranslation()
+  const { data: version } = useAppVersion()
+  const status = useUpdateStatus()
+  const checkForUpdates = useCheckForUpdates()
+  const installUpdate = useInstallUpdate()
+
+  const statusMessage = (() => {
+    switch (status.state) {
+      case 'checking':
+        return t('settings.updateChecking')
+      case 'not-available':
+        return t('settings.updateNotAvailable')
+      case 'available':
+        return t('settings.updateAvailable', { version: status.version })
+      case 'downloading':
+        return t('settings.updateDownloading', { percent: status.percent })
+      case 'downloaded':
+        return t('settings.updateDownloaded', { version: status.version })
+      case 'error':
+        return t('settings.updateError')
+      default:
+        return null
+    }
+  })()
+
+  const isBusy =
+    checkForUpdates.isPending || status.state === 'checking' || status.state === 'downloading'
+
+  return (
+    <div className="mt-4 border-t border-border pt-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold">{t('settings.updateTitle')}</h2>
+          {version && (
+            <p className="text-xs text-muted-foreground">
+              {t('settings.currentVersion', { version })}
+            </p>
+          )}
+        </div>
+        {status.state === 'downloaded' ? (
+          <Button
+            size="sm"
+            onClick={() => installUpdate.mutate()}
+            disabled={installUpdate.isPending}
+          >
+            {t('settings.installUpdateNow')}
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => checkForUpdates.mutate()}
+            disabled={isBusy}
+          >
+            {t('settings.checkForUpdate')}
+          </Button>
+        )}
+      </div>
+      {statusMessage && <p className="mt-2 text-xs text-muted-foreground">{statusMessage}</p>}
+    </div>
+  )
+}
+
 function LanguageSection() {
   const { t } = useTranslation()
   const { data: locale = 'ko' } = useLanguageQuery()
@@ -334,6 +404,7 @@ export function SettingsPage() {
 
       <LocaleEmulatorSection />
       <LanguageSection />
+      <UpdateSection />
     </div>
   )
 }

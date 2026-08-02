@@ -13,6 +13,7 @@ import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
 import { registerCacheHandlers } from './ipc/cacheHandlers'
 import { registerMediaWindowHandlers } from './ipc/mediaWindowHandlers'
+import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
 import { rewriteCoverImagePathPrefix } from './database/gameMetadataRepository'
@@ -148,6 +149,7 @@ if (!gotSingleInstanceLock) {
     registerThumbnailProtocolHandler(db)
     registerMediaProtocolHandler(db)
     closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
+    registerUpdateHandlers(() => mainWindow)
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a
@@ -162,6 +164,11 @@ if (!gotSingleInstanceLock) {
     })
 
     createWindow()
+
+    // Delayed so it never competes with the window's own initial load for
+    // network/CPU - a background check the user never asked for shouldn't
+    // be what makes first launch feel slow.
+    setTimeout(checkForUpdatesOnStartup, 3000)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

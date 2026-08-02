@@ -68,6 +68,12 @@ export const IPC_CHANNELS = {
   MEDIA_STATE_SYNC: 'media:state-sync',
   MEDIA_REPORT_TIME: 'media:report-time',
   CACHE_CLEAR: 'cache:clear',
+  UPDATE_GET_VERSION: 'update:get-version',
+  UPDATE_CHECK: 'update:check',
+  UPDATE_INSTALL: 'update:install',
+  // Push-only, main -> renderer: fired whenever the update check/download
+  // lifecycle advances. No request/response schema.
+  UPDATE_STATUS: 'update:status',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -434,3 +440,16 @@ export const MediaSyncStateSchema = z.object({
 export type MediaSyncState = z.infer<typeof MediaSyncStateSchema>
 
 export const MediaReportTimeRequestSchema = z.number()
+
+// Pushed to the renderer as the auto-update lifecycle advances (see
+// electron/main/updater.ts) - a discriminated union rather than separate
+// booleans/nullable fields so the renderer can never observe an
+// inconsistent combination (e.g. "downloading" with no percent).
+export type UpdateStatus =
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'not-available' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string }

@@ -20,6 +20,7 @@ import {
   type SortPage,
   type SortPreference,
   type Theme,
+  type UpdateStatus,
 } from '../../shared/types/ipc'
 import type { GameCode, ScannedEntry } from '../../shared/types/scanner'
 
@@ -245,6 +246,16 @@ const api = {
   cache: {
     clear: (deleteSaveBackups: boolean): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.CACHE_CLEAR, { deleteSaveBackups }),
+  },
+  update: {
+    getVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_GET_VERSION),
+    check: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_CHECK),
+    install: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_INSTALL),
+    onStatus: (callback: (status: UpdateStatus) => void): (() => void) => {
+      const listener = (_event: unknown, payload: UpdateStatus): void => callback(payload)
+      ipcRenderer.on(IPC_CHANNELS.UPDATE_STATUS, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.UPDATE_STATUS, listener)
+    },
   },
 }
 
