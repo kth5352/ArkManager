@@ -1,3 +1,4 @@
+// src/components/game/SaveManagerDialog.tsx
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
@@ -7,9 +8,14 @@ import {
   useRestoreSaveSnapshot,
   useSaveDiff,
   useSaveSnapshots,
+  useSetSnapshotLabel,
+  useDeleteSnapshot,
+  useDeleteAllSnapshots,
+  useShowSnapshotInFolder,
+  useCheckVersionMismatch,
 } from '../../services/saveService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
-import type { SaveDiffStatus } from '../../../shared/types/ipc'
+import type { SaveDiffStatus, VersionMismatchDto } from '../../../shared/types/ipc'
 
 interface SaveManagerDialogProps {
   entry: Pick<ScannedEntry, 'code' | 'path' | 'name'> | null
@@ -53,22 +59,77 @@ const STATUS_STYLES: Record<SaveDiffStatus, string> = {
 const STATUS_SYMBOLS: Record<SaveDiffStatus, string> = { added: '+', removed: '-', modified: '~' }
 
 type PendingAction =
-  { type: 'save'; against: string | null } | { type: 'restore'; timestamp: string }
+  | { type: 'save'; against: string | null }
+  | { type: 'restore'; timestamp: string }
+  | { type: 'delete'; timestamp: string }
+  | { type: 'deleteAll'; step: 1 | 2 }
+
+function VersionBadge({
+  entry,
+  timestamp,
+  version,
+  onSave,
+}: {
+  entry: Pick<ScannedEntry, 'code' | 'path'> | null
+  timestamp: string
+  version: string | null
+  onSave: ReturnType<typeof useSetSnapshotLabel>
+}) {
+  const { t } = useTranslation()
+  const [editing, setEditing] = useState(false)
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        className="w-20 rounded border border-border bg-transparent px-1 text-xs text-foreground"
+        defaultValue={version ?? ''}
+        onBlur={(e) => {
+          setEditing(false)
+          if (!entry) return
+          const next = e.target.value
+          if (next !== (version ?? '')) {
+            onSave.mutate({ entry, timestamp, updates: { version: next } })
+          }
+        }}
+      />
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className="rounded-full border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+      onClick={() => setEditing(true)}
+    >
+      {version ? `v${version}` : t('saveManager.versionPlaceholder')}
+    </button>
+  )
+}
 
 export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialogProps) {
   const { t } = useTranslation()
   const [pending, setPending] = useState<PendingAction | null>(null)
+  const [mismatch, setMismatch] = useState<{ timestamp: string; result: VersionMismatchDto } | null>(
+    null
+  )
   const { data: snapshots } = useSaveSnapshots(entry)
   const { data: diff } = useSaveDiff(
     entry,
-    pending?.type === 'save' ? pending.against : (pending?.timestamp ?? null),
-    pending !== null
+    pending?.type === 'save' ? pending.against : pending?.type === 'restore' ? pending.timestamp : null,
+    pending !== null && (pending.type === 'save' || pending.type === 'restore')
   )
   const createSnapshot = useCreateSaveSnapshot()
   const restoreSnapshot = useRestoreSaveSnapshot()
+  const setSnapshotLabel = useSetSnapshotLabel()
+  const deleteSnapshot = useDeleteSnapshot()
+  const deleteAllSnapshots = useDeleteAllSnapshots()
+  const showSnapshotInFolder = useShowSnapshotInFolder()
+  const checkVersionMismatch = useCheckVersionMismatch()
 
   const handleClose = (): void => {
     setPending(null)
+    setMismatch(null)
     onClose()
   }
 
@@ -77,12 +138,46 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
     createSnapshot.mutate(entry, { onSuccess: () => setPending(null) })
   }
 
+  const handleClickRestore = (timestamp: string): void => {
+    if (!entry) return
+    const snapshot = (snapshots ?? []).find((s) => s.timestamp === timestamp)
+    if (snapshot?.version) {
+      checkVersionMismatch.mutate(
+        { entry, timestamp },
+        {
+          onSuccess: (result) => {
+            if (result.isSnapshotNewer) {
+              setMismatch({ timestamp, result })
+            } else {
+              setPending({ type: 'restore', timestamp })
+            }
+          },
+        }
+      )
+    } else {
+      setPending({ type: 'restore', timestamp })
+    }
+  }
+
   const handleConfirmRestore = (): void => {
     if (!entry || pending?.type !== 'restore') return
     restoreSnapshot.mutate(
       { entry, timestamp: pending.timestamp },
       { onSuccess: () => setPending(null) }
     )
+  }
+
+  const handleConfirmDelete = (): void => {
+    if (!entry || pending?.type !== 'delete') return
+    deleteSnapshot.mutate(
+      { entry, timestamp: pending.timestamp },
+      { onSuccess: () => setPending(null) }
+    )
+  }
+
+  const handleConfirmDeleteAll = (): void => {
+    if (!entry) return
+    deleteAllSnapshots.mutate(entry, { onSuccess: () => setPending(null) })
   }
 
   return (
@@ -96,15 +191,46 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
 
         {!savePath ? (
           <p className="text-sm text-muted-foreground">{t('saveManager.noSavePath')}</p>
+        ) : mismatch !== null ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-yellow-500">
+              {t('saveManager.versionMismatchWarning', {
+                snapshotVersion: mismatch.result.snapshotVersion ?? '',
+                currentVersion: mismatch.result.currentVersion ?? '',
+              })}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setMismatch(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const timestamp = mismatch.timestamp
+                  setMismatch(null)
+                  setPending({ type: 'restore', timestamp })
+                }}
+              >
+                {t('saveManager.restoreAnyway')}
+              </Button>
+            </div>
+          </div>
         ) : pending === null ? (
           <>
-            <Button
-              onClick={() =>
-                setPending({ type: 'save', against: snapshots?.[0]?.timestamp ?? null })
-              }
-            >
-              {t('saveManager.saveNew')}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() =>
+                  setPending({ type: 'save', against: snapshots?.[0]?.timestamp ?? null })
+                }
+              >
+                {t('saveManager.saveNew')}
+              </Button>
+              {(snapshots ?? []).length > 0 && (
+                <Button variant="destructive" onClick={() => setPending({ type: 'deleteAll', step: 1 })}>
+                  {t('saveManager.deleteAll')}
+                </Button>
+              )}
+            </div>
             <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
               {(snapshots ?? []).length === 0 && (
                 <p className="text-sm text-muted-foreground">{t('saveManager.noSnapshots')}</p>
@@ -112,28 +238,96 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
               {(snapshots ?? []).map((snapshot) => (
                 <div
                   key={snapshot.timestamp}
-                  className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
+                  className="flex flex-col gap-1 rounded-md border border-border px-3 py-2 text-sm"
                 >
-                  <div className="flex min-w-0 flex-col">
-                    <span>{formatTimestamp(snapshot.timestamp)}</span>
-                    <span className="truncate text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span>{formatTimestamp(snapshot.timestamp)}</span>
+                      <VersionBadge
+                        entry={entry}
+                        timestamp={snapshot.timestamp}
+                        version={snapshot.version}
+                        onSave={setSnapshotLabel}
+                      />
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">
                       {t('saveManager.snapshotMeta', {
                         count: snapshot.fileCount,
                         size: formatSize(snapshot.totalSizeBytes),
                       })}
                     </span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setPending({ type: 'restore', timestamp: snapshot.timestamp })}
-                  >
-                    {t('saveManager.restore')}
-                  </Button>
+                  <input
+                    className="rounded border border-border bg-transparent px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
+                    placeholder={t('saveManager.memoPlaceholder')}
+                    defaultValue={snapshot.memo ?? ''}
+                    onBlur={(e) => {
+                      if (!entry) return
+                      const memo = e.target.value
+                      if (memo !== (snapshot.memo ?? '')) {
+                        setSnapshotLabel.mutate({ entry, timestamp: snapshot.timestamp, updates: { memo } })
+                      }
+                    }}
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => entry && showSnapshotInFolder.mutate({ entry, timestamp: snapshot.timestamp })}
+                    >
+                      {t('game.openFolder')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setPending({ type: 'delete', timestamp: snapshot.timestamp })}
+                    >
+                      {t('common.delete')}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => handleClickRestore(snapshot.timestamp)}>
+                      {t('saveManager.restore')}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
           </>
+        ) : pending.type === 'delete' ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm">{t('saveManager.deleteSnapshotConfirm')}</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setPending(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteSnapshot.isPending}>
+                {t('common.delete')}
+              </Button>
+            </div>
+          </div>
+        ) : pending.type === 'deleteAll' ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm">
+              {pending.step === 1
+                ? t('saveManager.deleteAllConfirm1')
+                : t('saveManager.deleteAllConfirm2', { count: snapshots?.length ?? 0 })}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setPending(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  pending.step === 1
+                    ? setPending({ type: 'deleteAll', step: 2 })
+                    : handleConfirmDeleteAll()
+                }
+                disabled={deleteAllSnapshots.isPending}
+              >
+                {t('saveManager.deleteAll')}
+              </Button>
+            </div>
+          </div>
         ) : (
           <>
             <p className="text-sm font-medium">
