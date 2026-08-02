@@ -224,7 +224,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
             <Button
               size="sm"
               variant="outline"
-              className="w-full bg-green-600 text-white hover:bg-green-600/90"
+              className="w-full bg-green-600 text-white hover:bg-green-600/90 hover:text-white"
               onClick={handleLaunch}
             >
               {t('game.launch')}
@@ -285,7 +285,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
           <Button
             size="sm"
             variant="outline"
-            className="w-full border-destructive text-destructive hover:bg-destructive/10"
+            className="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={() => setDialogMode('delete')}
           >
             {t('common.delete')}
