@@ -2,6 +2,7 @@ import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'rea
 import { motion } from 'framer-motion'
 import { CheckCircle2, Clock, ImagePlus, X } from 'lucide-react'
 import { Button } from '../ui/button'
+import { HoverTooltip } from '../ui/hover-tooltip'
 import { GameThumbnail } from './GameThumbnail'
 import { RatingMemoSection } from './RatingMemoSection'
 import { LaunchConfigSection } from './LaunchConfigSection'
@@ -218,37 +219,75 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
             ))}
           </div>
         )}
-        <div className="flex flex-wrap gap-2">
-          {game.code && (
-            <Button size="sm" onClick={() => game.code && openExternal.mutate(game.code)}>
-              {t('game.openWeb')}
-            </Button>
-          )}
-          {game.code && (
+        <div className="flex flex-col gap-2">
+          {game.kind === 'folder' && (
             <Button
               size="sm"
-              variant="secondary"
-              onClick={() => game.code && crawlMetadata.mutate(game.code)}
-              disabled={crawlMetadata.isPending}
+              variant="outline"
+              className="w-full bg-green-600 text-white hover:bg-green-600/90"
+              onClick={handleLaunch}
             >
-              {t('game.refreshMetadata')}
-            </Button>
-          )}
-          <Button size="sm" variant="secondary" onClick={() => showItemInFolder.mutate(game.path)}>
-            {t('game.openFolder')}
-          </Button>
-          {game.kind === 'folder' && (
-            <Button size="sm" variant="secondary" onClick={handleLaunch}>
               {t('game.launch')}
             </Button>
           )}
-          <Button size="sm" variant="secondary" onClick={() => setDialogMode('rename')}>
-            {t('selection.rename')}
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => setDialogMode('move')}>
-            {t('selection.move')}
-          </Button>
-          <Button size="sm" variant="destructive" onClick={() => setDialogMode('delete')}>
+          <div className="flex gap-2">
+            {game.code && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => game.code && openExternal.mutate(game.code)}
+              >
+                {t('game.openWeb')}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => showItemInFolder.mutate(game.path)}
+            >
+              {t('game.openFolder')}
+            </Button>
+            {game.code && (
+              <HoverTooltip content={t('game.refreshMetadata')} className="flex-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => game.code && crawlMetadata.mutate(game.code)}
+                  disabled={crawlMetadata.isPending}
+                >
+                  {t('game.refreshMetadataShort')}
+                </Button>
+              </HoverTooltip>
+            )}
+          </div>
+          <div className="border-t border-border" />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setDialogMode('rename')}
+            >
+              {t('selection.rename')}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setDialogMode('move')}
+            >
+              {t('selection.move')}
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full border-destructive text-destructive hover:bg-destructive/10"
+            onClick={() => setDialogMode('delete')}
+          >
             {t('common.delete')}
           </Button>
         </div>
