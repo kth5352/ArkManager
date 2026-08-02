@@ -1,17 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { autoUpdater, type UpdateInfo } from 'electron-updater'
-import { IPC_CHANNELS, type ReleaseNote, type UpdateStatus } from '../../shared/types/ipc'
-
-// electron-updater reports releaseNotes as either a single string (GitHub
-// release body for the target version) or an array of {version, note} when
-// the update skips over several intermediate releases at once - normalized
-// to always be an array so the renderer never has to handle both shapes.
-function normalizeReleaseNotes(info: UpdateInfo): ReleaseNote[] {
-  const { releaseNotes } = info
-  if (!releaseNotes) return []
-  if (typeof releaseNotes === 'string') return [{ version: info.version, note: releaseNotes }]
-  return releaseNotes.map((entry) => ({ version: entry.version, note: entry.note ?? '' }))
-}
+import { autoUpdater } from 'electron-updater'
+import { IPC_CHANNELS, type UpdateStatus } from '../../shared/types/ipc'
+import { normalizeReleaseNotes } from './normalizeReleaseNotes'
 
 // Download as soon as an update is found (no extra "start download" click),
 // but never install/restart on our own - quitAndInstall only ever runs from
@@ -20,9 +10,25 @@ function normalizeReleaseNotes(info: UpdateInfo): ReleaseNote[] {
 // whatever the user is doing.
 autoUpdater.autoDownload = true
 autoUpdater.autoInstallOnAppQuit = false
+// Without this, GitHubProvider only ever returns the latest release's own
+// notes (see normalizeReleaseNotes' comment) - the release-notes dialog is
+// built to show one entry per skipped version, so this needs to actually be
+// enabled for that to have real data to show once more than one release is
+// published between two runs of the app.
+autoUpdater.fullChangelog = true
+
+// The most recent status any renderer has been sent, so a window that
+// mounts (or remounts, e.g. navigating back to Settings) after a status
+// change already happened - the silent startup check in particular runs
+// with nothing listening yet - can ask for where things currently stand
+// instead of only ever starting from 'idle'. Module-scoped rather than
+// per-window since there's only ever one update lifecycle for the whole
+// app, regardless of which window is currently open.
+let lastStatus: UpdateStatus = { state: 'idle' }
 
 export function registerUpdateHandlers(getMainWindow: () => BrowserWindow | null): void {
   const sendStatus = (status: UpdateStatus): void => {
+    lastStatus = status
     getMainWindow()?.webContents.send(IPC_CHANNELS.UPDATE_STATUS, status)
   }
 
@@ -48,6 +54,7 @@ export function registerUpdateHandlers(getMainWindow: () => BrowserWindow | null
   autoUpdater.on('error', (error) => sendStatus({ state: 'error', message: error.message }))
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_GET_VERSION, () => app.getVersion())
+  ipcMain.handle(IPC_CHANNELS.UPDATE_GET_STATUS, () => lastStatus)
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_CHECK, async () => {
     // A dev run has no app-update.yml (only generated for a packaged

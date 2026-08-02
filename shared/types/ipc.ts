@@ -71,6 +71,11 @@ export const IPC_CHANNELS = {
   UPDATE_GET_VERSION: 'update:get-version',
   UPDATE_CHECK: 'update:check',
   UPDATE_INSTALL: 'update:install',
+  // Lets a freshly-mounted renderer (e.g. the user opening Settings after a
+  // silent background check already finished elsewhere) catch up on
+  // whatever the update lifecycle's current state is, rather than only
+  // ever starting from 'idle' and missing anything that already happened.
+  UPDATE_GET_STATUS: 'update:get-status',
   // Push-only, main -> renderer: fired whenever the update check/download
   // lifecycle advances. No request/response schema.
   UPDATE_STATUS: 'update:status',

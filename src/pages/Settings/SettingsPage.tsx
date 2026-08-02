@@ -348,6 +348,11 @@ function UpdateSection() {
       case 'downloaded':
         return t('settings.updateDownloaded', { version: status.version })
       case 'error':
+        // The generic UI message is deliberately not the raw error (a
+        // GitHub feed error is technical, not something a user can act
+        // on) - logged instead so it's actually findable when diagnosing
+        // a real failure, rather than just vanishing.
+        console.error('Update check failed:', status.message)
         return t('settings.updateError')
       default:
         return null
