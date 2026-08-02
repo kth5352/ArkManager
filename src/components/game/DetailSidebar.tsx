@@ -1,6 +1,6 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle2, Clock, ImagePlus, X } from 'lucide-react'
+import { CheckCircle2, Clock, ImagePlus, RefreshCw, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { HoverTooltip } from '../ui/hover-tooltip'
 import { GameThumbnail } from './GameThumbnail'
@@ -257,8 +257,9 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
                   className="w-full"
                   onClick={() => game.code && crawlMetadata.mutate(game.code)}
                   disabled={crawlMetadata.isPending}
+                  aria-label={t('game.refreshMetadata')}
                 >
-                  {t('game.refreshMetadataShort')}
+                  <RefreshCw className="h-4 w-4" />
                 </Button>
               </HoverTooltip>
             )}
