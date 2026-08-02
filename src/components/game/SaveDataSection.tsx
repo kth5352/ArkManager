@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
+import { useShowItemInFolder } from '../../services/shellService'
 import { SaveManagerDialog } from './SaveManagerDialog'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -23,6 +24,7 @@ export function SaveDataSection({ game }: SaveDataSectionProps) {
   const { data: userData } = useGameUserData(game)
   const pickSaveFolder = usePickSaveFolder()
   const setSavePath = useSetSavePath()
+  const showItemInFolder = useShowItemInFolder()
 
   const handlePickSaveFolder = async (): Promise<void> => {
     const path = await pickSaveFolder.mutateAsync(game.path)
@@ -41,9 +43,19 @@ export function SaveDataSection({ game }: SaveDataSectionProps) {
       {expanded && (
         <div className="mt-2 flex flex-col gap-2">
           {userData?.savePath && (
-            <p className="truncate text-xs text-muted-foreground" title={userData.savePath}>
-              {userData.savePath}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-xs text-muted-foreground" title={userData.savePath}>
+                {userData.savePath}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0"
+                onClick={() => showItemInFolder.mutate(userData.savePath!)}
+              >
+                {t('game.openFolder')}
+              </Button>
+            </div>
           )}
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={handlePickSaveFolder}>
