@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
@@ -58,3 +58,14 @@ export const pathCodeOverrides = sqliteTable('path_code_overrides', {
   code: text('code').notNull(),
   createdAt: text('created_at').notNull(),
 })
+
+export const saveSnapshotLabels = sqliteTable(
+  'save_snapshot_labels',
+  {
+    key: text('key').notNull(),
+    timestamp: text('timestamp').notNull(),
+    memo: text('memo'),
+    version: text('version'),
+  },
+  (table) => ({ pk: primaryKey({ columns: [table.key, table.timestamp] }) })
+)

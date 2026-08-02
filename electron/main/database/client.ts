@@ -125,6 +125,16 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS save_snapshot_labels (
+      key TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      memo TEXT,
+      version TEXT,
+      PRIMARY KEY (key, timestamp)
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 
