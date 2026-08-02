@@ -460,7 +460,7 @@ export function readExeFileVersion(exePath: string): Promise<string | null> {
   return new Promise((resolve) => {
     const escaped = exePath.replace(/'/g, "''")
     const [executable, args, options] = preparePowerShellExec(
-      `(Get-Item -LiteralPath '${escaped}').VersionInfo.FileVersion`
+      `"(Get-Item -LiteralPath '${escaped}').VersionInfo.FileVersion"`
     )
     execFile(executable, args, options, (error, stdout) => {
       if (error) {
