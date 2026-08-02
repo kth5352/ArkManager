@@ -441,15 +441,23 @@ export type MediaSyncState = z.infer<typeof MediaSyncStateSchema>
 
 export const MediaReportTimeRequestSchema = z.number()
 
+export interface ReleaseNote {
+  version: string
+  note: string
+}
+
 // Pushed to the renderer as the auto-update lifecycle advances (see
 // electron/main/updater.ts) - a discriminated union rather than separate
 // booleans/nullable fields so the renderer can never observe an
 // inconsistent combination (e.g. "downloading" with no percent).
+// releaseNotes covers every version between the currently-running one and
+// the target (not just the target's own notes), since electron-updater
+// itself reports it that way when skipping over several releases at once.
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
-  | { state: 'available'; version: string }
+  | { state: 'available'; version: string; releaseNotes: ReleaseNote[] }
   | { state: 'not-available' }
   | { state: 'downloading'; percent: number }
-  | { state: 'downloaded'; version: string }
+  | { state: 'downloaded'; version: string; releaseNotes: ReleaseNote[] }
   | { state: 'error'; message: string }

@@ -1,6 +1,17 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { autoUpdater } from 'electron-updater'
-import { IPC_CHANNELS, type UpdateStatus } from '../../shared/types/ipc'
+import { autoUpdater, type UpdateInfo } from 'electron-updater'
+import { IPC_CHANNELS, type ReleaseNote, type UpdateStatus } from '../../shared/types/ipc'
+
+// electron-updater reports releaseNotes as either a single string (GitHub
+// release body for the target version) or an array of {version, note} when
+// the update skips over several intermediate releases at once - normalized
+// to always be an array so the renderer never has to handle both shapes.
+function normalizeReleaseNotes(info: UpdateInfo): ReleaseNote[] {
+  const { releaseNotes } = info
+  if (!releaseNotes) return []
+  if (typeof releaseNotes === 'string') return [{ version: info.version, note: releaseNotes }]
+  return releaseNotes.map((entry) => ({ version: entry.version, note: entry.note ?? '' }))
+}
 
 // Download as soon as an update is found (no extra "start download" click),
 // but never install/restart on our own - quitAndInstall only ever runs from
@@ -17,14 +28,22 @@ export function registerUpdateHandlers(getMainWindow: () => BrowserWindow | null
 
   autoUpdater.on('checking-for-update', () => sendStatus({ state: 'checking' }))
   autoUpdater.on('update-available', (info) =>
-    sendStatus({ state: 'available', version: info.version })
+    sendStatus({
+      state: 'available',
+      version: info.version,
+      releaseNotes: normalizeReleaseNotes(info),
+    })
   )
   autoUpdater.on('update-not-available', () => sendStatus({ state: 'not-available' }))
   autoUpdater.on('download-progress', (progress) =>
     sendStatus({ state: 'downloading', percent: Math.round(progress.percent) })
   )
   autoUpdater.on('update-downloaded', (info) =>
-    sendStatus({ state: 'downloaded', version: info.version })
+    sendStatus({
+      state: 'downloaded',
+      version: info.version,
+      releaseNotes: normalizeReleaseNotes(info),
+    })
   )
   autoUpdater.on('error', (error) => sendStatus({ state: 'error', message: error.message }))
 

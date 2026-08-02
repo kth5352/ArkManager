@@ -68,6 +68,10 @@ const ko = {
   'settings.updateDownloaded': '새 버전 {version} 설치 준비 완료.',
   'settings.installUpdateNow': '지금 재시작하고 설치',
   'settings.updateError': '업데이트 확인 중 오류가 발생했습니다.',
+  'settings.viewReleaseNotes': '업데이트 내역 보기',
+  'settings.releaseNotesTitle': '업데이트 내역',
+  'settings.releaseNotesEmpty': '표시할 업데이트 내역이 없습니다.',
+  'settings.appVersionFooter': 'Ark Manager v{version}',
 
   'search.openSearch': '검색창 열기',
   'search.placeholder': '제목, 장르, 서클명, 코드로 검색',
@@ -343,6 +347,10 @@ const ja: Record<keyof typeof ko, string> = {
   'settings.updateDownloaded': '新しいバージョン {version} のインストール準備が完了しました。',
   'settings.installUpdateNow': '今すぐ再起動してインストール',
   'settings.updateError': 'アップデートの確認中にエラーが発生しました。',
+  'settings.viewReleaseNotes': '更新内容を見る',
+  'settings.releaseNotesTitle': '更新内容',
+  'settings.releaseNotesEmpty': '表示する更新内容がありません。',
+  'settings.appVersionFooter': 'Ark Manager v{version}',
 
   'search.openSearch': '検索ボックスを開く',
   'search.placeholder': 'タイトル、ジャンル、サークル名、コードで検索',
@@ -616,6 +624,10 @@ const en: Record<keyof typeof ko, string> = {
   'settings.updateDownloaded': 'Version {version} is ready to install.',
   'settings.installUpdateNow': 'Restart and Install Now',
   'settings.updateError': 'An error occurred while checking for updates.',
+  'settings.viewReleaseNotes': 'View Release Notes',
+  'settings.releaseNotesTitle': 'Release Notes',
+  'settings.releaseNotesEmpty': 'No release notes to show.',
+  'settings.appVersionFooter': 'Ark Manager v{version}',
 
   'search.openSearch': 'Open search',
   'search.placeholder': 'Search by title, genre, circle, or code',

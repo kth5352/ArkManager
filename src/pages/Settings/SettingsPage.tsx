@@ -45,7 +45,7 @@ import {
 import { useTranslation } from '../../i18n/useTranslation'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useState, type DragEvent } from 'react'
-import type { Locale } from '../../../shared/types/ipc'
+import type { Locale, ReleaseNote, UpdateStatus } from '../../../shared/types/ipc'
 
 function AddLibraryDialog() {
   const { t } = useTranslation()
@@ -271,12 +271,69 @@ function LocaleEmulatorSection() {
   )
 }
 
+function ReleaseNotesDialog({
+  open,
+  onOpenChange,
+  notes,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  notes: ReleaseNote[]
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('settings.releaseNotesTitle')}</DialogTitle>
+        </DialogHeader>
+        <div className="flex max-h-96 flex-col gap-4 overflow-y-auto text-sm">
+          {notes.length === 0 ? (
+            <p className="text-muted-foreground">{t('settings.releaseNotesEmpty')}</p>
+          ) : (
+            notes.map((entry) => (
+              <div key={entry.version}>
+                <h3 className="text-sm font-semibold">{entry.version}</h3>
+                <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                  {entry.note}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+        <Button onClick={() => onOpenChange(false)}>{t('common.close')}</Button>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function UpdateSection() {
   const { t } = useTranslation()
   const { data: version } = useAppVersion()
   const status = useUpdateStatus()
   const checkForUpdates = useCheckForUpdates()
   const installUpdate = useInstallUpdate()
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
+  // Tracks which status object this component has already reacted to -
+  // adjusted during render (React's documented pattern for "state that
+  // depends on a changing value from outside", already used elsewhere in
+  // this codebase, e.g. useMediaPlayback's resetForPath) rather than in a
+  // useEffect, which would call setState after an extra commit instead of
+  // before this same render finishes.
+  const [lastStatus, setLastStatus] = useState<UpdateStatus | null>(null)
+
+  const releaseNotes =
+    status.state === 'available' || status.state === 'downloaded' ? status.releaseNotes : []
+
+  // Surfaces what's new the moment an update finishes downloading (the
+  // point where the user actually has to decide whether to restart and
+  // install) rather than requiring an extra click to discover it - still
+  // dismissible, and reopenable any time via the button below.
+  if (status !== lastStatus) {
+    setLastStatus(status)
+    if (status.state === 'downloaded') setReleaseNotesOpen(true)
+  }
 
   const statusMessage = (() => {
     switch (status.state) {
@@ -311,26 +368,38 @@ function UpdateSection() {
             </p>
           )}
         </div>
-        {status.state === 'downloaded' ? (
-          <Button
-            size="sm"
-            onClick={() => installUpdate.mutate()}
-            disabled={installUpdate.isPending}
-          >
-            {t('settings.installUpdateNow')}
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => checkForUpdates.mutate()}
-            disabled={isBusy}
-          >
-            {t('settings.checkForUpdate')}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {(status.state === 'available' || status.state === 'downloaded') && (
+            <Button variant="ghost" size="sm" onClick={() => setReleaseNotesOpen(true)}>
+              {t('settings.viewReleaseNotes')}
+            </Button>
+          )}
+          {status.state === 'downloaded' ? (
+            <Button
+              size="sm"
+              onClick={() => installUpdate.mutate()}
+              disabled={installUpdate.isPending}
+            >
+              {t('settings.installUpdateNow')}
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => checkForUpdates.mutate()}
+              disabled={isBusy}
+            >
+              {t('settings.checkForUpdate')}
+            </Button>
+          )}
+        </div>
       </div>
       {statusMessage && <p className="mt-2 text-xs text-muted-foreground">{statusMessage}</p>}
+      <ReleaseNotesDialog
+        open={releaseNotesOpen}
+        onOpenChange={setReleaseNotesOpen}
+        notes={releaseNotes}
+      />
     </div>
   )
 }
@@ -361,9 +430,10 @@ export function SettingsPage() {
   const { t } = useTranslation()
   const { data: libraries, isLoading } = useLibraries()
   const removeLibrary = useRemoveLibrary()
+  const { data: version } = useAppVersion()
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex h-full flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">{t('settings.libraryTitle')}</h1>
         <AddLibraryDialog />
@@ -405,6 +475,12 @@ export function SettingsPage() {
       <LocaleEmulatorSection />
       <LanguageSection />
       <UpdateSection />
+
+      {version && (
+        <p className="mt-auto flex justify-end text-xs text-muted-foreground">
+          {t('settings.appVersionFooter', { version })}
+        </p>
+      )}
     </div>
   )
 }
