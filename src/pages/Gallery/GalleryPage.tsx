@@ -471,11 +471,37 @@ export function GalleryPage() {
                       const anchorIndex =
                         anchor.rowStartIndex * prevColumnCount + anchor.columnStartIndex
                       const newRowIndex = Math.floor(anchorIndex / columnCount)
-                      gridRef.current?.scrollToRow({
-                        index: newRowIndex,
-                        align: 'start',
-                        behavior: 'instant',
-                      })
+                      // The anchor's columnStartIndex can reference a column
+                      // position react-window considers "visible" even when
+                      // the last row is only partially filled (fewer real
+                      // items than columnCount) - reconstructing anchorIndex
+                      // from it can then overshoot the actual item count,
+                      // producing a row index at or past rowCount. Grid's
+                      // scrollToRow throws a RangeError ("Invalid index
+                      // specified") for anything outside [0, rowCount - 1],
+                      // which is exactly what opening/closing the detail
+                      // sidebar (changing columnCount) could trigger.
+                      const clampedRowIndex = Math.min(Math.max(newRowIndex, 0), rowCount - 1)
+                      // Clamping against this render's own `rowCount` isn't
+                      // actually enough on its own - react-window's
+                      // imperative scrollToRow validates against whatever
+                      // rowCount ITS OWN internals have last observed, which
+                      // (confirmed by tracing an actual crash) can still lag
+                      // one tick behind the value this component just
+                      // computed from the same resize. Restoring the exact
+                      // scroll position is a nice-to-have, not core
+                      // functionality - a stale-bounds RangeError from that
+                      // race must never take down the whole page, so the
+                      // call itself is guarded too.
+                      try {
+                        gridRef.current?.scrollToRow({
+                          index: clampedRowIndex,
+                          align: 'start',
+                          behavior: 'instant',
+                        })
+                      } catch {
+                        // Best-effort - see comment above.
+                      }
                     }
                     prevColumnCountRef.current = columnCount
                   }
