@@ -31,15 +31,6 @@ export function MediaPlayerBar({ playback, isDetached, onExpandVideo }: MediaPla
           {t('media.playingInOtherWindow')}
         </span>
       )}
-      {!isDetached && onExpandVideo && (
-        <button
-          onClick={onExpandVideo}
-          aria-label={t('media.expand')}
-          className="shrink-0 text-muted-foreground hover:text-foreground"
-        >
-          <Maximize2 className="h-4 w-4" />
-        </button>
-      )}
 
       <MediaTransportBar playback={playback} />
 
@@ -53,6 +44,24 @@ export function MediaPlayerBar({ playback, isDetached, onExpandVideo }: MediaPla
       >
         <ListMusic className="h-4 w-4" />
       </button>
+      {/* Right-aligned to match FullscreenMediaOverlay's minimize button
+          position (also the rightmost of its own icon row) - previously
+          this sat on the far left of the docked bar, so expanding then
+          collapsing moved your cursor from one end of the bar to the other.
+          Kept left of the divider/X below (not adjacent to it) since X
+          clears the whole playlist - a much more destructive action than
+          toggling the expanded view - and a misclick here should never
+          land on that button instead. */}
+      {!isDetached && onExpandVideo && (
+        <button
+          onClick={onExpandVideo}
+          aria-label={t('media.expand')}
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
+      )}
+      <div className="h-4 w-px shrink-0 bg-border" />
       <button
         onClick={clearPlaylist}
         aria-label={t('media.closePlaylist')}
