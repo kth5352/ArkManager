@@ -20,6 +20,17 @@ let playerWindow: BrowserWindow | null = null
 // would.
 let lastKnownTimeSeconds = 0
 
+// Updated on every MEDIA_STATE_BROADCAST (which fires unconditionally on
+// every store change in whichever window is currently active, not only
+// when a detached window exists - see useMediaPlayerSync.ts) - lets the
+// main process's Reload menu handler (electron/main/index.ts) know whether
+// to warn before reloading, without a dedicated IPC round-trip.
+let isMediaPlaying = false
+
+export function getIsMediaPlaying(): boolean {
+  return isMediaPlaying
+}
+
 export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow | null): {
   closePlayerWindow: () => void
 } {
@@ -72,6 +83,7 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
   // this just forwards to every OTHER currently open window.
   ipcMain.on(IPC_CHANNELS.MEDIA_STATE_BROADCAST, (event, payload: unknown) => {
     const state = MediaSyncStateSchema.parse(payload)
+    isMediaPlaying = state.isPlaying
     for (const win of BrowserWindow.getAllWindows()) {
       if (win.webContents.id !== event.sender.id) {
         win.webContents.send(IPC_CHANNELS.MEDIA_STATE_SYNC, state)

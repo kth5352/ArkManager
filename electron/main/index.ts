@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, dialog, Menu, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'node:path'
 import { createDbClient } from './database/client'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
@@ -12,7 +12,7 @@ import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
 import { registerCacheHandlers } from './ipc/cacheHandlers'
-import { registerMediaWindowHandlers } from './ipc/mediaWindowHandlers'
+import { registerMediaWindowHandlers, getIsMediaPlaying } from './ipc/mediaWindowHandlers'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
@@ -62,6 +62,72 @@ if (!gotSingleInstanceLock) {
     return app.isPackaged
       ? join(process.resourcesPath, 'LOGO.png')
       : join(__dirname, '../../LOGO.png')
+  }
+
+  // Reproduces Electron's own default menu shape (the one silently in
+  // effect until now, since this app never called Menu.setApplicationMenu)
+  // via the same role shorthand for File/Edit/Window - View is spelled out
+  // item-by-item so its two reload items can get a custom click handler
+  // instead of role: 'reload' / role: 'forceReload', with every other View
+  // item unchanged. The default's Help menu (a single "Learn More" link to
+  // electronjs.org) is deliberately dropped rather than reproduced - it has
+  // no relevance to this app and an empty Help menu would be worse than no
+  // Help menu at all.
+  function guardedReload(win: BrowserWindow, forceReload: boolean): void {
+    const doReload = (): void => {
+      if (forceReload) win.webContents.reloadIgnoringCache()
+      else win.webContents.reload()
+    }
+    if (!getIsMediaPlaying()) {
+      doReload()
+      return
+    }
+    dialog
+      .showMessageBox(win, {
+        type: 'question',
+        buttons: ['취소', '새로고침'],
+        defaultId: 0,
+        cancelId: 0,
+        message: '미디어가 재생 중입니다. 새로고침하면 재생이 중단됩니다. 계속하시겠습니까?',
+      })
+      .then(({ response }) => {
+        if (response === 1) doReload()
+      })
+  }
+
+  function buildApplicationMenu(): void {
+    const template: MenuItemConstructorOptions[] = [
+      { role: 'fileMenu' },
+      { role: 'editMenu' },
+      {
+        label: 'View',
+        submenu: [
+          {
+            label: 'Reload',
+            accelerator: 'CmdOrCtrl+R',
+            click: (_item, win) => {
+              if (win instanceof BrowserWindow) guardedReload(win, false)
+            },
+          },
+          {
+            label: 'Force Reload',
+            accelerator: 'CmdOrCtrl+Shift+R',
+            click: (_item, win) => {
+              if (win instanceof BrowserWindow) guardedReload(win, true)
+            },
+          },
+          { role: 'toggleDevTools' },
+          { type: 'separator' },
+          { role: 'resetZoom' },
+          { role: 'zoomIn' },
+          { role: 'zoomOut' },
+          { type: 'separator' },
+          { role: 'togglefullscreen' },
+        ],
+      },
+      { role: 'windowMenu' },
+    ]
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   }
 
   function createWindow(): void {
@@ -163,6 +229,7 @@ if (!gotSingleInstanceLock) {
       }
     })
 
+    buildApplicationMenu()
     createWindow()
 
     // Delayed so it never competes with the window's own initial load for
