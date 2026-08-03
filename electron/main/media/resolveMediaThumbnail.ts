@@ -1,4 +1,5 @@
 import { access, mkdir, readFile, rm } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { keyToSafeDirName } from '../save/keyToSafeDirName'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
@@ -45,7 +46,12 @@ export async function resolveMediaThumbnail(
   if (await pathExists(cachePath)) return cachePath
 
   await mkdir(cacheDir, { recursive: true })
-  const tempPath = join(cacheDir, `${keyToSafeDirName(filePath)}.tmp`)
+  // Unique per call (not just per filePath) so two concurrent requests for
+  // the same file - e.g. a Media-page row and the fullscreen overlay both
+  // resolving an uncached track around the same time - never share one temp
+  // filename. Without this, one call's `finally` cleanup below could delete
+  // the temp file out from under the other call's readFile above it.
+  const tempPath = join(cacheDir, `${keyToSafeDirName(filePath)}-${randomUUID()}.jpg`)
 
   const extracted = isVideo
     ? await deps.extractVideoFrame(filePath, tempPath)
