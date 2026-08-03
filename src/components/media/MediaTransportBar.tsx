@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Pause, Play, Repeat, Repeat1, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import {
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
@@ -35,6 +45,8 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
   const toggleMute = useMediaPlayerStore((s) => s.toggleMute)
   const repeatMode = useMediaPlayerStore((s) => s.repeatMode)
   const cycleRepeatMode = useMediaPlayerStore((s) => s.cycleRepeatMode)
+  const shuffleMode = useMediaPlayerStore((s) => s.shuffleMode)
+  const toggleShuffle = useMediaPlayerStore((s) => s.toggleShuffle)
 
   const mutedText = dark
     ? 'text-white/70 hover:text-white'
@@ -89,6 +101,13 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
         )}
       >
         {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+      </button>
+      <button
+        onClick={toggleShuffle}
+        aria-label={t('media.shuffleMode')}
+        className={cn('shrink-0', shuffleMode ? (dark ? 'text-white' : 'text-primary') : mutedText)}
+      >
+        <Shuffle className="h-4 w-4" />
       </button>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">

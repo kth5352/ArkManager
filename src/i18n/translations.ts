@@ -276,6 +276,7 @@ const ko = {
   'media.closePlaylist': '재생목록 닫기',
   'media.removeFromPlaylist': '재생목록에서 제거',
   'media.repeatMode': '반복 모드',
+  'media.shuffleMode': '셔플 모드',
   'media.toggleMute': '음소거 전환',
   'media.expand': '크게 보기',
   'media.minimize': '작게 보기',
@@ -454,7 +455,8 @@ const ja: Record<keyof typeof ko, string> = {
   'saveManager.deleteAll': 'すべて削除',
   'saveManager.deleteSnapshotConfirm': 'このスナップショットを削除しますか?',
   'saveManager.deleteAllConfirm1': 'このゲームの全スナップショットを削除しますか?',
-  'saveManager.deleteAllConfirm2': 'スナップショット{count}個がすべて削除されます。元に戻せません。',
+  'saveManager.deleteAllConfirm2':
+    'スナップショット{count}個がすべて削除されます。元に戻せません。',
   'saveManager.memoPlaceholder': 'メモなし',
   'saveManager.versionPlaceholder': 'バージョン追加',
   'saveManager.versionMismatchWarning':
@@ -562,6 +564,7 @@ const ja: Record<keyof typeof ko, string> = {
   'media.closePlaylist': '再生リストを閉じる',
   'media.removeFromPlaylist': '再生リストから削除',
   'media.repeatMode': 'リピートモード',
+  'media.shuffleMode': 'シャッフルモード',
   'media.toggleMute': 'ミュート切り替え',
   'media.expand': '拡大表示',
   'media.minimize': '最小化',
@@ -850,6 +853,7 @@ const en: Record<keyof typeof ko, string> = {
   'media.closePlaylist': 'Close playlist',
   'media.removeFromPlaylist': 'Remove from playlist',
   'media.repeatMode': 'Repeat mode',
+  'media.shuffleMode': 'Shuffle mode',
   'media.toggleMute': 'Toggle mute',
   'media.expand': 'Expand',
   'media.minimize': 'Minimize',
