@@ -50,7 +50,23 @@ export function MediaPlayerHost() {
     })
   }, [setDetached])
 
-  if (!playback) return null
+  // Resets the auto-expand state whenever playback empties out (e.g. the
+  // last track gets removed from the playlist via MediaPlaylistPanel's
+  // remove button, reachable from inside FullscreenMediaOverlay itself
+  // while a video is expanded) - adjusted during render, same pattern as
+  // the auto-expand block above, so there's no extra cascading render.
+  // Without this, mediaExpanded/expandedForPath would keep their stale
+  // values (this component itself never unmounts, only its returned JSX
+  // becomes null right below), so the next track to play - even an audio
+  // track the user never asked to expand - would inherit a stale
+  // mediaExpanded === true and show fullscreen with no click. Resetting
+  // expandedForPath also means replaying the exact same video path after
+  // the playlist was cleared correctly re-triggers auto-expand.
+  if (!playback) {
+    if (mediaExpanded) setMediaExpanded(false)
+    if (expandedForPath !== null) setExpandedForPath(null)
+    return null
+  }
 
   const handleDetach = (): void => {
     const seconds = playback.currentTime
