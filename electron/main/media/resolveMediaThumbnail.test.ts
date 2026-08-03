@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { extname, join } from 'node:path'
 import sharp from 'sharp'
 import { resolveMediaThumbnail } from './resolveMediaThumbnail'
 
@@ -131,5 +131,48 @@ describe('resolveMediaThumbnail', () => {
     const result = await resolveMediaThumbnail(cacheDir, audioPath, false, deps)
 
     expect(result).toBeNull()
+  })
+
+  it('extracts to a .jpg temp path, not a muxer-ambiguous extension like .tmp', async () => {
+    const videoPath = join(dir, 'clip.mp4')
+    await writeFile(videoPath, '')
+    let capturedOutputPath = ''
+    const deps = {
+      extractVideoFrame: async (_video: string, outputPath: string) => {
+        capturedOutputPath = outputPath
+        await writeFakeFrame(outputPath)
+        return true
+      },
+      extractAudioArt: async () => false,
+      findThumbnailPath: async () => null,
+    }
+
+    await resolveMediaThumbnail(cacheDir, videoPath, true, deps)
+
+    expect(capturedOutputPath).not.toBe('')
+    expect(extname(capturedOutputPath)).toBe('.jpg')
+  })
+
+  it('uses a unique temp path per call so concurrent requests for the same file do not collide', async () => {
+    const videoPath = join(dir, 'clip.mp4')
+    await writeFile(videoPath, '')
+    const capturedOutputPaths: string[] = []
+    const deps = {
+      extractVideoFrame: async (_video: string, outputPath: string) => {
+        capturedOutputPaths.push(outputPath)
+        await writeFakeFrame(outputPath)
+        return true
+      },
+      extractAudioArt: async () => false,
+      findThumbnailPath: async () => null,
+    }
+
+    await Promise.all([
+      resolveMediaThumbnail(cacheDir, videoPath, true, deps),
+      resolveMediaThumbnail(cacheDir, videoPath, true, deps),
+    ])
+
+    expect(capturedOutputPaths).toHaveLength(2)
+    expect(capturedOutputPaths[0]).not.toBe(capturedOutputPaths[1])
   })
 })
