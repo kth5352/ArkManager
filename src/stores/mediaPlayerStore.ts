@@ -122,9 +122,14 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
       // stays on (none of them touch shuffle state - see toggleShuffle's own
       // comment on this being deliberately out of scope for THOSE actions).
       // Detecting a length mismatch here and regenerating on the spot means
-      // next()/prev() self-heal from any of them uniformly, rather than
-      // needing every playlist-mutating action to separately remember
-      // shuffle exists. Without this, a stale order can point past the end
+      // next()/prev() self-heal from any of them that changed
+      // playlist.length, rather than needing every playlist-mutating action
+      // to separately remember shuffle exists - it does NOT catch every
+      // possible staleness (e.g. clearPlaylist followed by a same-track-count
+      // playNow leaves a stale shufflePosition with the length check passing
+      // vacuously; harmless - it degrades to an early "stop" or a same-track
+      // no-op skip, never an out-of-range index - but not literally "healed"
+      // either). Without a length mismatch, a stale order can point past the end
       // of the live playlist - currentIndex becomes an out-of-range index,
       // playlist[currentIndex] is undefined, and the whole transport bar
       // unmounts (see useMediaPlayback's `if (!track) return null`).

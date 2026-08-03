@@ -75,7 +75,7 @@ export function useMediaPlayback({
   // itself depending on isHost/volume - see setMediaRef's own comment for
   // why its identity must stay stable across renders. These refs are
   // deliberately allowed to be one commit stale: React attaches refs during
-  // the mutation phase, before this effect's passive phase runs, so on the
+  // the layout phase, before this effect's passive phase runs, so on the
   // one render where isHost flips AND a new element mounts in the same
   // commit (a detach/reattach handoff - see MediaPlayerHost's `isHost:
   // !isDetached`), setMediaRef still sees the OLD isHostRef/volumeRef here.
@@ -84,7 +84,7 @@ export function useMediaPlayback({
   // below (not dead weight/redundant with this one, despite doing a
   // similar-looking assignment) - it fires in the SAME commit because
   // `isHost` itself is one of its deps, by which point elRef.current has
-  // already been populated by the mutation-phase ref callback.
+  // already been populated by the layout-phase ref callback.
   const isHostRef = useRef(isHost)
   const volumeRef = useRef(volume)
   useEffect(() => {
