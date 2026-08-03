@@ -63,7 +63,7 @@ describe('clearCache', () => {
     expect(existsSync(join(dir, 'saves'))).toBe(false)
   })
 
-  it("does not touch anything outside cache/covers and saves (e.g. Chromium's own Cache_Data)", async () => {
+  it("does not touch anything outside its own cache subdirectories and saves (e.g. Chromium's own Cache_Data)", async () => {
     dir = await mkdtemp(join(tmpdir(), 'ark-manager-clearcache-'))
     await mkdir(join(dir, 'cache', 'covers'), { recursive: true })
     await mkdir(join(dir, 'cache', 'Cache_Data'), { recursive: true })
