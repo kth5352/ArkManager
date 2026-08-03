@@ -18,8 +18,10 @@ interface GameThumbnailProps {
 // prefers a cover-like image file inside itself (thumb:// protocol, see
 // findThumbnailPath); only once that request 404s does it fall back to the
 // DLsite cover (game_metadata.coverImagePath via useGameCoverImage) - lazy,
-// so entries that already have a local cover (or don't need one, being
-// code-linked) never trigger the fallback query at all.
+// so a code-less entry whose local thumbnail already loaded successfully
+// never triggers the fallback query at all. A code-linked entry is the
+// opposite case: it skips the local lookup and goes straight to this same
+// fallback query, since it's expected to actually use the crawled cover.
 // A file-kind entry (the common case - most games sit as their original
 // .zip/.7z/.rar archive, never extracted into a folder) has nothing local to
 // look inside for a cover - thumb:// only ever makes sense for a folder
