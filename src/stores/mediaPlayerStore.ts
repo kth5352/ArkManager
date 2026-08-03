@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { generateShuffleOrderKeepingFront, generateShuffleOrderAvoidingFront } from './shuffleOrder'
 
 export interface MediaTrack {
   path: string
@@ -24,6 +25,14 @@ interface MediaPlayerState {
   // naturally loops it). 'off' vs 'all' is this store's own concern: `next`
   // stops instead of wrapping past the last track when off.
   repeatMode: RepeatMode
+  // See shuffleOrder.ts for how these two are generated. shufflePosition is
+  // a pointer into shuffleOrder, not a separate history - next/prev just
+  // move it forward/backward through the same planned order, so "forward
+  // after going back" naturally replays what was already decided instead
+  // of needing new randomness.
+  shuffleMode: boolean
+  shuffleOrder: number[]
+  shufflePosition: number
   // True once playback has been detached into its own Electron window (see
   // useMediaPlayerSync) - the main window stops mounting a real <video>/
   // <audio> element while this is true (only one window may ever host
@@ -59,6 +68,7 @@ interface MediaPlayerState {
   setDetached: (isDetached: boolean, handoffTimeSeconds?: number) => void
   consumeHandoffTime: () => number | null
   cycleRepeatMode: () => void
+  toggleShuffle: () => void
 }
 
 // Global (not persisted) - playback should survive navigating between pages,
@@ -76,6 +86,9 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   isDetached: false,
   handoffTimeSeconds: null,
   repeatMode: 'off',
+  shuffleMode: false,
+  shuffleOrder: [],
+  shufflePosition: 0,
 
   playNow: (track, siblings) => {
     const list = siblings ?? [track]
@@ -99,8 +112,34 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   playAt: (index) => set({ currentIndex: index, isPlaying: true }),
 
   next: () => {
-    const { playlist, currentIndex, repeatMode } = get()
+    const { playlist, currentIndex, repeatMode, shuffleMode, shuffleOrder, shufflePosition } = get()
     if (currentIndex === null || playlist.length === 0) return
+
+    if (shuffleMode) {
+      const atEnd = shufflePosition >= shuffleOrder.length - 1
+      if (atEnd) {
+        if (repeatMode === 'off') {
+          set({ isPlaying: false })
+          return
+        }
+        const nextOrder = generateShuffleOrderAvoidingFront(playlist.length, currentIndex)
+        set({
+          shuffleOrder: nextOrder,
+          shufflePosition: 0,
+          currentIndex: nextOrder[0],
+          isPlaying: true,
+        })
+        return
+      }
+      const nextPosition = shufflePosition + 1
+      set({
+        shufflePosition: nextPosition,
+        currentIndex: shuffleOrder[nextPosition],
+        isPlaying: true,
+      })
+      return
+    }
+
     const isLast = currentIndex === playlist.length - 1
     if (isLast && repeatMode === 'off') {
       set({ isPlaying: false })
@@ -110,8 +149,19 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   },
 
   prev: () => {
-    const { playlist, currentIndex } = get()
+    const { playlist, currentIndex, shuffleMode, shuffleOrder, shufflePosition } = get()
     if (currentIndex === null || playlist.length === 0) return
+
+    if (shuffleMode) {
+      const prevPosition = Math.max(0, shufflePosition - 1)
+      set({
+        shufflePosition: prevPosition,
+        currentIndex: shuffleOrder[prevPosition],
+        isPlaying: true,
+      })
+      return
+    }
+
     set({ currentIndex: (currentIndex - 1 + playlist.length) % playlist.length, isPlaying: true })
   },
 
@@ -158,4 +208,15 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
     set((state) => ({
       repeatMode: state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off',
     })),
+
+  toggleShuffle: () => {
+    const { shuffleMode, playlist, currentIndex } = get()
+    if (shuffleMode) {
+      set({ shuffleMode: false })
+      return
+    }
+    const order =
+      currentIndex !== null ? generateShuffleOrderKeepingFront(playlist.length, currentIndex) : []
+    set({ shuffleMode: true, shuffleOrder: order, shufflePosition: 0 })
+  },
 }))

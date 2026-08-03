@@ -478,6 +478,9 @@ export const MediaSyncStateSchema = z.object({
   volume: z.number(),
   previousVolume: z.number(),
   repeatMode: MediaRepeatModeSchema,
+  shuffleMode: z.boolean(),
+  shuffleOrder: z.array(z.number()),
+  shufflePosition: z.number(),
   isDetached: z.boolean(),
   handoffTimeSeconds: z.number().nullable(),
 })

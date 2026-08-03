@@ -10,6 +10,9 @@ function toSyncState(state: MediaSyncState): MediaSyncState {
     volume: state.volume,
     previousVolume: state.previousVolume,
     repeatMode: state.repeatMode,
+    shuffleMode: state.shuffleMode,
+    shuffleOrder: state.shuffleOrder,
+    shufflePosition: state.shufflePosition,
     isDetached: state.isDetached,
     handoffTimeSeconds: state.handoffTimeSeconds,
   }

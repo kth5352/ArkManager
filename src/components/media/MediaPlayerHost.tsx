@@ -56,6 +56,9 @@ export function MediaPlayerHost() {
       volume: state.volume,
       previousVolume: state.previousVolume,
       repeatMode: state.repeatMode,
+      shuffleMode: state.shuffleMode,
+      shuffleOrder: state.shuffleOrder,
+      shufflePosition: state.shufflePosition,
       isDetached: true,
       handoffTimeSeconds: seconds,
     })
