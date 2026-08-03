@@ -73,10 +73,18 @@ export function useMediaPlayback({
   // flags writing ref.current directly in the render body) so setMediaRef
   // can apply the CURRENT volume to a freshly mounted element without
   // itself depending on isHost/volume - see setMediaRef's own comment for
-  // why its identity must stay stable across renders. A volume change alone
-  // never remounts the element, so this effect only needs to keep the refs
-  // correct for whenever the NEXT mount happens - it doesn't need to run
-  // before paint the way a layout effect would.
+  // why its identity must stay stable across renders. These refs are
+  // deliberately allowed to be one commit stale: React attaches refs during
+  // the mutation phase, before this effect's passive phase runs, so on the
+  // one render where isHost flips AND a new element mounts in the same
+  // commit (a detach/reattach handoff - see MediaPlayerHost's `isHost:
+  // !isDetached`), setMediaRef still sees the OLD isHostRef/volumeRef here.
+  // That specific case is covered by the separate, still-necessary
+  // `useEffect(() => { if (isHost && elRef.current) ... }, [isHost, volume])`
+  // below (not dead weight/redundant with this one, despite doing a
+  // similar-looking assignment) - it fires in the SAME commit because
+  // `isHost` itself is one of its deps, by which point elRef.current has
+  // already been populated by the mutation-phase ref callback.
   const isHostRef = useRef(isHost)
   const volumeRef = useRef(volume)
   useEffect(() => {
@@ -136,6 +144,10 @@ export function useMediaPlayback({
     }
   }, [isPlaying, track, isHost])
 
+  // Load-bearing for the detach/reattach handoff specifically, not just a
+  // volume-slider convenience - see isHostRef/volumeRef's comment above for
+  // why setMediaRef alone isn't enough on the commit where isHost flips and
+  // a new element mounts together.
   useEffect(() => {
     if (isHost && elRef.current) elRef.current.volume = volume
   }, [isHost, volume])

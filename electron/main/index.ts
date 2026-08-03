@@ -12,7 +12,11 @@ import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
 import { registerCacheHandlers } from './ipc/cacheHandlers'
-import { registerMediaWindowHandlers, getIsMediaPlaying } from './ipc/mediaWindowHandlers'
+import {
+  registerMediaWindowHandlers,
+  getIsMediaPlaying,
+  clearIsMediaPlaying,
+} from './ipc/mediaWindowHandlers'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
@@ -64,17 +68,17 @@ if (!gotSingleInstanceLock) {
       : join(__dirname, '../../LOGO.png')
   }
 
-  // Reproduces Electron's own default menu shape (the one silently in
-  // effect until now, since this app never called Menu.setApplicationMenu)
-  // via the same role shorthand for File/Edit/Window - View is spelled out
-  // item-by-item so its two reload items can get a custom click handler
-  // instead of role: 'reload' / role: 'forceReload', with every other View
-  // item unchanged. The default's Help menu (a single "Learn More" link to
-  // electronjs.org) is deliberately dropped rather than reproduced - it has
-  // no relevance to this app and an empty Help menu would be worse than no
-  // Help menu at all.
+  // Shows a confirm dialog before Reload/Force Reload if media is currently
+  // playing, since a reload wipes the renderer (and with it, in-progress
+  // playback) with no way back. clearIsMediaPlaying() resets the flag
+  // reload itself is guarding on - without it, a reload the user just
+  // confirmed leaves the main process still believing media is playing (the
+  // freshly-reloaded renderer starts at isPlaying: false, but that never
+  // broadcasts on its own, since Zustand's subscribe only fires on change),
+  // so the very next Reload attempt would warn again over nothing.
   function guardedReload(win: BrowserWindow, forceReload: boolean): void {
     const doReload = (): void => {
+      clearIsMediaPlaying()
       if (forceReload) win.webContents.reloadIgnoringCache()
       else win.webContents.reload()
     }
@@ -93,8 +97,29 @@ if (!gotSingleInstanceLock) {
       .then(({ response }) => {
         if (response === 1) doReload()
       })
+      .catch(() => {
+        // The parent window can be destroyed while the modal is still open
+        // (e.g. app quit mid-dialog) - showMessageBox then rejects. Nothing
+        // to reload at that point, so there's nothing to do here beyond not
+        // leaving this as an unhandled rejection.
+      })
   }
 
+  // Reproduces Electron's own default menu shape (the one silently in
+  // effect until now, since this app never called Menu.setApplicationMenu)
+  // via the same role shorthand for File/Edit/Window - View is spelled out
+  // item-by-item so its two reload items can get a custom click handler
+  // instead of role: 'reload' / role: 'forceReload', with every other View
+  // item unchanged. The default's Help menu (a single "Learn More" link to
+  // electronjs.org) is deliberately dropped rather than reproduced - it has
+  // no relevance to this app and an empty Help menu would be worse than no
+  // Help menu at all. File/Edit/Window/the non-reload View items stay
+  // English (Electron's own role-derived defaults, same as before this
+  // menu existed) - only the two items this app actually added custom
+  // behavior to get Korean labels, matching the confirm dialog they open
+  // (guardedReload) and this codebase's main-process convention of
+  // hardcoded Korean for anything genuinely app-specific (see
+  // saveHandlers.ts's error strings).
   function buildApplicationMenu(): void {
     const template: MenuItemConstructorOptions[] = [
       { role: 'fileMenu' },
@@ -103,14 +128,14 @@ if (!gotSingleInstanceLock) {
         label: 'View',
         submenu: [
           {
-            label: 'Reload',
+            label: '새로고침',
             accelerator: 'CmdOrCtrl+R',
             click: (_item, win) => {
               if (win instanceof BrowserWindow) guardedReload(win, false)
             },
           },
           {
-            label: 'Force Reload',
+            label: '강제 새로고침',
             accelerator: 'CmdOrCtrl+Shift+R',
             click: (_item, win) => {
               if (win instanceof BrowserWindow) guardedReload(win, true)

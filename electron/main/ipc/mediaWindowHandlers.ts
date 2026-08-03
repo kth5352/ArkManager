@@ -31,6 +31,17 @@ export function getIsMediaPlaying(): boolean {
   return isMediaPlaying
 }
 
+// A reload wipes the guarded window's renderer (and its store) back to
+// isPlaying: false, but that never broadcasts on its own - Zustand's
+// subscribe only fires on change, and a fresh store starting at `false`
+// isn't one. Without this, isMediaPlaying stays stuck true after the exact
+// reload it just allowed, so the very next Reload attempt warns again with
+// nothing actually playing. Called from index.ts's guardedReload right
+// before it reloads.
+export function clearIsMediaPlaying(): void {
+  isMediaPlaying = false
+}
+
 export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow | null): {
   closePlayerWindow: () => void
 } {

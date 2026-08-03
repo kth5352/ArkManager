@@ -116,10 +116,28 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
     if (currentIndex === null || playlist.length === 0) return
 
     if (shuffleMode) {
-      const atEnd = shufflePosition >= shuffleOrder.length - 1
+      // shuffleOrder/shufflePosition only stay valid for the playlist they
+      // were generated against - removeFromPlaylist/clearPlaylist/
+      // addToPlaylist/playNow can all change playlist.length while shuffle
+      // stays on (none of them touch shuffle state - see toggleShuffle's own
+      // comment on this being deliberately out of scope for THOSE actions).
+      // Detecting a length mismatch here and regenerating on the spot means
+      // next()/prev() self-heal from any of them uniformly, rather than
+      // needing every playlist-mutating action to separately remember
+      // shuffle exists. Without this, a stale order can point past the end
+      // of the live playlist - currentIndex becomes an out-of-range index,
+      // playlist[currentIndex] is undefined, and the whole transport bar
+      // unmounts (see useMediaPlayback's `if (!track) return null`).
+      const order =
+        shuffleOrder.length === playlist.length
+          ? shuffleOrder
+          : generateShuffleOrderKeepingFront(playlist.length, currentIndex)
+      const position = shuffleOrder.length === playlist.length ? shufflePosition : 0
+
+      const atEnd = position >= order.length - 1
       if (atEnd) {
         if (repeatMode === 'off') {
-          set({ isPlaying: false })
+          set({ shuffleOrder: order, shufflePosition: position, isPlaying: false })
           return
         }
         const nextOrder = generateShuffleOrderAvoidingFront(playlist.length, currentIndex)
@@ -131,10 +149,11 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
         })
         return
       }
-      const nextPosition = shufflePosition + 1
+      const nextPosition = position + 1
       set({
+        shuffleOrder: order,
         shufflePosition: nextPosition,
-        currentIndex: shuffleOrder[nextPosition],
+        currentIndex: order[nextPosition],
         isPlaying: true,
       })
       return
@@ -153,10 +172,18 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
     if (currentIndex === null || playlist.length === 0) return
 
     if (shuffleMode) {
-      const prevPosition = Math.max(0, shufflePosition - 1)
+      // Same staleness self-heal as next() - see its comment.
+      const order =
+        shuffleOrder.length === playlist.length
+          ? shuffleOrder
+          : generateShuffleOrderKeepingFront(playlist.length, currentIndex)
+      const position = shuffleOrder.length === playlist.length ? shufflePosition : 0
+
+      const prevPosition = Math.max(0, position - 1)
       set({
+        shuffleOrder: order,
         shufflePosition: prevPosition,
-        currentIndex: shuffleOrder[prevPosition],
+        currentIndex: order[prevPosition],
         isPlaying: true,
       })
       return
