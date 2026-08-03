@@ -276,6 +276,12 @@ const api = {
     reportTime: (seconds: number): void =>
       ipcRenderer.send(IPC_CHANNELS.MEDIA_REPORT_TIME, seconds),
   },
+  mediaThumbnail: {
+    pickFile: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE),
+    setFromFile: (filePath: string, sourcePath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_SET_FROM_FILE, { filePath, sourcePath }),
+  },
   cache: {
     clear: (deleteSaveBackups: boolean): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.CACHE_CLEAR, { deleteSaveBackups }),

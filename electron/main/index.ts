@@ -17,6 +17,7 @@ import {
   getIsMediaPlaying,
   clearIsMediaPlaying,
 } from './ipc/mediaWindowHandlers'
+import { registerMediaThumbnailHandlers } from './ipc/mediaThumbnailHandlers'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
@@ -246,6 +247,7 @@ if (!gotSingleInstanceLock) {
     registerMediaProtocolHandler(db)
     registerMediaThumbnailProtocolHandler(db)
     closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
+    registerMediaThumbnailHandlers(db)
     registerUpdateHandlers(() => mainWindow)
 
     // A game launched via LAUNCH_GAME only persists its playtime after the

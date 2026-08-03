@@ -72,6 +72,8 @@ export const IPC_CHANNELS = {
   MEDIA_STATE_BROADCAST: 'media:state-broadcast',
   MEDIA_STATE_SYNC: 'media:state-sync',
   MEDIA_REPORT_TIME: 'media:report-time',
+  MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
+  MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
   CACHE_CLEAR: 'cache:clear',
   UPDATE_GET_VERSION: 'update:get-version',
   UPDATE_CHECK: 'update:check',
@@ -487,6 +489,14 @@ export const MediaSyncStateSchema = z.object({
 export type MediaSyncState = z.infer<typeof MediaSyncStateSchema>
 
 export const MediaReportTimeRequestSchema = z.number()
+
+export const SetMediaThumbnailFromFileRequestSchema = z.object({
+  filePath: z.string(),
+  sourcePath: z.string(),
+})
+export type SetMediaThumbnailFromFileRequest = z.infer<
+  typeof SetMediaThumbnailFromFileRequestSchema
+>
 
 export interface ReleaseNote {
   version: string
