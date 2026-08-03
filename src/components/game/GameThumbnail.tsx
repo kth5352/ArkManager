@@ -10,12 +10,16 @@ interface GameThumbnailProps {
 
 // Priority: a user-set custom cover (see DetailSidebar's "표지 이미지" section,
 // mainly meant for code-less entries with no DLsite cover to crawl) always
-// wins over everything else - it's an explicit choice. Below that, folders
-// prefer a cover-like image file inside the folder itself (thumb://
-// protocol, see findThumbnailPath); only once that request 404s does it
-// fall back to the DLsite cover cached by crawling this entry's code
-// (game_metadata.coverImagePath via useGameCoverImage) - lazy, so entries
-// that already have a local cover never trigger the fallback query at all.
+// wins over everything else - it's an explicit choice. Below that, a
+// code-linked entry (backlog item 10) always prefers the crawled DLsite
+// cover over a local folder image - a random image sitting in the game's
+// own folder is far less reliably "the cover" than the metadata this app
+// already crawled specifically for that code. A code-less folder still
+// prefers a cover-like image file inside itself (thumb:// protocol, see
+// findThumbnailPath); only once that request 404s does it fall back to the
+// DLsite cover (game_metadata.coverImagePath via useGameCoverImage) - lazy,
+// so entries that already have a local cover (or don't need one, being
+// code-linked) never trigger the fallback query at all.
 // A file-kind entry (the common case - most games sit as their original
 // .zip/.7z/.rar archive, never extracted into a folder) has nothing local to
 // look inside for a cover - thumb:// only ever makes sense for a folder
@@ -34,7 +38,7 @@ export function GameThumbnail({ entry }: GameThumbnailProps) {
   // in practice.
   const { data: userData } = useGameUserData(entry)
   const hasCustomCover = !!userData?.customCoverPath
-  const useFallback = entry.kind !== 'folder' || localFailed
+  const useFallback = entry.kind !== 'folder' || localFailed || !!entry.code
 
   // All three hooks are called unconditionally on every render (each one's
   // own `enabled`/lazy-key argument controls whether it actually fetches) -
