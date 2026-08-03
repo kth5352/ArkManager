@@ -50,7 +50,7 @@ export function GameThumbnail({ entry }: GameThumbnailProps) {
   // which branch below ends up rendering must never change how many hooks
   // this component calls.
   const { data: customCoverImage } = useCustomCoverImage(hasCustomCover ? entry : null)
-  const { data: fallbackCover } = useGameCoverImage(
+  const { data: fallbackCover, isPending: fallbackCoverPending } = useGameCoverImage(
     useFallback && !hasCustomCover ? entry.code : null
   )
 
@@ -67,7 +67,7 @@ export function GameThumbnail({ entry }: GameThumbnailProps) {
         <img src={fallbackCover} alt="" className="h-full w-full object-cover" draggable={false} />
       )
     }
-    if (entry.kind === 'folder' && !localFailed) {
+    if (entry.kind === 'folder' && !localFailed && !fallbackCoverPending) {
       return (
         <img
           src={buildThumbnailUrl(entry.path)}
