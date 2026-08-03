@@ -135,6 +135,13 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS media_thumbnail_overrides (
+      path TEXT PRIMARY KEY,
+      thumbnail_path TEXT NOT NULL
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 

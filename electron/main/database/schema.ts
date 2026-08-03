@@ -69,3 +69,8 @@ export const saveSnapshotLabels = sqliteTable(
   },
   (table) => ({ pk: primaryKey({ columns: [table.key, table.timestamp] }) })
 )
+
+export const mediaThumbnailOverrides = sqliteTable('media_thumbnail_overrides', {
+  path: text('path').primaryKey(), // the media file's own absolute path
+  thumbnailPath: text('thumbnail_path').notNull(),
+})
