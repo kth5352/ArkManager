@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Music2 } from 'lucide-react'
 import { useMediaPlayerSync } from '../../hooks/useMediaPlayerSync'
 import { useMediaPlayback } from '../../components/media/useMediaPlayback'
 import { MediaTransportBar } from '../../components/media/MediaTransportBar'
 import { MediaPlaylistPanel } from '../../components/media/MediaPlaylistPanel'
+import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { useTranslation } from '../../i18n/useTranslation'
 
 // The entire content of the detached player window (see
@@ -12,11 +14,17 @@ import { useTranslation } from '../../i18n/useTranslation'
 // because the main window handed hosting off to it - see
 // MediaPlayerHost.handleDetach) and reports its position back to the main
 // process periodically so closing this window can hand a reasonably fresh
-// seek position back to the main window.
+// seek position back to the main window. Its audio view shows the same
+// resolved thumbnail as FullscreenMediaOverlay (falling back to the same
+// generic icon) for visual consistency across both windows - this is its
+// own separate useMediaPlayback instance in a separate renderer process, so
+// it tracks its own thumbnail-failure state rather than sharing any with
+// the main window's.
 export function PlayerWindowPage() {
   const { t } = useTranslation()
   useMediaPlayerSync()
   const { mediaRef, playback } = useMediaPlayback({ isHost: true, reportTimeToMainProcess: true })
+  const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
 
   if (!playback) {
     return (
@@ -25,6 +33,8 @@ export function PlayerWindowPage() {
       </div>
     )
   }
+
+  const thumbFailed = thumbFailedPath === playback.track.path
 
   return (
     <div className="flex h-screen flex-col bg-black">
@@ -38,10 +48,20 @@ export function PlayerWindowPage() {
         ) : (
           <>
             <audio ref={mediaRef} {...playback.mediaElementProps} />
-            <div className="flex flex-col items-center gap-3 text-white/70">
-              <Music2 className="h-16 w-16" />
-              <p className="text-sm">{playback.track.name}</p>
-            </div>
+            {thumbFailed ? (
+              <div className="flex flex-col items-center gap-3 text-white/70">
+                <Music2 className="h-16 w-16" />
+                <p className="text-sm">{playback.track.name}</p>
+              </div>
+            ) : (
+              <img
+                src={buildMediaThumbnailUrl(playback.track.path)}
+                alt=""
+                className="max-h-full max-w-full object-contain"
+                draggable={false}
+                onError={() => setThumbFailedPath(playback.track.path)}
+              />
+            )}
           </>
         )}
       </div>

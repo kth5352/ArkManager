@@ -8,37 +8,30 @@ import { cn } from '../../lib/utils'
 import type { MediaPlaybackState } from './useMediaPlayback'
 
 interface MediaPlayerBarProps {
-  mediaRef: (el: HTMLVideoElement | HTMLAudioElement | null) => void
   playback: MediaPlaybackState
   isDetached: boolean
   onExpandVideo?: () => void
 }
 
-// The slim, always-docked bar - used as-is for audio tracks, and also
-// (without an inline video element) whenever a video track is minimized or
-// playing in the detached window instead. The actual video element itself
-// never renders here - see FullscreenVideoOverlay, which stays mounted
-// (just CSS-hidden) rather than being torn down and rebuffered every time
-// the user minimizes.
-export function MediaPlayerBar({
-  mediaRef,
-  playback,
-  isDetached,
-  onExpandVideo,
-}: MediaPlayerBarProps) {
+// The slim, always-docked bar - used whenever the current track (video or
+// audio) is minimized, or playback is running in the detached window
+// instead. Never hosts the actual <video>/<audio> element itself - see
+// FullscreenMediaOverlay, which stays mounted (just CSS-hidden) whenever
+// this window isn't detached, for both video and audio, so minimizing back
+// to this bar doesn't tear down and rebuffer anything.
+export function MediaPlayerBar({ playback, isDetached, onExpandVideo }: MediaPlayerBarProps) {
   const { t } = useTranslation()
   const [showPlaylist, setShowPlaylist] = useState(false)
   const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
 
   return (
     <div className="relative flex items-center gap-3 border-t border-border bg-card px-3 py-2">
-      {!playback.isVideo && !isDetached && <audio ref={mediaRef} {...playback.mediaElementProps} />}
       {isDetached && (
         <span className="shrink-0 rounded bg-muted px-2 py-1 text-[10px] text-muted-foreground">
           {t('media.playingInOtherWindow')}
         </span>
       )}
-      {playback.isVideo && !isDetached && onExpandVideo && (
+      {!isDetached && onExpandVideo && (
         <button
           onClick={onExpandVideo}
           aria-label={t('media.expand')}

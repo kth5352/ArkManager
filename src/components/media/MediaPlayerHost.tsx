@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaPlayback } from './useMediaPlayback'
 import { MediaPlayerBar } from './MediaPlayerBar'
-import { FullscreenVideoOverlay } from './FullscreenVideoOverlay'
+import { FullscreenMediaOverlay } from './FullscreenMediaOverlay'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -10,23 +10,35 @@ import { FullscreenVideoOverlay } from './FullscreenVideoOverlay'
 //
 // Owns the single useMediaPlayback instance for the main window: exactly
 // one <video>/<audio> element exists here at a time, shared between the
-// docked bar (audio, or a minimized video) and FullscreenVideoOverlay (an
-// expanded video) purely via CSS visibility - see FullscreenVideoOverlay's
-// own comment for why it's never unmounted just to minimize.
+// docked bar (when minimized) and FullscreenMediaOverlay (when expanded)
+// purely via CSS visibility - see FullscreenMediaOverlay's own comment for
+// why it's never unmounted just to minimize.
 export function MediaPlayerHost() {
   const isDetached = useMediaPlayerStore((s) => s.isDetached)
   const setDetached = useMediaPlayerStore((s) => s.setDetached)
   const { mediaRef, playback } = useMediaPlayback({ isHost: !isDetached })
 
-  const [videoExpanded, setVideoExpanded] = useState(true)
+  // Starts minimized (false), not expanded - the auto-expand effect below
+  // flips this true the first time a VIDEO track becomes current, but
+  // never for audio (see FullscreenMediaOverlay's "no auto-expand for
+  // audio" requirement). Starting this true (as it safely could before
+  // FullscreenMediaOverlay covered audio too) would show fullscreen for an
+  // audio track's very first play, before the effect below - which only
+  // ever fires for isVideo tracks - gets any chance to run.
+  const [mediaExpanded, setMediaExpanded] = useState(false)
   const [expandedForPath, setExpandedForPath] = useState<string | null>(null)
 
   // Auto-expands to fullscreen whenever a NEW video track becomes current -
   // adjusted during render (same pattern as useMediaPlayback's own
   // resetForPath), not in an effect, so there's no extra cascading render.
+  // Deliberately video-only: skipping from an expanded video to an audio
+  // track leaves mediaExpanded at whatever it already was (this block
+  // simply doesn't run for audio), so an in-progress fullscreen viewing
+  // session isn't interrupted - but nothing here ever sets it true FOR an
+  // audio track on its own.
   if (playback && playback.isVideo && playback.track.path !== expandedForPath) {
     setExpandedForPath(playback.track.path)
-    setVideoExpanded(true)
+    setMediaExpanded(true)
   }
 
   // Fires once the detached player window closes (by any means - the OS
@@ -66,21 +78,20 @@ export function MediaPlayerHost() {
 
   return (
     <>
-      {!isDetached && playback.isVideo && (
-        <FullscreenVideoOverlay
+      {!isDetached && (
+        <FullscreenMediaOverlay
           mediaRef={mediaRef}
           playback={playback}
-          visible={videoExpanded}
-          onMinimize={() => setVideoExpanded(false)}
+          visible={mediaExpanded}
+          onMinimize={() => setMediaExpanded(false)}
           onDetach={handleDetach}
         />
       )}
-      {(isDetached || !playback.isVideo || !videoExpanded) && (
+      {(isDetached || !mediaExpanded) && (
         <MediaPlayerBar
-          mediaRef={mediaRef}
           playback={playback}
           isDetached={isDetached}
-          onExpandVideo={playback.isVideo ? () => setVideoExpanded(true) : undefined}
+          onExpandVideo={() => setMediaExpanded(true)}
         />
       )}
     </>
