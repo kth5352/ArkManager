@@ -1,12 +1,87 @@
-import { Play, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { ImagePlus, Play, Plus } from 'lucide-react'
 import { usePickLibraryFolder } from '../../services/librariesService'
 import { useFolderScanRecursive } from '../../services/scannerService'
 import { useMediaFolderQuery, useSetMediaFolderMutation } from '../../services/settingsService'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
+import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
+import {
+  usePickMediaThumbnailFile,
+  useSetMediaThumbnailFromFile,
+} from '../../services/mediaThumbnailService'
 import { isMediaFile } from '../../../shared/isMediaFile'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useTranslation } from '../../i18n/useTranslation'
+
+// A single track row - thumbnail state (whether the current mediathumb://
+// request 404'd, and a cache-busting counter bumped after the user manually
+// sets a new thumbnail) is local to each row rather than lifted, since it's
+// purely about that one row's own <img> element and this list isn't
+// react-window-virtualized (a plain <ul>, unlike Gallery/List/DetailList) -
+// no row recycling to worry about, unlike GameThumbnail's path-keyed
+// failure tracking.
+function MediaTrackRow({
+  track,
+  onPlay,
+  onAddToPlaylist,
+}: {
+  track: MediaTrack
+  onPlay: () => void
+  onAddToPlaylist: () => void
+}) {
+  const { t } = useTranslation()
+  const [thumbFailed, setThumbFailed] = useState(false)
+  const [refreshToken, setRefreshToken] = useState(0)
+  const pickFile = usePickMediaThumbnailFile()
+  const setFromFile = useSetMediaThumbnailFromFile()
+
+  const handlePickThumbnail = async (): Promise<void> => {
+    const sourcePath = await pickFile.mutateAsync()
+    if (!sourcePath) return
+    await setFromFile.mutateAsync({ filePath: track.path, sourcePath })
+    // mediathumb:// is a plain URL, not a react-query cache entry - nothing
+    // to invalidate. Bumping this query param forces the <img> to actually
+    // re-request instead of reusing Chromium's cached response for the
+    // previous (now-stale) bytes at the same URL.
+    setThumbFailed(false)
+    setRefreshToken((v) => v + 1)
+  }
+
+  return (
+    <li className="flex items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent">
+      <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+        {!thumbFailed && (
+          <img
+            src={`${buildMediaThumbnailUrl(track.path)}?v=${refreshToken}`}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+            onError={() => setThumbFailed(true)}
+          />
+        )}
+      </div>
+      <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={onPlay}>
+        <Play className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="truncate">{track.name}</span>
+      </button>
+      <button
+        aria-label={t('media.setThumbnail')}
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        onClick={handlePickThumbnail}
+      >
+        <ImagePlus className="h-4 w-4" />
+      </button>
+      <button
+        aria-label={t('media.addToPlaylist')}
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        onClick={onAddToPlaylist}
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </li>
+  )
+}
 
 // A dedicated browse-and-queue page, separate from Explorer's per-folder
 // "click to play" entry point (see FolderView.tsx) - this one is for
@@ -72,25 +147,12 @@ export function MediaPage() {
         ) : (
           <ul className="divide-y divide-border">
             {tracks.map((track) => (
-              <li
+              <MediaTrackRow
                 key={track.path}
-                className="flex items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent"
-              >
-                <button
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  onClick={() => playNow(track, tracks)}
-                >
-                  <Play className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{track.name}</span>
-                </button>
-                <button
-                  aria-label={t('media.addToPlaylist')}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => addToPlaylist([track])}
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </li>
+                track={track}
+                onPlay={() => playNow(track, tracks)}
+                onAddToPlaylist={() => addToPlaylist([track])}
+              />
             ))}
           </ul>
         )}
