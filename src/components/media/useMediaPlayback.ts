@@ -69,17 +69,34 @@ export function useMediaPlayback({
   const consumeHandoffTime = useMediaPlayerStore((s) => s.consumeHandoffTime)
 
   const elRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null)
-  // Memoized so the ref identity is stable across renders - an inline
-  // `(el) => { elRef.current = el }` defined fresh every render makes React
-  // call it with null then the element again on every single re-render
-  // (e.g. every currentTime tick), which is wasted churn on a hot path.
-  const setMediaRef = useCallback(
-    (el: HTMLVideoElement | HTMLAudioElement | null) => {
-      elRef.current = el
-      if (el && isHost) el.volume = volume
-    },
-    [isHost, volume]
-  )
+  // Kept in sync (via effect, not a render-time mutation - react-hooks/refs
+  // flags writing ref.current directly in the render body) so setMediaRef
+  // can apply the CURRENT volume to a freshly mounted element without
+  // itself depending on isHost/volume - see setMediaRef's own comment for
+  // why its identity must stay stable across renders. A volume change alone
+  // never remounts the element, so this effect only needs to keep the refs
+  // correct for whenever the NEXT mount happens - it doesn't need to run
+  // before paint the way a layout effect would.
+  const isHostRef = useRef(isHost)
+  const volumeRef = useRef(volume)
+  useEffect(() => {
+    isHostRef.current = isHost
+    volumeRef.current = volume
+  }, [isHost, volume])
+
+  // Memoized with a permanently-empty dep array so the ref identity is
+  // stable across every render - an inline `(el) => { elRef.current = el }`,
+  // or one that depended on isHost/volume, would make React call it with
+  // null then the element again on every render where either changed (e.g.
+  // every drag tick of the volume slider), which is wasted churn on a hot
+  // path. Still applies the current volume to a newly-mounted element (a
+  // browser media element defaults to volume=1.0, ignoring whatever the
+  // store already has) by reading the refs above instead of closing over
+  // the values directly.
+  const setMediaRef = useCallback((el: HTMLVideoElement | HTMLAudioElement | null) => {
+    elRef.current = el
+    if (el && isHostRef.current) el.volume = volumeRef.current
+  }, [])
 
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
