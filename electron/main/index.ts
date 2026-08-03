@@ -27,6 +27,10 @@ import {
   registerThumbnailProtocolScheme,
 } from './thumbnailProtocol'
 import { registerMediaProtocolHandler, registerMediaProtocolScheme } from './mediaProtocol'
+import {
+  registerMediaThumbnailProtocolHandler,
+  registerMediaThumbnailProtocolScheme,
+} from './mediaThumbnailProtocol'
 
 // better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
@@ -52,6 +56,7 @@ if (!gotSingleInstanceLock) {
   // registration at module load time.
   registerThumbnailProtocolScheme()
   registerMediaProtocolScheme()
+  registerMediaThumbnailProtocolScheme()
 
   // Without this, the running window/taskbar icon falls back to Electron's
   // own generic icon even once build.icon (package.json) gives the packaged
@@ -239,6 +244,7 @@ if (!gotSingleInstanceLock) {
     registerCacheHandlers(db)
     registerThumbnailProtocolHandler(db)
     registerMediaProtocolHandler(db)
+    registerMediaThumbnailProtocolHandler(db)
     closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
     registerUpdateHandlers(() => mainWindow)
 
