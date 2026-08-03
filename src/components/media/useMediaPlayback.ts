@@ -73,9 +73,13 @@ export function useMediaPlayback({
   // `(el) => { elRef.current = el }` defined fresh every render makes React
   // call it with null then the element again on every single re-render
   // (e.g. every currentTime tick), which is wasted churn on a hot path.
-  const setMediaRef = useCallback((el: HTMLVideoElement | HTMLAudioElement | null) => {
-    elRef.current = el
-  }, [])
+  const setMediaRef = useCallback(
+    (el: HTMLVideoElement | HTMLAudioElement | null) => {
+      elRef.current = el
+      if (el && isHost) el.volume = volume
+    },
+    [isHost, volume]
+  )
 
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
