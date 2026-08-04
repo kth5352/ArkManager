@@ -21,25 +21,37 @@ D (VNDB/Getchu) and E (Explorer overhaul).
 
 ## 1. Data Model & Identity
 
+**Correction after implementation review:** the first version of this spec
+keyed `excluded_entries` like `game_user_data` — code value when linked,
+else normalized path — reusing `resolveGameEntryKey`'s identity model
+wholesale. That was wrong for this specific feature. "Exclude" means "hide
+this one file/folder I right-clicked," not "hide this game" — a
+code-preferring key means excluding one copy of a same-code duplicate
+silently hides every other copy sharing that code too, which is not what a
+user choosing one specific card to exclude means. Corrected below; the key
+is now always the normalized path, for every entry, code-linked or not.
+
 New table `excluded_entries`, hand-written `CREATE TABLE IF NOT EXISTS` DDL
 in `client.ts` (no drizzle-kit migrations, matching every table this
 project has ever added):
 
 ```sql
 CREATE TABLE IF NOT EXISTS excluded_entries (
-  key TEXT PRIMARY KEY,
-  key_type TEXT NOT NULL,      -- 'code' | 'path'
-  name TEXT NOT NULL,          -- entry.name snapshot at exclude time
+  path TEXT PRIMARY KEY,        -- always normalizeLibraryPath(entry.path)
+  name TEXT NOT NULL,           -- entry.name snapshot at exclude time
   excluded_at TEXT NOT NULL
 )
 ```
 
-Keyed exactly like `game_user_data` already is: `resolveGameEntryKey`
-(`electron/main/ipc/resolveGameEntryKey.ts`) resolves a `GameEntryIdentifier`
-(`{code, path}`) to `{key, keyType}` — code value when the entry is
-code-linked, else `normalizeLibraryPath(path)`. This project already treats
-that as the one stable identity model for "a game entry," and this feature
-reuses it exactly rather than inventing a second one.
+Deliberately NOT `resolveGameEntryKey`'s code-preferring identity model —
+every other feature that reuses it (`game_user_data`, `path_code_overrides`)
+is about "this game," where collapsing every copy of a code-linked entry
+into one identity is exactly the point. Exclusion is about "this file,"
+so it never looks at `entry.code` at all, keyed by path unconditionally.
+One direct consequence: excluding a code-less entry and excluding a
+code-linked entry now behave identically for rename/move (both clear on
+identity change, see below) — there's no longer a "code-linked persists,
+code-less doesn't" split to track.
 
 `name` is a snapshot of `ScannedEntry.name` (the folder/file name) taken at
 exclude time — not a live metadata lookup. This keeps the management dialog
@@ -73,16 +85,21 @@ blast radius to exactly Gallery/List/DetailList, matching how the existing
 library-visibility filter is already scoped.
 
 The match itself: for each `ScannedEntry`, compute
-`entry.code ? entry.code.value : normalizeLibraryPath(entry.path)` (the
-exact same formula `resolveGameEntryKey` uses) and check it against a
-`Set<string>` of currently-excluded keys, fetched via a new query hook
-(`useExcludedEntries()`, TanStack Query) that both this filter and the
-management dialog (§4) share — one query, two consumers, no duplicate
-fetching. The actual "is this entry excluded" comparison is pulled into a
-small pure function (e.g. `isEntryExcluded(entry, excludedKeys): boolean`
-in a new file) so it's unit-testable independent of the hook, following
-this project's established pattern for pulling matching/decision logic out
-of hooks into pure functions (`shuffleOrder.ts`, `compareVersions.ts`).
+`normalizeLibraryPath(entry.path)` and check it against a `Set<string>` of
+currently-excluded paths, fetched via a new query hook (`useExcludedEntries()`,
+TanStack Query) that both this filter and the management dialog (§4) share —
+one query, two consumers, no duplicate fetching. The actual "is this entry
+excluded" comparison is pulled into a small pure function
+(`isEntryExcluded(entry, excludedPaths): boolean` in a new file) so it's
+unit-testable independent of the hook, following this project's established
+pattern for pulling matching/decision logic out of hooks into pure
+functions (`shuffleOrder.ts`, `compareVersions.ts`).
+
+Every page that calls `useVisibleGames` is affected — currently
+Gallery/List/DetailList and also Favorites (`FavoritesPage.tsx` calls the
+same hook). This is intended: hiding a favorited game from Gallery but
+still showing it in Favorites would be a stranger, less consistent
+experience than hiding it everywhere `useVisibleGames` already governs.
 
 **Crawl-skip comes for free.** `GalleryPage.tsx` already builds its
 bulk-crawl-missing code list from `useVisibleGames()`'s filtered output,
@@ -95,12 +112,14 @@ later shows its cover/title immediately rather than needing to re-crawl.
 
 ## 3. IPC Surface
 
-New channels, following this project's established `GameEntryIdentifier`
-request-shape convention (same as `SET_FAVORITE`/`SET_CLEARED`):
+New channels. Deliberately NOT the `GameEntryIdentifier` request shape
+`SET_FAVORITE`/`SET_CLEARED` use — those resolve through
+`resolveGameEntryKey`'s code-preferring identity, which this feature must
+not use (see §1):
 
-- `GAME_ENTRY_EXCLUDE` — request `{identifier: GameEntryIdentifierSchema, name: string}`. Handler resolves the key via `resolveGameEntryKey`, inserts/upserts the row.
-- `GAME_ENTRY_RESTORE` — request `{key: string}` (the dialog already has the raw key from the list it's displaying, no need to re-resolve an identifier).
-- `GAME_ENTRY_LIST_EXCLUDED` — no request, returns `ExcludedEntryDto[]` (`{key, keyType, name, excludedAt}[]`), shared by both `useVisibleGames`'s filter and the management dialog via one `useExcludedEntries()` hook.
+- `GAME_ENTRY_EXCLUDE` — request `{path: string, name: string}`. Handler normalizes the path and inserts/upserts the row directly, no `resolveGameEntryKey` involved.
+- `GAME_ENTRY_RESTORE` — request `{path: string}`.
+- `GAME_ENTRY_LIST_EXCLUDED` — no request, returns `ExcludedEntryDto[]` (`{path, name, excludedAt}[]`), shared by both `useVisibleGames`'s filter and the management dialog via one `useExcludedEntries()` hook.
 - `MENU_OPEN_EXCLUDED_ENTRIES_DIALOG` — push-only, main → renderer, no request/response schema (matches `SCANNER_SCAN_PROGRESS`/`MEDIA_STATE_SYNC`'s existing push-channel shape). Fired from the View menu's click handler via `win.webContents.send(...)`. This is the app's first main-process-menu-triggers-a-renderer-dialog channel — every dialog today opens from renderer-side state only, so this is new plumbing, not a reuse of an existing pattern, though it directly mirrors the shape of pushes that already exist for other purposes.
 
 Renderer subscribes to `MENU_OPEN_EXCLUDED_ENTRIES_DIALOG` once (mounted at
@@ -163,14 +182,15 @@ otherwise structured like the existing `LibraryVisibilityDialog`
 - List: `max-h-96 overflow-y-auto` (exclusions can accumulate unboundedly
   over time, unlike the small fixed library list `LibraryVisibilityDialog`
   shows).
-- Each row: name (truncated, flex-1) plus the key shown small/muted when
-  `keyType === 'code'` (mirroring `SaveEntryRow`'s existing
-  `<p className="truncate text-xs text-muted-foreground">{code.value}</p>`
-  pattern), `hover:bg-accent` row highlight (same as every other list row
-  in this app), and a `variant="outline" size="sm"` "복원" (Restore) button
-  that calls a new `useRestoreEntry()` mutation, invalidating
+- Each row: name (truncated) plus the path shown small/muted underneath
+  (mirroring `SaveEntryRow`'s existing secondary-text pattern) — the path,
+  not a game code, since exclusion is per-path now; showing it is what
+  makes restoring one specific copy of a same-named duplicate unambiguous.
+  `hover:bg-accent` row highlight (same as every other list row in this
+  app), and a `variant="outline" size="sm"` "복원" (Restore) button that
+  calls a new `useRestoreEntry()` mutation, invalidating
   `useExcludedEntries()` on success so the row disappears from the dialog
-  and the entry reappears in Gallery/List/DetailList.
+  and the entry reappears in Gallery/List/DetailList (and Favorites).
 - No footer close button — same as `LibraryVisibilityDialog`, relies on the
   Dialog's own built-in close affordance (X button, Escape, outside-click).
 
@@ -180,8 +200,9 @@ otherwise structured like the existing `LibraryVisibilityDialog`
   mirroring `pathCodeOverridesRepository.test.ts`'s exact shape (insert,
   get, list, delete, overwrite-on-conflict).
 - `isEntryExcluded` (the pure matching function): unit-tested directly
-  against a `Set<string>` and various `ScannedEntry` shapes (code-linked,
-  path-only, excluded, not excluded) — no DB or IPC needed.
+  against a `Set<string>` and various paths (excluded, not excluded, mixed
+  case/trailing slash, two entries sharing a code but different paths) —
+  no DB or IPC needed.
 - No tests for the IPC handlers, the context menu item, or the dialog UI —
   matches this app's established precedent (no component test
   infrastructure exists anywhere in this codebase); verified live via
