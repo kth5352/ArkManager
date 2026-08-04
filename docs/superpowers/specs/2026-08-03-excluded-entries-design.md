@@ -48,18 +48,16 @@ metadata was never crawled or whose crawl later fails) at the cost of not
 reflecting a game's real crawled title if it differs from its folder name —
 an acceptable trade for a low-traffic admin dialog.
 
-**Supporting refactor:** `normalizeLibraryPath` currently lives only in
-`electron/main/database/librariesRepository.ts`. The renderer-side filter
-(§2) needs to apply the exact same normalization to a live `ScannedEntry`'s
-path when checking it against a stored path-keyed exclusion — duplicating
-that logic in the renderer risks silent drift (e.g. one side handles
-trailing slashes differently) that would show as exclusions silently
-"un-excluding" themselves. Moving the function to a new
-`shared/normalizeLibraryPath.ts` (it's pure string manipulation — lowercase
-+ strip a trailing slash — no filesystem or Electron API access) and having
-every existing main-process call site import it from there instead removes
-that risk entirely. No behavior changes at any existing call site, just an
-import path change.
+**No refactor needed here:** `normalizeLibraryPath` already lives in
+`shared/normalizeLibraryPath.ts` (moved there prior to this backlog, commit
+`a77c6e4`), pure string manipulation — lowercase + strip a trailing slash —
+with `electron/main/database/librariesRepository.ts` re-exporting it for
+its own existing call sites' backward compatibility. The renderer-side
+filter (§2) can `import { normalizeLibraryPath } from
+'../../shared/normalizeLibraryPath'` directly, applying the exact same
+normalization `resolveGameEntryKey` uses to a live `ScannedEntry`'s path —
+no drift risk, no new plumbing, this was already solved for a different
+feature.
 
 ## 2. Where Filtering Happens
 
@@ -184,10 +182,6 @@ otherwise structured like the existing `LibraryVisibilityDialog`
 - `isEntryExcluded` (the pure matching function): unit-tested directly
   against a `Set<string>` and various `ScannedEntry` shapes (code-linked,
   path-only, excluded, not excluded) — no DB or IPC needed.
-- `normalizeLibraryPath`'s move to `shared/`: its existing test file (if
-  one exists) moves with it; every existing call site's behavior is
-  unchanged, so no new test burden there beyond confirming the move itself
-  doesn't break anything already covered.
 - No tests for the IPC handlers, the context menu item, or the dialog UI —
   matches this app's established precedent (no component test
   infrastructure exists anywhere in this codebase); verified live via
