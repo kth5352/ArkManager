@@ -193,10 +193,10 @@ const api = {
       }),
   },
   gameEntry: {
-    exclude: (code: GameCode | null, path: string, name: string): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_EXCLUDE, { identifier: { code, path }, name }),
-    restore: (key: string): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_RESTORE, { key }),
+    exclude: (path: string, name: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_EXCLUDE, { path, name }),
+    restore: (path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_RESTORE, { path }),
     listExcluded: (): Promise<ExcludedEntryDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_LIST_EXCLUDED),
     onOpenExcludedEntriesDialog: (callback: () => void): (() => void) => {

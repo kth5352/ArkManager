@@ -10,19 +10,18 @@ import {
   restoreEntry,
   listExcludedEntries,
 } from '../database/excludedEntriesRepository'
-import { resolveGameEntryKey } from './resolveGameEntryKey'
+import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 import type { AppDatabase } from '../database/client'
 
 export function registerExcludedEntriesHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.GAME_ENTRY_EXCLUDE, (_event, payload: unknown) => {
-    const { identifier, name } = ExcludeEntryRequestSchema.parse(payload)
-    const { key, keyType } = resolveGameEntryKey(identifier)
-    excludeEntry(db, key, keyType, name)
+    const { path, name } = ExcludeEntryRequestSchema.parse(payload)
+    excludeEntry(db, normalizeLibraryPath(path), name)
   })
 
   ipcMain.handle(IPC_CHANNELS.GAME_ENTRY_RESTORE, (_event, payload: unknown) => {
-    const { key } = RestoreEntryRequestSchema.parse(payload)
-    restoreEntry(db, key)
+    const { path } = RestoreEntryRequestSchema.parse(payload)
+    restoreEntry(db, normalizeLibraryPath(path))
   })
 
   ipcMain.handle(IPC_CHANNELS.GAME_ENTRY_LIST_EXCLUDED, (): ExcludedEntryDto[] => {

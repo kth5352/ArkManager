@@ -1,13 +1,14 @@
 import { normalizeLibraryPath } from '../../shared/normalizeLibraryPath'
 import type { ScannedEntry } from '../../shared/types/scanner'
 
-// Same identity model resolveGameEntryKey uses main-process-side (code
-// value when linked, else normalizeLibraryPath(path)) - kept in sync by
-// importing the same shared normalization function, not a duplicated copy.
+// Deliberately always path-based, even for code-linked entries - excluding
+// is "hide this specific file/folder", not "hide this game". Keying by
+// code (like game_user_data/favorites do) would hide every duplicate
+// sharing that code the moment one copy was excluded, which isn't what a
+// user right-clicking one specific card means.
 export function isEntryExcluded(
-  entry: Pick<ScannedEntry, 'code' | 'path'>,
-  excludedKeys: Set<string>
+  entry: Pick<ScannedEntry, 'path'>,
+  excludedPaths: Set<string>
 ): boolean {
-  const key = entry.code ? entry.code.value : normalizeLibraryPath(entry.path)
-  return excludedKeys.has(key)
+  return excludedPaths.has(normalizeLibraryPath(entry.path))
 }

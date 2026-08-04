@@ -3,8 +3,7 @@ import type { AppDatabase } from './client'
 import { excludedEntries } from './schema'
 
 export interface ExcludedEntryRow {
-  key: string
-  keyType: string // 'code' | 'path'
+  path: string
   name: string
   excludedAt: string
 }
@@ -13,14 +12,14 @@ export function listExcludedEntries(db: AppDatabase): ExcludedEntryRow[] {
   return db.select().from(excludedEntries).all()
 }
 
-export function excludeEntry(db: AppDatabase, key: string, keyType: string, name: string): void {
+export function excludeEntry(db: AppDatabase, path: string, name: string): void {
   const excludedAt = new Date().toISOString()
   db.insert(excludedEntries)
-    .values({ key, keyType, name, excludedAt })
-    .onConflictDoUpdate({ target: excludedEntries.key, set: { keyType, name, excludedAt } })
+    .values({ path, name, excludedAt })
+    .onConflictDoUpdate({ target: excludedEntries.path, set: { name, excludedAt } })
     .run()
 }
 
-export function restoreEntry(db: AppDatabase, key: string): void {
-  db.delete(excludedEntries).where(eq(excludedEntries.key, key)).run()
+export function restoreEntry(db: AppDatabase, path: string): void {
+  db.delete(excludedEntries).where(eq(excludedEntries.path, path)).run()
 }

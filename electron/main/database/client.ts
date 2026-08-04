@@ -142,10 +142,25 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  // One-time cleanup: this table briefly shipped (within this same
+  // development cycle, never released) with a `key`/`key_type` shape
+  // before the identity model was corrected to always be path-only (see
+  // schema.ts's own comment on why). CREATE TABLE IF NOT EXISTS alone
+  // can't restructure an already-existing table's columns, and the row
+  // shape genuinely changed (not just an added column, ensureColumns
+  // doesn't apply) - dropping is safe here specifically because no
+  // release ever shipped the old shape, so no real exclusion the drop
+  // could lose has ever existed outside this dev machine.
+  const existingExcludedEntriesColumns = new Set(
+    (sqlite.pragma('table_info(excluded_entries)') as { name: string }[]).map((col) => col.name)
+  )
+  if (existingExcludedEntriesColumns.size > 0 && !existingExcludedEntriesColumns.has('path')) {
+    sqlite.exec(`DROP TABLE excluded_entries`)
+  }
+
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS excluded_entries (
-      key TEXT PRIMARY KEY,
-      key_type TEXT NOT NULL,
+      path TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       excluded_at TEXT NOT NULL
     )

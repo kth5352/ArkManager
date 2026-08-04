@@ -36,16 +36,19 @@ export function ExcludedEntriesDialog() {
           <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
             {excludedEntries.map((entry) => (
               <div
-                key={entry.key}
+                key={entry.path}
                 className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
               >
-                <span className="min-w-0 flex-1 truncate">{entry.name}</span>
-                {entry.keyType === 'code' && (
-                  <span className="shrink-0 truncate text-xs text-muted-foreground">
-                    {entry.key}
-                  </span>
-                )}
-                <Button variant="outline" size="sm" onClick={() => restoreEntry.mutate(entry.key)}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate">{entry.name}</p>
+                  {/* Excluding is per-path, not per-code (see
+                      excludedEntries table's own comment) - showing the
+                      path, not a game code, matters here specifically so
+                      restoring one copy of a same-named duplicate is
+                      unambiguous. */}
+                  <p className="truncate text-xs text-muted-foreground">{entry.path}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => restoreEntry.mutate(entry.path)}>
                   {t('exclude.restore')}
                 </Button>
               </div>

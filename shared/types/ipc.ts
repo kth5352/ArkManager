@@ -264,20 +264,23 @@ export const GameEntryIdentifierSchema = z.object({
   path: z.string(),
 })
 
+// Path-only, deliberately not GameEntryIdentifierSchema - excluding is
+// "hide this specific file/folder", not "hide this game", so it never
+// resolves through resolveGameEntryKey's code-preferring identity the way
+// favorites/ratings/etc. do (see excludedEntries table's own comment).
 export const ExcludeEntryRequestSchema = z.object({
-  identifier: GameEntryIdentifierSchema,
+  path: z.string(),
   name: z.string(),
 })
 export type ExcludeEntryRequest = z.infer<typeof ExcludeEntryRequestSchema>
 
 export const RestoreEntryRequestSchema = z.object({
-  key: z.string(),
+  path: z.string(),
 })
 export type RestoreEntryRequest = z.infer<typeof RestoreEntryRequestSchema>
 
 export interface ExcludedEntryDto {
-  key: string
-  keyType: string
+  path: string
   name: string
   excludedAt: string
 }

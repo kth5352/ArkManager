@@ -9,11 +9,14 @@ export function useExcludedEntries() {
   })
 }
 
+// Path-only, deliberately not entry.code - excluding hides this specific
+// file/folder, not every entry sharing its code (see isEntryExcluded's own
+// comment for why keying by code would be wrong here).
 export function useExcludeEntry() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (entry: Pick<ScannedEntry, 'code' | 'path' | 'name'>) =>
-      window.api.gameEntry.exclude(entry.code, entry.path, entry.name),
+    mutationFn: (entry: Pick<ScannedEntry, 'path' | 'name'>) =>
+      window.api.gameEntry.exclude(entry.path, entry.name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['excluded-entries'] })
     },
@@ -23,7 +26,7 @@ export function useExcludeEntry() {
 export function useRestoreEntry() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (key: string) => window.api.gameEntry.restore(key),
+    mutationFn: (path: string) => window.api.gameEntry.restore(path),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['excluded-entries'] })
     },

@@ -76,8 +76,12 @@ export const mediaThumbnailOverrides = sqliteTable('media_thumbnail_overrides', 
 })
 
 export const excludedEntries = sqliteTable('excluded_entries', {
-  key: text('key').primaryKey(), // code value, or normalizeLibraryPath(path) - see resolveGameEntryKey
-  keyType: text('key_type').notNull(), // 'code' | 'path'
+  // Always normalizeLibraryPath(path) - deliberately NOT resolveGameEntryKey's
+  // code-preferring identity (unlike game_user_data/path_code_overrides).
+  // Excluding is "hide this specific file/folder", not "hide this game" -
+  // keying by code would hide every duplicate sharing that code at once,
+  // which is not what excluding one copy means.
+  path: text('path').primaryKey(),
   name: text('name').notNull(), // ScannedEntry.name snapshot at exclude time
   excludedAt: text('excluded_at').notNull(),
 })
