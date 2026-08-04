@@ -34,6 +34,7 @@ import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
+import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -52,6 +53,7 @@ function GameRow({
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
+  onExclude,
   onRename,
   onMove,
   onDelete,
@@ -62,6 +64,7 @@ function GameRow({
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
+  onExclude: (entry: ScannedEntry) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -189,6 +192,7 @@ function GameRow({
       <GameEntryContextMenu
         entry={game}
         onOpenDetail={onOpenDetail}
+        onExclude={onExclude}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -204,6 +208,7 @@ interface ListRowProps {
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
+  onExclude: (entry: ScannedEntry) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -218,6 +223,7 @@ function Row({
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
+  onExclude,
   onRename,
   onMove,
   onDelete,
@@ -235,6 +241,7 @@ function Row({
         onFilterByGenre={onFilterByGenre}
         onOpenDetail={onOpenDetail}
         onHoverChange={onHoverChange}
+        onExclude={onExclude}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -273,6 +280,7 @@ export function ListPage() {
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
+  const excludeEntry = useExcludeEntry()
   useFavoriteShortcut(hoveredGameRef)
   const scanProgress = useScanProgress(isLoading)
 
@@ -362,6 +370,7 @@ export function ListPage() {
                         onFilterByGenre: filterByGenre,
                         onOpenDetail: openDetail,
                         onHoverChange: handleHoverChange,
+                        onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
                         onRename: openRename,
                         onMove: openMove,
                         onDelete: openDelete,

@@ -36,6 +36,7 @@ import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
 import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
+import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -76,6 +77,7 @@ function GameCard({
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
+  onExclude,
   onRename,
   onMove,
   onDelete,
@@ -87,6 +89,7 @@ function GameCard({
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
+  onExclude: (entry: ScannedEntry) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -206,6 +209,7 @@ function GameCard({
       <GameEntryContextMenu
         entry={game}
         onOpenDetail={onOpenDetail}
+        onExclude={onExclude}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -224,6 +228,7 @@ interface GridCellProps {
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
+  onExclude: (entry: ScannedEntry) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -242,6 +247,7 @@ function GameCell({
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
+  onExclude,
   onRename,
   onMove,
   onDelete,
@@ -262,6 +268,7 @@ function GameCell({
           onFilterByGenre={onFilterByGenre}
           onHoverChange={onHoverChange}
           onOpenDetail={onOpenDetail}
+          onExclude={onExclude}
           onRename={onRename}
           onMove={onMove}
           onDelete={onDelete}
@@ -306,6 +313,7 @@ export function GalleryPage() {
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
+  const excludeEntry = useExcludeEntry()
   useFavoriteShortcut(hoveredGameRef)
   const scanProgress = useScanProgress(isLoading)
 
@@ -520,6 +528,7 @@ export function GalleryPage() {
                         onFilterByGenre: filterByGenre,
                         onHoverChange: handleHoverChange,
                         onOpenDetail: openDetail,
+                        onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
                         onRename: openRename,
                         onMove: openMove,
                         onDelete: openDelete,

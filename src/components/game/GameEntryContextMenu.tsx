@@ -1,4 +1,4 @@
-import { ContextMenuContent, ContextMenuItem } from '../ui/context-menu'
+import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from '../ui/context-menu'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { useLaunchGame } from '../../services/launchService'
@@ -18,6 +18,10 @@ interface GameEntryContextMenuProps {
   // Explorer-only (folders navigate via tabs there) - Gallery/List/
   // DetailList have no tab concept, so this is simply omitted for them.
   onOpenInNewTab?: (entry: ScannedEntry) => void
+  // Gallery/List/DetailList-only - Explorer stays a raw, unfiltered
+  // filesystem browser, so its own usage never passes this and the item
+  // below never renders there.
+  onExclude?: (entry: ScannedEntry) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -33,6 +37,7 @@ export function GameEntryContextMenu({
   entry,
   onOpenDetail,
   onOpenInNewTab,
+  onExclude,
   onRename,
   onMove,
   onDelete,
@@ -110,9 +115,15 @@ export function GameEntryContextMenu({
       >
         {userData?.isCleared ? t('explorer.unmarkCleared') : t('explorer.markCleared')}
       </ContextMenuItem>
+      {onExclude && (
+        <ContextMenuItem onSelect={() => onExclude(entry)}>
+          {t('exclude.excludeFromView')}
+        </ContextMenuItem>
+      )}
       <ContextMenuItem onSelect={() => onOpenDetail(entry)}>{t('game.ratingMemo')}</ContextMenuItem>
       <ContextMenuItem onSelect={() => onRename(entry)}>{t('selection.rename')}</ContextMenuItem>
       <ContextMenuItem onSelect={() => onMove(entry)}>{t('selection.move')}</ContextMenuItem>
+      <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => onDelete(entry)} className="text-destructive">
         {t('common.delete')}
       </ContextMenuItem>

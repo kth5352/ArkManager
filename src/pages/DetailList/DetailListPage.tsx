@@ -5,6 +5,7 @@ import { Copy, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { useGameUserData } from '../../services/gameUserDataService'
+import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
@@ -147,6 +148,7 @@ interface DetailListRowProps {
   duplicateGroups: Map<string, ScannedEntry[]>
   columnWidths: ColumnWidths
   onOpenDetail: (entry: ScannedEntry) => void
+  onExclude: (entry: ScannedEntry) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -160,6 +162,7 @@ function Row({
   duplicateGroups,
   columnWidths,
   onOpenDetail,
+  onExclude,
   onRename,
   onMove,
   onDelete,
@@ -258,6 +261,7 @@ function Row({
       <GameEntryContextMenu
         entry={entry}
         onOpenDetail={onOpenDetail}
+        onExclude={onExclude}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -313,6 +317,7 @@ export function DetailListPage() {
 
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
+  const excludeEntry = useExcludeEntry()
   // Matches SelectionCheckbox's own condition exactly - it renders nothing
   // at all (not just hidden) while selection mode is off, so the header
   // must skip reserving that slot too, or every row column below silently
@@ -455,6 +460,7 @@ export function DetailListPage() {
                           duplicateGroups,
                           columnWidths,
                           onOpenDetail: openDetail,
+                          onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
                           onRename: openRename,
                           onMove: openMove,
                           onDelete: openDelete,
