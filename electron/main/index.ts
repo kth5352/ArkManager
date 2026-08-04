@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, Menu, type MenuItemConstructorOptions } from 'electron'
+import { IPC_CHANNELS } from '../../shared/types/ipc'
 import { join } from 'node:path'
 import { createDbClient } from './database/client'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
@@ -155,6 +156,15 @@ if (!gotSingleInstanceLock) {
           { role: 'zoomOut' },
           { type: 'separator' },
           { role: 'togglefullscreen' },
+          { type: 'separator' },
+          {
+            label: '제외 항목 관리...',
+            click: (_item, win) => {
+              if (win instanceof BrowserWindow) {
+                win.webContents.send(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG)
+              }
+            },
+          },
         ],
       },
       { role: 'windowMenu' },

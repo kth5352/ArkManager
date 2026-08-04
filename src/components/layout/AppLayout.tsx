@@ -6,6 +6,7 @@ import { BulkCrawlProgressBanner } from './BulkCrawlProgressBanner'
 import { useBulkCrawlProgress } from '../../hooks/useBulkCrawlMissingMetadata'
 import { MediaPlayerHost } from '../media/MediaPlayerHost'
 import { useMediaPlayerSync } from '../../hooks/useMediaPlayerSync'
+import { ExcludedEntriesDialog } from './ExcludedEntriesDialog'
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -33,6 +34,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </div>
       <MediaPlayerHost />
       <BulkCrawlProgressBanner progress={bulkCrawlProgress} />
+      <ExcludedEntriesDialog />
     </div>
   )
 }
