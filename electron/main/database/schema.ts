@@ -74,3 +74,10 @@ export const mediaThumbnailOverrides = sqliteTable('media_thumbnail_overrides', 
   path: text('path').primaryKey(), // the media file's own absolute path
   thumbnailPath: text('thumbnail_path').notNull(),
 })
+
+export const excludedEntries = sqliteTable('excluded_entries', {
+  key: text('key').primaryKey(), // code value, or normalizeLibraryPath(path) - see resolveGameEntryKey
+  keyType: text('key_type').notNull(), // 'code' | 'path'
+  name: text('name').notNull(), // ScannedEntry.name snapshot at exclude time
+  excludedAt: text('excluded_at').notNull(),
+})

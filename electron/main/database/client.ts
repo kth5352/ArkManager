@@ -142,6 +142,15 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS excluded_entries (
+      key TEXT PRIMARY KEY,
+      key_type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      excluded_at TEXT NOT NULL
+    )
+  `)
+
   return drizzle(sqlite, { schema })
 }
 
