@@ -123,11 +123,11 @@ if (!gotSingleInstanceLock) {
   // no relevance to this app and an empty Help menu would be worse than no
   // Help menu at all. File/Edit/Window/the non-reload View items stay
   // English (Electron's own role-derived defaults, same as before this
-  // menu existed) - only the two items this app actually added custom
+  // menu existed) - only the items this app actually added custom
   // behavior to get Korean labels, matching the confirm dialog they open
-  // (guardedReload) and this codebase's main-process convention of
-  // hardcoded Korean for anything genuinely app-specific (see
-  // saveHandlers.ts's error strings).
+  // (guardedReload, for the reload pair) or this codebase's main-process
+  // convention of hardcoded Korean for anything genuinely app-specific
+  // (see saveHandlers.ts's error strings).
   function buildApplicationMenu(): void {
     const template: MenuItemConstructorOptions[] = [
       { role: 'fileMenu' },
@@ -159,10 +159,21 @@ if (!gotSingleInstanceLock) {
           { type: 'separator' },
           {
             label: '제외 항목 관리...',
-            click: (_item, win) => {
-              if (win instanceof BrowserWindow) {
-                win.webContents.send(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG)
-              }
+            // Unlike the reload items above, this always targets mainWindow
+            // specifically rather than whichever window is focused - the
+            // dialog it opens only exists in the main window's renderer
+            // (AppLayout), never in the detached player window (which loads
+            // PlayerWindowPage instead and has no ExcludedEntriesDialog
+            // mounted to receive this). Electron shares one application
+            // menu across every window by default (no per-window setMenu
+            // call exists for the player window), so this item is reachable
+            // from there too - sending to the focused window would then
+            // silently do nothing.
+            click: () => {
+              if (!mainWindow) return
+              if (mainWindow.isMinimized()) mainWindow.restore()
+              mainWindow.focus()
+              mainWindow.webContents.send(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG)
             },
           },
         ],
