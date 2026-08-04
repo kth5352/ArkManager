@@ -49,9 +49,12 @@ is about "this game," where collapsing every copy of a code-linked entry
 into one identity is exactly the point. Exclusion is about "this file,"
 so it never looks at `entry.code` at all, keyed by path unconditionally.
 One direct consequence: excluding a code-less entry and excluding a
-code-linked entry now behave identically for rename/move (both clear on
-identity change, see below) — there's no longer a "code-linked persists,
-code-less doesn't" split to track.
+code-linked entry now behave identically for rename/move — renaming or
+moving an excluded entry (in Explorer, which stays unfiltered) always
+changes its normalized path, so the exclusion stops matching and the entry
+reappears; restoring it later from the dialog is a harmless no-op against
+a path nothing lives at anymore. There's no longer a "code-linked persists,
+code-less doesn't" split to track, since nothing is code-keyed now.
 
 `name` is a snapshot of `ScannedEntry.name` (the folder/file name) taken at
 exclude time — not a live metadata lookup. This keeps the management dialog
