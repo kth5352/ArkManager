@@ -4,6 +4,7 @@ import {
   type BulkCrawlProgressDto,
   type DeleteResultDto,
   type DlsiteSearchResultDto,
+  type ExcludedEntryDto,
   type GameMetadataDto,
   type GameUserDataDto,
   type GameWithSavePathDto,
@@ -190,6 +191,19 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.GAME_USER_DATA_GET_CUSTOM_COVER_IMAGE, {
         identifier: { code, path },
       }),
+  },
+  gameEntry: {
+    exclude: (code: GameCode | null, path: string, name: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_EXCLUDE, { identifier: { code, path }, name }),
+    restore: (key: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_RESTORE, { key }),
+    listExcluded: (): Promise<ExcludedEntryDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GAME_ENTRY_LIST_EXCLUDED),
+    onOpenExcludedEntriesDialog: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG, listener)
+    },
   },
   launch: {
     listExecutables: (folderPath: string): Promise<string[]> =>

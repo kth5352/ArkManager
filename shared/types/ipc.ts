@@ -74,6 +74,10 @@ export const IPC_CHANNELS = {
   MEDIA_REPORT_TIME: 'media:report-time',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
+  GAME_ENTRY_EXCLUDE: 'game-entry:exclude',
+  GAME_ENTRY_RESTORE: 'game-entry:restore',
+  GAME_ENTRY_LIST_EXCLUDED: 'game-entry:list-excluded',
+  MENU_OPEN_EXCLUDED_ENTRIES_DIALOG: 'menu:open-excluded-entries-dialog',
   CACHE_CLEAR: 'cache:clear',
   UPDATE_GET_VERSION: 'update:get-version',
   UPDATE_CHECK: 'update:check',
@@ -259,6 +263,24 @@ export const GameEntryIdentifierSchema = z.object({
   code: GameCodeSchema.nullable(),
   path: z.string(),
 })
+
+export const ExcludeEntryRequestSchema = z.object({
+  identifier: GameEntryIdentifierSchema,
+  name: z.string(),
+})
+export type ExcludeEntryRequest = z.infer<typeof ExcludeEntryRequestSchema>
+
+export const RestoreEntryRequestSchema = z.object({
+  key: z.string(),
+})
+export type RestoreEntryRequest = z.infer<typeof RestoreEntryRequestSchema>
+
+export interface ExcludedEntryDto {
+  key: string
+  keyType: string
+  name: string
+  excludedAt: string
+}
 
 export const SetFavoriteRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
