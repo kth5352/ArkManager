@@ -5,17 +5,17 @@
   "image": { "url": "https://t.vndb.org/cv/38/86738.jpg" },
   "developers": [{ "name": "Nitroplus" }],
   "tags": [
-    { "name": "Time Travel", "rating": 3.0 },
+    { "name": "Loli", "rating": 0.5 },
     { "name": "Mad Scientist", "rating": 2.9 },
-    { "name": "Protagonist", "rating": 2.8 },
-    { "name": "Alternate History", "rating": 2.5 },
-    { "name": "Tsundere", "rating": 2.0 },
-    { "name": "Foreshadowing", "rating": 1.8 },
-    { "name": "Memory Alteration", "rating": 1.5 },
-    { "name": "Amnesia", "rating": 1.2 },
     { "name": "Female Antagonist", "rating": 1.0 },
-    { "name": "Twins", "rating": 0.9 },
+    { "name": "Time Travel", "rating": 3.0 },
+    { "name": "Memory Alteration", "rating": 1.5 },
+    { "name": "Tsundere", "rating": 2.0 },
     { "name": "Nosebleed", "rating": 0.7 },
-    { "name": "Loli", "rating": 0.5 }
+    { "name": "Protagonist", "rating": 2.8 },
+    { "name": "Amnesia", "rating": 1.2 },
+    { "name": "Alternate History", "rating": 2.5 },
+    { "name": "Twins", "rating": 0.9 },
+    { "name": "Foreshadowing", "rating": 1.8 }
   ]
 }
