@@ -18,6 +18,10 @@ describe('extractCode', () => {
     expect(extractCode('VN17 - Steins;Gate')).toEqual({ type: 'VN', value: 'VN17' })
   })
 
+  it('recognizes a GC (getchu) code', () => {
+    expect(extractCode('GC1370494 - 何らかの作品')).toEqual({ type: 'GC', value: 'GC1370494' })
+  })
+
   it('is case-insensitive but normalizes the prefix to uppercase', () => {
     expect(extractCode('rj01234567.zip')).toEqual({ type: 'RJ', value: 'RJ01234567' })
   })

@@ -21,4 +21,8 @@ describe('parseCodeInput', () => {
   it('recognizes an ST (Steam) code typed directly', () => {
     expect(parseCodeInput('ST413150')).toEqual({ type: 'ST', value: 'ST413150' })
   })
+
+  it('recognizes a GC (getchu) code typed directly', () => {
+    expect(parseCodeInput('GC1370494')).toEqual({ type: 'GC', value: 'GC1370494' })
+  })
 })
