@@ -4,7 +4,7 @@ import { filterEntries } from './filterEntries'
 interface TestEntry {
   name: string
   kind: 'folder' | 'file'
-  code: { type: 'RJ' | 'VJ' | 'ST'; value: string } | null
+  code: { type: 'RJ' | 'VJ' | 'ST' | 'VN'; value: string } | null
 }
 
 const metadataByCode = {

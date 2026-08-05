@@ -16,7 +16,7 @@ interface VndbApiVn {
   released: string | null
   image: { url: string } | null
   developers: { name: string }[]
-  tags: { name: string; rating: number }[]
+  tags: { name: string; rating: number; spoiler: number }[]
 }
 
 interface VndbApiResponse {
@@ -35,7 +35,10 @@ const MAX_GENRES = 10
 // contract (dlsiteParser.ts) exactly, the same "empty string on
 // absence/failure" convention the DLsite/Steam parsers already use.
 export function mapVnToMetadata(vn: VndbApiVn): CrawledGameMetadata {
-  const topTags = [...vn.tags].sort((a, b) => b.rating - a.rating).slice(0, MAX_GENRES)
+  const topTags = (vn.tags ?? [])
+    .filter((tag) => tag.spoiler === 0)
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, MAX_GENRES)
   return {
     title: vn.title,
     circle: vn.developers[0]?.name ?? '',
@@ -61,14 +64,14 @@ export async function crawlVndb(code: GameCode): Promise<CrawledGameMetadata | n
     },
     body: JSON.stringify({
       filters: ['id', '=', toVndbId(code)],
-      fields: 'title, released, image.url, developers.name, tags.name, tags.rating',
+      fields: 'title, released, image.url, developers.name, tags.name, tags.rating, tags.spoiler',
     }),
     signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
   })
   if (!response.ok) return null
 
   const data = (await response.json()) as VndbApiResponse
-  const vn = data.results[0]
+  const vn = data.results?.[0]
   return vn ? mapVnToMetadata(vn) : null
 }
 
@@ -114,11 +117,13 @@ export async function searchVndb(query: string): Promise<VndbSearchResult[]> {
     body: JSON.stringify({
       filters: ['search', '=', trimmed],
       fields: 'title, image.url',
+      sort: 'searchrank',
+      results: 25,
     }),
     signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
   })
   if (!response.ok) return []
 
   const data = (await response.json()) as VndbSearchApiResponse
-  return data.results.map(mapVnToSearchResult)
+  return (data.results ?? []).map(mapVnToSearchResult)
 }

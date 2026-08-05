@@ -66,6 +66,7 @@ export function GameSearchPage() {
     }
   }
 
+  const hasAnyResults = searchDlsite.data !== undefined || searchVndb.data !== undefined
   const showingResultsList = activeCode === null && activeSearch.data !== undefined
 
   return (
@@ -101,7 +102,7 @@ export function GameSearchPage() {
         <Button onClick={handleSearch}>{t('gameSearch.search')}</Button>
       </div>
 
-      {activeCode && activeSearch.data !== undefined && (
+      {activeCode && hasAnyResults && (
         <button
           className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
           onClick={() => setActiveCode(null)}
