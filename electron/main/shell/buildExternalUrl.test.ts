@@ -19,4 +19,8 @@ describe('buildExternalUrl', () => {
       'https://store.steampowered.com/app/4282500'
     )
   })
+
+  it('builds a VNDB URL for a VN code, stripping the VN prefix', () => {
+    expect(buildExternalUrl({ type: 'VN', value: 'VN17' })).toBe('https://vndb.org/v17')
+  })
 })

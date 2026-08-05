@@ -7,6 +7,10 @@ export function buildExternalUrl(code: GameCode): string {
     const numericId = code.value.slice(2)
     return `https://store.steampowered.com/app/${numericId}`
   }
+  if (code.type === 'VN') {
+    const numericId = code.value.slice(2)
+    return `https://vndb.org/v${numericId}`
+  }
   const category = code.type === 'VJ' ? 'pro' : 'maniax'
   return `https://www.dlsite.com/${category}/work/=/product_id/${code.value}.html`
 }
