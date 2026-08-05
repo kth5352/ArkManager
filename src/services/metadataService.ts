@@ -3,6 +3,7 @@ import type { GameCode } from '../../shared/types/scanner'
 import type {
   DlsiteSearchResultDto,
   GameMetadataDto,
+  SteamSearchResultDto,
   VndbSearchResultDto,
 } from '../../shared/types/ipc'
 
@@ -45,6 +46,13 @@ export function useSearchVndb() {
   return useMutation({
     mutationFn: (query: string): Promise<VndbSearchResultDto[]> =>
       window.api.metadata.searchVndb(query),
+  })
+}
+
+export function useSearchSteam() {
+  return useMutation({
+    mutationFn: (query: string): Promise<SteamSearchResultDto[]> =>
+      window.api.metadata.searchSteam(query),
   })
 }
 

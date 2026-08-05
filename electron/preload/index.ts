@@ -20,6 +20,7 @@ import {
   type SaveSnapshotDto,
   type SortPage,
   type SortPreference,
+  type SteamSearchResultDto,
   type Theme,
   type UpdateStatus,
   type VersionMismatchDto,
@@ -128,6 +129,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_DLSITE, { query }),
     searchVndb: (query: string): Promise<VndbSearchResultDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_VNDB, { query }),
+    searchSteam: (query: string): Promise<SteamSearchResultDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_STEAM, { query }),
     crawlMissing: (codes: GameCode[]): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_MISSING, { codes }),
     // See scanner.onScanProgress - same shape (subscribe, return an

@@ -31,6 +31,7 @@ export const IPC_CHANNELS = {
   METADATA_GET_COVER_IMAGE: 'metadata:get-cover-image',
   METADATA_SEARCH_DLSITE: 'metadata:search-dlsite',
   METADATA_SEARCH_VNDB: 'metadata:search-vndb',
+  METADATA_SEARCH_STEAM: 'metadata:search-steam',
   // Enqueues codes with no game_metadata row yet for background crawling,
   // one at a time with a delay between requests (see bulkCrawlQueue.ts) -
   // fire-and-forget, resolves once the codes are queued, not once crawled.
@@ -245,6 +246,17 @@ export const SearchVndbRequestSchema = z.object({
 export type SearchVndbRequest = z.infer<typeof SearchVndbRequestSchema>
 
 export interface VndbSearchResultDto {
+  code: z.infer<typeof GameCodeSchema>
+  title: string
+  thumbnailUrl: string | null
+}
+
+export const SearchSteamRequestSchema = z.object({
+  query: z.string(),
+})
+export type SearchSteamRequest = z.infer<typeof SearchSteamRequestSchema>
+
+export interface SteamSearchResultDto {
   code: z.infer<typeof GameCodeSchema>
   title: string
   thumbnailUrl: string | null
