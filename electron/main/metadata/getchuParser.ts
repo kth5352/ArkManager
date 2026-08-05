@@ -45,13 +45,16 @@ function toAbsoluteImageUrl(url: string): string {
   return `https://www.getchu.com${url.startsWith('/') ? '' : '/'}${url}`
 }
 
-// Getchu 작품 페이지 HTML을 파싱한다. 존재하지 않거나 오탈자로 잘못된 최신
-// 범위의 id는 404가 아니라 200으로 연령 인증 페이지(/php/attestation.html)로
-// 리다이렉트된다 - 확인됨(id=1366999). #soft-title이 없으면 null을 반환하는
-// 이 가드가 그 페이지를 실제로 걸러내는 주된 신호다 (DLsite의 #work_name
-// 부재 신호와 같은 방식). 아주 범위를 벗어난 id(예: 999999999)만 순수하게
-// 404를 반환해 fetch 단계(crawlGameMetadata.ts)에서 걸러진다 - 두 경로 모두
-// 결국 null로 수렴한다.
+// Getchu 작품 페이지 HTML을 파싱한다. crawlGameMetadata.ts가 이제
+// ?gc=gc(연령 인증 우회 파라미터)를 붙여 요청하므로, 실존하는 작품은 성인
+// 게이트 여부와 무관하게 실제 페이지가 오고, 존재하지 않는 id는 순수하게
+// 404를 반환해 fetch 단계에서 이미 null로 걸러진다(확인됨 - id=1366999,
+// id=1처럼 게이트됐던 실제 작품도 이 우회로 정상 파싱되고, id=0 같은 진짜
+// 존재하지 않는 id만 404). 즉 이 함수 자체가 "찾을 수 없음" 페이지를 받는
+// 경우는 정상 경로에서는 더 이상 없다 - 그럼에도 #soft-title이 없으면
+// null을 반환하는 이 가드는 남겨둔다: 사이트 개편 등으로 마크업이 바뀌었을
+// 때 예외를 던지는 대신 안전하게 실패하기 위한 방어용이다 (DLsite의
+// #work_name 부재 신호와 같은 방식).
 export function parseGetchuWorkPage(html: string): CrawledGameMetadata | null {
   const $ = cheerio.load(html)
 

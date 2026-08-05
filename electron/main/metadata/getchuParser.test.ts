@@ -24,7 +24,15 @@ describe('parseGetchuWorkPage', () => {
     })
   })
 
-  it('returns null for the age-verification/attestation page a mistyped or out-of-range id redirects to', async () => {
+  // This fixture was captured from id=1366999 BEFORE the ?gc=gc age-gate
+  // bypass was discovered (see crawlGameMetadata.ts's crawlGetchu comment) -
+  // that id turned out to be a real, valid title, just an age-gated one, and
+  // now resolves normally in production since every request carries the
+  // bypass. This test is purely defensive: if getchu's age-gate mechanism
+  // ever changes and the bypass stops working, this confirms the parser
+  // still fails safely (null, not a throw) rather than validating a
+  // "not found" case that can actually happen today.
+  it('returns null for the age-verification/attestation interstitial (defensive - unreachable in production while the ?gc=gc bypass works)', async () => {
     const html = await loadFixture('getchu-not-found-page.html')
     expect(parseGetchuWorkPage(html)).toBeNull()
   })

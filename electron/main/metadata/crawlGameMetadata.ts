@@ -56,9 +56,22 @@ async function crawlSteam(code: GameCode): Promise<CrawledGameMetadata | null> {
 // neither Shift_JIS nor UTF-8 as design-time investigation had suspected but
 // not confirmed) - response.text() would assume UTF-8 and mangle every
 // Japanese character, so the raw bytes are decoded explicitly instead.
+//
+// Fetches /item/<id>/?gc=gc directly rather than soft.phtml?id=<id> (which
+// 301-redirects to /item/<id>/ with no query string). A real, live product
+// can be age-gated - getchu redirects an ungated request to
+// /php/attestation.html instead of the actual page, with no #soft-title,
+// which this app's own "not found" null-guard was originally (wrongly)
+// documented as covering. The gated attestation page itself links to
+// exactly this ?gc=gc-suffixed item URL as its own "confirm and continue"
+// path - confirmed live against multiple real gated AND ungated titles that
+// it returns the real page in both cases, and that a genuinely nonexistent
+// id (no such product at all) still 404s normally. So this isn't a scrape
+// of an internal confirmation flow - it's the same URL getchu's own page
+// already links to for a human to click through, just supplied upfront.
 async function crawlGetchu(code: GameCode): Promise<CrawledGameMetadata | null> {
   const numericId = code.value.slice(2)
-  const response = await fetch(`https://www.getchu.com/soft.phtml?id=${numericId}`, {
+  const response = await fetch(`https://www.getchu.com/item/${numericId}/?gc=gc`, {
     headers: { 'User-Agent': USER_AGENT },
     signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
   })
