@@ -14,6 +14,10 @@ describe('extractCode', () => {
     expect(extractCode('ST4282500')).toEqual({ type: 'ST', value: 'ST4282500' })
   })
 
+  it('recognizes a VN (VNDB) code', () => {
+    expect(extractCode('VN17 - Steins;Gate')).toEqual({ type: 'VN', value: 'VN17' })
+  })
+
   it('is case-insensitive but normalizes the prefix to uppercase', () => {
     expect(extractCode('rj01234567.zip')).toEqual({ type: 'RJ', value: 'RJ01234567' })
   })

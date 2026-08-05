@@ -9,7 +9,7 @@ import type { GameCode, GameCodeType } from '../../../shared/types/scanner'
 // by another digit (still rejects a longer number swallowing extra digits).
 // Underscore, space, punctuation, Korean text, or end-of-string are all
 // acceptable on either side.
-const CODE_PATTERN = /(?<![A-Za-z0-9])(RJ|VJ|ST)(\d+)(?![0-9])/i
+const CODE_PATTERN = /(?<![A-Za-z0-9])(RJ|VJ|ST|VN)(\d+)(?![0-9])/i
 
 export function extractCode(name: string): GameCode | null {
   const match = CODE_PATTERN.exec(name)

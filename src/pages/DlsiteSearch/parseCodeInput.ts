@@ -1,6 +1,6 @@
 import type { GameCode, GameCodeType } from '../../../shared/types/scanner'
 
-const CODE_PATTERN = /^(RJ|VJ|ST)(\d+)$/i
+const CODE_PATTERN = /^(RJ|VJ|ST|VN)(\d+)$/i
 
 // 입력이 RJ/VJ/ST 코드 형식이면 GameCode로, 아니면 null(자유 텍스트 제목
 // 검색으로 취급)을 반환한다. electron/main/scanner/codeRecognition.ts의

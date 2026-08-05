@@ -9,7 +9,7 @@ export interface FilterableMetadata {
 export interface FilterableEntry {
   name: string
   kind: 'folder' | 'file'
-  code: { type: 'RJ' | 'VJ' | 'ST'; value: string } | null
+  code: { type: 'RJ' | 'VJ' | 'ST' | 'VN'; value: string } | null
 }
 
 export type FileKindFilter = 'all' | 'archive-only' | 'no-archive'

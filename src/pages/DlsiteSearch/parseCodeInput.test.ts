@@ -10,6 +10,10 @@ describe('parseCodeInput', () => {
     expect(parseCodeInput('rj01169914')).toEqual({ type: 'RJ', value: 'RJ01169914' })
   })
 
+  it('recognizes a VN code typed directly', () => {
+    expect(parseCodeInput('VN17')).toEqual({ type: 'VN', value: 'VN17' })
+  })
+
   it('returns null for free-text title search input', () => {
     expect(parseCodeInput('シニシスタ2')).toBeNull()
   })

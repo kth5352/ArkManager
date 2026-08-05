@@ -194,7 +194,7 @@ export interface SortPreference {
 }
 
 export const GameCodeSchema = z.object({
-  type: z.enum(['RJ', 'VJ', 'ST']),
+  type: z.enum(['RJ', 'VJ', 'ST', 'VN']),
   value: z.string(),
 })
 
