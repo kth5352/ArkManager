@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GameCode } from '../../shared/types/scanner'
-import type { DlsiteSearchResultDto, GameMetadataDto, VndbSearchResultDto } from '../../shared/types/ipc'
+import type {
+  DlsiteSearchResultDto,
+  GameMetadataDto,
+  VndbSearchResultDto,
+} from '../../shared/types/ipc'
 
 function metadataQueryKey(code: GameCode) {
   return ['metadata', code.value] as const
