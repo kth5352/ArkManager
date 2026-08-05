@@ -54,16 +54,31 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   // A failed launch (no saved config yet) opens the centered modal dialog
   // instead of expanding LaunchConfigSection inline - more discoverable/less
   // easy to miss than an inline section quietly expanding somewhere in an
-  // already-scrolled sidebar. Not reset via a path-tracking hook the way
-  // launchConfigExpanded's old auto-expand-on-failure used to need - the
-  // dialog itself is keyed by game identity below, which unmounts (closes)
-  // it on any game switch.
+  // already-scrolled sidebar. Reset on a game switch by the syncedGamePath
+  // check below - the dialog's own key={game.path} changing on its own
+  // isn't enough (it only unmounts and remounts already-open, immediately
+  // retargeted at the new game, a real bug found this same way for
+  // dialogMode - see that check's own comment).
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
   const [dialogMode, setDialogMode] = useState<'rename' | 'delete' | 'move' | null>(null)
+  const [syncedGamePath, setSyncedGamePath] = useState(game?.path)
 
   if (persistedWidth !== syncedWidth) {
     setSyncedWidth(persistedWidth)
     if (persistedWidth !== undefined) setWidth(persistedWidth)
+  }
+
+  // dialogMode/configuringLaunch live in this component's own state, above
+  // the game.path-keyed inner div (see the comment below on why that's
+  // deliberate for width/drag state) - so switching to a different game
+  // does NOT unmount this component and doesn't reset them for free. Without
+  // this, opening the rename dialog for one entry then selecting a
+  // different one immediately re-opened the (now retargeted) rename dialog
+  // for the new entry, since dialogMode was still 'rename'.
+  if (game?.path !== syncedGamePath) {
+    setSyncedGamePath(game?.path)
+    setConfiguringLaunch(false)
+    setDialogMode(null)
   }
 
   const handleLaunch = (): void => {
