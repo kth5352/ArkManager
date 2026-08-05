@@ -13,8 +13,7 @@ export interface GetchuSearchResult {
 // this app's normal crawl-and-save flow once a search result is selected),
 // which can't resolve a relative path with no <base> context.
 function toAbsoluteImageUrl(url: string): string {
-  if (/^https?:\/\//.test(url)) return url
-  return `https://www.getchu.com${url.startsWith('/') ? '' : '/'}${url}`
+  return new URL(url, 'https://www.getchu.com/').href
 }
 
 const RESULT_ID_PATTERN = /soft\.phtml\?id=(\d+)/

@@ -34,4 +34,17 @@ describe('parseGetchuSearchResults', () => {
       expect(result.title.length).toBeGreaterThan(0)
     }
   })
+
+  it('extracts a gated result with its r18 placeholder thumbnail and real title, same as an ungated result', async () => {
+    const html = await loadFixture('getchu-search-results.html')
+    const results = parseGetchuSearchResults(html)
+    const gated = results.find((r) => r.thumbnailUrl?.includes('r18.jpg'))
+    expect(gated).toBeDefined()
+    expect(gated!.title.length).toBeGreaterThan(0)
+    expect(gated!.code.type).toBe('GC')
+  })
+
+  it('returns an empty array for unrecognized markup instead of throwing', () => {
+    expect(parseGetchuSearchResults('<html><body>completely different layout</body></html>')).toEqual([])
+  })
 })
