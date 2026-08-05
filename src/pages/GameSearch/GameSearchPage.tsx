@@ -66,7 +66,15 @@ export function GameSearchPage() {
     }
   }
 
-  const hasAnyResults = searchDlsite.data !== undefined || searchVndb.data !== undefined
+  // Prefer staying on the current tab if it has results; otherwise fall back
+  // to whichever tab does. null means neither tab has anything to go back
+  // to, so the link itself should not render - showing it and landing on a
+  // blank results area would be worse than hiding it.
+  const backTargetSource: SearchSource | null =
+    activeSearch.data !== undefined ? source : source === 'dlsite' ? 'vndb' : 'dlsite'
+  const hasBackTarget =
+    activeSearch.data !== undefined ||
+    (source === 'dlsite' ? searchVndb : searchDlsite).data !== undefined
   const showingResultsList = activeCode === null && activeSearch.data !== undefined
 
   return (
@@ -102,10 +110,13 @@ export function GameSearchPage() {
         <Button onClick={handleSearch}>{t('gameSearch.search')}</Button>
       </div>
 
-      {activeCode && hasAnyResults && (
+      {activeCode && hasBackTarget && (
         <button
           className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-          onClick={() => setActiveCode(null)}
+          onClick={() => {
+            if (backTargetSource !== null) setSource(backTargetSource)
+            setActiveCode(null)
+          }}
         >
           <ArrowLeft className="h-3 w-3" />
           {t('gameSearch.backToResults')}

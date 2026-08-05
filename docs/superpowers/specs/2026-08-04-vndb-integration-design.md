@@ -60,23 +60,39 @@ found"), so `crawlGameMetadata.ts`'s existing dispatch
 third branch for `'VN'` the same way `'ST'` was added — no restructuring of
 that function's shape.
 
+**Correction after implementation (plan-writing + final review):** the
+sub-sections below originally said `circle` defaults to `undefined` when no
+developer is listed, and `releaseDate` stores VNDB's `null` as-is. Neither
+compiles against `CrawledGameMetadata`'s real contract
+(`electron/main/metadata/dlsiteParser.ts`), which requires both fields to be
+non-optional strings. Corrected: both default to `''`, matching the
+DLsite/Steam parsers' own "empty string on absence/failure" convention.
+Also, the final whole-branch review found that VNDB's top-`rating` tags are
+frequently plot-spoiling (its own fixture's top tags for a real VN were
+literally "Time Travel"/"Memory Alteration"); the user was asked and chose
+to exclude any tag whose `spoiler` level is non-zero before ranking, which
+the sub-sections below now reflect (originally not considered at all).
+
 Request: `{"filters": ["id", "=", "v17"], "fields": "title, released,
-image.url, developers.name, tags.name, tags.rating"}`. Field mapping to
-`CrawledGameMetadata`:
+image.url, developers.name, tags.name, tags.rating, tags.spoiler"}`. Field
+mapping to `CrawledGameMetadata`:
 - `title` → `title` (VNDB's primary display title; not attempting to prefer
   `alttitle`/original-language variants — matches the DLsite/Steam parsers'
   own "one title field, no further nuance" precedent).
 - `developers[0]?.name` → `circle` (VNDB models potentially multiple
   developers per VN; taking the first mirrors the existing parsers' own
-  bias toward simplicity over modeling every edge case). `undefined` when
-  no developer is listed.
-- `released` → `releaseDate`, stored as-is (VNDB's own `YYYY-MM-DD` string,
-  or `null` for TBA/unreleased — the column is already nullable).
-- `tags`, sorted by `rating` descending, top 10, mapped to their `name` →
-  `genres` (VNDB attaches hundreds of tags with a relevance `rating` per
-  VN; DLsite/Steam's own `genres` are a short curated list, so capping
-  keeps the display comparable rather than dumping VNDB's full tag cloud
-  into a field designed for a handful of short labels).
+  bias toward simplicity over modeling every edge case), defaulting to `''`
+  when no developer is listed.
+- `released` → `releaseDate`, defaulting to `''` for TBA/unreleased (VNDB
+  returns `null` there; `''` matches the existing "empty string on
+  absence" convention rather than storing `null`).
+- `tags`, filtered to `spoiler === 0` (excludes minor/major-spoiler tags —
+  a VN library's genre chips shouldn't leak plot details), then sorted by
+  `rating` descending, top 10, mapped to their `name` → `genres` (VNDB
+  attaches hundreds of tags with a relevance `rating` per VN; DLsite/Steam's
+  own `genres` are a short curated list, so capping keeps the display
+  comparable rather than dumping VNDB's full tag cloud into a field
+  designed for a handful of short labels).
 - `image.url` → `coverImageUrl`, downloaded and cached via the existing
   `cacheCoverImage.ts` unchanged (same function every other source already
   uses).
@@ -99,19 +115,39 @@ integration point.
 
 ## 3. Title Search (new scope beyond the DLsite/Steam precedent)
 
-A new standalone page, `src/pages/VndbSearch/VndbSearchPage.tsx`, mirroring
-`DlsiteSearchPage.tsx`'s structure (search box → result cards with
-thumbnail + title → click a result to crawl-and-save that VN), not a
-retrofit of the DLsite-specific page — `DlsiteSearchPage`'s free-text search
-path is hardcoded to DLsite's own search endpoint with no
-source-agnostic abstraction to extend, and building one is bigger than this
-feature needs (see Scope). New IPC channel `METADATA_SEARCH_VNDB`, backed
-by the same `/vn` endpoint with `{"filters": ["search", "=", "<query>"],
-"fields": "title, image.url"}` — a lighter field set than the crawl request
-above, matching `METADATA_SEARCH_DLSITE`'s own existing
-`DlsiteSearchResultDto` shape (`{code, title, thumbnailUrl}`), just sourced
-from VNDB instead. Reachable from the Sidebar alongside the existing
-"DLsite 검색" nav item, as its own nav entry ("VNDB 검색").
+**Correction after plan pre-flight review:** the paragraph below originally
+described a second standalone page (`VndbSearchPage.tsx`) plus a second
+Sidebar entry, alongside the unchanged `DlsiteSearchPage.tsx`. Before any
+implementation task was dispatched, pre-flight review flagged that this
+would both duplicate ~150 lines of near-identical page code (a predictable
+DRY-review conflict) and clutter the Sidebar with two search entries. The
+user chose to merge instead. Corrected below.
+
+`DlsiteSearchPage.tsx` is deleted and replaced by
+`src/pages/GameSearch/GameSearchPage.tsx` — the same search-box → result
+cards → click-to-crawl-and-save structure, now with a small "DLsite"/"VNDB"
+toggle that decides which search endpoint a free-text title query hits. A
+pasted code (any type, including `VN17`) still bypasses the toggle entirely
+and resolves the same way regardless of which tab is active — the toggle
+only governs free-text search. New IPC channel `METADATA_SEARCH_VNDB`,
+backed by the same `/vn` endpoint with `{"filters": ["search", "=",
+"<query>"], "fields": "title, image.url", "sort": "searchrank", "results":
+25}` — `sort: "searchrank"` was added after the final whole-branch review
+found the endpoint otherwise defaults to id-order, not relevance, for a
+title search. Response shape matches `METADATA_SEARCH_DLSITE`'s own
+existing `DlsiteSearchResultDto` shape (`{code, title, thumbnailUrl}`), just
+sourced from VNDB instead. Reachable from the Sidebar as a single, renamed
+"게임 검색" (Game Search) nav entry, replacing the old "DLsite 검색" entry
+rather than adding a second one.
+
+`src/pages/DlsiteSearch/parseCodeInput.ts` (and its test) stay where they
+are, unmoved — 4 other files already import it cross-folder from that
+location (`CodeLinkSection.tsx`, `LinkCodeDialog.tsx`, `SavesPage.tsx`,
+`RecentlyPlayedPage.tsx`), so only the page component itself relocates to
+the new `GameSearch` folder. The `DlsiteSearch` folder name is now a slight
+misnomer for what's left in it (shared code-parsing logic, not anything
+DLsite-specific) — left as-is rather than renaming, since moving it would
+ripple into those 4 unrelated files for a purely cosmetic gain.
 
 Manually typing a known code (`VN17`) still works unchanged from the
 existing `CodeLinkSection`/`LinkCodeDialog` inputs, exactly like any other
