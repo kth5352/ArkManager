@@ -67,6 +67,7 @@ export function LaunchConfigDialog({ entry, onClose, autoLaunchOnSave }: LaunchC
           launchGame.mutateAsync(entry).catch(() => toast.error(t('launchConfig.launchFailed')))
         }
       })
+      .catch(() => toast.error(t('launchConfig.saveFailed')))
   }
 
   const handlePickSaveFolder = async (): Promise<void> => {

@@ -149,6 +149,7 @@ const ko = {
   'launchConfig.manageSaves': '세이브 관리',
   'launchConfig.saved': '실행 설정이 저장되었습니다.',
   'launchConfig.launchFailed': '게임 실행에 실패했습니다.',
+  'launchConfig.saveFailed': '실행 설정 저장에 실패했습니다.',
 
   'saveManager.title': '세이브 관리',
   'saveManager.sectionTitle': '세이브 데이터 관리',
@@ -447,6 +448,7 @@ const ja: Record<keyof typeof ko, string> = {
   'launchConfig.manageSaves': 'セーブ管理',
   'launchConfig.saved': '実行設定が保存されました。',
   'launchConfig.launchFailed': 'ゲームの起動に失敗しました。',
+  'launchConfig.saveFailed': '起動設定の保存に失敗しました。',
 
   'saveManager.title': 'セーブ管理',
   'saveManager.sectionTitle': 'セーブデータ管理',
@@ -744,6 +746,7 @@ const en: Record<keyof typeof ko, string> = {
   'launchConfig.manageSaves': 'Manage Saves',
   'launchConfig.saved': 'Launch settings saved.',
   'launchConfig.launchFailed': 'Failed to launch the game.',
+  'launchConfig.saveFailed': 'Failed to save launch settings.',
 
   'saveManager.title': 'Manage Saves',
   'saveManager.sectionTitle': 'Save Data',
