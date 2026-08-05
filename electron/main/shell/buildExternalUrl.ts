@@ -11,6 +11,10 @@ export function buildExternalUrl(code: GameCode): string {
     const numericId = code.value.slice(2)
     return `https://vndb.org/v${numericId}`
   }
+  if (code.type === 'GC') {
+    const numericId = code.value.slice(2)
+    return `https://www.getchu.com/soft.phtml?id=${numericId}`
+  }
   const category = code.type === 'VJ' ? 'pro' : 'maniax'
   return `https://www.dlsite.com/${category}/work/=/product_id/${code.value}.html`
 }

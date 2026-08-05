@@ -23,4 +23,10 @@ describe('buildExternalUrl', () => {
   it('builds a VNDB URL for a VN code, stripping the VN prefix', () => {
     expect(buildExternalUrl({ type: 'VN', value: 'VN17' })).toBe('https://vndb.org/v17')
   })
+
+  it('builds a getchu.com URL for a GC code, stripping the GC prefix', () => {
+    expect(buildExternalUrl({ type: 'GC', value: 'GC1370494' })).toBe(
+      'https://www.getchu.com/soft.phtml?id=1370494'
+    )
+  })
 })
