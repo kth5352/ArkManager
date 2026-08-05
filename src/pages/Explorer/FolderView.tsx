@@ -4,6 +4,7 @@ import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-men
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
+import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
 import { useFolderScan, useFolderScanRecursive } from '../../services/scannerService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
@@ -29,6 +30,36 @@ interface FolderViewProps {
   onNavigate: (path: string) => void
 }
 
+// Every row gets exactly one icon now, where before only coded/media entries
+// did: a code-linked entry shows its game thumbnail with the folder/
+// archive/file kind as a small badge (matching GameRow's badge treatment in
+// ListPage.tsx exactly), a media file with no code shows a Music icon so it
+// still reads as "playable", and everything else - the majority of what
+// Explorer actually browses - falls back to FileKindIcon instead of no icon
+// at all.
+function EntryIcon({ entry }: { entry: ScannedEntry }) {
+  if (entry.code) {
+    return (
+      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
+        <GameThumbnail entry={entry} />
+        <div className="absolute bottom-0.5 right-0.5 rounded-full bg-background/70 p-0.5 text-muted-foreground">
+          <FileKindIcon kind={entry.kind} name={entry.name} className="h-3 w-3" />
+        </div>
+      </div>
+    )
+  }
+  if (entry.kind === 'file' && isMediaFile(entry.name)) {
+    return <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
+  }
+  return (
+    <FileKindIcon
+      kind={entry.kind}
+      name={entry.name}
+      className="h-4 w-4 shrink-0 text-muted-foreground"
+    />
+  )
+}
+
 function FolderEntryRow({
   entry,
   onOpenInNewTab,
@@ -50,17 +81,10 @@ function FolderEntryRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <li
-          className="flex cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent"
+          className="flex h-10 shrink-0 cursor-pointer items-center gap-3 px-4 text-sm transition-colors hover:bg-accent"
           onClick={() => onEntryClick(entry)}
         >
-          {entry.code && (
-            <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
-              <GameThumbnail entry={entry} />
-            </div>
-          )}
-          {entry.kind === 'file' && isMediaFile(entry.name) && (
-            <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
-          )}
+          <EntryIcon entry={entry} />
           <span className="truncate">{entry.name}</span>
         </li>
       </ContextMenuTrigger>
@@ -197,13 +221,16 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
             {sortedSearchResults.map((entry) => (
               <li
                 key={entry.path}
-                className="flex cursor-pointer flex-col gap-0.5 px-4 py-2 text-sm transition-colors hover:bg-accent"
+                className="flex cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent"
                 onClick={() => openDetail(entry)}
               >
-                <span className="truncate">{entry.name}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {relativePath(path, entry.path)}
-                </span>
+                <EntryIcon entry={entry} />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate">{entry.name}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {relativePath(path, entry.path)}
+                  </span>
+                </div>
               </li>
             ))}
             {sortedSearchResults.length === 0 && (
