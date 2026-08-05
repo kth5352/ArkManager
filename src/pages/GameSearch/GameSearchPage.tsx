@@ -7,6 +7,7 @@ import {
   useGameCoverImage,
   useGameMetadata,
   useSearchDlsite,
+  useSearchGetchu,
   useSearchSteam,
   useSearchVndb,
 } from '../../services/metadataService'
@@ -16,12 +17,17 @@ import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
 import type {
   DlsiteSearchResultDto,
+  GetchuSearchResultDto,
   SteamSearchResultDto,
   VndbSearchResultDto,
 } from '../../../shared/types/ipc'
 
-type SearchSource = 'all' | 'dlsite' | 'steam' | 'vndb'
-type SearchResult = DlsiteSearchResultDto | SteamSearchResultDto | VndbSearchResultDto
+type SearchSource = 'all' | 'dlsite' | 'steam' | 'vndb' | 'getchu'
+type SearchResult =
+  | DlsiteSearchResultDto
+  | SteamSearchResultDto
+  | VndbSearchResultDto
+  | GetchuSearchResultDto
 interface SourceSearchState {
   data: SearchResult[] | undefined
   isPending: boolean
@@ -55,10 +61,10 @@ function renderResultCard(result: SearchResult, onSelect: (result: SearchResult)
 
 // Renders one source's group within the "All" tab: a label header plus
 // that source's own pending/error/results state - independent of the other
-// two sources, so a slow DLsite scrape doesn't block already-arrived
-// Steam/VNDB results from showing. Returns null (renders nothing, group
-// omitted entirely) once settled with zero results, rather than showing an
-// empty header.
+// sources, so a slow DLsite scrape doesn't block already-arrived
+// Steam/VNDB/getchu results from showing. Returns null (renders nothing,
+// group omitted entirely) once settled with zero results, rather than
+// showing an empty header.
 function renderSourceGroup(
   label: string,
   search: SourceSearchState,
@@ -108,12 +114,19 @@ export function GameSearchPage() {
   const searchDlsite = useSearchDlsite()
   const searchSteam = useSearchSteam()
   const searchVndb = useSearchVndb()
+  const searchGetchu = useSearchGetchu()
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? activeCode : null)
 
-  // Only meaningful for the 3 single-source tabs - 'all' fires and renders
-  // all three at once instead (see the grouped rendering below).
+  // Only meaningful for the 4 single-source tabs - 'all' fires and renders
+  // all four at once instead (see the grouped rendering below).
   const activeSearch =
-    source === 'dlsite' ? searchDlsite : source === 'steam' ? searchSteam : searchVndb
+    source === 'dlsite'
+      ? searchDlsite
+      : source === 'steam'
+        ? searchSteam
+        : source === 'vndb'
+          ? searchVndb
+          : searchGetchu
 
   const selectResult = (result: SearchResult): void => {
     setActiveCode(result.code)
@@ -124,14 +137,15 @@ export function GameSearchPage() {
     const trimmed = input.trim()
     if (trimmed === '') return
 
-    // A direct code (RJ/VJ/ST/VN/GC) resolves the same way regardless of which
-    // tab is selected - the toggle only decides which API(s) a free-text
-    // title search hits.
+    // A direct code (RJ/VJ/ST/VN/GC) resolves the same way regardless of
+    // which tab is selected - the toggle only decides which API(s) a
+    // free-text title search hits.
     const code = parseCodeInput(trimmed)
     if (code) {
       searchDlsite.reset()
       searchSteam.reset()
       searchVndb.reset()
+      searchGetchu.reset()
       setActiveCode(code)
       crawlAndSave.mutate(code)
       return
@@ -140,46 +154,53 @@ export function GameSearchPage() {
     setActiveCode(null)
     // A new query TEXT (regardless of which tab submits it) invalidates
     // every source's previously cached results - otherwise switching tabs
-    // and searching something different leaves the other two sources
-    // showing stale results for the OLD query, composited into the "All"
-    // tab's grouped view as if they were current. Re-submitting the exact
-    // same text from a different tab deliberately does NOT reset - that's
-    // the existing cross-tab cache behavior, preserved here.
+    // and searching something different leaves other sources showing stale
+    // results for the OLD query, composited into the "All" tab's grouped
+    // view as if they were current. Re-submitting the exact same text from
+    // a different tab deliberately does NOT reset - that's the existing
+    // cross-tab cache behavior, preserved here.
     if (trimmed !== lastQuery) {
       searchDlsite.reset()
       searchSteam.reset()
       searchVndb.reset()
+      searchGetchu.reset()
     }
     setLastQuery(trimmed)
     if (source === 'all') {
       searchDlsite.mutate(trimmed)
       searchSteam.mutate(trimmed)
       searchVndb.mutate(trimmed)
+      searchGetchu.mutate(trimmed)
     } else if (source === 'dlsite') {
       searchDlsite.mutate(trimmed)
     } else if (source === 'steam') {
       searchSteam.mutate(trimmed)
-    } else {
+    } else if (source === 'vndb') {
       searchVndb.mutate(trimmed)
+    } else {
+      searchGetchu.mutate(trimmed)
     }
   }
 
   const dlsiteHasData = searchDlsite.data !== undefined
   const steamHasData = searchSteam.data !== undefined
   const vndbHasData = searchVndb.data !== undefined
+  const getchuHasData = searchGetchu.data !== undefined
 
-  // Prefer staying on the current tab if it (or, for 'all', any of its 3
+  // Prefer staying on the current tab if it (or, for 'all', any of its 4
   // sources) has results; otherwise fall back to whichever single source
   // does, in a fixed order. null means nothing to go back to anywhere, so
   // the link itself should not render.
   const currentTabHasData =
     source === 'all'
-      ? dlsiteHasData || steamHasData || vndbHasData
+      ? dlsiteHasData || steamHasData || vndbHasData || getchuHasData
       : source === 'dlsite'
         ? dlsiteHasData
         : source === 'steam'
           ? steamHasData
-          : vndbHasData
+          : source === 'vndb'
+            ? vndbHasData
+            : getchuHasData
   const backTargetSource: SearchSource | null = currentTabHasData
     ? source
     : dlsiteHasData
@@ -188,7 +209,9 @@ export function GameSearchPage() {
         ? 'steam'
         : vndbHasData
           ? 'vndb'
-          : null
+          : getchuHasData
+            ? 'getchu'
+            : null
   const hasBackTarget = backTargetSource !== null
 
   const showingResultsList = activeCode === null && activeSearch.data !== undefined
@@ -199,15 +222,19 @@ export function GameSearchPage() {
     !searchDlsite.isPending &&
     !searchSteam.isPending &&
     !searchVndb.isPending &&
+    !searchGetchu.isPending &&
     !searchDlsite.isError &&
     !searchSteam.isError &&
     !searchVndb.isError &&
+    !searchGetchu.isError &&
     dlsiteHasData &&
     steamHasData &&
     vndbHasData &&
+    getchuHasData &&
     searchDlsite.data!.length === 0 &&
     searchSteam.data!.length === 0 &&
-    searchVndb.data!.length === 0
+    searchVndb.data!.length === 0 &&
+    searchGetchu.data!.length === 0
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
@@ -247,6 +274,15 @@ export function GameSearchPage() {
           onClick={() => setSource('vndb')}
         >
           VNDB
+        </Button>
+        <Button
+          type="button"
+          variant={source === 'getchu' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={source === 'getchu'}
+          onClick={() => setSource('getchu')}
+        >
+          getchu
         </Button>
       </div>
 
@@ -296,6 +332,13 @@ export function GameSearchPage() {
             {renderSourceGroup(
               'VNDB',
               searchVndb,
+              selectResult,
+              t('gameSearch.searching'),
+              t('dlsiteSearch.searchError')
+            )}
+            {renderSourceGroup(
+              'getchu',
+              searchGetchu,
               selectResult,
               t('gameSearch.searching'),
               t('dlsiteSearch.searchError')
