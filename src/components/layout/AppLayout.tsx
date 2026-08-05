@@ -1,16 +1,19 @@
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRouterState } from '@tanstack/react-router'
+import { Toaster } from 'sonner'
 import { Sidebar } from './Sidebar'
 import { BulkCrawlProgressBanner } from './BulkCrawlProgressBanner'
 import { useBulkCrawlProgress } from '../../hooks/useBulkCrawlMissingMetadata'
 import { MediaPlayerHost } from '../media/MediaPlayerHost'
 import { useMediaPlayerSync } from '../../hooks/useMediaPlayerSync'
 import { ExcludedEntriesDialog } from './ExcludedEntriesDialog'
+import { useTheme } from '../../hooks/useTheme'
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const bulkCrawlProgress = useBulkCrawlProgress()
+  const { theme } = useTheme()
   useMediaPlayerSync()
 
   return (
@@ -35,6 +38,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <MediaPlayerHost />
       <BulkCrawlProgressBanner progress={bulkCrawlProgress} />
       <ExcludedEntriesDialog />
+      {/* position="top-right" avoids overlapping BulkCrawlProgressBanner's
+          own fixed bottom-4 right-4 position. richColors gives success/error
+          toasts distinct color treatment without this app hand-rolling
+          variant styling. */}
+      <Toaster theme={theme} position="top-right" richColors />
     </div>
   )
 }
