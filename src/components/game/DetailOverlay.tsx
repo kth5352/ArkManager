@@ -140,6 +140,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         key={configuringLaunch && game ? (game.code ? game.code.value : game.path) : 'closed'}
         entry={configuringLaunch ? game : null}
         onClose={() => setConfiguringLaunch(false)}
+        autoLaunchOnSave={false}
       />
       <LinkCodeDialog
         key={linkingCode && game ? game.path : 'closed'}

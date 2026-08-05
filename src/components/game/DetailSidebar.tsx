@@ -323,6 +323,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         key={configuringLaunch ? game.path : 'closed'}
         entry={configuringLaunch ? game : null}
         onClose={() => setConfiguringLaunch(false)}
+        autoLaunchOnSave
       />
       <RenameDialog
         key={dialogMode === 'rename' ? game.path : 'closed'}

@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import {
   useListExecutables,
   useLocaleEmulatorAvailable,
   useSetLaunchConfig,
+  useLaunchGame,
 } from '../../services/launchService'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
@@ -16,15 +18,25 @@ import type { LaunchConfigDto } from '../../../shared/types/ipc'
 interface LaunchConfigDialogProps {
   entry: ScannedEntry | null
   onClose: () => void
+  // Auto-launch is only correct on the failed-launch-triggered path
+  // (DetailSidebar.tsx) - the user already tried to launch, got blocked by
+  // missing config, and fixing that config here means "now actually launch
+  // it." The deliberate settings-button path (DetailOverlay.tsx) has no
+  // such intent - a user reviewing/correcting config there may not want to
+  // play right now, and a separate Launch button already sits next to the
+  // one that opens this dialog. Each caller passes its own unambiguous
+  // answer rather than this dialog guessing.
+  autoLaunchOnSave: boolean
 }
 
-export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) {
+export function LaunchConfigDialog({ entry, onClose, autoLaunchOnSave }: LaunchConfigDialogProps) {
   const { t } = useTranslation()
   const folderPath = entry?.kind === 'folder' ? entry.path : ''
   const { data: executables } = useListExecutables(folderPath)
   const { data: leAvailable } = useLocaleEmulatorAvailable()
   const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
   const setLaunchConfig = useSetLaunchConfig()
+  const launchGame = useLaunchGame()
   const pickSaveFolder = usePickSaveFolder()
   const setSavePath = useSetSavePath()
   const [showSaveManager, setShowSaveManager] = useState(false)
@@ -46,7 +58,20 @@ export function LaunchConfigDialog({ entry, onClose }: LaunchConfigDialogProps) 
 
   const handleSaveLaunchConfig = (): void => {
     if (!entry || !selectedExe) return
-    setLaunchConfig.mutate({ entry, config: { executablePath: selectedExe, launchMode } })
+    setLaunchConfig.mutate(
+      { entry, config: { executablePath: selectedExe, launchMode } },
+      {
+        onSuccess: () => {
+          toast.success(t('launchConfig.saved'))
+          onClose()
+          if (autoLaunchOnSave) {
+            launchGame.mutate(entry, {
+              onError: () => toast.error(t('launchConfig.launchFailed')),
+            })
+          }
+        },
+      }
+    )
   }
 
   const handlePickSaveFolder = async (): Promise<void> => {
