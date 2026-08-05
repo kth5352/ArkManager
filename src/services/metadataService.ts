@@ -3,6 +3,7 @@ import type { GameCode } from '../../shared/types/scanner'
 import type {
   DlsiteSearchResultDto,
   GameMetadataDto,
+  GetchuSearchResultDto,
   SteamSearchResultDto,
   VndbSearchResultDto,
 } from '../../shared/types/ipc'
@@ -53,6 +54,13 @@ export function useSearchSteam() {
   return useMutation({
     mutationFn: (query: string): Promise<SteamSearchResultDto[]> =>
       window.api.metadata.searchSteam(query),
+  })
+}
+
+export function useSearchGetchu() {
+  return useMutation({
+    mutationFn: (query: string): Promise<GetchuSearchResultDto[]> =>
+      window.api.metadata.searchGetchu(query),
   })
 }
 

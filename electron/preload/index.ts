@@ -8,6 +8,7 @@ import {
   type GameMetadataDto,
   type GameUserDataDto,
   type GameWithSavePathDto,
+  type GetchuSearchResultDto,
   type LaunchConfigDto,
   type Library,
   type LibraryWithStatus,
@@ -131,6 +132,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_VNDB, { query }),
     searchSteam: (query: string): Promise<SteamSearchResultDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_STEAM, { query }),
+    searchGetchu: (query: string): Promise<GetchuSearchResultDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_GETCHU, { query }),
     crawlMissing: (codes: GameCode[]): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_MISSING, { codes }),
     // See scanner.onScanProgress - same shape (subscribe, return an
