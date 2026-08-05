@@ -1,6 +1,7 @@
 import { parseDlsiteWorkPage, type CrawledGameMetadata } from './dlsiteParser'
 import { parseSteamStorePage } from './steamParser'
 import { crawlVndb } from './vndbClient'
+import { parseGetchuWorkPage } from './getchuParser'
 import type { GameCode } from '../../../shared/types/scanner'
 
 export type { CrawledGameMetadata }
@@ -50,8 +51,26 @@ async function crawlSteam(code: GameCode): Promise<CrawledGameMetadata | null> {
   return parseSteamStorePage(await response.text())
 }
 
+// Getchu serves its pages as EUC-JP (confirmed via both the response's own
+// Content-Type header and its <meta charset> tag against a real fetch,
+// neither Shift_JIS nor UTF-8 as design-time investigation had suspected but
+// not confirmed) - response.text() would assume UTF-8 and mangle every
+// Japanese character, so the raw bytes are decoded explicitly instead.
+async function crawlGetchu(code: GameCode): Promise<CrawledGameMetadata | null> {
+  const numericId = code.value.slice(2)
+  const response = await fetch(`https://www.getchu.com/soft.phtml?id=${numericId}`, {
+    headers: { 'User-Agent': USER_AGENT },
+    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+  })
+  if (!response.ok) return null
+  const buffer = await response.arrayBuffer()
+  const html = new TextDecoder('euc-jp').decode(buffer)
+  return parseGetchuWorkPage(html)
+}
+
 export async function crawlGameMetadata(code: GameCode): Promise<CrawledGameMetadata | null> {
   if (code.type === 'ST') return crawlSteam(code)
   if (code.type === 'VN') return crawlVndb(code)
+  if (code.type === 'GC') return crawlGetchu(code)
   return crawlDlsite(code)
 }
