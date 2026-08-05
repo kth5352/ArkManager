@@ -71,3 +71,54 @@ export async function crawlVndb(code: GameCode): Promise<CrawledGameMetadata | n
   const vn = data.results[0]
   return vn ? mapVnToMetadata(vn) : null
 }
+
+export interface VndbSearchResult {
+  code: GameCode
+  title: string
+  thumbnailUrl: string | null
+}
+
+interface VndbSearchApiVn {
+  id: string
+  title: string
+  image: { url: string } | null
+}
+
+interface VndbSearchApiResponse {
+  results: VndbSearchApiVn[]
+}
+
+// vn.id is VNDB's own "v17" shape - reattach this app's VN-prefix
+// convention (the inverse of toVndbId above) so the result's code round-
+// trips through parseCodeInput/extractCode/buildExternalUrl identically to
+// a code recognized from a filename.
+export function mapVnToSearchResult(vn: VndbSearchApiVn): VndbSearchResult {
+  return {
+    code: { type: 'VN', value: `VN${vn.id.slice(1)}` },
+    title: vn.title,
+    thumbnailUrl: vn.image?.url ?? null,
+  }
+}
+
+export async function searchVndb(query: string): Promise<VndbSearchResult[]> {
+  const trimmed = query.trim()
+  if (trimmed === '') return []
+
+  const response = await fetch(VNDB_API_URL, {
+    method: 'POST',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      filters: ['search', '=', trimmed],
+      fields: 'title, image.url',
+    }),
+    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+  })
+  if (!response.ok) return []
+
+  const data = (await response.json()) as VndbSearchApiResponse
+  return data.results.map(mapVnToSearchResult)
+}

@@ -6,12 +6,14 @@ import {
   GetManyMetadataRequestSchema,
   GetCoverImageRequestSchema,
   SearchDlsiteRequestSchema,
+  SearchVndbRequestSchema,
   CrawlMissingMetadataRequestSchema,
   IPC_CHANNELS,
   type GameMetadataDto,
 } from '../../../shared/types/ipc'
 import { crawlGameMetadata } from '../metadata/crawlGameMetadata'
 import { crawlDlsiteSearch } from '../metadata/crawlDlsiteSearch'
+import { searchVndb } from '../metadata/vndbClient'
 import { cacheCoverImage } from '../metadata/cacheCoverImage'
 import { createBulkCrawlQueue } from '../metadata/bulkCrawlQueue'
 import {
@@ -89,6 +91,11 @@ export function registerMetadataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_DLSITE, async (_event, payload: unknown) => {
     const { query } = SearchDlsiteRequestSchema.parse(payload)
     return crawlDlsiteSearch(query)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_VNDB, async (_event, payload: unknown) => {
+    const { query } = SearchVndbRequestSchema.parse(payload)
+    return searchVndb(query)
   })
 
   ipcMain.handle(IPC_CHANNELS.METADATA_CRAWL_MISSING, (event, payload: unknown) => {
