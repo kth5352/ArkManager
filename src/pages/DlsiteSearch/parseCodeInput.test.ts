@@ -17,4 +17,8 @@ describe('parseCodeInput', () => {
   it('returns null for free-text title search input', () => {
     expect(parseCodeInput('シニシスタ2')).toBeNull()
   })
+
+  it('recognizes an ST (Steam) code typed directly', () => {
+    expect(parseCodeInput('ST413150')).toEqual({ type: 'ST', value: 'ST413150' })
+  })
 })

@@ -68,16 +68,18 @@ function renderSourceGroup(
 ) {
   if (search.isPending) {
     return (
-      <div key={label} className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-        <IndeterminateProgressBar />
-        <p className="text-xs text-muted-foreground">{searchingText}</p>
+        <div className="flex max-w-xs flex-col gap-1">
+          <IndeterminateProgressBar />
+          <p className="text-xs text-muted-foreground">{searchingText}</p>
+        </div>
       </div>
     )
   }
   if (search.isError) {
     return (
-      <div key={label} className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1">
         <p className="text-xs font-semibold text-muted-foreground">{label}</p>
         <p className="text-sm text-muted-foreground">{errorText}</p>
       </div>
@@ -85,7 +87,7 @@ function renderSourceGroup(
   }
   if (search.data === undefined || search.data.length === 0) return null
   return (
-    <div key={label} className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1">
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
       <div className="flex flex-col gap-1">
         {search.data.map((result) => renderResultCard(result, onSelect))}
@@ -99,6 +101,7 @@ export function GameSearchPage() {
   const [input, setInput] = useState('')
   const [source, setSource] = useState<SearchSource>('all')
   const [activeCode, setActiveCode] = useState<GameCode | null>(null)
+  const [lastQuery, setLastQuery] = useState('')
 
   const { data: metadata, isLoading } = useGameMetadata(activeCode)
   const crawlAndSave = useCrawlGameMetadata()
@@ -135,6 +138,19 @@ export function GameSearchPage() {
     }
 
     setActiveCode(null)
+    // A new query TEXT (regardless of which tab submits it) invalidates
+    // every source's previously cached results - otherwise switching tabs
+    // and searching something different leaves the other two sources
+    // showing stale results for the OLD query, composited into the "All"
+    // tab's grouped view as if they were current. Re-submitting the exact
+    // same text from a different tab deliberately does NOT reset - that's
+    // the existing cross-tab cache behavior, preserved here.
+    if (trimmed !== lastQuery) {
+      searchDlsite.reset()
+      searchSteam.reset()
+      searchVndb.reset()
+    }
+    setLastQuery(trimmed)
     if (source === 'all') {
       searchDlsite.mutate(trimmed)
       searchSteam.mutate(trimmed)

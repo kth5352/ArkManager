@@ -8,6 +8,7 @@ const NETWORK_TIMEOUT_MS = 15_000
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0'
 
 interface SteamStoreSearchItem {
+  type: string
   id: number
   name: string
   tiny_image?: string
@@ -37,11 +38,18 @@ export async function crawlSteamSearch(query: string): Promise<SteamSearchResult
 
   const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(trimmed)}&l=english&cc=US`
   const response = await fetch(url, {
-    headers: { 'User-Agent': USER_AGENT },
+    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
   })
   if (!response.ok) return []
 
   const data = (await response.json()) as SteamStoreSearchResponse
-  return (data.items ?? []).map(mapItemToSearchResult)
+  // Steam's search can return non-'app' items (e.g. 'sub'/bundle packages)
+  // whose id is a package id, not an app id - crawlSteam (crawlGameMetadata.ts)
+  // fetches /app/<id>, which 404s-in-spirit (loads but has no #appHubAppName)
+  // for a package id, producing a permanently unresolvable result. Only 'app'
+  // items map to something this app can actually crawl.
+  return (data.items ?? [])
+    .filter((item) => item.type === 'app')
+    .map(mapItemToSearchResult)
 }
