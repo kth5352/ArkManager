@@ -91,7 +91,7 @@ const ko = {
   'library.visibleLibraries': '표시할 라이브러리',
   'library.showAll': '모두 표시',
 
-  'bulkCrawl.fetching': 'DLsite 정보 가져오는 중... ({completed}/{total})',
+  'bulkCrawl.fetching': '정보 가져오는 중... ({completed}/{total})',
 
   'pageToolbar.name': '이름',
   'pageToolbar.mtime': '변경시간',
@@ -386,7 +386,7 @@ const ja: Record<keyof typeof ko, string> = {
   'library.visibleLibraries': '表示するライブラリ',
   'library.showAll': 'すべて表示',
 
-  'bulkCrawl.fetching': 'DLsite情報を取得中... ({completed}/{total})',
+  'bulkCrawl.fetching': '情報を取得中... ({completed}/{total})',
 
   'pageToolbar.name': '名前',
   'pageToolbar.mtime': '更新日時',
@@ -680,7 +680,7 @@ const en: Record<keyof typeof ko, string> = {
   'library.visibleLibraries': 'Visible libraries',
   'library.showAll': 'Show all',
 
-  'bulkCrawl.fetching': 'Fetching DLsite info... ({completed}/{total})',
+  'bulkCrawl.fetching': 'Fetching info... ({completed}/{total})',
 
   'pageToolbar.name': 'Name',
   'pageToolbar.mtime': 'Modified',
