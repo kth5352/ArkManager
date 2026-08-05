@@ -7,35 +7,110 @@ import {
   useGameCoverImage,
   useGameMetadata,
   useSearchDlsite,
+  useSearchSteam,
   useSearchVndb,
 } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../../components/ui/progress-bar'
 import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
-import type { DlsiteSearchResultDto, VndbSearchResultDto } from '../../../shared/types/ipc'
+import type {
+  DlsiteSearchResultDto,
+  SteamSearchResultDto,
+  VndbSearchResultDto,
+} from '../../../shared/types/ipc'
 
-type SearchSource = 'dlsite' | 'vndb'
-type SearchResult = DlsiteSearchResultDto | VndbSearchResultDto
+type SearchSource = 'all' | 'dlsite' | 'steam' | 'vndb'
+type SearchResult = DlsiteSearchResultDto | SteamSearchResultDto | VndbSearchResultDto
+interface SourceSearchState {
+  data: SearchResult[] | undefined
+  isPending: boolean
+  isError: boolean
+}
+
+function renderResultCard(result: SearchResult, onSelect: (result: SearchResult) => void) {
+  return (
+    <button
+      key={result.code.value}
+      onClick={() => onSelect(result)}
+      className="flex items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-accent"
+    >
+      <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted">
+        {result.thumbnailUrl && (
+          <img
+            src={result.thumbnailUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        )}
+      </div>
+      <div className="flex flex-col gap-0.5 text-sm">
+        <p className="font-medium">{result.title}</p>
+        <p className="text-xs text-muted-foreground">{result.code.value}</p>
+      </div>
+    </button>
+  )
+}
+
+// Renders one source's group within the "All" tab: a label header plus
+// that source's own pending/error/results state - independent of the other
+// two sources, so a slow DLsite scrape doesn't block already-arrived
+// Steam/VNDB results from showing. Returns null (renders nothing, group
+// omitted entirely) once settled with zero results, rather than showing an
+// empty header.
+function renderSourceGroup(
+  label: string,
+  search: SourceSearchState,
+  onSelect: (result: SearchResult) => void,
+  searchingText: string,
+  errorText: string
+) {
+  if (search.isPending) {
+    return (
+      <div key={label} className="flex flex-col gap-1">
+        <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+        <IndeterminateProgressBar />
+        <p className="text-xs text-muted-foreground">{searchingText}</p>
+      </div>
+    )
+  }
+  if (search.isError) {
+    return (
+      <div key={label} className="flex flex-col gap-1">
+        <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+        <p className="text-sm text-muted-foreground">{errorText}</p>
+      </div>
+    )
+  }
+  if (search.data === undefined || search.data.length === 0) return null
+  return (
+    <div key={label} className="flex flex-col gap-1">
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      <div className="flex flex-col gap-1">
+        {search.data.map((result) => renderResultCard(result, onSelect))}
+      </div>
+    </div>
+  )
+}
 
 export function GameSearchPage() {
   const { t } = useTranslation()
   const [input, setInput] = useState('')
-  const [source, setSource] = useState<SearchSource>('dlsite')
+  const [source, setSource] = useState<SearchSource>('all')
   const [activeCode, setActiveCode] = useState<GameCode | null>(null)
 
   const { data: metadata, isLoading } = useGameMetadata(activeCode)
   const crawlAndSave = useCrawlGameMetadata()
   const searchDlsite = useSearchDlsite()
+  const searchSteam = useSearchSteam()
   const searchVndb = useSearchVndb()
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? activeCode : null)
 
-  // Both mutations stay mounted (hooks can't be conditional) - only the one
-  // matching the current toggle drives the UI below. Switching tabs
-  // deliberately does not clear the other's data: returning to a
-  // previously-searched tab shows its own last results again, like a cache,
-  // instead of forcing a re-search.
-  const activeSearch = source === 'dlsite' ? searchDlsite : searchVndb
+  // Only meaningful for the 3 single-source tabs - 'all' fires and renders
+  // all three at once instead (see the grouped rendering below).
+  const activeSearch =
+    source === 'dlsite' ? searchDlsite : source === 'steam' ? searchSteam : searchVndb
 
   const selectResult = (result: SearchResult): void => {
     setActiveCode(result.code)
@@ -47,11 +122,12 @@ export function GameSearchPage() {
     if (trimmed === '') return
 
     // A direct code (RJ/VJ/ST/VN) resolves the same way regardless of which
-    // tab is selected - the toggle only decides which API a free-text title
-    // search hits.
+    // tab is selected - the toggle only decides which API(s) a free-text
+    // title search hits.
     const code = parseCodeInput(trimmed)
     if (code) {
       searchDlsite.reset()
+      searchSteam.reset()
       searchVndb.reset()
       setActiveCode(code)
       crawlAndSave.mutate(code)
@@ -59,27 +135,76 @@ export function GameSearchPage() {
     }
 
     setActiveCode(null)
-    if (source === 'dlsite') {
+    if (source === 'all') {
       searchDlsite.mutate(trimmed)
+      searchSteam.mutate(trimmed)
+      searchVndb.mutate(trimmed)
+    } else if (source === 'dlsite') {
+      searchDlsite.mutate(trimmed)
+    } else if (source === 'steam') {
+      searchSteam.mutate(trimmed)
     } else {
       searchVndb.mutate(trimmed)
     }
   }
 
-  // Prefer staying on the current tab if it has results; otherwise fall back
-  // to whichever tab does. null means neither tab has anything to go back
-  // to, so the link itself should not render - showing it and landing on a
-  // blank results area would be worse than hiding it.
-  const backTargetSource: SearchSource | null =
-    activeSearch.data !== undefined ? source : source === 'dlsite' ? 'vndb' : 'dlsite'
-  const hasBackTarget =
-    activeSearch.data !== undefined ||
-    (source === 'dlsite' ? searchVndb : searchDlsite).data !== undefined
+  const dlsiteHasData = searchDlsite.data !== undefined
+  const steamHasData = searchSteam.data !== undefined
+  const vndbHasData = searchVndb.data !== undefined
+
+  // Prefer staying on the current tab if it (or, for 'all', any of its 3
+  // sources) has results; otherwise fall back to whichever single source
+  // does, in a fixed order. null means nothing to go back to anywhere, so
+  // the link itself should not render.
+  const currentTabHasData =
+    source === 'all'
+      ? dlsiteHasData || steamHasData || vndbHasData
+      : source === 'dlsite'
+        ? dlsiteHasData
+        : source === 'steam'
+          ? steamHasData
+          : vndbHasData
+  const backTargetSource: SearchSource | null = currentTabHasData
+    ? source
+    : dlsiteHasData
+      ? 'dlsite'
+      : steamHasData
+        ? 'steam'
+        : vndbHasData
+          ? 'vndb'
+          : null
+  const hasBackTarget = backTargetSource !== null
+
   const showingResultsList = activeCode === null && activeSearch.data !== undefined
+
+  const allNoResults =
+    source === 'all' &&
+    activeCode === null &&
+    !searchDlsite.isPending &&
+    !searchSteam.isPending &&
+    !searchVndb.isPending &&
+    !searchDlsite.isError &&
+    !searchSteam.isError &&
+    !searchVndb.isError &&
+    dlsiteHasData &&
+    steamHasData &&
+    vndbHasData &&
+    searchDlsite.data!.length === 0 &&
+    searchSteam.data!.length === 0 &&
+    searchVndb.data!.length === 0
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
       <div className="flex w-fit gap-1 rounded-md bg-muted p-1">
+        <Button
+          type="button"
+          variant={source === 'all' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={source === 'all'}
+          onClick={() => setSource('all')}
+        >
+          {t('gameSearch.all')}
+        </Button>
         <Button
           type="button"
           variant={source === 'dlsite' ? 'default' : 'ghost'}
@@ -88,6 +213,15 @@ export function GameSearchPage() {
           onClick={() => setSource('dlsite')}
         >
           DLsite
+        </Button>
+        <Button
+          type="button"
+          variant={source === 'steam' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={source === 'steam'}
+          onClick={() => setSource('steam')}
+        >
+          Steam
         </Button>
         <Button
           type="button"
@@ -123,46 +257,58 @@ export function GameSearchPage() {
         </button>
       )}
 
-      {activeSearch.isPending && (
-        <div className="flex max-w-xs flex-col gap-1">
-          <IndeterminateProgressBar />
-          <p className="text-xs text-muted-foreground">{t('gameSearch.searching')}</p>
-        </div>
-      )}
+      {source === 'all' ? (
+        activeCode === null && (
+          <div className="flex flex-col gap-3 overflow-auto">
+            {allNoResults && (
+              <p className="text-sm text-muted-foreground">{t('dlsiteSearch.noResults')}</p>
+            )}
+            {renderSourceGroup(
+              'DLsite',
+              searchDlsite,
+              selectResult,
+              t('gameSearch.searching'),
+              t('dlsiteSearch.searchError')
+            )}
+            {renderSourceGroup(
+              'Steam',
+              searchSteam,
+              selectResult,
+              t('gameSearch.searching'),
+              t('dlsiteSearch.searchError')
+            )}
+            {renderSourceGroup(
+              'VNDB',
+              searchVndb,
+              selectResult,
+              t('gameSearch.searching'),
+              t('dlsiteSearch.searchError')
+            )}
+          </div>
+        )
+      ) : (
+        <>
+          {activeSearch.isPending && (
+            <div className="flex max-w-xs flex-col gap-1">
+              <IndeterminateProgressBar />
+              <p className="text-xs text-muted-foreground">{t('gameSearch.searching')}</p>
+            </div>
+          )}
 
-      {activeSearch.isError && (
-        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.searchError')}</p>
-      )}
+          {activeSearch.isError && (
+            <p className="text-sm text-muted-foreground">{t('dlsiteSearch.searchError')}</p>
+          )}
 
-      {showingResultsList && activeSearch.data!.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.noResults')}</p>
-      )}
+          {showingResultsList && activeSearch.data!.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t('dlsiteSearch.noResults')}</p>
+          )}
 
-      {showingResultsList && activeSearch.data!.length > 0 && (
-        <div className="flex flex-col gap-1 overflow-auto">
-          {activeSearch.data!.map((result) => (
-            <button
-              key={result.code.value}
-              onClick={() => selectResult(result)}
-              className="flex items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-accent"
-            >
-              <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                {result.thumbnailUrl && (
-                  <img
-                    src={result.thumbnailUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    draggable={false}
-                  />
-                )}
-              </div>
-              <div className="flex flex-col gap-0.5 text-sm">
-                <p className="font-medium">{result.title}</p>
-                <p className="text-xs text-muted-foreground">{result.code.value}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+          {showingResultsList && activeSearch.data!.length > 0 && (
+            <div className="flex flex-col gap-1 overflow-auto">
+              {activeSearch.data!.map((result) => renderResultCard(result, selectResult))}
+            </div>
+          )}
+        </>
       )}
 
       {crawlAndSave.isPending && (

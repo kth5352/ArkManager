@@ -243,6 +243,7 @@ const ko = {
   'tabBar.registerLibraryFirst': '먼저 설정에서 라이브러리를 등록하세요',
   'tabBar.openFolder': '폴더 열기',
 
+  'gameSearch.all': '통합검색',
   'gameSearch.placeholder': '식별코드 또는 작품 제목',
   'gameSearch.search': '검색',
   'gameSearch.backToResults': '검색 결과로 돌아가기',
@@ -536,6 +537,7 @@ const ja: Record<keyof typeof ko, string> = {
   'tabBar.registerLibraryFirst': 'まず設定でライブラリを登録してください',
   'tabBar.openFolder': 'フォルダを開く',
 
+  'gameSearch.all': '統合検索',
   'gameSearch.placeholder': '識別コードまたは作品タイトル',
   'gameSearch.search': '検索',
   'gameSearch.backToResults': '検索結果に戻る',
@@ -830,6 +832,7 @@ const en: Record<keyof typeof ko, string> = {
   'tabBar.registerLibraryFirst': 'Register a library in Settings first',
   'tabBar.openFolder': 'Open Folder',
 
+  'gameSearch.all': 'All',
   'gameSearch.placeholder': 'Identifier code or title',
   'gameSearch.search': 'Search',
   'gameSearch.backToResults': 'Back to results',
