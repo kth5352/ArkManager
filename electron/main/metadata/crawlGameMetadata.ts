@@ -1,5 +1,6 @@
 import { parseDlsiteWorkPage, type CrawledGameMetadata } from './dlsiteParser'
 import { parseSteamStorePage } from './steamParser'
+import { crawlVndb } from './vndbClient'
 import type { GameCode } from '../../../shared/types/scanner'
 
 export type { CrawledGameMetadata }
@@ -50,5 +51,7 @@ async function crawlSteam(code: GameCode): Promise<CrawledGameMetadata | null> {
 }
 
 export async function crawlGameMetadata(code: GameCode): Promise<CrawledGameMetadata | null> {
-  return code.type === 'ST' ? crawlSteam(code) : crawlDlsite(code)
+  if (code.type === 'ST') return crawlSteam(code)
+  if (code.type === 'VN') return crawlVndb(code)
+  return crawlDlsite(code)
 }
