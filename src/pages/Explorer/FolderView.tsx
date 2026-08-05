@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Music } from 'lucide-react'
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { pathToBreadcrumbSegments } from './breadcrumb'
@@ -23,6 +23,10 @@ import { sortEntries } from '../../lib/sortEntries'
 import { relativePath } from './relativePath'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
+import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
+import { useLongPress } from '../../hooks/useLongPress'
+import { useSelectionStore } from '../../stores/selectionStore'
 
 interface FolderViewProps {
   tabId: string
@@ -77,13 +81,23 @@ function FolderEntryRow({
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
 }) {
+  const activateSelection = useSelectionStore((s) => s.activate)
+  const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
+    activateSelection(entry.path)
+  )
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <li
+          {...longPressHandlers}
           className="flex h-10 shrink-0 cursor-pointer items-center gap-3 px-4 text-sm transition-colors hover:bg-accent"
-          onClick={() => onEntryClick(entry)}
+          onClick={() => {
+            if (consumeLongPressClick()) return
+            onEntryClick(entry)
+          }}
         >
+          <SelectionCheckbox path={entry.path} className="h-4 w-4 shrink-0 rounded-sm" />
           <EntryIcon entry={entry} />
           <span className="truncate">{entry.name}</span>
         </li>
@@ -97,6 +111,41 @@ function FolderEntryRow({
         onDelete={onDelete}
       />
     </ContextMenu>
+  )
+}
+
+function SearchResultRow({
+  entry,
+  onOpenDetail,
+  path,
+}: {
+  entry: ScannedEntry
+  onOpenDetail: (entry: ScannedEntry) => void
+  path: string
+}) {
+  const activateSelection = useSelectionStore((s) => s.activate)
+  const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
+    activateSelection(entry.path)
+  )
+
+  return (
+    <li
+      {...longPressHandlers}
+      className="flex cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent"
+      onClick={() => {
+        if (consumeLongPressClick()) return
+        onOpenDetail(entry)
+      }}
+    >
+      <SelectionCheckbox path={entry.path} className="h-4 w-4 shrink-0 rounded-sm" />
+      <EntryIcon entry={entry} />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate">{entry.name}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {relativePath(path, entry.path)}
+        </span>
+      </div>
+    </li>
   )
 }
 
@@ -141,6 +190,31 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('explorer')
 
   const sortedSearchResults = sortEntries(searchResults, sortField, sortDirection)
+
+  // useSelectionStore is a single global store shared with Gallery/List/
+  // DetailList (see its own comment) - Explorer is the only one of those
+  // that navigates between different entry sets while staying mounted
+  // (breadcrumb clicks and drilling into subfolders change `path` without
+  // unmounting FolderView, same as the comment above on useFolderScan).
+  // Without this, a selection made in one folder would still report as
+  // "N selected" in SelectionToolbar after navigating to a completely
+  // different folder, with no visible checked rows to explain it - the same
+  // externally-visible state-leak shape as the rename dialog bug fixed
+  // earlier (component-external state not scoped to what's on screen).
+  // This is a plain useEffect, not the render-time compare-and-setState
+  // pattern used elsewhere in this app for resetting a component's OWN
+  // React state (e.g. DetailSidebar.tsx's syncedGamePath) - deactivate()
+  // here calls an external Zustand store, not this component's own
+  // setState, which is exactly the side-effect-on-a-dependency-change case
+  // useEffect exists for. It runs on every path change AND on mount (i.e.
+  // every tab switch, since FolderView remounts via its own key in
+  // ExplorerPage.tsx), covering both ways a user can end up looking at a
+  // different set of entries than the one they selected from.
+  useEffect(() => {
+    useSelectionStore.getState().deactivate()
+  }, [path])
+
+  const selectionTargets = isSearching ? sortedSearchResults : shallowEntries
 
   const openInNewTab = (entry: ScannedEntry): void => {
     addTab({ label: entry.name, path: entry.path })
@@ -201,6 +275,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
           }}
         />
         <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+        <SelectionToolbar allEntries={selectionTargets} />
       </div>
       {isSearching ? (
         isSearchLoading ? (
@@ -219,19 +294,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
         ) : (
           <ul className="flex-1 divide-y divide-border overflow-auto">
             {sortedSearchResults.map((entry) => (
-              <li
-                key={entry.path}
-                className="flex cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent"
-                onClick={() => openDetail(entry)}
-              >
-                <EntryIcon entry={entry} />
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate">{entry.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {relativePath(path, entry.path)}
-                  </span>
-                </div>
-              </li>
+              <SearchResultRow key={entry.path} entry={entry} onOpenDetail={openDetail} path={path} />
             ))}
             {sortedSearchResults.length === 0 && (
               <li className="px-4 py-8 text-center text-sm text-muted-foreground">
