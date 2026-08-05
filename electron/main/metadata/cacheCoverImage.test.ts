@@ -28,6 +28,15 @@ describe('cacheCoverImage', () => {
         res.end('not an image')
         return
       }
+      if (req.url === '/referer-gated.jpg') {
+        if (!req.headers.referer) {
+          res.writeHead(403).end()
+        } else {
+          res.writeHead(200, { 'Content-Type': 'image/png' })
+          res.end(png)
+        }
+        return
+      }
       res.writeHead(200, { 'Content-Type': 'image/png' })
       res.end(png)
     })
@@ -74,5 +83,10 @@ describe('cacheCoverImage', () => {
     expect(savedPath).not.toBeNull()
     expect(savedPath!.startsWith(cacheDir)).toBe(true)
     expect(savedPath).not.toContain('evil')
+  })
+
+  it('sends a same-origin Referer header, succeeding against hotlink-protected hosts (e.g. getchu.com)', async () => {
+    const savedPath = await cacheCoverImage(cacheDir, 'GC01169914', `${baseUrl}/referer-gated.jpg`)
+    expect(savedPath).toBe(join(cacheDir, 'GC01169914.webp'))
   })
 })

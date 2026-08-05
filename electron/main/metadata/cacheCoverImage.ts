@@ -17,7 +17,15 @@ export async function cacheCoverImage(
   imageUrl: string
 ): Promise<string | null> {
   try {
-    const response = await fetch(imageUrl, { signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS) })
+    // Some hosts (getchu.com, verified live) hotlink-protect their images and
+    // return 403 without a Referer. A same-origin Referer is exactly what a
+    // real browser sends when the image is displayed on its own product
+    // page, so this is honest, not spoofing - and it's harmless for the
+    // other 3 hosts this app fetches from (DLsite, Steam, VNDB).
+    const response = await fetch(imageUrl, {
+      headers: { Referer: new URL(imageUrl).origin + '/' },
+      signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    })
     if (!response.ok) return null
 
     const buffer = Buffer.from(await response.arrayBuffer())

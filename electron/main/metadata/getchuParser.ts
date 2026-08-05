@@ -21,7 +21,7 @@ function findSpecRowValue(
   let found: ReturnType<typeof $> | null = null
   $('#soft_table tr').each((_i, row) => {
     if (found) return
-    const cells = $(row).find('td')
+    const cells = $(row).children('td')
     if (cells.length < 2) return
     const rowLabel = cells
       .first()
@@ -36,24 +36,27 @@ function findSpecRowValue(
 }
 
 // Getchu는 상대 경로("/brandnew/...")로 이미지를 서빙한다 - DLsite(프로토콜
-// 상대), Steam(절대 URL)과 또 다르다. 렌더러가 file:///http://localhost에서
-// 로드되므로 상대 경로 그대로는 깨진다 - 항상 origin을 붙여 절대화한다.
+// 상대), Steam(절대 URL)과 또 다르다. coverImageUrl은 렌더러가 아니라
+// cacheCoverImage.ts의 메인 프로세스 fetch()로 직접 전달되는데, 상대 경로를
+// 그대로 fetch()에 넘기면 <base> 컨텍스트가 없어 "Failed to parse URL"로
+// 실패한다 - 항상 origin을 붙여 절대화한다.
 function toAbsoluteImageUrl(url: string): string {
   if (/^https?:\/\//.test(url)) return url
   return `https://www.getchu.com${url.startsWith('/') ? '' : '/'}${url}`
 }
 
-// Getchu 작품 페이지 HTML을 파싱한다. 존재하지 않는/삭제된 id는 soft.phtml이
-// 404(non-2xx)를 반환해 fetch 단계(crawlGameMetadata.ts)에서 이미 걸러지므로
-// 여기서는 별도의 "찾을 수 없음" 페이지 모양을 모델링하지 않는다 - 다만 실제
-// 작품 페이지가 아닌 다른 페이지(예: 연령 인증 페이지)로 넘어온 경우를 대비해
-// #soft-title이 없으면 null을 반환한다 (DLsite의 #work_name 부재 신호와 같은
-// 방식).
+// Getchu 작품 페이지 HTML을 파싱한다. 존재하지 않거나 오탈자로 잘못된 최신
+// 범위의 id는 404가 아니라 200으로 연령 인증 페이지(/php/attestation.html)로
+// 리다이렉트된다 - 확인됨(id=1366999). #soft-title이 없으면 null을 반환하는
+// 이 가드가 그 페이지를 실제로 걸러내는 주된 신호다 (DLsite의 #work_name
+// 부재 신호와 같은 방식). 아주 범위를 벗어난 id(예: 999999999)만 순수하게
+// 404를 반환해 fetch 단계(crawlGameMetadata.ts)에서 걸러진다 - 두 경로 모두
+// 결국 null로 수렴한다.
 export function parseGetchuWorkPage(html: string): CrawledGameMetadata | null {
   const $ = cheerio.load(html)
 
   const titleEl = $('#soft-title').first().clone()
-  titleEl.children('nobr').remove()
+  titleEl.find('nobr').remove()
   const title = titleEl.text().trim()
   if (!title) return null
 
