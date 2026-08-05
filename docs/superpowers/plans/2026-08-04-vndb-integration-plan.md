@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `'VN'` as a fourth `GameCodeType`, recognized the same way `'RJ'`/`'VJ'`/`'ST'` already are, crawled via VNDB's public Kana JSON API (no HTML scraping), openable via its VNDB page, and discoverable through a new title-search page mirroring the existing DLsite search page.
+**Goal:** Add `'VN'` as a fourth `GameCodeType`, recognized the same way `'RJ'`/`'VJ'`/`'ST'` already are, crawled via VNDB's public Kana JSON API (no HTML scraping), openable via its VNDB page, and discoverable through a title-search page with a DLsite/VNDB source toggle, replacing the existing DLsite-only search page rather than adding a second sidebar entry alongside it.
 
-**Architecture:** Widen the shared `GameCode` union and its zod schema first (Task 1), since every later task depends on `'VN'` being a valid `GameCodeType`. Then extend the three per-source-type surfaces that already have an `'ST'` (Steam) branch to follow as the precedent for a `'VN'` branch: `buildExternalUrl.ts` (Task 2), `crawlGameMetadata.ts`'s dispatch (Task 3, via a new `vndbClient.ts`). Task 4 adds the new title-search IPC channel (also backed by `vndbClient.ts`). Task 5 adds the new `VndbSearchPage.tsx` and wires it into the Sidebar/router, mirroring `DlsiteSearchPage.tsx` exactly.
+**Architecture:** Widen the shared `GameCode` union and its zod schema first (Task 1), since every later task depends on `'VN'` being a valid `GameCodeType`. Then extend the three per-source-type surfaces that already have an `'ST'` (Steam) branch to follow as the precedent for a `'VN'` branch: `buildExternalUrl.ts` (Task 2), `crawlGameMetadata.ts`'s dispatch (Task 3, via a new `vndbClient.ts`). Task 4 adds the new title-search IPC channel (also backed by `vndbClient.ts`). Task 5 merges the existing `DlsiteSearchPage.tsx` and the new VNDB search capability into one renamed `GameSearchPage.tsx` with a source toggle — decided after pre-flight review surfaced that a second near-duplicate page would both clutter the Sidebar and fail a DRY-quality gate; the user chose the merge over keeping two separate pages.
 
 **Tech Stack:** Electron + TypeScript strict, zod (IPC schemas), Vitest (fixture-based unit tests, no live network calls), React 19 + TanStack Router/Query (renderer), no `cheerio` needed for this feature (VNDB is JSON, not HTML).
 
@@ -625,17 +625,20 @@ EOF
 
 ---
 
-### Task 5: `VndbSearchPage.tsx` — new page, renderer hook, Sidebar/router wiring, translations
+### Task 5: `GameSearchPage.tsx` — merge DLsite+VNDB search into one page with a source toggle
+
+**Design correction (pre-flight):** the original draft of this task created a second, near-verbatim-duplicate page (`VndbSearchPage.tsx`, ~150 lines mirroring `DlsiteSearchPage.tsx`) with its own Sidebar entry. Presented to the user as a pre-flight conflict — a task reviewer would very likely flag the duplication, and a second sidebar entry was also unwanted UI clutter. The user chose to merge instead: one page, one Sidebar entry, a small DLsite/VNDB toggle inside the page that decides which API a free-text title search hits. `parseCodeInput.ts`/`parseCodeInput.test.ts` stay in `src/pages/DlsiteSearch/` unmoved — 4 other files already import it cross-folder from there (`CodeLinkSection.tsx`, `LinkCodeDialog.tsx`, `SavesPage.tsx`, `RecentlyPlayedPage.tsx`), so relocating it would ripple into files this feature has no reason to touch. Only the page component itself moves out, to a new `GameSearchPage.tsx` under a new `src/pages/GameSearch/` folder — a neutral name, since the page is no longer DLsite-only.
 
 **Files:**
 - Modify: `src/services/metadataService.ts`
-- Create: `src/pages/VndbSearch/VndbSearchPage.tsx`
+- Delete: `src/pages/DlsiteSearch/DlsiteSearchPage.tsx`
+- Create: `src/pages/GameSearch/GameSearchPage.tsx`
 - Modify: `src/router.tsx`
 - Modify: `src/components/layout/Sidebar.tsx`
 - Modify: `src/i18n/translations.ts`
 
 **Interfaces:**
-- Consumes: `window.api.metadata.searchVndb` (Task 4), `useCrawlGameMetadata`/`useGameMetadata`/`useGameCoverImage` (existing, unchanged), `parseCodeInput` (Task 1's widened version — a pasted `VN17` in this page's own input is recognized directly, matching `DlsiteSearchPage.tsx`'s existing "paste a code OR search a title" behavior exactly, since both pages share the same widened `parseCodeInput`).
+- Consumes: `window.api.metadata.searchVndb` (Task 4), `useCrawlGameMetadata`/`useGameMetadata`/`useGameCoverImage`/`useSearchDlsite` (existing, unchanged), `parseCodeInput` (Task 1's widened version, imported as `'../DlsiteSearch/parseCodeInput'` — a pasted code of any type, including `VN17`, resolves the same way regardless of which source tab is selected; the toggle only decides which API a free-text title search hits).
 - Produces: nothing consumed by later tasks — this is the plan's final task.
 
 - [ ] **Step 1: Add `useSearchVndb` to the renderer metadata service**
@@ -657,68 +660,72 @@ export function useSearchVndb() {
 }
 ```
 
-- [ ] **Step 2: Add translation keys (ko/ja/en)**
+- [ ] **Step 2: Update translation keys (ko/ja/en)**
 
-Edit `src/i18n/translations.ts`. The `ko` block: insert after the existing `'nav.dlsiteSearch': 'DLsite 검색',` (line 14):
+Edit `src/i18n/translations.ts`. Three changes per locale block: (a) rename the nav key (only `Sidebar.tsx` consumes it, confirmed by search — safe to rename outright, not add-alongside), (b) replace the 6 page-specific `dlsiteSearch.*` keys that only `DlsiteSearchPage.tsx` consumed (now deleted) with `gameSearch.*` equivalents, reworded to be source-neutral since one page now serves both, (c) leave `dlsiteSearch.searchError` and `dlsiteSearch.noResults` completely untouched — `src/pages/Explorer/FolderView.tsx` also reads these two specific keys for its own unrelated search flow, and their displayed text is already source-neutral wording (no "DLsite" appears in the strings themselves, only in the key name), so `GameSearchPage.tsx` reuses them as-is rather than duplicating equivalent text under a new name.
 
-```ts
-  'nav.vndbSearch': 'VNDB 검색',
-```
-
-And after the existing `'dlsiteSearch.notFound': '작품을 찾을 수 없습니다.',` (line 253):
+**`ko` block:** replace the existing `'nav.dlsiteSearch': 'DLsite 검색',` (line 14) with:
 
 ```ts
-  'vndbSearch.placeholder': '식별코드 또는 작품 제목',
-  'vndbSearch.search': '검색',
-  'vndbSearch.backToResults': '검색 결과로 돌아가기',
-  'vndbSearch.searching': 'VNDB에서 검색하는 중...',
-  'vndbSearch.searchError': '검색 중 오류가 발생했습니다.',
-  'vndbSearch.noResults': '검색 결과가 없습니다.',
-  'vndbSearch.fetchingInfo': 'VNDB에서 정보를 가져오는 중...',
-  'vndbSearch.notFound': '작품을 찾을 수 없습니다.',
+  'nav.gameSearch': '게임 검색',
 ```
 
-The `ja` block: insert after the existing `'nav.dlsiteSearch': 'DLsite検索',` (line 309):
+Replace the existing 8-line block at lines 246-253 (`'dlsiteSearch.placeholder'` through `'dlsiteSearch.notFound'`) with:
 
 ```ts
-  'nav.vndbSearch': 'VNDB検索',
+  'gameSearch.placeholder': '식별코드 또는 작품 제목',
+  'gameSearch.search': '검색',
+  'gameSearch.backToResults': '검색 결과로 돌아가기',
+  'gameSearch.searching': '검색하는 중...',
+  'dlsiteSearch.searchError': '검색 중 오류가 발생했습니다.',
+  'dlsiteSearch.noResults': '검색 결과가 없습니다.',
+  'gameSearch.fetchingInfo': '정보를 가져오는 중...',
+  'gameSearch.notFound': '작품을 찾을 수 없습니다.',
 ```
 
-And after the existing `'dlsiteSearch.notFound': '作品が見つかりません。',` (line 546):
+**`ja` block:** replace the existing `'nav.dlsiteSearch': 'DLsite検索',` (line 309) with:
 
 ```ts
-  'vndbSearch.placeholder': '識別コードまたは作品タイトル',
-  'vndbSearch.search': '検索',
-  'vndbSearch.backToResults': '検索結果に戻る',
-  'vndbSearch.searching': 'VNDBで検索中...',
-  'vndbSearch.searchError': '検索中にエラーが発生しました。',
-  'vndbSearch.noResults': '検索結果がありません。',
-  'vndbSearch.fetchingInfo': 'VNDBから情報を取得中...',
-  'vndbSearch.notFound': '作品が見つかりません。',
+  'nav.gameSearch': 'ゲーム検索',
 ```
 
-The `en` block (`const en: Record<keyof typeof ko, string> = { ... }` — every key present in `ko` MUST also be present here, or the `Record<keyof typeof ko, string>` type annotation fails to compile): insert after the existing `'nav.dlsiteSearch': 'DLsite Search',` (line 602):
+Replace the existing 8-line block at lines 539-546 with:
 
 ```ts
-  'nav.vndbSearch': 'VNDB Search',
+  'gameSearch.placeholder': '識別コードまたは作品タイトル',
+  'gameSearch.search': '検索',
+  'gameSearch.backToResults': '検索結果に戻る',
+  'gameSearch.searching': '検索中...',
+  'dlsiteSearch.searchError': '検索中にエラーが発生しました。',
+  'dlsiteSearch.noResults': '検索結果がありません。',
+  'gameSearch.fetchingInfo': '情報を取得中...',
+  'gameSearch.notFound': '作品が見つかりません。',
 ```
 
-And after the existing `'dlsiteSearch.notFound': 'Title not found.',` (line 840):
+**`en` block** (`const en: Record<keyof typeof ko, string> = { ... }` — every key present in `ko` MUST also be present here, or the `Record<keyof typeof ko, string>` type annotation fails to compile): replace the existing `'nav.dlsiteSearch': 'DLsite Search',` (line 602) with:
 
 ```ts
-  'vndbSearch.placeholder': 'Identifier code or title',
-  'vndbSearch.search': 'Search',
-  'vndbSearch.backToResults': 'Back to results',
-  'vndbSearch.searching': 'Searching VNDB...',
-  'vndbSearch.searchError': 'An error occurred while searching.',
-  'vndbSearch.noResults': 'No results found.',
-  'vndbSearch.fetchingInfo': 'Fetching info from VNDB...',
-  'vndbSearch.notFound': 'Title not found.',
+  'nav.gameSearch': 'Game Search',
 ```
 
-- [ ] **Step 3: Create `VndbSearchPage.tsx`**
+Replace the existing 8-line block at lines 833-840 with:
 
-Create `src/pages/VndbSearch/VndbSearchPage.tsx` — a near-exact structural mirror of `src/pages/DlsiteSearch/DlsiteSearchPage.tsx`, swapping `useSearchDlsite`→`useSearchVndb` and the `dlsiteSearch.*`→`vndbSearch.*` translation keys; everything else (layout, state shape, the direct-code-vs-search branch in `handleSearch`, the results-list/detail-view structure) is identical:
+```ts
+  'gameSearch.placeholder': 'Identifier code or title',
+  'gameSearch.search': 'Search',
+  'gameSearch.backToResults': 'Back to results',
+  'gameSearch.searching': 'Searching...',
+  'dlsiteSearch.searchError': 'An error occurred while searching.',
+  'dlsiteSearch.noResults': 'No results found.',
+  'gameSearch.fetchingInfo': 'Fetching info...',
+  'gameSearch.notFound': 'Title not found.',
+```
+
+- [ ] **Step 3: Delete the old page, create the merged `GameSearchPage.tsx`**
+
+Delete `src/pages/DlsiteSearch/DlsiteSearchPage.tsx` (its only other reference is the `router.tsx` import removed in Step 4 below).
+
+Create `src/pages/GameSearch/GameSearchPage.tsx`:
 
 ```tsx
 import { useState } from 'react'
@@ -729,25 +736,38 @@ import {
   useCrawlGameMetadata,
   useGameCoverImage,
   useGameMetadata,
+  useSearchDlsite,
   useSearchVndb,
 } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../../components/ui/progress-bar'
 import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
-import type { VndbSearchResultDto } from '../../../shared/types/ipc'
+import type { DlsiteSearchResultDto, VndbSearchResultDto } from '../../../shared/types/ipc'
 
-export function VndbSearchPage() {
+type SearchSource = 'dlsite' | 'vndb'
+type SearchResult = DlsiteSearchResultDto | VndbSearchResultDto
+
+export function GameSearchPage() {
   const { t } = useTranslation()
   const [input, setInput] = useState('')
+  const [source, setSource] = useState<SearchSource>('dlsite')
   const [activeCode, setActiveCode] = useState<GameCode | null>(null)
 
   const { data: metadata, isLoading } = useGameMetadata(activeCode)
   const crawlAndSave = useCrawlGameMetadata()
+  const searchDlsite = useSearchDlsite()
   const searchVndb = useSearchVndb()
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? activeCode : null)
 
-  const selectResult = (result: VndbSearchResultDto): void => {
+  // Both mutations stay mounted (hooks can't be conditional) - only the one
+  // matching the current toggle drives the UI below. Switching tabs
+  // deliberately does not clear the other's data: returning to a
+  // previously-searched tab shows its own last results again, like a cache,
+  // instead of forcing a re-search.
+  const activeSearch = source === 'dlsite' ? searchDlsite : searchVndb
+
+  const selectResult = (result: SearchResult): void => {
     setActiveCode(result.code)
     crawlAndSave.mutate(result.code)
   }
@@ -756,8 +776,12 @@ export function VndbSearchPage() {
     const trimmed = input.trim()
     if (trimmed === '') return
 
+    // A direct code (RJ/VJ/ST/VN) resolves the same way regardless of which
+    // tab is selected - the toggle only decides which API a free-text title
+    // search hits.
     const code = parseCodeInput(trimmed)
     if (code) {
+      searchDlsite.reset()
       searchVndb.reset()
       setActiveCode(code)
       crawlAndSave.mutate(code)
@@ -765,51 +789,76 @@ export function VndbSearchPage() {
     }
 
     setActiveCode(null)
-    searchVndb.mutate(trimmed)
+    if (source === 'dlsite') {
+      searchDlsite.mutate(trimmed)
+    } else {
+      searchVndb.mutate(trimmed)
+    }
   }
 
-  const showingResultsList = activeCode === null && searchVndb.data !== undefined
+  const showingResultsList = activeCode === null && activeSearch.data !== undefined
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
+      <div className="flex w-fit gap-1 rounded-md bg-muted p-1">
+        <Button
+          type="button"
+          variant={source === 'dlsite' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={source === 'dlsite'}
+          onClick={() => setSource('dlsite')}
+        >
+          DLsite
+        </Button>
+        <Button
+          type="button"
+          variant={source === 'vndb' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={source === 'vndb'}
+          onClick={() => setSource('vndb')}
+        >
+          VNDB
+        </Button>
+      </div>
+
       <div className="flex gap-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={t('vndbSearch.placeholder')}
+          placeholder={t('gameSearch.placeholder')}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
         />
-        <Button onClick={handleSearch}>{t('vndbSearch.search')}</Button>
+        <Button onClick={handleSearch}>{t('gameSearch.search')}</Button>
       </div>
 
-      {activeCode && searchVndb.data !== undefined && (
+      {activeCode && activeSearch.data !== undefined && (
         <button
           className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
           onClick={() => setActiveCode(null)}
         >
           <ArrowLeft className="h-3 w-3" />
-          {t('vndbSearch.backToResults')}
+          {t('gameSearch.backToResults')}
         </button>
       )}
 
-      {searchVndb.isPending && (
+      {activeSearch.isPending && (
         <div className="flex max-w-xs flex-col gap-1">
           <IndeterminateProgressBar />
-          <p className="text-xs text-muted-foreground">{t('vndbSearch.searching')}</p>
+          <p className="text-xs text-muted-foreground">{t('gameSearch.searching')}</p>
         </div>
       )}
 
-      {searchVndb.isError && (
-        <p className="text-sm text-muted-foreground">{t('vndbSearch.searchError')}</p>
+      {activeSearch.isError && (
+        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.searchError')}</p>
       )}
 
-      {showingResultsList && searchVndb.data!.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t('vndbSearch.noResults')}</p>
+      {showingResultsList && activeSearch.data!.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.noResults')}</p>
       )}
 
-      {showingResultsList && searchVndb.data!.length > 0 && (
+      {showingResultsList && activeSearch.data!.length > 0 && (
         <div className="flex flex-col gap-1 overflow-auto">
-          {searchVndb.data!.map((result) => (
+          {activeSearch.data!.map((result) => (
             <button
               key={result.code.value}
               onClick={() => selectResult(result)}
@@ -837,7 +886,7 @@ export function VndbSearchPage() {
       {crawlAndSave.isPending && (
         <div className="flex max-w-xs flex-col gap-1">
           <IndeterminateProgressBar />
-          <p className="text-xs text-muted-foreground">{t('vndbSearch.fetchingInfo')}</p>
+          <p className="text-xs text-muted-foreground">{t('gameSearch.fetchingInfo')}</p>
         </div>
       )}
 
@@ -846,7 +895,7 @@ export function VndbSearchPage() {
       )}
 
       {activeCode && !isLoading && !metadata && (
-        <p className="text-sm text-muted-foreground">{t('vndbSearch.notFound')}</p>
+        <p className="text-sm text-muted-foreground">{t('gameSearch.notFound')}</p>
       )}
 
       {metadata && (
@@ -876,24 +925,23 @@ export function VndbSearchPage() {
 
 - [ ] **Step 4: Wire the route**
 
-Edit `src/router.tsx` — add the import alongside the existing `DlsiteSearchPage` import:
+Edit `src/router.tsx` — replace the existing `DlsiteSearchPage` import with:
 
 ```ts
-import { DlsiteSearchPage } from './pages/DlsiteSearch/DlsiteSearchPage'
-import { VndbSearchPage } from './pages/VndbSearch/VndbSearchPage'
+import { GameSearchPage } from './pages/GameSearch/GameSearchPage'
 ```
 
-Add the route definition immediately after `dlsiteSearchRoute`:
+Replace the existing `dlsiteSearchRoute` definition with:
 
 ```ts
-const vndbSearchRoute = createRoute({
+const gameSearchRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/vndb-search',
-  component: VndbSearchPage,
+  path: '/game-search',
+  component: GameSearchPage,
 })
 ```
 
-Add it to `routeTree`'s children, immediately after `dlsiteSearchRoute`:
+Replace `dlsiteSearchRoute` with `gameSearchRoute` in `routeTree`'s children (same position):
 
 ```ts
 const routeTree = rootRoute.addChildren([
@@ -902,8 +950,7 @@ const routeTree = rootRoute.addChildren([
   detailListRoute,
   explorerRoute,
   detailRoute,
-  dlsiteSearchRoute,
-  vndbSearchRoute,
+  gameSearchRoute,
   favoritesRoute,
   recentlyPlayedRoute,
   mediaRoute,
@@ -912,27 +959,15 @@ const routeTree = rootRoute.addChildren([
 ])
 ```
 
-- [ ] **Step 5: Add the Sidebar nav item**
+- [ ] **Step 5: Update the Sidebar nav item**
 
-Edit `src/components/layout/Sidebar.tsx` — add `BookOpen` to the existing `lucide-react` import (alongside `Search`, keep the import list alphabetical):
+Edit `src/components/layout/Sidebar.tsx` — no import changes needed (`Search` is already imported and stays the icon for this entry). Replace the existing DLsite search entry in `navItems` (same position) with:
 
 ```ts
-import {
-  BookOpen,
-  FolderTree,
-  Heart,
-  History,
-  LayoutGrid,
-  List,
-  Music,
-  Rows3,
-  Save,
-  Search,
-  Settings,
-} from 'lucide-react'
+  { to: '/game-search', labelKey: 'nav.gameSearch', icon: Search },
 ```
 
-Add the nav entry to `navItems`, immediately after the existing DLsite search entry:
+So the full array reads:
 
 ```ts
 const navItems = [
@@ -940,8 +975,7 @@ const navItems = [
   { to: '/list', labelKey: 'nav.list', icon: List },
   { to: '/detail-list', labelKey: 'nav.detailList', icon: Rows3 },
   { to: '/explorer', labelKey: 'nav.explorer', icon: FolderTree },
-  { to: '/dlsite-search', labelKey: 'nav.dlsiteSearch', icon: Search },
-  { to: '/vndb-search', labelKey: 'nav.vndbSearch', icon: BookOpen },
+  { to: '/game-search', labelKey: 'nav.gameSearch', icon: Search },
   { to: '/favorites', labelKey: 'nav.favorites', icon: Heart },
   { to: '/recently-played', labelKey: 'nav.recentlyPlayed', icon: History },
   { to: '/media', labelKey: 'nav.media', icon: Music },
@@ -953,27 +987,29 @@ const navItems = [
 - [ ] **Step 6: Typecheck**
 
 Run: `npm run typecheck`
-Expected: no new errors. This step specifically catches a missing `en` translation key (the `Record<keyof typeof ko, string>` annotation on the `en` block makes a missing key a compile error, not a silent runtime fallback) and any route-tree/nav-item type mismatch.
+Expected: no new errors. This step catches a missing `en` translation key (the `Record<keyof typeof ko, string>` annotation makes a missing key a compile error), any leftover reference to the deleted `DlsiteSearchPage`/`dlsiteSearchRoute`/`nav.dlsiteSearch`, and the `activeSearch` union type across `searchDlsite`/`searchVndb`.
 
 - [ ] **Step 7: Run the full test suite**
 
 Run: `npx vitest run`
 Expected: PASS, no regressions. This task adds no new automated tests (per Global Constraints — no component test infrastructure exists for pages).
 
-- [ ] **Step 8: Live-verify the new page**
+- [ ] **Step 8: Live-verify the merged page**
 
-Run: `npm run dev`, navigate to the new "VNDB 검색" sidebar entry, and confirm:
-- The search box accepts a title (e.g. "Steins;Gate") and shows result cards with thumbnail + title + code.
-- Clicking a result crawls and shows the detail view (cover, title, circle, release date, genres).
-- Typing a direct code (e.g. `VN17`) skips straight to the detail view without going through the results list, matching `DlsiteSearchPage`'s existing direct-code behavior.
+Run: `npm run dev`, navigate to the single "게임 검색" sidebar entry (replacing the old "DLsite 검색" entry — confirm there is exactly one search-related nav item, not two), and confirm:
+- The DLsite/VNDB toggle switches the active tab's visual state (`variant="default"` vs `"ghost"`).
+- With "DLsite" selected, searching a title behaves exactly as the old DLsite search page did.
+- With "VNDB" selected, searching a title (e.g. "Steins;Gate") shows VNDB result cards (thumbnail + title + code) and clicking one crawls and shows the detail view (cover, title, developer, release date, genres).
+- Typing a direct code (e.g. `VN17` or an existing `RJ...` code) skips straight to the detail view regardless of which tab is selected.
+- `src/pages/Explorer/FolderView.tsx`'s own unrelated search-error/no-results flow (if reachable in this build) still displays correctly — confirms the reused `dlsiteSearch.searchError`/`dlsiteSearch.noResults` keys were not broken by this task's translation edits.
 - No console errors.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/services/metadataService.ts src/pages/VndbSearch/VndbSearchPage.tsx src/router.tsx src/components/layout/Sidebar.tsx src/i18n/translations.ts
+git add src/services/metadataService.ts src/pages/DlsiteSearch/DlsiteSearchPage.tsx src/pages/GameSearch/GameSearchPage.tsx src/router.tsx src/components/layout/Sidebar.tsx src/i18n/translations.ts
 git commit -m "$(cat <<'EOF'
-feat: add VNDB title search page, reachable from the Sidebar
+feat: merge DLsite and VNDB search into one page with a source toggle
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 EOF
