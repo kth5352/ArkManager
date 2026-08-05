@@ -12,7 +12,7 @@ import { DetailListPage } from './pages/DetailList/DetailListPage'
 import { ExplorerPage } from './pages/Explorer/ExplorerPage'
 import { DetailPage } from './pages/Detail/DetailPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
-import { DlsiteSearchPage } from './pages/DlsiteSearch/DlsiteSearchPage'
+import { GameSearchPage } from './pages/GameSearch/GameSearchPage'
 import { FavoritesPage } from './pages/Favorites/FavoritesPage'
 import { RecentlyPlayedPage } from './pages/RecentlyPlayed/RecentlyPlayedPage'
 import { MediaPage } from './pages/Media/MediaPage'
@@ -51,10 +51,10 @@ const detailRoute = createRoute({
   path: '/detail',
   component: DetailPage,
 })
-const dlsiteSearchRoute = createRoute({
+const gameSearchRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/dlsite-search',
-  component: DlsiteSearchPage,
+  path: '/game-search',
+  component: GameSearchPage,
 })
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -88,7 +88,7 @@ const routeTree = rootRoute.addChildren([
   detailListRoute,
   explorerRoute,
   detailRoute,
-  dlsiteSearchRoute,
+  gameSearchRoute,
   favoritesRoute,
   recentlyPlayedRoute,
   mediaRoute,

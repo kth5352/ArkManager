@@ -7,24 +7,37 @@ import {
   useGameCoverImage,
   useGameMetadata,
   useSearchDlsite,
+  useSearchVndb,
 } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../../components/ui/progress-bar'
-import { parseCodeInput } from './parseCodeInput'
+import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
-import type { DlsiteSearchResultDto } from '../../../shared/types/ipc'
+import type { DlsiteSearchResultDto, VndbSearchResultDto } from '../../../shared/types/ipc'
 
-export function DlsiteSearchPage() {
+type SearchSource = 'dlsite' | 'vndb'
+type SearchResult = DlsiteSearchResultDto | VndbSearchResultDto
+
+export function GameSearchPage() {
   const { t } = useTranslation()
   const [input, setInput] = useState('')
+  const [source, setSource] = useState<SearchSource>('dlsite')
   const [activeCode, setActiveCode] = useState<GameCode | null>(null)
 
   const { data: metadata, isLoading } = useGameMetadata(activeCode)
   const crawlAndSave = useCrawlGameMetadata()
   const searchDlsite = useSearchDlsite()
+  const searchVndb = useSearchVndb()
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? activeCode : null)
 
-  const selectResult = (result: DlsiteSearchResultDto): void => {
+  // Both mutations stay mounted (hooks can't be conditional) - only the one
+  // matching the current toggle drives the UI below. Switching tabs
+  // deliberately does not clear the other's data: returning to a
+  // previously-searched tab shows its own last results again, like a cache,
+  // instead of forcing a re-search.
+  const activeSearch = source === 'dlsite' ? searchDlsite : searchVndb
+
+  const selectResult = (result: SearchResult): void => {
     setActiveCode(result.code)
     crawlAndSave.mutate(result.code)
   }
@@ -33,65 +46,89 @@ export function DlsiteSearchPage() {
     const trimmed = input.trim()
     if (trimmed === '') return
 
+    // A direct code (RJ/VJ/ST/VN) resolves the same way regardless of which
+    // tab is selected - the toggle only decides which API a free-text title
+    // search hits.
     const code = parseCodeInput(trimmed)
     if (code) {
       searchDlsite.reset()
+      searchVndb.reset()
       setActiveCode(code)
       crawlAndSave.mutate(code)
       return
     }
 
     setActiveCode(null)
-    searchDlsite.mutate(trimmed)
+    if (source === 'dlsite') {
+      searchDlsite.mutate(trimmed)
+    } else {
+      searchVndb.mutate(trimmed)
+    }
   }
 
-  // Only true once a title search actually ran and hasn't been superseded -
-  // selecting a result or entering a direct code moves on to the detail
-  // view instead (activeCode becomes non-null), without needing to clear
-  // searchDlsite's own cached data (still used by the "검색 결과로 돌아가기"
-  // back link below).
-  const showingResultsList = activeCode === null && searchDlsite.data !== undefined
+  const showingResultsList = activeCode === null && activeSearch.data !== undefined
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
+      <div className="flex w-fit gap-1 rounded-md bg-muted p-1">
+        <Button
+          type="button"
+          variant={source === 'dlsite' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={source === 'dlsite'}
+          onClick={() => setSource('dlsite')}
+        >
+          DLsite
+        </Button>
+        <Button
+          type="button"
+          variant={source === 'vndb' ? 'default' : 'ghost'}
+          size="sm"
+          aria-pressed={source === 'vndb'}
+          onClick={() => setSource('vndb')}
+        >
+          VNDB
+        </Button>
+      </div>
+
       <div className="flex gap-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={t('dlsiteSearch.placeholder')}
+          placeholder={t('gameSearch.placeholder')}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
         />
-        <Button onClick={handleSearch}>{t('dlsiteSearch.search')}</Button>
+        <Button onClick={handleSearch}>{t('gameSearch.search')}</Button>
       </div>
 
-      {activeCode && searchDlsite.data !== undefined && (
+      {activeCode && activeSearch.data !== undefined && (
         <button
           className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
           onClick={() => setActiveCode(null)}
         >
           <ArrowLeft className="h-3 w-3" />
-          {t('dlsiteSearch.backToResults')}
+          {t('gameSearch.backToResults')}
         </button>
       )}
 
-      {searchDlsite.isPending && (
+      {activeSearch.isPending && (
         <div className="flex max-w-xs flex-col gap-1">
           <IndeterminateProgressBar />
-          <p className="text-xs text-muted-foreground">{t('dlsiteSearch.searching')}</p>
+          <p className="text-xs text-muted-foreground">{t('gameSearch.searching')}</p>
         </div>
       )}
 
-      {searchDlsite.isError && (
+      {activeSearch.isError && (
         <p className="text-sm text-muted-foreground">{t('dlsiteSearch.searchError')}</p>
       )}
 
-      {showingResultsList && searchDlsite.data!.length === 0 && (
+      {showingResultsList && activeSearch.data!.length === 0 && (
         <p className="text-sm text-muted-foreground">{t('dlsiteSearch.noResults')}</p>
       )}
 
-      {showingResultsList && searchDlsite.data!.length > 0 && (
+      {showingResultsList && activeSearch.data!.length > 0 && (
         <div className="flex flex-col gap-1 overflow-auto">
-          {searchDlsite.data!.map((result) => (
+          {activeSearch.data!.map((result) => (
             <button
               key={result.code.value}
               onClick={() => selectResult(result)}
@@ -119,7 +156,7 @@ export function DlsiteSearchPage() {
       {crawlAndSave.isPending && (
         <div className="flex max-w-xs flex-col gap-1">
           <IndeterminateProgressBar />
-          <p className="text-xs text-muted-foreground">{t('dlsiteSearch.fetchingInfo')}</p>
+          <p className="text-xs text-muted-foreground">{t('gameSearch.fetchingInfo')}</p>
         </div>
       )}
 
@@ -128,7 +165,7 @@ export function DlsiteSearchPage() {
       )}
 
       {activeCode && !isLoading && !metadata && (
-        <p className="text-sm text-muted-foreground">{t('dlsiteSearch.notFound')}</p>
+        <p className="text-sm text-muted-foreground">{t('gameSearch.notFound')}</p>
       )}
 
       {metadata && (

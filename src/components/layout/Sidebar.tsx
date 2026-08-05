@@ -22,7 +22,7 @@ const navItems = [
   { to: '/list', labelKey: 'nav.list', icon: List },
   { to: '/detail-list', labelKey: 'nav.detailList', icon: Rows3 },
   { to: '/explorer', labelKey: 'nav.explorer', icon: FolderTree },
-  { to: '/dlsite-search', labelKey: 'nav.dlsiteSearch', icon: Search },
+  { to: '/game-search', labelKey: 'nav.gameSearch', icon: Search },
   { to: '/favorites', labelKey: 'nav.favorites', icon: Heart },
   { to: '/recently-played', labelKey: 'nav.recentlyPlayed', icon: History },
   { to: '/media', labelKey: 'nav.media', icon: Music },

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GameCode } from '../../shared/types/scanner'
-import type { DlsiteSearchResultDto, GameMetadataDto } from '../../shared/types/ipc'
+import type { DlsiteSearchResultDto, GameMetadataDto, VndbSearchResultDto } from '../../shared/types/ipc'
 
 function metadataQueryKey(code: GameCode) {
   return ['metadata', code.value] as const
@@ -34,6 +34,13 @@ export function useSearchDlsite() {
   return useMutation({
     mutationFn: (query: string): Promise<DlsiteSearchResultDto[]> =>
       window.api.metadata.searchDlsite(query),
+  })
+}
+
+export function useSearchVndb() {
+  return useMutation({
+    mutationFn: (query: string): Promise<VndbSearchResultDto[]> =>
+      window.api.metadata.searchVndb(query),
   })
 }
 
