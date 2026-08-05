@@ -58,20 +58,15 @@ export function LaunchConfigDialog({ entry, onClose, autoLaunchOnSave }: LaunchC
 
   const handleSaveLaunchConfig = (): void => {
     if (!entry || !selectedExe) return
-    setLaunchConfig.mutate(
-      { entry, config: { executablePath: selectedExe, launchMode } },
-      {
-        onSuccess: () => {
-          toast.success(t('launchConfig.saved'))
-          onClose()
-          if (autoLaunchOnSave) {
-            launchGame.mutate(entry, {
-              onError: () => toast.error(t('launchConfig.launchFailed')),
-            })
-          }
-        },
-      }
-    )
+    setLaunchConfig
+      .mutateAsync({ entry, config: { executablePath: selectedExe, launchMode } })
+      .then(() => {
+        toast.success(t('launchConfig.saved'))
+        onClose()
+        if (autoLaunchOnSave) {
+          launchGame.mutateAsync(entry).catch(() => toast.error(t('launchConfig.launchFailed')))
+        }
+      })
   }
 
   const handlePickSaveFolder = async (): Promise<void> => {
