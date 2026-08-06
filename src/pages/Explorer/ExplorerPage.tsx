@@ -78,6 +78,14 @@ export function ExplorerPage() {
   return (
     <DndContext
       sensors={sensors}
+      // Not closestCenter/closestCorners - both would resolve a drop to the
+      // nearest droppable even when the pointer isn't over it, silently
+      // relocating a file dropped on a disabled (file-kind) row into
+      // whichever folder row happens to be geometrically nearest. Only
+      // pointerWithin requires the pointer to actually be inside the target
+      // droppable's rect, which is the right semantic for a destructive
+      // move - don't swap this back for tab-reorder's sake, TabBar's own
+      // SortableContext still reorders correctly under it.
       collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
