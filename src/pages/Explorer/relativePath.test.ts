@@ -21,4 +21,16 @@ describe('relativePath', () => {
   it('does not treat a sibling folder sharing a literal prefix as a descendant', () => {
     expect(relativePath('D:\\game', 'D:\\games\\file.zip')).toBe('D:\\games\\file.zip')
   })
+
+  it('matches even when root uses forward slashes and fullPath uses backslashes', () => {
+    expect(relativePath('D:/games', 'D:\\games\\SomeGame\\file.zip')).toBe('SomeGame\\file.zip')
+  })
+
+  it('matches when root uses forward slashes with a trailing slash', () => {
+    expect(relativePath('D:/games/', 'D:\\games\\SomeGame\\file.zip')).toBe('SomeGame\\file.zip')
+  })
+
+  it('still rejects a sibling folder sharing a literal prefix when separators differ', () => {
+    expect(relativePath('D:/game', 'D:\\games\\file.zip')).toBe('D:\\games\\file.zip')
+  })
 })
