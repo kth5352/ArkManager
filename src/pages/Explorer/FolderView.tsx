@@ -233,15 +233,17 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
 
   const playNow = useMediaPlayerStore((s) => s.playNow)
 
-  // Coded entries (file or folder) and code-less files open the detail
-  // overlay. Code-less folders still navigate into them - clicking through
-  // folders to find a game is Explorer's core browsing model, and a
-  // code-less folder is exactly what a user browses through on their way to
-  // linking a code (via the right-click "코드 연동" item above, not a click).
   // A video/audio file plays instead, regardless of whether it happens to
   // have a code - there's no useful DLsite detail for a media file, and
   // every other media file currently listed in this same folder becomes the
   // playlist (in on-screen order) so next/prev walk through them.
+  // Folders always navigate into them on click, whether or not they carry a
+  // recognized code - a coded folder (e.g. a DLsite RJ folder) is still a
+  // folder a user needs to browse into (saves, screenshots, manually
+  // launching something inside), and detail info remains one right-click
+  // away via GameEntryContextMenu's own onOpenDetail item. Only non-folder
+  // entries (files) open the detail overlay, and only when they're not a
+  // media file (which plays instead).
   const handleEntryClick = (entry: ScannedEntry): void => {
     if (entry.kind === 'file' && isMediaFile(entry.name)) {
       const siblings = shallowEntries
@@ -250,9 +252,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
       playNow({ path: entry.path, name: entry.name }, siblings)
       return
     }
-    if (entry.code) {
-      openDetail(entry)
-    } else if (entry.kind === 'folder') {
+    if (entry.kind === 'folder') {
       onNavigate(entry.path)
     } else {
       openDetail(entry)
