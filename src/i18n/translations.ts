@@ -193,6 +193,9 @@ const ko = {
   'fileOps.pickDestination': '대상 폴더 선택',
   'fileOps.destination': '대상: {dir}',
   'fileOps.move': '이동',
+  'fileOps.movedToast': '{count}개 항목 이동됨',
+  'fileOps.moveFailedToast': '{count}개 항목 이동 실패',
+  'fileOps.undo': '실행취소',
 
   'rename.bulkTitle': '이름 일괄 변경 ({count}개)',
   'rename.title': '이름 변경',
@@ -271,6 +274,7 @@ const ko = {
   'explorer.openInNewTab': '새 탭으로 열기',
   'explorer.openInOsExplorer': '탐색기(OS)에서 열기',
   'explorer.cannotAccessFolder': '이 폴더에 접근할 수 없습니다.',
+  'explorer.dragCount': '{count}개 항목',
 
   'media.addAllToPlaylist': '전체 재생목록에 추가',
   'media.pickFolderPrompt': '폴더를 선택하면 동영상/음성 파일을 찾아 보여줍니다.',
@@ -493,6 +497,9 @@ const ja: Record<keyof typeof ko, string> = {
   'fileOps.pickDestination': '移動先フォルダを選択',
   'fileOps.destination': '移動先: {dir}',
   'fileOps.move': '移動',
+  'fileOps.movedToast': '{count}件を移動しました',
+  'fileOps.moveFailedToast': '{count}件の移動に失敗しました',
+  'fileOps.undo': '元に戻す',
 
   'rename.bulkTitle': '名前を一括変更（{count}件）',
   'rename.title': '名前変更',
@@ -568,6 +575,7 @@ const ja: Record<keyof typeof ko, string> = {
   'explorer.openInNewTab': '新しいタブで開く',
   'explorer.openInOsExplorer': 'エクスプローラー（OS）で開く',
   'explorer.cannotAccessFolder': 'このフォルダにアクセスできません。',
+  'explorer.dragCount': '{count}件',
 
   'media.addAllToPlaylist': 'すべて再生リストに追加',
   'media.pickFolderPrompt': 'フォルダを選択すると動画/音声ファイルを探して表示します。',
@@ -791,6 +799,9 @@ const en: Record<keyof typeof ko, string> = {
   'fileOps.pickDestination': 'Pick Destination Folder',
   'fileOps.destination': 'Destination: {dir}',
   'fileOps.move': 'Move',
+  'fileOps.movedToast': '{count} items moved',
+  'fileOps.moveFailedToast': 'Failed to move {count} items',
+  'fileOps.undo': 'Undo',
 
   'rename.bulkTitle': 'Bulk Rename ({count} items)',
   'rename.title': 'Rename',
@@ -866,6 +877,7 @@ const en: Record<keyof typeof ko, string> = {
   'explorer.openInNewTab': 'Open in New Tab',
   'explorer.openInOsExplorer': 'Open in OS Explorer',
   'explorer.cannotAccessFolder': 'This folder cannot be accessed.',
+  'explorer.dragCount': '{count} items',
 
   'media.addAllToPlaylist': 'Add All to Playlist',
   'media.pickFolderPrompt': 'Pick a folder to find video/audio files in it.',
