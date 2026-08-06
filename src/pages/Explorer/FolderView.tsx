@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Music } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
@@ -99,10 +99,13 @@ function useEntryDragAndDrop(entry: ScannedEntry) {
     disabled: entry.kind !== 'folder',
     data: { type: 'folder-entry', path: entry.path } satisfies ExplorerDropData,
   })
-  const setNodeRef = (node: HTMLElement | null): void => {
-    setDraggableNodeRef(node)
-    setDroppableNodeRef(node)
-  }
+  const setNodeRef = useCallback(
+    (node: HTMLElement | null): void => {
+      setDraggableNodeRef(node)
+      setDroppableNodeRef(node)
+    },
+    [setDraggableNodeRef, setDroppableNodeRef]
+  )
   return { attributes, listeners, setNodeRef, isOver }
 }
 
