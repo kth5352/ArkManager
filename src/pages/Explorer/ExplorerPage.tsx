@@ -83,14 +83,24 @@ export function ExplorerPage() {
       // silently discarded legitimate "move it up here" drops with no
       // feedback at all. Filtering by each item's real current parent
       // subsumes the old check's correct behavior for normal-mode rows too
-      // (whose parent always equals activeTab.path anyway).
-      const pathsToMove = draggedPaths.filter((p) => getParentPath(p) !== destDir)
+      // (whose parent always equals activeTab.path anyway). Normalized the
+      // same way findLibraryForPath just normalized destDir above - a
+      // draggable's own path always comes from the scanner (native
+      // backslashes), but destDir can come from a tab's path, which isn't
+      // guaranteed to use the same separator/casing (e.g. a persisted tab
+      // path with forward slashes) - an un-normalized comparison here could
+      // then treat "drop it back into its own folder" as a real move.
+      const normalizePath = (p: string): string => p.toLowerCase().replace(/\\/g, '/')
+      const pathsToMove = draggedPaths.filter(
+        (p) => normalizePath(getParentPath(p)) !== normalizePath(destDir)
+      )
       if (pathsToMove.length === 0) return
       // Dragging a multi-selection that happens to include the drop target
       // itself (e.g. selecting two folders and dropping one onto the
       // other) - the active.id === over.id guard above only catches the
-      // exact dragged row, not other selected items.
-      if (pathsToMove.includes(destDir)) return
+      // exact dragged row, not other selected items. Normalized for the
+      // same reason as the filter above.
+      if (pathsToMove.some((p) => normalizePath(p) === normalizePath(destDir))) return
 
       moveEntries.mutate(
         { paths: pathsToMove, destDir },
