@@ -115,38 +115,27 @@ if (!gotSingleInstanceLock) {
 
   // Reproduces Electron's own default menu shape (the one silently in
   // effect until now, since this app never called Menu.setApplicationMenu)
-  // via the same role shorthand for File/Edit/Window - View is spelled out
-  // item-by-item so its two reload items can get a custom click handler
-  // instead of role: 'reload' / role: 'forceReload', with every other View
-  // item unchanged. The default's Help menu (a single "Learn More" link to
+  // via the same role shorthand for File/Edit - View and Window are both
+  // spelled out item-by-item: View so its two reload items can get a custom
+  // click handler instead of role: 'reload' / role: 'forceReload' (every
+  // other View item unchanged), Window so its Close item can drop the
+  // native CmdOrCtrl+W accelerator that would otherwise fight
+  // TabBar.tsx's own Ctrl+W handler (see the Window submenu's own comment
+  // below). The default's Help menu (a single "Learn More" link to
   // electronjs.org) is deliberately dropped rather than reproduced - it has
   // no relevance to this app and an empty Help menu would be worse than no
-  // Help menu at all. File/Edit/Window/the non-reload View items stay
-  // English (Electron's own role-derived defaults, same as before this
-  // menu existed) - only the items this app actually added custom
-  // behavior to get Korean labels, matching the confirm dialog they open
-  // (guardedReload, for the reload pair) or this codebase's main-process
-  // convention of hardcoded Korean for anything genuinely app-specific
-  // (see saveHandlers.ts's error strings).
+  // Help menu at all. File/Edit/the non-reload View items/Window's
+  // Minimize+Zoom stay English (Electron's own role-derived defaults, same
+  // as before this menu existed) - only the items this app actually added
+  // custom behavior to get Korean labels, matching the confirm dialog they
+  // open (guardedReload, for the reload pair) or this codebase's
+  // main-process convention of hardcoded Korean for anything genuinely
+  // app-specific (see saveHandlers.ts's error strings). Window's Close item
+  // itself stays English too, matching its role-derived label before this
+  // fix (it's stripped of its accelerator, not given new behavior).
   function buildApplicationMenu(): void {
     const template: MenuItemConstructorOptions[] = [
-      {
-        // Not role: 'fileMenu' - its default Close item binds CmdOrCtrl+W as
-        // a native accelerator, which fires (and destroys the window)
-        // independently of TabBar.tsx's own Ctrl+W keydown listener
-        // (closes the active Explorer tab). Keeping a plain click handler
-        // instead of role: 'close' here means no accelerator gets bound at
-        // all, leaving Ctrl+W entirely to the renderer.
-        label: 'File',
-        submenu: [
-          {
-            label: '닫기',
-            click: (_item, win) => {
-              if (win instanceof BrowserWindow) win.close()
-            },
-          },
-        ],
-      },
+      { role: 'fileMenu' },
       { role: 'editMenu' },
       {
         label: 'View',
@@ -194,7 +183,29 @@ if (!gotSingleInstanceLock) {
           },
         ],
       },
-      { role: 'windowMenu' },
+      {
+        // Not role: 'windowMenu' - its default Close item is the one that
+        // actually binds CmdOrCtrl+W (confirmed via a live menu dump; an
+        // earlier attempt at this fix wrongly targeted role: 'fileMenu'
+        // instead, whose own Windows default is just "Exit" with no
+        // accelerator at all). That native accelerator fires independently
+        // of, and wins over, TabBar.tsx's own Ctrl+W keydown listener
+        // (closes the active Explorer tab). Spelling Window out item-by-item
+        // (same treatment View already gets above) keeps Minimize/Zoom's own
+        // defaults but drops Close's accelerator entirely, leaving Ctrl+W
+        // solely to the renderer.
+        label: 'Window',
+        submenu: [
+          { role: 'minimize' },
+          { role: 'zoom' },
+          {
+            label: 'Close',
+            click: (_item, win) => {
+              if (win instanceof BrowserWindow) win.close()
+            },
+          },
+        ],
+      },
     ]
     Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   }
