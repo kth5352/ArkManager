@@ -130,7 +130,23 @@ if (!gotSingleInstanceLock) {
   // (see saveHandlers.ts's error strings).
   function buildApplicationMenu(): void {
     const template: MenuItemConstructorOptions[] = [
-      { role: 'fileMenu' },
+      {
+        // Not role: 'fileMenu' - its default Close item binds CmdOrCtrl+W as
+        // a native accelerator, which fires (and destroys the window)
+        // independently of TabBar.tsx's own Ctrl+W keydown listener
+        // (closes the active Explorer tab). Keeping a plain click handler
+        // instead of role: 'close' here means no accelerator gets bound at
+        // all, leaving Ctrl+W entirely to the renderer.
+        label: 'File',
+        submenu: [
+          {
+            label: '닫기',
+            click: (_item, win) => {
+              if (win instanceof BrowserWindow) win.close()
+            },
+          },
+        ],
+      },
       { role: 'editMenu' },
       {
         label: 'View',
