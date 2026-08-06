@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Music } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
-import { pathToBreadcrumbSegments } from './breadcrumb'
+import { pathToBreadcrumbSegments, type BreadcrumbSegment } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
@@ -28,6 +29,7 @@ import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useLongPress } from '../../hooks/useLongPress'
 import { useSelectionStore } from '../../stores/selectionStore'
+import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
 
 interface FolderViewProps {
   tabId: string
@@ -75,6 +77,35 @@ function EntryIcon({ entry }: { entry: ScannedEntry }) {
   )
 }
 
+// Every row is a drag source (files and folders alike can be moved), but
+// only a folder is a valid drop target - useDroppable is still always
+// called (hooks can't be conditional) with `disabled` doing the actual
+// gating, matching dnd-kit's own documented pattern for this. The
+// draggable and droppable registrations share the same `id` (entry.path) -
+// safe, since dnd-kit keeps them in separate registries - which is what
+// makes "dropped a folder onto itself" fall out of ExplorerPage.tsx's
+// existing `active.id === over.id` guard for free, no extra check needed.
+function useEntryDragAndDrop(entry: ScannedEntry) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableNodeRef,
+  } = useDraggable({
+    id: entry.path,
+    data: { type: 'entry', entry } satisfies ExplorerDragData,
+  })
+  const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
+    id: entry.path,
+    disabled: entry.kind !== 'folder',
+    data: { type: 'folder-entry', path: entry.path } satisfies ExplorerDropData,
+  })
+  const setNodeRef = (node: HTMLElement | null): void => {
+    setDraggableNodeRef(node)
+    setDroppableNodeRef(node)
+  }
+  return { attributes, listeners, setNodeRef, isOver }
+}
+
 function FolderEntryRow({
   entry,
   onOpenInNewTab,
@@ -96,13 +127,29 @@ function FolderEntryRow({
   const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
     activateSelection(entry.path)
   )
+  const { attributes, listeners, setNodeRef, isOver } = useEntryDragAndDrop(entry)
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <li
+          ref={setNodeRef}
+          {...attributes}
           {...longPressHandlers}
-          className="flex h-10 shrink-0 cursor-pointer items-center gap-3 px-4 text-sm transition-colors hover:bg-accent"
+          onPointerDown={(event) => {
+            // Composed manually, not via a second {...listeners} spread -
+            // dnd-kit's PointerSensor listener is ALSO onPointerDown, and a
+            // later spread would silently replace useLongPress's handler
+            // instead of both firing. PointerSensor itself only ever binds
+            // onPointerDown (confirmed against its own type defs) - it
+            // tracks move/up via its own document-level listeners once
+            // pointerdown fires, so no other handler needs composing here.
+            longPressHandlers.onPointerDown(event)
+            listeners?.onPointerDown?.(event)
+          }}
+          className={`flex h-10 shrink-0 cursor-pointer items-center gap-3 px-4 text-sm transition-colors hover:bg-accent ${
+            isOver ? 'bg-accent ring-1 ring-inset ring-primary' : ''
+          }`}
           onClick={() => {
             if (consumeLongPressClick()) return
             onEntryClick(entry)
@@ -138,11 +185,20 @@ function SearchResultRow({
   const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
     activateSelection(entry.path)
   )
+  const { attributes, listeners, setNodeRef, isOver } = useEntryDragAndDrop(entry)
 
   return (
     <li
+      ref={setNodeRef}
+      {...attributes}
       {...longPressHandlers}
-      className="flex cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent"
+      onPointerDown={(event) => {
+        longPressHandlers.onPointerDown(event)
+        listeners?.onPointerDown?.(event)
+      }}
+      className={`flex cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent ${
+        isOver ? 'bg-accent ring-1 ring-inset ring-primary' : ''
+      }`}
       onClick={() => {
         if (consumeLongPressClick()) return
         onOpenDetail(entry)
@@ -157,6 +213,30 @@ function SearchResultRow({
         </span>
       </div>
     </li>
+  )
+}
+
+function BreadcrumbSegmentButton({
+  segment,
+  onNavigate,
+}: {
+  segment: BreadcrumbSegment
+  onNavigate: (path: string) => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: segment.path,
+    data: { type: 'breadcrumb', path: segment.path } satisfies ExplorerDropData,
+  })
+  return (
+    <button
+      ref={setNodeRef}
+      className={`rounded px-1 hover:text-foreground hover:underline ${
+        isOver ? 'bg-accent text-foreground' : ''
+      }`}
+      onClick={() => onNavigate(segment.path)}
+    >
+      {segment.label}
+    </button>
   )
 }
 
@@ -265,12 +345,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
         {breadcrumbs.map((segment, index) => (
           <span key={segment.path} className="flex items-center gap-1">
             {index > 0 && <span>/</span>}
-            <button
-              className="hover:text-foreground hover:underline"
-              onClick={() => onNavigate(segment.path)}
-            >
-              {segment.label}
-            </button>
+            <BreadcrumbSegmentButton segment={segment} onNavigate={onNavigate} />
           </span>
         ))}
       </div>

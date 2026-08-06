@@ -1,12 +1,5 @@
-import {
-  DndContext,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { useDndContext } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
@@ -23,6 +16,7 @@ import { useLibraries } from '../../services/librariesService'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useShowItemInFolder } from '../../services/shellService'
 import { useTranslation } from '../../i18n/useTranslation'
+import type { ExplorerDragData } from './dragTypes'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
   const { t } = useTranslation()
@@ -34,8 +28,20 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
   const showItemInFolder = useShowItemInFolder()
   const queryClient = useQueryClient()
 
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: tab.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isOver } = useSortable({
+    id: tab.id,
+    data: { type: 'tab', path: tab.path } satisfies ExplorerDragData,
+  })
   const style = { transform: CSS.Transform.toString(transform), transition }
+  // isOver fires for ANY overlapping drag - another tab being reordered
+  // onto this one, or a file entry being dropped onto this one as a move
+  // target. Only the second case should show a "drop a file here"
+  // highlight, so it's additionally gated on the currently-dragged item's
+  // own data type, read via useDndContext() (this app's existing DndContext
+  // instance, not a new one) rather than prop-drilled down from ExplorerPage.
+  const { active } = useDndContext()
+  const isFileDropTarget =
+    isOver && (active?.data.current as ExplorerDragData | undefined)?.type === 'entry'
 
   return (
     <ContextMenu>
@@ -53,7 +59,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
             tab.id === activeTabId
               ? 'border-primary bg-card font-medium'
               : 'border-transparent hover:bg-accent'
-          }`}
+          } ${isFileDropTarget ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
         >
           <span>{tab.label}</span>
           <button
@@ -96,11 +102,9 @@ export function TabBar() {
   const { t } = useTranslation()
   const tabs = useExplorerStore((s) => s.tabs)
   const activeTabId = useExplorerStore((s) => s.activeTabId)
-  const reorderTabs = useExplorerStore((s) => s.reorderTabs)
   const addTab = useExplorerStore((s) => s.addTab)
   const closeTab = useExplorerStore((s) => s.closeTab)
   const { data: libraries } = useLibraries()
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -123,12 +127,6 @@ export function TabBar() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [closeTab])
-
-  const handleDragEnd = (event: DragEndEvent): void => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    reorderTabs(String(active.id), String(over.id))
-  }
 
   const hasLibraries = (libraries?.length ?? 0) > 0
 
@@ -153,42 +151,40 @@ export function TabBar() {
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={tabs.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
-        <div className="flex items-center border-b border-border">
-          <AnimatePresence mode="popLayout">
-            {tabs.map((tab) => (
-              <motion.div
-                key={tab.id}
-                layout
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <SortableTab tab={tab} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          <button
-            onClick={handleAddTab}
-            disabled={!hasLibraries}
-            aria-label={t('tabBar.addTab')}
-            title={hasLibraries ? t('tabBar.addTab') : t('tabBar.registerLibraryFirst')}
-            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleOpenFolder}
-            aria-label={t('tabBar.openFolder')}
-            title={t('tabBar.openFolder')}
-            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <FolderOpen className="h-4 w-4" />
-          </button>
-        </div>
-      </SortableContext>
-    </DndContext>
+    <SortableContext items={tabs.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
+      <div className="flex items-center border-b border-border">
+        <AnimatePresence mode="popLayout">
+          {tabs.map((tab) => (
+            <motion.div
+              key={tab.id}
+              layout
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <SortableTab tab={tab} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        <button
+          onClick={handleAddTab}
+          disabled={!hasLibraries}
+          aria-label={t('tabBar.addTab')}
+          title={hasLibraries ? t('tabBar.addTab') : t('tabBar.registerLibraryFirst')}
+          className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+        <button
+          onClick={handleOpenFolder}
+          aria-label={t('tabBar.openFolder')}
+          title={t('tabBar.openFolder')}
+          className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <FolderOpen className="h-4 w-4" />
+        </button>
+      </div>
+    </SortableContext>
   )
 }
