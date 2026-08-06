@@ -11,6 +11,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { FolderOpen, Plus, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -155,9 +156,20 @@ export function TabBar() {
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={tabs.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
         <div className="flex items-center border-b border-border">
-          {tabs.map((tab) => (
-            <SortableTab key={tab.id} tab={tab} />
-          ))}
+          <AnimatePresence mode="popLayout">
+            {tabs.map((tab) => (
+              <motion.div
+                key={tab.id}
+                layout
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <SortableTab tab={tab} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
           <button
             onClick={handleAddTab}
             disabled={!hasLibraries}

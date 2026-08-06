@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Music } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
@@ -44,23 +45,33 @@ interface FolderViewProps {
 function EntryIcon({ entry }: { entry: ScannedEntry }) {
   if (entry.code) {
     return (
-      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
+      <motion.div
+        whileHover={{ scale: 1.08 }}
+        transition={{ duration: 0.15 }}
+        className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-muted"
+      >
         <GameThumbnail entry={entry} />
         <div className="absolute bottom-0.5 right-0.5 rounded-full bg-background/70 p-0.5 text-muted-foreground">
           <FileKindIcon kind={entry.kind} name={entry.name} className="h-3 w-3" />
         </div>
-      </div>
+      </motion.div>
     )
   }
   if (entry.kind === 'file' && isMediaFile(entry.name)) {
-    return <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
+    return (
+      <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.15 }} className="shrink-0">
+        <Music className="h-4 w-4 text-muted-foreground" />
+      </motion.div>
+    )
   }
   return (
-    <FileKindIcon
-      kind={entry.kind}
-      name={entry.name}
-      className={`h-4 w-4 shrink-0 ${entry.kind === 'folder' ? 'text-yellow-500' : 'text-muted-foreground'}`}
-    />
+    <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.15 }} className="shrink-0">
+      <FileKindIcon
+        kind={entry.kind}
+        name={entry.name}
+        className={`h-4 w-4 ${entry.kind === 'folder' ? 'text-yellow-500' : 'text-muted-foreground'}`}
+      />
+    </motion.div>
   )
 }
 
@@ -292,36 +303,59 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
             {t('dlsiteSearch.searchError')}
           </div>
         ) : (
-          <ul className="flex-1 divide-y divide-border overflow-auto">
-            {sortedSearchResults.map((entry) => (
-              <SearchResultRow key={entry.path} entry={entry} onOpenDetail={openDetail} path={path} />
-            ))}
-            {sortedSearchResults.length === 0 && (
-              <li className="px-4 py-8 text-center text-sm text-muted-foreground">
-                {t('dlsiteSearch.noResults')}
-              </li>
-            )}
-          </ul>
+          <AnimatePresence mode="wait">
+            <motion.ul
+              key={path}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex-1 divide-y divide-border overflow-auto"
+            >
+              {sortedSearchResults.map((entry) => (
+                <SearchResultRow
+                  key={entry.path}
+                  entry={entry}
+                  onOpenDetail={openDetail}
+                  path={path}
+                />
+              ))}
+              {sortedSearchResults.length === 0 && (
+                <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  {t('dlsiteSearch.noResults')}
+                </li>
+              )}
+            </motion.ul>
+          </AnimatePresence>
         )
       ) : isError ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           {t('explorer.cannotAccessFolder')}
         </div>
       ) : (
-        <ul className="flex-1 divide-y divide-border overflow-auto">
-          {sortEntries(shallowEntries, sortField, sortDirection).map((entry) => (
-            <FolderEntryRow
-              key={entry.path}
-              entry={entry}
-              onOpenInNewTab={openInNewTab}
-              onEntryClick={handleEntryClick}
-              onOpenDetail={openDetail}
-              onRename={openRename}
-              onMove={openMove}
-              onDelete={openDelete}
-            />
-          ))}
-        </ul>
+        <AnimatePresence mode="wait">
+          <motion.ul
+            key={path}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex-1 divide-y divide-border overflow-auto"
+          >
+            {sortEntries(shallowEntries, sortField, sortDirection).map((entry) => (
+              <FolderEntryRow
+                key={entry.path}
+                entry={entry}
+                onOpenInNewTab={openInNewTab}
+                onEntryClick={handleEntryClick}
+                onOpenDetail={openDetail}
+                onRename={openRename}
+                onMove={openMove}
+                onDelete={openDelete}
+              />
+            ))}
+          </motion.ul>
+        </AnimatePresence>
       )}
       {detailOverlayElement}
       {dialogElement}
