@@ -59,7 +59,7 @@ function EntryIcon({ entry }: { entry: ScannedEntry }) {
     <FileKindIcon
       kind={entry.kind}
       name={entry.name}
-      className="h-4 w-4 shrink-0 text-muted-foreground"
+      className={`h-4 w-4 shrink-0 ${entry.kind === 'folder' ? 'text-yellow-500' : 'text-muted-foreground'}`}
     />
   )
 }
