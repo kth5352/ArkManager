@@ -14,6 +14,7 @@ import {
 import { useExplorerStore, type ExplorerTab } from '../../stores/explorerStore'
 import { useLibraries } from '../../services/librariesService'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
+import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { useShowItemInFolder } from '../../services/shellService'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ExplorerDragData } from './dragTypes'
@@ -27,6 +28,10 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
   const duplicateTab = useExplorerStore((s) => s.duplicateTab)
   const showItemInFolder = useShowItemInFolder()
   const queryClient = useQueryClient()
+  // Own useLibraries() call, not shared with TabBar's - hooks can't be
+  // shared across sibling components via a variable, each component
+  // instance calls its own.
+  const { data: libraries } = useLibraries()
 
   const { attributes, listeners, setNodeRef, transform, transition, isOver } = useSortable({
     id: tab.id,
@@ -39,9 +44,22 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
   // highlight, so it's additionally gated on the currently-dragged item's
   // own data type, read via useDndContext() (this app's existing DndContext
   // instance, not a new one) rather than prop-drilled down from ExplorerPage.
+  //
+  // Deliberately NOT using useSortable's own `disabled: { droppable }`
+  // option to gate this tab as a file-drop target when its path is outside
+  // every library (tried first, since dnd-kit's Disabled type distinguishes
+  // draggable/droppable independently) - live-verified that doing so also
+  // breaks OTHER tabs being dropped exactly onto this tab's slot to
+  // reorder past it, because tab-reorder and file-entry-drop both resolve
+  // through the exact same underlying droppable registration (dnd-kit has
+  // no notion of "droppable for drag type A but not B"). Gating only the
+  // highlight here keeps reordering fully intact in both directions; the
+  // actual move is still hard-blocked regardless, by the
+  // findLibraryForPath check in ExplorerPage.tsx's handleDragEnd.
   const { active } = useDndContext()
+  const isDraggingEntry = (active?.data.current as ExplorerDragData | undefined)?.type === 'entry'
   const isFileDropTarget =
-    isOver && (active?.data.current as ExplorerDragData | undefined)?.type === 'entry'
+    isOver && isDraggingEntry && !!findLibraryForPath(tab.path, libraries ?? [])
 
   return (
     <ContextMenu>

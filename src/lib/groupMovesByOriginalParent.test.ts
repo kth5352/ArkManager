@@ -31,4 +31,20 @@ describe('groupMovesByOriginalParent', () => {
   it('returns an empty array for no moves', () => {
     expect(groupMovesByOriginalParent([])).toEqual([])
   })
+
+  it('preserves a UNC \\\\server\\share prefix as one atomic unit when computing the parent', () => {
+    const result = groupMovesByOriginalParent([
+      { path: '\\\\server\\share\\folder\\file.zip', newPath: 'D:\\archive\\file.zip' },
+    ])
+    expect(result).toEqual([
+      { destDir: '\\\\server\\share\\folder', paths: ['D:\\archive\\file.zip'] },
+    ])
+  })
+
+  it('reconstructs a UNC share-root parent with a trailing separator', () => {
+    const result = groupMovesByOriginalParent([
+      { path: '\\\\server\\share\\file.zip', newPath: 'D:\\archive\\file.zip' },
+    ])
+    expect(result).toEqual([{ destDir: '\\\\server\\share\\', paths: ['D:\\archive\\file.zip'] }])
+  })
 })

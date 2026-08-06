@@ -30,7 +30,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (!(event.ctrlKey && event.key === 'z')) return
+      // event.altKey excluded so Ctrl+Alt+Z (a distinct, unrelated shortcut
+      // in many apps/OSes) doesn't also trigger the move-undo - only a
+      // plain Ctrl+Z should.
+      if (!event.ctrlKey || event.key !== 'z' || event.altKey) return
       // Same isEditingElsewhere guard TabBar.tsx's own Ctrl+W handler
       // already uses - Ctrl+Z must not hijack a text field's own native
       // undo (e.g. while typing in the rename dialog or the search box).

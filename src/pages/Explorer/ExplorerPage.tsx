@@ -14,6 +14,9 @@ import { FolderView } from './FolderView'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useMoveEntries } from '../../services/fileOpsService'
+import { useLibraries } from '../../services/librariesService'
+import { findLibraryForPath } from '../../lib/findLibraryForPath'
+import { getParentPath } from '../../lib/groupMovesByOriginalParent'
 import { useExplorerTabsPersistence } from '../../hooks/useExplorerTabsPersistence'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
@@ -30,6 +33,7 @@ export function ExplorerPage() {
   const navigateTab = useExplorerStore((s) => s.navigateTab)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
   const moveEntries = useMoveEntries()
+  const { data: libraries } = useLibraries()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
 
@@ -57,21 +61,47 @@ export function ExplorerPage() {
       const overData = over.data.current as ExplorerDropData | undefined
       if (!overData) return
       const destDir = overData.path
-      // A no-op drop: the target is the folder this tab is already showing
-      // (dropped onto its own breadcrumb tail, or the tab itself).
-      if (destDir === activeTab?.path) return
+      // Hard safety net: never move to a destination outside every
+      // registered library. The backend intentionally leaves destDir
+      // unrestricted (see explorerHandlers.ts's own comment) because the
+      // existing native-folder-picker Move dialog legitimately supports
+      // moving to arbitrary non-library locations (e.g. a backup drive) -
+      // but that's a deliberate multi-step flow, unlike a single easily
+      // mis-clicked drag-and-drop gesture whose undo also can't reach
+      // outside a library. This check applies regardless of how the drop
+      // target's own droppable/disabled state was computed, so it still
+      // catches any future drop-target type that doesn't yet gate itself.
+      if (!findLibraryForPath(destDir, libraries ?? [])) return
 
       const selectedPaths = useSelectionStore.getState().selectedPaths
       const draggedPaths = selectedPaths.has(activeData.entry.path)
         ? Array.from(selectedPaths)
         : [activeData.entry.path]
+      // Per-item, not "destDir === activeTab?.path": in search mode a
+      // dragged entry's own parent can differ from the tab's own path (it's
+      // a recursive-search result from a subfolder), so that blanket check
+      // silently discarded legitimate "move it up here" drops with no
+      // feedback at all. Filtering by each item's real current parent
+      // subsumes the old check's correct behavior for normal-mode rows too
+      // (whose parent always equals activeTab.path anyway).
+      const pathsToMove = draggedPaths.filter((p) => getParentPath(p) !== destDir)
+      if (pathsToMove.length === 0) return
       // Dragging a multi-selection that happens to include the drop target
       // itself (e.g. selecting two folders and dropping one onto the
       // other) - the active.id === over.id guard above only catches the
       // exact dragged row, not other selected items.
-      if (draggedPaths.includes(destDir)) return
+      if (pathsToMove.includes(destDir)) return
 
-      moveEntries.mutate({ paths: draggedPaths, destDir })
+      moveEntries.mutate(
+        { paths: pathsToMove, destDir },
+        // Matches every other batch action (SelectionToolbar.tsx's
+        // closeDialog after rename/move/delete) - without this the
+        // toolbar keeps reporting the old selection count after a
+        // drag-drop move, even though the moved paths no longer exist at
+        // their old location. Safe as a plain call-site callback since
+        // ExplorerPage doesn't unmount as a result of this mutation.
+        { onSuccess: () => useSelectionStore.getState().deactivate() }
+      )
     }
   }
 

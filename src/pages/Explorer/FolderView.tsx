@@ -29,6 +29,8 @@ import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useLongPress } from '../../hooks/useLongPress'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useLibraries } from '../../services/librariesService'
+import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
 
 interface FolderViewProps {
@@ -226,8 +228,10 @@ function BreadcrumbSegmentButton({
   segment: BreadcrumbSegment
   onNavigate: (path: string) => void
 }) {
+  const { data: libraries } = useLibraries()
   const { setNodeRef, isOver } = useDroppable({
     id: segment.path,
+    disabled: !findLibraryForPath(segment.path, libraries ?? []),
     data: { type: 'breadcrumb', path: segment.path } satisfies ExplorerDropData,
   })
   return (

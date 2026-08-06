@@ -11,13 +11,29 @@ export interface GroupedUndoMove {
 // Mirrors breadcrumb.ts's own drive-root handling (a bare "C:" is not the
 // same location as its root "C:\\" to Windows filesystem APIs) - both
 // normalize to forward slashes first so a mix of \ and / in the input never
-// silently breaks the split.
-function getParentPath(path: string): string {
-  const parts = path
-    .replace(/\\/g, '/')
-    .replace(/\/+$/, '')
-    .split('/')
-    .filter(Boolean)
+// silently breaks the split. Exported so ExplorerPage.tsx's handleDragEnd
+// can filter dragged paths by their own real current parent (see that
+// file's 'entry' drag-end branch).
+export function getParentPath(path: string): string {
+  const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '')
+
+  // A UNC path's \\server\share prefix is one atomic unit, not an ordinary
+  // "drop the last segment" segment like the rest of the path. The plain
+  // split/filter/pop logic below normalizes \\server\share\folder\file.zip
+  // to //server/share/folder/file.zip, and filter(Boolean) silently drops
+  // the two empty leading components produced by the leading "//" - losing
+  // the \\server\share prefix entirely instead of just popping the last
+  // segment. Handle UNC paths separately so the prefix always survives.
+  if (normalized.startsWith('//')) {
+    const uncParts = normalized.slice(2).split('/').filter(Boolean)
+    const uncPrefix = `\\\\${uncParts[0]}\\${uncParts[1]}`
+    const rest = uncParts.slice(2)
+    if (rest.length <= 1) return `${uncPrefix}\\`
+    rest.pop()
+    return `${uncPrefix}\\${rest.join('\\')}`
+  }
+
+  const parts = normalized.split('/').filter(Boolean)
   parts.pop()
   if (parts.length === 1 && /^[A-Za-z]:$/.test(parts[0])) return `${parts[0]}\\`
   return parts.join('\\')
