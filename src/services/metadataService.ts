@@ -11,6 +11,12 @@ function metadataQueryKey(code: GameCode) {
   return ['metadata', code.value] as const
 }
 
+function invalidateMetadataQueries(queryClient: ReturnType<typeof useQueryClient>, code: GameCode) {
+  queryClient.invalidateQueries({ queryKey: ['metadata'] })
+  queryClient.invalidateQueries({ queryKey: ['metadata-many'] })
+  queryClient.invalidateQueries({ queryKey: ['metadata', 'failure', code.value] })
+}
+
 export function useGameMetadata(code: GameCode | null) {
   return useQuery<GameMetadataDto | null>({
     queryKey: code ? metadataQueryKey(code) : ['metadata', 'none'],
@@ -57,11 +63,13 @@ export function useCrawlGameMetadata() {
     mutationFn: (code: GameCode) => window.api.metadata.crawlAndSave(code),
     onSuccess: (result, code) => {
       if (result) queryClient.setQueryData(metadataQueryKey(code), result)
-      // Gallery/List/DetailList read genre badges via useGameMetadataMany, whose
-      // query key includes a per-call-site sorted codes array - invalidate by
-      // prefix so every variation picks up the freshly crawled metadata.
-      queryClient.invalidateQueries({ queryKey: ['metadata-many'] })
-      queryClient.invalidateQueries({ queryKey: ['metadata', 'failure', code.value] })
+    },
+    onSettled: (_result, _error, code) => {
+      // Gallery/List/DetailList read badges via useGameMetadataMany, whose key
+      // includes a per-call-site sorted codes array. Manual refresh can also
+      // update failure rows or cover images, so invalidate the metadata prefix
+      // on every settled refresh, not only successful crawls with a result row.
+      invalidateMetadataQueries(queryClient, code)
     },
   })
 }

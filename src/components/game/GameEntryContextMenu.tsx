@@ -1,5 +1,5 @@
 import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from '../ui/context-menu'
-import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
+import { useOpenExternal, useOpenPath, useShowItemInFolder } from '../../services/shellService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { useLaunchGame } from '../../services/launchService'
 import {
@@ -8,7 +8,7 @@ import {
   useToggleFavorite,
 } from '../../services/gameUserDataService'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
-import { isMediaFile } from '../../../shared/isMediaFile'
+import { getExplorerEntryCapabilities } from '../../lib/explorerEntryCapabilities'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -44,6 +44,7 @@ export function GameEntryContextMenu({
 }: GameEntryContextMenuProps) {
   const { t } = useTranslation()
   const openExternal = useOpenExternal()
+  const openPath = useOpenPath()
   const showItemInFolder = useShowItemInFolder()
   const crawlMetadata = useCrawlGameMetadata()
   const launchGame = useLaunchGame()
@@ -53,11 +54,11 @@ export function GameEntryContextMenu({
   const playNow = useMediaPlayerStore((s) => s.playNow)
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
 
-  const isMedia = entry.kind === 'file' && isMediaFile(entry.name)
+  const capabilities = getExplorerEntryCapabilities(entry)
 
   return (
     <ContextMenuContent>
-      {isMedia && (
+      {capabilities.canPlayMedia && (
         <>
           <ContextMenuItem onSelect={() => playNow({ path: entry.path, name: entry.name })}>
             {t('game.playNow')}
@@ -67,12 +68,17 @@ export function GameEntryContextMenu({
           </ContextMenuItem>
         </>
       )}
+      {capabilities.canDirectLaunchFile && (
+        <ContextMenuItem onSelect={() => openPath.mutate(entry.path)}>
+          {t('game.launch')}
+        </ContextMenuItem>
+      )}
       {entry.kind === 'folder' && (
         <ContextMenuItem onSelect={() => launchGame.mutate(entry)}>
           {t('game.launch')}
         </ContextMenuItem>
       )}
-      {entry.code && (
+      {capabilities.canManageGameData && entry.code && (
         <ContextMenuItem onSelect={() => entry.code && openExternal.mutate(entry.code)}>
           {t('game.openWeb')}
         </ContextMenuItem>
@@ -85,7 +91,7 @@ export function GameEntryContextMenu({
       <ContextMenuItem onSelect={() => showItemInFolder.mutate(entry.path)}>
         {t('explorer.openInOsExplorer')}
       </ContextMenuItem>
-      {entry.code && (
+      {capabilities.canManageGameData && entry.code && (
         <>
           <ContextMenuItem onSelect={() => navigator.clipboard.writeText(entry.code?.value ?? '')}>
             {t('explorer.copyRjNumber')}
@@ -98,29 +104,39 @@ export function GameEntryContextMenu({
           </ContextMenuItem>
         </>
       )}
-      {!entry.code && entry.kind === 'folder' && (
+      {capabilities.canManageGameData && !entry.code && (
         <ContextMenuItem onSelect={() => onOpenDetail(entry)}>
           {t('codeLink.dialogTitle')}
         </ContextMenuItem>
       )}
-      <ContextMenuItem
-        onSelect={() =>
-          toggleFavorite.mutate({ entry, isFavorite: !(userData?.isFavorite ?? false) })
-        }
-      >
-        {userData?.isFavorite ? t('explorer.unfavorite') : t('explorer.favorite')}
-      </ContextMenuItem>
-      <ContextMenuItem
-        onSelect={() => toggleCleared.mutate({ entry, isCleared: !(userData?.isCleared ?? false) })}
-      >
-        {userData?.isCleared ? t('explorer.unmarkCleared') : t('explorer.markCleared')}
-      </ContextMenuItem>
+      {capabilities.canManageGameData && (
+        <>
+          <ContextMenuItem
+            onSelect={() =>
+              toggleFavorite.mutate({ entry, isFavorite: !(userData?.isFavorite ?? false) })
+            }
+          >
+            {userData?.isFavorite ? t('explorer.unfavorite') : t('explorer.favorite')}
+          </ContextMenuItem>
+          <ContextMenuItem
+            onSelect={() =>
+              toggleCleared.mutate({ entry, isCleared: !(userData?.isCleared ?? false) })
+            }
+          >
+            {userData?.isCleared ? t('explorer.unmarkCleared') : t('explorer.markCleared')}
+          </ContextMenuItem>
+        </>
+      )}
       {onExclude && (
         <ContextMenuItem onSelect={() => onExclude(entry)}>
           {t('exclude.excludeFromView')}
         </ContextMenuItem>
       )}
-      <ContextMenuItem onSelect={() => onOpenDetail(entry)}>{t('game.ratingMemo')}</ContextMenuItem>
+      {capabilities.canManageGameData && (
+        <ContextMenuItem onSelect={() => onOpenDetail(entry)}>
+          {t('game.ratingMemo')}
+        </ContextMenuItem>
+      )}
       <ContextMenuItem onSelect={() => onRename(entry)}>{t('selection.rename')}</ContextMenuItem>
       <ContextMenuItem onSelect={() => onMove(entry)}>{t('selection.move')}</ContextMenuItem>
       <ContextMenuSeparator />

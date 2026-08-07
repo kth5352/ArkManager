@@ -239,6 +239,7 @@ const ko = {
   'game.toggleFavorite': '즐겨찾기 토글',
   'game.toggleCleared': '클리어 표시 토글',
   'game.duplicateTitle': '같은 코드의 파일이 {count}개 있습니다.',
+  'game.archiveExtracted': '압축 해제됨',
   'common.scanError': '라이브러리를 스캔하는 중 오류가 발생했습니다.',
   'common.noGamesFound':
     '등록된 라이브러리에서 인식된 게임이 없습니다. 설정에서 라이브러리를 추가해 보세요.',
@@ -555,6 +556,7 @@ const ja: Record<keyof typeof ko, string> = {
   'game.toggleFavorite': 'お気に入り切り替え',
   'game.toggleCleared': 'クリア表示の切り替え',
   'game.duplicateTitle': '同じコードのファイルが{count}個あります。',
+  'game.archiveExtracted': '展開済み',
   'common.scanError': 'ライブラリのスキャン中にエラーが発生しました。',
   'common.noGamesFound':
     '登録されたライブラリで認識されたゲームがありません。設定でライブラリを追加してください。',
@@ -872,6 +874,7 @@ const en: Record<keyof typeof ko, string> = {
   'game.toggleFavorite': 'Toggle favorite',
   'game.toggleCleared': 'Toggle cleared',
   'game.duplicateTitle': '{count} files share this code.',
+  'game.archiveExtracted': 'Extracted',
   'common.scanError': 'An error occurred while scanning the library.',
   'common.noGamesFound':
     'No recognized games found in the registered libraries. Try adding a library in Settings.',

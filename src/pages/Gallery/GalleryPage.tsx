@@ -35,7 +35,13 @@ import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndic
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
-import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
+import {
+  getDuplicateGroupForEntry,
+  getExtractedArchiveCodes,
+  groupDuplicatesByCode,
+  hasDuplicateGroupForEntry,
+  isArchiveExtracted,
+} from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
@@ -76,6 +82,7 @@ function GameCard({
   genres,
   cardWidth,
   duplicateCount,
+  archiveExtracted,
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
@@ -88,6 +95,7 @@ function GameCard({
   genres: string[]
   cardWidth: number
   duplicateCount: number | undefined
+  archiveExtracted: boolean
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
@@ -168,6 +176,11 @@ function GameCard({
                   {duplicateCount}
                 </span>
               )}
+              {archiveExtracted && (
+                <span className="shrink-0 rounded bg-primary/10 px-1 text-[10px] text-primary">
+                  {t('game.archiveExtracted')}
+                </span>
+              )}
             </div>
             {userData?.rating != null && (
               <div className="mt-0.5 flex gap-0.5">
@@ -227,6 +240,7 @@ interface GridCellProps {
   cardWidth: number
   metadataByCode: Record<string, { genres: string[] }>
   duplicateGroups: Map<string, ScannedEntry[]>
+  extractedArchiveCodes: Set<string>
   onFilterByGenre: (genre: string) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
@@ -246,6 +260,7 @@ function GameCell({
   cardWidth,
   metadataByCode,
   duplicateGroups,
+  extractedArchiveCodes,
   onFilterByGenre,
   onHoverChange,
   onOpenDetail,
@@ -258,7 +273,8 @@ function GameCell({
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
-  const duplicateCount = game.code ? duplicateGroups.get(game.code.value)?.length : undefined
+  const duplicateCount = getDuplicateGroupForEntry(game, duplicateGroups)?.length
+  const archiveExtracted = isArchiveExtracted(game, extractedArchiveCodes)
   return (
     <div style={{ ...style, padding: gap / 2, display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: cardWidth }}>
@@ -267,6 +283,7 @@ function GameCell({
           genres={genres}
           cardWidth={cardWidth}
           duplicateCount={duplicateCount}
+          archiveExtracted={archiveExtracted}
           onFilterByGenre={onFilterByGenre}
           onHoverChange={onHoverChange}
           onOpenDetail={onOpenDetail}
@@ -322,7 +339,10 @@ export function GalleryPage() {
   const scanProgress = useScanProgress(isLoading)
 
   const pendingOpenKey = usePendingGalleryOpenStore((s) => s.pendingKey)
+  const pendingSearchQuery = usePendingGalleryOpenStore((s) => s.pendingSearchQuery)
   const clearPendingOpenKey = usePendingGalleryOpenStore((s) => s.clearPendingKey)
+  const clearPendingSearchQuery = usePendingGalleryOpenStore((s) => s.clearPendingSearchQuery)
+  const activeSearchQuery = pendingSearchQuery ?? searchQuery
   useEffect(() => {
     if (!pendingOpenKey || !games) return
     const match = games.find(
@@ -357,6 +377,7 @@ export function GalleryPage() {
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
   const duplicateGroups = groupDuplicatesByCode(games ?? [])
+  const extractedArchiveCodes = getExtractedArchiveCodes(games ?? [])
 
   useEffect(() => {
     // `container` is a callback ref (state), not a plain object ref - this
@@ -412,7 +433,7 @@ export function GalleryPage() {
       ? filterEntries(
           games,
           metadataByCode,
-          searchQuery,
+          activeSearchQuery,
           includedGenres,
           excludedGenres,
           fileKindFilter
@@ -421,15 +442,18 @@ export function GalleryPage() {
   const sortedGames =
     filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
   const visibleGames = duplicatesOnly
-    ? sortedGames.filter((g) => g.code && duplicateGroups.has(g.code.value))
+    ? sortedGames.filter((g) => hasDuplicateGroupForEntry(g, duplicateGroups))
     : sortedGames
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex min-h-[52px] flex-wrap items-center gap-2 border-b border-border px-4 py-2">
         <SearchHeader
-          query={searchQuery}
-          onQueryChange={setSearchQuery}
+          query={activeSearchQuery}
+          onQueryChange={(nextQuery) => {
+            clearPendingSearchQuery()
+            setSearchQuery(nextQuery)
+          }}
           includedGenres={includedGenres}
           excludedGenres={excludedGenres}
           onGenreFiltersChange={(nextIncluded, nextExcluded) => {
@@ -530,6 +554,7 @@ export function GalleryPage() {
                         cardWidth,
                         metadataByCode,
                         duplicateGroups,
+                        extractedArchiveCodes,
                         onFilterByGenre: filterByGenre,
                         onHoverChange: handleHoverChange,
                         onOpenDetail: openDetail,

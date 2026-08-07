@@ -5,6 +5,7 @@ import { MediaPlayerBar } from './MediaPlayerBar'
 import { FullscreenMediaOverlay } from './FullscreenMediaOverlay'
 import { parseLrc } from '../../lib/lrc'
 import { useMediaLyrics } from './useMediaLyrics'
+import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsToggleState'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -24,7 +25,16 @@ export function MediaPlayerHost() {
     () => (lyricsQuery.data ? parseLrc(lyricsQuery.data.text) : null),
     [lyricsQuery.data]
   )
-  const [lyricsEnabled, setLyricsEnabled] = useState(false)
+  const [lyricsDisabledTrackPaths, setLyricsDisabledTrackPaths] = useState<Set<string>>(new Set())
+  const lyricsEnabled = isLyricsEnabledForTrack(
+    playback?.track.path ?? null,
+    parsedLyrics !== null,
+    lyricsDisabledTrackPaths
+  )
+  const toggleLyrics = (): void => {
+    if (!playback?.track.path) return
+    setLyricsDisabledTrackPaths((paths) => toggleLyricsDisabledForTrack(playback.track.path, paths))
+  }
 
   // Starts minimized (false), not expanded - the auto-expand effect below
   // flips this true the first time a VIDEO track becomes current, but
@@ -111,7 +121,7 @@ export function MediaPlayerHost() {
           onDetach={handleDetach}
           lyricsEnabled={lyricsEnabled}
           parsedLyrics={parsedLyrics}
-          onToggleLyrics={() => setLyricsEnabled((enabled) => !enabled)}
+          onToggleLyrics={toggleLyrics}
         />
       )}
       {(isDetached || !mediaExpanded) && (
@@ -121,7 +131,7 @@ export function MediaPlayerHost() {
           onExpandVideo={() => setMediaExpanded(true)}
           lyricsEnabled={lyricsEnabled}
           parsedLyrics={parsedLyrics}
-          onToggleLyrics={() => setLyricsEnabled((enabled) => !enabled)}
+          onToggleLyrics={toggleLyrics}
         />
       )}
     </>

@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useGameCoverImage, useGameMetadata } from '../../services/metadataService'
 import { useGamesWithSavePath, useSaveSnapshots } from '../../services/saveService'
 import { useGames } from '../../services/useGames'
 import { SaveManagerDialog } from '../../components/game/SaveManagerDialog'
 import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
+import { filterSaveGamesBySnapshotCounts } from './filterSaveGamesBySnapshotCounts'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
 
@@ -40,11 +41,13 @@ function SaveEntryRow({
   entryKey,
   savePath,
   pathByCode,
+  onSnapshotCount,
   onManage,
 }: {
   entryKey: string
   savePath: string
   pathByCode: Map<string, string>
+  onSnapshotCount: (entryKey: string, count: number) => void
   onManage: (entry: ManagingEntry) => void
 }) {
   const { t } = useTranslation()
@@ -53,6 +56,13 @@ function SaveEntryRow({
   const { data: metadata } = useGameMetadata(code)
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? code : null)
   const { data: snapshots } = useSaveSnapshots(entry)
+
+  useEffect(() => {
+    if (!snapshots) return
+    onSnapshotCount(entryKey, snapshots.length)
+  }, [entryKey, onSnapshotCount, snapshots])
+
+  if (snapshots && snapshots.length === 0) return null
 
   return (
     <button
@@ -84,6 +94,16 @@ export function SavesPage() {
   const pathByCode = usePathByCode()
   const [managing, setManaging] = useState<ManagingEntry | null>(null)
   const [search, setSearch] = useState('')
+  const [snapshotCounts, setSnapshotCounts] = useState<Map<string, number>>(new Map())
+
+  const handleSnapshotCount = (entryKey: string, count: number): void => {
+    setSnapshotCounts((prev) => {
+      if (prev.get(entryKey) === count) return prev
+      const next = new Map(prev)
+      next.set(entryKey, count)
+      return next
+    })
+  }
 
   if (isLoading || !games) return null
 
@@ -98,6 +118,7 @@ export function SavesPage() {
   const filteredGames = search.trim()
     ? games.filter((game) => game.key.toLowerCase().includes(search.trim().toLowerCase()))
     : games
+  const visibleGames = filterSaveGamesBySnapshotCounts(filteredGames, snapshotCounts)
 
   return (
     <div className="flex flex-col">
@@ -109,12 +130,18 @@ export function SavesPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      {filteredGames.map((game) => (
+      {visibleGames.length === 0 && filteredGames.every((game) => snapshotCounts.has(game.key)) && (
+        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+          {search.trim() ? t('common.noItemsToShow') : t('saveManager.noSnapshots')}
+        </div>
+      )}
+      {visibleGames.map((game) => (
         <SaveEntryRow
           key={game.key}
           entryKey={game.key}
           savePath={game.savePath}
           pathByCode={pathByCode}
+          onSnapshotCount={handleSnapshotCount}
           onManage={setManaging}
         />
       ))}

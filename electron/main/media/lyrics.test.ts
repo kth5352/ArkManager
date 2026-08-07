@@ -23,6 +23,28 @@ describe('readAdjacentLyrics', () => {
     })
   })
 
+  it('uses the only lrc file in the same folder when an exact basename match is missing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lyrics-'))
+    tempDirs.push(dir)
+    await writeFile(join(dir, 'Track 01.mp3'), '')
+    await writeFile(join(dir, 'AlbumLyrics.lrc'), '[00:01.00]hello')
+
+    await expect(readAdjacentLyrics(join(dir, 'Track 01.mp3'), [dir])).resolves.toEqual({
+      path: join(dir, 'AlbumLyrics.lrc'),
+      text: '[00:01.00]hello',
+    })
+  })
+
+  it('does not guess when multiple non-matching lrc files exist in the same folder', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lyrics-'))
+    tempDirs.push(dir)
+    await writeFile(join(dir, 'Track 01.mp3'), '')
+    await writeFile(join(dir, 'A.lrc'), '[00:01.00]a')
+    await writeFile(join(dir, 'B.lrc'), '[00:01.00]b')
+
+    await expect(readAdjacentLyrics(join(dir, 'Track 01.mp3'), [dir])).resolves.toBeNull()
+  })
+
   it('rejects paths outside allowed roots', async () => {
     await expect(readAdjacentLyrics('C:\\Other\\Song.mp3', ['D:\\Library'])).resolves.toBeNull()
   })
@@ -35,6 +57,7 @@ describe('readAdjacentLyrics', () => {
       readAdjacentLyrics('C:\\Library\\Song.mp3', ['C:\\Library'], {
         realpath,
         readFile,
+        readdir: vi.fn(async () => []),
       })
     ).resolves.toBeNull()
 

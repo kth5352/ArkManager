@@ -2,6 +2,7 @@ const ARCHIVE_EXTENSIONS = new Set([
   '.zip',
   '.7z',
   '.rar',
+  '.egg',
   '.tar',
   '.gz',
   '.bz2',

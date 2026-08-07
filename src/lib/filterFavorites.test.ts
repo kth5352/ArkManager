@@ -65,6 +65,25 @@ describe('filterFavorites', () => {
     expect(filterFavorites([archive, folder], ['RJ01234567'])).toEqual([folder])
   })
 
+  it('prefers an archive over a non-archive file for a coded favorite when no folder exists', () => {
+    const archive = entry({
+      name: 'Game.zip',
+      path: 'D:\\Games\\Game.zip',
+      kind: 'file',
+      mtimeMs: 10,
+      code: { type: 'RJ', value: 'RJ01234567' },
+    })
+    const textFile = entry({
+      name: 'RJ01234567.txt',
+      path: 'D:\\Games\\RJ01234567.txt',
+      kind: 'file',
+      mtimeMs: 20,
+      code: { type: 'RJ', value: 'RJ01234567' },
+    })
+
+    expect(filterFavorites([textFile, archive], ['RJ01234567'])).toEqual([archive])
+  })
+
   it('keeps code-less favorites path-specific', () => {
     const a = entry({ path: 'D:\\Games\\A', code: null, kind: 'folder', mtimeMs: 1 })
     const b = entry({ path: 'D:\\Games\\B', code: null, kind: 'folder', mtimeMs: 2 })

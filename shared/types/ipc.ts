@@ -25,6 +25,7 @@ export const IPC_CHANNELS = {
   SORT_SET: 'sort:set',
   SHELL_OPEN_EXTERNAL: 'shell:open-external',
   SHELL_SHOW_ITEM_IN_FOLDER: 'shell:show-item-in-folder',
+  SHELL_OPEN_PATH: 'shell:open-path',
   METADATA_CRAWL_AND_SAVE: 'metadata:crawl-and-save',
   METADATA_GET: 'metadata:get',
   METADATA_GET_FAILURE: 'metadata:get-failure',
@@ -216,6 +217,11 @@ export const ShowItemInFolderRequestSchema = z.object({
   path: z.string(),
 })
 export type ShowItemInFolderRequest = z.infer<typeof ShowItemInFolderRequestSchema>
+
+export const OpenPathRequestSchema = z.object({
+  path: z.string(),
+})
+export type OpenPathRequest = z.infer<typeof OpenPathRequestSchema>
 
 export const CrawlAndSaveMetadataRequestSchema = z.object({
   code: GameCodeSchema,

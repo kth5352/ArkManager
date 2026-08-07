@@ -10,7 +10,13 @@ import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
-import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
+import {
+  getDuplicateGroupForEntry,
+  getExtractedArchiveCodes,
+  groupDuplicatesByCode,
+  hasDuplicateGroupForEntry,
+  isArchiveExtracted,
+} from '../../lib/groupDuplicatesByCode'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
@@ -148,6 +154,7 @@ interface DetailListRowProps {
   entries: ScannedEntry[]
   metadataByCode: Record<string, { genres: string[] }>
   duplicateGroups: Map<string, ScannedEntry[]>
+  extractedArchiveCodes: Set<string>
   columnWidths: ColumnWidths
   onOpenDetail: (entry: ScannedEntry) => void
   onExclude: (entry: ScannedEntry) => void
@@ -162,6 +169,7 @@ function Row({
   entries,
   metadataByCode,
   duplicateGroups,
+  extractedArchiveCodes,
   columnWidths,
   onOpenDetail,
   onExclude,
@@ -178,7 +186,8 @@ function Row({
   })
   if (!entry) return null
   const genres = entry.code ? (metadataByCode[entry.code.value]?.genres ?? []) : []
-  const duplicates = entry.code ? duplicateGroups.get(entry.code.value) : undefined
+  const duplicates = getDuplicateGroupForEntry(entry, duplicateGroups)
+  const archiveExtracted = isArchiveExtracted(entry, extractedArchiveCodes)
 
   return (
     <ContextMenu>
@@ -214,7 +223,7 @@ function Row({
               (path/genres/modified/size/rating) would shift right only for
               rows that happen to have duplicates, misaligning them from
               both the header and from every other row. */}
-          <span className="flex w-10 shrink-0 items-center">
+          <span className="flex w-20 shrink-0 items-center">
             {duplicates && (
               <span
                 className="flex items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
@@ -228,6 +237,11 @@ function Row({
               >
                 <Copy className="h-3 w-3" />
                 {duplicates.length}
+              </span>
+            )}
+            {archiveExtracted && (
+              <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">
+                {t('game.archiveExtracted')}
               </span>
             )}
           </span>
@@ -337,6 +351,7 @@ export function DetailListPage() {
   // results - "this game has another copy elsewhere" should stay true
   // regardless of what's currently visible.
   const duplicateGroups = groupDuplicatesByCode(games ?? [])
+  const extractedArchiveCodes = getExtractedArchiveCodes(games ?? [])
 
   const resizeColumn = (column: keyof ColumnWidths, deltaX: number): void => {
     setColumnWidths((prev) => ({
@@ -376,7 +391,7 @@ export function DetailListPage() {
   )
   const sorted = sortEntries(filtered, sortField, sortDirection)
   const visible = duplicatesOnly
-    ? sorted.filter((e) => e.code && duplicateGroups.has(e.code.value))
+    ? sorted.filter((e) => hasDuplicateGroupForEntry(e, duplicateGroups))
     : sorted
 
   return (
@@ -434,7 +449,7 @@ export function DetailListPage() {
                   />
                   {/* Matches Row's duplicate-badge slot exactly - see the
                       comment there. */}
-                  <span className="w-10 shrink-0" />
+                  <span className="w-20 shrink-0" />
                   <HeaderCell
                     label={t('detailList.path')}
                     width={columnWidths.path}
@@ -467,6 +482,7 @@ export function DetailListPage() {
                           entries: visible,
                           metadataByCode,
                           duplicateGroups,
+                          extractedArchiveCodes,
                           columnWidths,
                           onOpenDetail: openDetail,
                           onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),

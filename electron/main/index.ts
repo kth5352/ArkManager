@@ -318,7 +318,7 @@ if (!gotSingleInstanceLock) {
     registerScannerHandlers(db)
     registerExplorerHandlers(db)
     registerSortHandlers(db)
-    registerShellHandlers()
+    registerShellHandlers(db)
     registerMetadataHandlers(db)
     registerGameUserDataHandlers(db)
     registerLaunchHandlers(db)

@@ -33,7 +33,13 @@ import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndic
 import { useSortPreference } from '../../services/sortService'
 import { sortEntries } from '../../lib/sortEntries'
 import { filterEntries, type FileKindFilter } from '../../lib/filterEntries'
-import { groupDuplicatesByCode } from '../../lib/groupDuplicatesByCode'
+import {
+  getDuplicateGroupForEntry,
+  getExtractedArchiveCodes,
+  groupDuplicatesByCode,
+  hasDuplicateGroupForEntry,
+  isArchiveExtracted,
+} from '../../lib/groupDuplicatesByCode'
 import { useGameMetadataMany } from '../../services/metadataService'
 import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
@@ -52,6 +58,7 @@ function GameRow({
   game,
   genres,
   duplicateCount,
+  archiveExtracted,
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
@@ -63,6 +70,7 @@ function GameRow({
   game: ScannedEntry
   genres: string[]
   duplicateCount: number | undefined
+  archiveExtracted: boolean
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
@@ -167,6 +175,11 @@ function GameRow({
                   {duplicateCount}
                 </span>
               )}
+              {archiveExtracted && (
+                <span className="shrink-0 rounded bg-primary/10 px-1 text-[10px] text-primary">
+                  {t('game.archiveExtracted')}
+                </span>
+              )}
             </div>
           </div>
           <span className="w-24 shrink-0 text-xs text-muted-foreground">
@@ -207,6 +220,7 @@ interface ListRowProps {
   games: ScannedEntry[]
   metadataByCode: Record<string, { genres: string[] }>
   duplicateGroups: Map<string, ScannedEntry[]>
+  extractedArchiveCodes: Set<string>
   onFilterByGenre: (genre: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
@@ -222,6 +236,7 @@ function Row({
   games,
   metadataByCode,
   duplicateGroups,
+  extractedArchiveCodes,
   onFilterByGenre,
   onOpenDetail,
   onHoverChange,
@@ -233,13 +248,15 @@ function Row({
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
-  const duplicateCount = game.code ? duplicateGroups.get(game.code.value)?.length : undefined
+  const duplicateCount = getDuplicateGroupForEntry(game, duplicateGroups)?.length
+  const archiveExtracted = isArchiveExtracted(game, extractedArchiveCodes)
   return (
     <div style={style}>
       <GameRow
         game={game}
         genres={genres}
         duplicateCount={duplicateCount}
+        archiveExtracted={archiveExtracted}
         onFilterByGenre={onFilterByGenre}
         onOpenDetail={onOpenDetail}
         onHoverChange={onHoverChange}
@@ -293,6 +310,7 @@ export function ListPage() {
   const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
   useTriggerBulkCrawlMissingMetadata(gameCodes)
   const duplicateGroups = groupDuplicatesByCode(games ?? [])
+  const extractedArchiveCodes = getExtractedArchiveCodes(games ?? [])
 
   if (isError && !games) {
     return (
@@ -329,7 +347,7 @@ export function ListPage() {
   const sortedGames =
     filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
   const visibleGames = duplicatesOnly
-    ? sortedGames.filter((g) => g.code && duplicateGroups.has(g.code.value))
+    ? sortedGames.filter((g) => hasDuplicateGroupForEntry(g, duplicateGroups))
     : sortedGames
 
   return (
@@ -376,6 +394,7 @@ export function ListPage() {
                         games: visibleGames,
                         metadataByCode,
                         duplicateGroups,
+                        extractedArchiveCodes,
                         onFilterByGenre: filterByGenre,
                         onOpenDetail: openDetail,
                         onHoverChange: handleHoverChange,

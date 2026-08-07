@@ -6,7 +6,7 @@ type FavoriteEntry = Pick<ScannedEntry, 'code' | 'path' | 'kind' | 'mtimeMs' | '
 
 function scoreEntry(entry: Pick<ScannedEntry, 'kind' | 'name' | 'mtimeMs'>): [number, number, number] {
   const folderScore = entry.kind === 'folder' ? 1 : 0
-  const archiveScore = isArchiveFile(entry.name) ? 0 : 1
+  const archiveScore = entry.kind === 'file' && isArchiveFile(entry.name) ? 1 : 0
   return [folderScore, archiveScore, entry.mtimeMs]
 }
 

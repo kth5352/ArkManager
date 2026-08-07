@@ -24,11 +24,13 @@ function FavoriteCard({ game }: { game: ScannedEntry }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const setPendingKey = usePendingGalleryOpenStore((s) => s.setPendingKey)
+  const setPendingSearchQuery = usePendingGalleryOpenStore((s) => s.setPendingSearchQuery)
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
 
   const handleOpen = (): void => {
     setPendingKey(game.code?.value ?? game.path)
+    if (game.code) setPendingSearchQuery(game.code.value)
     navigate({ to: '/' })
   }
 

@@ -12,3 +12,9 @@ export function useShowItemInFolder() {
     mutationFn: (path: string) => window.api.shell.showItemInFolder(path),
   })
 }
+
+export function useOpenPath() {
+  return useMutation({
+    mutationFn: (path: string) => window.api.shell.openPath(path),
+  })
+}

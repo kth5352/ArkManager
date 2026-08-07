@@ -17,6 +17,7 @@ import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { isMediaFile } from '../../../shared/isMediaFile'
+import { getExplorerEntryCapabilities } from '../../lib/explorerEntryCapabilities'
 import { PageToolbar } from '../../components/layout/PageToolbar'
 import { SearchHeader } from '../../components/layout/SearchHeader'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
@@ -33,6 +34,7 @@ import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useLongPress } from '../../hooks/useLongPress'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useLibraries } from '../../services/librariesService'
+import { useOpenPath } from '../../services/shellService'
 import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
@@ -290,12 +292,12 @@ function FolderEntryCard({
 
 function SearchResultRow({
   entry,
-  onOpenDetail,
+  onEntryClick,
   onMove,
   path,
 }: {
   entry: ScannedEntry
-  onOpenDetail: (entry: ScannedEntry) => void
+  onEntryClick: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   path: string
 }) {
@@ -319,7 +321,7 @@ function SearchResultRow({
       }`}
       onClick={() => {
         if (consumeLongPressClick()) return
-        onOpenDetail(entry)
+        onEntryClick(entry)
       }}
       onKeyDown={(event) => {
         if (event.ctrlKey && event.shiftKey && event.key === 'ArrowUp') {
@@ -511,6 +513,7 @@ export function FolderView({
   }
 
   const playNow = useMediaPlayerStore((s) => s.playNow)
+  const openPath = useOpenPath()
 
   // A video/audio file plays instead, regardless of whether it happens to
   // have a code - there's no useful DLsite detail for a media file, and
@@ -523,17 +526,25 @@ export function FolderView({
   // away via GameEntryContextMenu's own onOpenDetail item. Only non-folder
   // entries (files) open the detail overlay, and only when they're not a
   // media file (which plays instead).
-  const handleEntryClick = (entry: ScannedEntry): void => {
-    if (entry.kind === 'file' && isMediaFile(entry.name)) {
-      const siblings = shallowEntries
-        .filter((e) => e.kind === 'file' && isMediaFile(e.name))
+  const handleEntryClick = (
+    entry: ScannedEntry,
+    siblingEntries: ScannedEntry[] = shallowEntries
+  ): void => {
+    const capabilities = getExplorerEntryCapabilities(entry)
+    if (capabilities.canPlayMedia) {
+      const siblings = siblingEntries
+        .filter((e) => getExplorerEntryCapabilities(e).canPlayMedia)
         .map((e) => ({ path: e.path, name: e.name }))
       playNow({ path: entry.path, name: entry.name }, siblings)
       return
     }
+    if (capabilities.canDirectLaunchFile) {
+      openPath.mutate(entry.path)
+      return
+    }
     if (entry.kind === 'folder') {
       onNavigate(entry.path)
-    } else {
+    } else if (capabilities.canManageGameData) {
       openDetail(entry)
     }
   }
@@ -608,7 +619,7 @@ export function FolderView({
                   <SearchResultRow
                     key={entry.path}
                     entry={entry}
-                    onOpenDetail={openDetail}
+                    onEntryClick={(target) => handleEntryClick(target, sortedSearchResults)}
                     onMove={openMove}
                     path={path}
                   />

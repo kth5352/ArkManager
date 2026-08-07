@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { isArchiveFile } from './isArchiveFile'
 
 describe('isArchiveFile', () => {
-  it.each(['zip', '7z', 'rar', 'tar', 'gz', 'bz2', 'xz', 'lzh', 'cab', 'iso'])(
+  it.each(['zip', '7z', 'rar', 'egg', 'tar', 'gz', 'bz2', 'xz', 'lzh', 'cab', 'iso'])(
     'recognizes .%s as an archive',
     (ext) => {
       expect(isArchiveFile(`RJ01234567.${ext}`)).toBe(true)
