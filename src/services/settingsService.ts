@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { Locale, Theme } from '../../shared/types/ipc'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../lib/clampSidebarWidth'
+import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../lib/clampExplorerTreeWidth'
 import { DEFAULT_LOCALE } from '../i18n/translations'
 
 export const THEME_QUERY_KEY = ['settings', 'theme'] as const
@@ -141,6 +142,55 @@ export function useSetMediaFolderMutation() {
     mutationFn: (path: string) => window.api.settings.setMediaFolder(path),
     onSuccess: (_data, path) => {
       queryClient.setQueryData(MEDIA_FOLDER_QUERY_KEY, path)
+    },
+  })
+}
+
+export const EXPLORER_TREE_OPEN_QUERY_KEY = ['settings', 'explorer-tree-open'] as const
+
+// Defaults to open (true) when nothing is persisted yet - matches the
+// sidebar being a discoverable, expected-visible piece of Explorer's chrome
+// rather than an opt-in feature a first-time user would have no reason to
+// go looking for.
+export function useExplorerTreeOpenQuery() {
+  return useQuery({
+    queryKey: EXPLORER_TREE_OPEN_QUERY_KEY,
+    queryFn: async (): Promise<boolean> => {
+      const value = await window.api.settings.getExplorerTreeOpen()
+      return value ?? true
+    },
+  })
+}
+
+export function useSetExplorerTreeOpenMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (open: boolean) => window.api.settings.setExplorerTreeOpen(open),
+    onSuccess: (_data, open) => {
+      queryClient.setQueryData(EXPLORER_TREE_OPEN_QUERY_KEY, open)
+    },
+  })
+}
+
+export const EXPLORER_TREE_WIDTH_QUERY_KEY = ['settings', 'explorer-tree-width'] as const
+
+export function useExplorerTreeWidthQuery() {
+  return useQuery({
+    queryKey: EXPLORER_TREE_WIDTH_QUERY_KEY,
+    queryFn: async (): Promise<number> => {
+      const value = await window.api.settings.getExplorerTreeWidth()
+      return value === null ? EXPLORER_TREE_WIDTH_DEFAULT : clampExplorerTreeWidth(value)
+    },
+  })
+}
+
+export function useSetExplorerTreeWidthMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (width: number) =>
+      window.api.settings.setExplorerTreeWidth(clampExplorerTreeWidth(width)),
+    onSuccess: (_data, width) => {
+      queryClient.setQueryData(EXPLORER_TREE_WIDTH_QUERY_KEY, clampExplorerTreeWidth(width))
     },
   })
 }

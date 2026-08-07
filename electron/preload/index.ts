@@ -44,6 +44,24 @@ const api = {
         .then((value: string | null) => (value === null ? null : Number(value))),
     setSidebarWidth: (width: number): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'sidebar-width', value: String(width) }),
+    getExplorerTreeOpen: (): Promise<boolean | null> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'explorer-tree-open' })
+        .then((value: string | null) => (value === null ? null : value === 'true')),
+    setExplorerTreeOpen: (open: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'explorer-tree-open',
+        value: String(open),
+      }),
+    getExplorerTreeWidth: (): Promise<number | null> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'explorer-tree-width' })
+        .then((value: string | null) => (value === null ? null : Number(value))),
+    setExplorerTreeWidth: (width: number): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'explorer-tree-width',
+        value: String(width),
+      }),
     getLocaleEmulatorPath: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale-emulator-path' }),
     setLocaleEmulatorPath: (path: string): Promise<void> =>

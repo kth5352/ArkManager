@@ -104,6 +104,8 @@ export const SettingKeySchema = z.enum([
   'locale-emulator-path',
   'locale',
   'media-folder',
+  'explorer-tree-open',
+  'explorer-tree-width',
 ])
 
 export const GetSettingRequestSchema = z.object({

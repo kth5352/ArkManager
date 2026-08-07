@@ -40,12 +40,30 @@ function parseStoredSidebarWidth(raw: string | undefined): string | null {
   return Number.isFinite(Number(raw)) ? raw : null
 }
 
+// Same self-healing principle as parseStoredSidebarWidth, for the explorer
+// sidebar's persisted width.
+function parseStoredExplorerTreeWidth(raw: string | undefined): string | null {
+  if (raw === undefined) return null
+  return Number.isFinite(Number(raw)) ? raw : null
+}
+
+// Same self-healing principle as parseStoredTheme, for the explorer
+// sidebar's open/closed flag - a corrupted DB row falls back to null
+// (treated as "no persisted value") instead of an invalid string reaching
+// the renderer as if it were a valid boolean flag.
+function parseStoredExplorerTreeOpen(raw: string | undefined): string | null {
+  if (raw === undefined) return null
+  return raw === 'true' || raw === 'false' ? raw : null
+}
+
 export function registerSettingsHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
     const { key } = GetSettingRequestSchema.parse(payload)
     if (key === 'theme') return parseStoredTheme(getSetting(db, key))
     if (key === 'sidebar-width') return parseStoredSidebarWidth(getSetting(db, key))
     if (key === 'locale') return parseStoredLocale(getSetting(db, key))
+    if (key === 'explorer-tree-width') return parseStoredExplorerTreeWidth(getSetting(db, key))
+    if (key === 'explorer-tree-open') return parseStoredExplorerTreeOpen(getSetting(db, key))
     return getSetting(db, key) ?? null
   })
 
