@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   DndContext,
   DragOverlay,
@@ -92,7 +93,10 @@ export function ExplorerPage() {
       // outside a library. This check applies regardless of how the drop
       // target's own droppable/disabled state was computed, so it still
       // catches any future drop-target type that doesn't yet gate itself.
-      if (!findLibraryForPath(destDir, libraries ?? [])) return
+      if (!findLibraryForPath(destDir, libraries ?? [])) {
+        toast.error(t('explorer.dropOutsideLibrary'))
+        return
+      }
 
       const selectedPaths = useSelectionStore.getState().selectedPaths
       const draggedPaths = selectedPaths.has(activeData.entry.path)

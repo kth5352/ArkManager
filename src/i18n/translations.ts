@@ -204,6 +204,7 @@ const ko = {
   'fileOps.movedToast': '{count}개 항목 이동됨',
   'fileOps.moveFailedToast': '{count}개 항목 이동 실패',
   'fileOps.undo': '실행취소',
+  'explorer.dropOutsideLibrary': '라이브러리 밖으로는 이동할 수 없습니다.',
 
   'rename.bulkTitle': '이름 일괄 변경 ({count}개)',
   'rename.title': '이름 변경',
@@ -521,6 +522,7 @@ const ja: Record<keyof typeof ko, string> = {
   'fileOps.movedToast': '{count}件を移動しました',
   'fileOps.moveFailedToast': '{count}件の移動に失敗しました',
   'fileOps.undo': '元に戻す',
+  'explorer.dropOutsideLibrary': 'ライブラリの外には移動できません。',
 
   'rename.bulkTitle': '名前を一括変更（{count}件）',
   'rename.title': '名前変更',
@@ -836,6 +838,7 @@ const en: Record<keyof typeof ko, string> = {
   'fileOps.movedToast': '{count} items moved',
   'fileOps.moveFailedToast': 'Failed to move {count} items',
   'fileOps.undo': 'Undo',
+  'explorer.dropOutsideLibrary': 'Items can only be moved within a library.',
 
   'rename.bulkTitle': 'Bulk Rename ({count} items)',
   'rename.title': 'Rename',

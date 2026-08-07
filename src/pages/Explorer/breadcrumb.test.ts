@@ -29,4 +29,11 @@ describe('pathToBreadcrumbSegments', () => {
       { label: 'Sub', path: 'D:\\Games\\Sub' },
     ])
   })
+
+  it('builds UNC breadcrumb segments with server/share as the root', () => {
+    expect(pathToBreadcrumbSegments('\\\\server\\share\\Games')).toEqual([
+      { label: '\\\\server\\share', path: '\\\\server\\share\\' },
+      { label: 'Games', path: '\\\\server\\share\\Games' },
+    ])
+  })
 })
