@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Music2 } from 'lucide-react'
 import { useMediaPlayerSync } from '../../hooks/useMediaPlayerSync'
 import { useMediaPlayback } from '../../components/media/useMediaPlayback'
@@ -6,6 +6,8 @@ import { MediaTransportBar } from '../../components/media/MediaTransportBar'
 import { MediaPlaylistPanel } from '../../components/media/MediaPlaylistPanel'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { useTranslation } from '../../i18n/useTranslation'
+import { getActiveLyricLine, parseLrc } from '../../lib/lrc'
+import { useMediaLyrics } from '../../components/media/useMediaLyrics'
 
 // The entire content of the detached player window (see
 // electron/main/ipc/mediaWindowHandlers.ts, loaded at the #/player-window
@@ -25,6 +27,12 @@ export function PlayerWindowPage() {
   useMediaPlayerSync()
   const { mediaRef, playback } = useMediaPlayback({ isHost: true, reportTimeToMainProcess: true })
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
+  const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
+  const parsedLyrics = useMemo(
+    () => (lyricsQuery.data ? parseLrc(lyricsQuery.data.text) : null),
+    [lyricsQuery.data]
+  )
+  const [lyricsEnabled, setLyricsEnabled] = useState(false)
 
   if (!playback) {
     return (
@@ -35,6 +43,12 @@ export function PlayerWindowPage() {
   }
 
   const thumbFailed = thumbFailedPath === playback.track.path
+  const lyricText =
+    !lyricsEnabled || !parsedLyrics
+      ? null
+      : parsedLyrics.kind === 'static'
+        ? parsedLyrics.lines.join('\n')
+        : getActiveLyricLine(parsedLyrics, playback.currentTime)?.text ?? null
 
   return (
     <div className="flex h-screen flex-col bg-black">
@@ -66,7 +80,14 @@ export function PlayerWindowPage() {
         )}
       </div>
       <div className="flex flex-col gap-2 bg-black/80 p-3">
-        <MediaTransportBar playback={playback} dark />
+        {lyricText && <p className="text-center text-sm font-medium whitespace-pre-wrap text-white">{lyricText}</p>}
+        <MediaTransportBar
+          playback={playback}
+          dark
+          lyricsEnabled={lyricsEnabled}
+          hasLyrics={parsedLyrics !== null}
+          onToggleLyrics={() => setLyricsEnabled((enabled) => !enabled)}
+        />
         <MediaPlaylistPanel dark className="max-h-40" />
       </div>
     </div>

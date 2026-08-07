@@ -5,7 +5,7 @@ import { MediaTransportBar } from './MediaTransportBar'
 import { MediaPlaylistPanel } from './MediaPlaylistPanel'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
-import type { ParsedLyrics } from '../../lib/lrc'
+import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
 
 interface MediaPlayerBarProps {
@@ -34,6 +34,12 @@ export function MediaPlayerBar({
   const { t } = useTranslation()
   const [showPlaylist, setShowPlaylist] = useState(false)
   const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
+  const lyricText =
+    !lyricsEnabled || !parsedLyrics
+      ? null
+      : parsedLyrics.kind === 'static'
+        ? parsedLyrics.lines.join('\n')
+        : getActiveLyricLine(parsedLyrics, playback.currentTime)?.text ?? null
 
   return (
     <div className="relative flex items-center gap-3 border-t border-border bg-card px-3 py-2">
@@ -91,9 +97,9 @@ export function MediaPlayerBar({
           <MediaPlaylistPanel />
         </div>
       )}
-      {lyricsEnabled && parsedLyrics?.kind === 'static' && (
+      {lyricText && (
         <div className="absolute bottom-full left-3 right-3 z-40 mb-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover p-3 text-sm whitespace-pre-wrap shadow-md">
-          {parsedLyrics.lines.join('\n')}
+          {lyricText}
         </div>
       )}
     </div>
