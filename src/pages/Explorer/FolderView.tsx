@@ -41,6 +41,8 @@ interface FolderViewProps {
   viewMode: 'list' | 'grid'
   onNavigate: (path: string) => void
   onViewModeChange: (mode: 'list' | 'grid') => void
+  sidebarOpen: boolean
+  onSidebarOpenChange: (open: boolean) => void
 }
 
 // Every row gets exactly one icon now, where before only coded/media entries
@@ -397,7 +399,15 @@ function FolderEntryCell({
   )
 }
 
-export function FolderView({ tabId, path, viewMode, onNavigate, onViewModeChange }: FolderViewProps) {
+export function FolderView({
+  tabId,
+  path,
+  viewMode,
+  onNavigate,
+  onViewModeChange,
+  sidebarOpen,
+  onSidebarOpenChange,
+}: FolderViewProps) {
   const { t } = useTranslation()
   const addTab = useExplorerStore((s) => s.addTab)
   const breadcrumbs = pathToBreadcrumbSegments(path)
@@ -532,6 +542,8 @@ export function FolderView({ tabId, path, viewMode, onNavigate, onViewModeChange
           // already handles that, unchanged.
           zoom={viewMode === 'grid' ? zoom : undefined}
           onZoomChange={viewMode === 'grid' ? setZoom : undefined}
+          sidebarOpen={sidebarOpen}
+          onSidebarOpenChange={onSidebarOpenChange}
         />
         <SelectionToolbar allEntries={selectionTargets} />
       </div>

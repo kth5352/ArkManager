@@ -11,13 +11,16 @@ import {
 } from '@dnd-kit/core'
 import { TabBar } from './TabBar'
 import { FolderView } from './FolderView'
+import { ExplorerSidebar } from './ExplorerSidebar'
 import { useExplorerStore } from '../../stores/explorerStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useMoveEntries } from '../../services/fileOpsService'
 import { useLibraries } from '../../services/librariesService'
 import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { getParentPath } from '../../lib/groupMovesByOriginalParent'
+import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useExplorerTabsPersistence } from '../../hooks/useExplorerTabsPersistence'
+import { useExplorerTreeOpenQuery, useSetExplorerTreeOpenMutation } from '../../services/settingsService'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
 
@@ -33,10 +36,27 @@ export function ExplorerPage() {
   const navigateTab = useExplorerStore((s) => s.navigateTab)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
   const setViewMode = useExplorerStore((s) => s.setViewMode)
+  const addTab = useExplorerStore((s) => s.addTab)
   const moveEntries = useMoveEntries()
   const { data: libraries } = useLibraries()
+  const { data: sidebarOpenSetting } = useExplorerTreeOpenQuery()
+  const setSidebarOpenMutation = useSetExplorerTreeOpenMutation()
+  const sidebarOpen = sidebarOpenSetting ?? true
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
+
+  // Sidebar clicks navigate whichever tab is active - but if none is open
+  // yet (first run, or the last tab was just closed), there's nothing to
+  // navigate, so open a new one instead. Matches TabBar.tsx's own
+  // handleOpenFolder (native folder picker) exactly for how a new tab's
+  // label is derived.
+  const handleSidebarNavigate = (path: string): void => {
+    if (activeTab) {
+      navigateTab(activeTab.id, path)
+    } else {
+      addTab({ label: deriveNameFromPath(path), path })
+    }
+  }
 
   const handleDragStart = (event: DragStartEvent): void => {
     const data = event.active.data.current as ExplorerDragData | undefined
@@ -132,22 +152,27 @@ export function ExplorerPage() {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveDrag(null)}
     >
-      <div className="flex h-full flex-col">
-        <TabBar />
-        {activeTab ? (
-          <FolderView
-            key={activeTab.id}
-            tabId={activeTab.id}
-            path={activeTab.path}
-            viewMode={activeTab.viewMode}
-            onNavigate={(path) => navigateTab(activeTab.id, path)}
-            onViewModeChange={(mode) => setViewMode(activeTab.id, mode)}
-          />
-        ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            {t('explorer.noOpenTabs')}
-          </div>
-        )}
+      <div className="flex h-full">
+        {sidebarOpen && <ExplorerSidebar onNavigate={handleSidebarNavigate} />}
+        <div className="flex h-full min-w-0 flex-1 flex-col">
+          <TabBar />
+          {activeTab ? (
+            <FolderView
+              key={activeTab.id}
+              tabId={activeTab.id}
+              path={activeTab.path}
+              viewMode={activeTab.viewMode}
+              onNavigate={(path) => navigateTab(activeTab.id, path)}
+              onViewModeChange={(mode) => setViewMode(activeTab.id, mode)}
+              sidebarOpen={sidebarOpen}
+              onSidebarOpenChange={(open) => setSidebarOpenMutation.mutate(open)}
+            />
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              {t('explorer.noOpenTabs')}
+            </div>
+          )}
+        </div>
       </div>
       <DragOverlay>
         {activeDrag?.data.type === 'entry' && (

@@ -1,4 +1,4 @@
-import { ArrowDownAZ, ArrowUpAZ, LayoutGrid, List } from 'lucide-react'
+import { ArrowDownAZ, ArrowUpAZ, LayoutGrid, List, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Slider } from '../ui/slider'
@@ -13,6 +13,8 @@ interface PageToolbarProps {
   onZoomChange?: (zoom: number) => void
   viewMode?: 'list' | 'grid'
   onViewModeChange?: (mode: 'list' | 'grid') => void
+  sidebarOpen?: boolean
+  onSidebarOpenChange?: (open: boolean) => void
 }
 
 export function PageToolbar({
@@ -23,11 +25,27 @@ export function PageToolbar({
   onZoomChange,
   viewMode,
   onViewModeChange,
+  sidebarOpen,
+  onSidebarOpenChange,
 }: PageToolbarProps) {
   const { t } = useTranslation()
 
   return (
     <div className="flex flex-1 items-center gap-2">
+      {sidebarOpen !== undefined && onSidebarOpenChange && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t('pageToolbar.toggleSidebar')}
+          onClick={() => onSidebarOpenChange(!sidebarOpen)}
+        >
+          {sidebarOpen ? (
+            <PanelLeftClose className="h-4 w-4" />
+          ) : (
+            <PanelLeftOpen className="h-4 w-4" />
+          )}
+        </Button>
+      )}
       <Select
         value={sortField}
         onValueChange={(value) => onSortChange(value as SortField, sortDirection)}
