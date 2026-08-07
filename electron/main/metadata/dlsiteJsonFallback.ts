@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { GameCode } from '../../../shared/types/scanner'
 import type { CrawledGameMetadata } from './dlsiteParser'
+import { MetadataSourceError } from './metadataSourceError'
 
 const NETWORK_TIMEOUT_MS = 15_000
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0'
@@ -72,18 +73,43 @@ export async function crawlDlsiteJsonFallback(
   code: GameCode,
   fetchImpl: typeof fetch = fetch
 ): Promise<CrawledGameMetadata | null> {
+  let lastError: MetadataSourceError | null = null
   for (const url of dlsiteJsonUrls(code)) {
+    let response: Response
     try {
-      const response = await fetchImpl(url, {
+      response = await fetchImpl(url, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
         signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
       })
-      if (!response.ok) continue
-      const metadata = findProductMetadata(await response.json())
-      if (metadata) return metadata
     } catch {
-      // Each URL is an independent official fallback endpoint.
+      lastError = new MetadataSourceError('network', `DLsite JSON request failed: ${url}`)
+      continue
     }
+
+    if (response.status === 204 || response.status === 404 || response.status === 410) continue
+    if (!response.ok) {
+      const reason = response.status >= 400 && response.status < 500 ? 'blocked' : 'network'
+      lastError = new MetadataSourceError(
+        reason,
+        `DLsite JSON request returned HTTP ${response.status}: ${url}`
+      )
+      continue
+    }
+
+    let payload: unknown
+    try {
+      payload = await response.json()
+    } catch {
+      lastError = new MetadataSourceError('parse', `DLsite JSON response was malformed: ${url}`)
+      continue
+    }
+    const metadata = findProductMetadata(payload)
+    if (metadata) return metadata
+    lastError = new MetadataSourceError(
+      'parse',
+      `DLsite JSON response did not match the product schema: ${url}`
+    )
   }
+  if (lastError) throw lastError
   return null
 }

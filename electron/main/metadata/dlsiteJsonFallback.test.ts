@@ -53,4 +53,62 @@ describe('crawlDlsiteJsonFallback', () => {
     ).resolves.toMatchObject({ title: 'Fallback Title' })
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
+
+  it('returns null only when every endpoint reports not found', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }))
+
+    await expect(
+      crawlDlsiteJsonFallback(
+        { type: 'RJ', value: 'RJ01494021' },
+        fetchImpl as unknown as typeof fetch
+      )
+    ).resolves.toBeNull()
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports network when all endpoints fail to fetch', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'))
+
+    await expect(
+      crawlDlsiteJsonFallback(
+        { type: 'RJ', value: 'RJ01494021' },
+        fetchImpl as unknown as typeof fetch
+      )
+    ).rejects.toMatchObject({ name: 'MetadataSourceError', reason: 'network' })
+  })
+
+  it('reports blocked when the endpoints reject access', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 403 }))
+
+    await expect(
+      crawlDlsiteJsonFallback(
+        { type: 'RJ', value: 'RJ01494021' },
+        fetchImpl as unknown as typeof fetch
+      )
+    ).rejects.toMatchObject({ name: 'MetadataSourceError', reason: 'blocked' })
+  })
+
+  it('reports parse when an endpoint returns malformed JSON', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{', { status: 200 }))
+
+    await expect(
+      crawlDlsiteJsonFallback(
+        { type: 'RJ', value: 'RJ01494021' },
+        fetchImpl as unknown as typeof fetch
+      )
+    ).rejects.toMatchObject({ name: 'MetadataSourceError', reason: 'parse' })
+  })
+
+  it('reports parse when successful JSON does not match a product schema', async () => {
+    const fetchImpl = vi.fn(
+      async () => new Response(JSON.stringify({ unexpected: true }), { status: 200 })
+    )
+
+    await expect(
+      crawlDlsiteJsonFallback(
+        { type: 'RJ', value: 'RJ01494021' },
+        fetchImpl as unknown as typeof fetch
+      )
+    ).rejects.toMatchObject({ name: 'MetadataSourceError', reason: 'parse' })
+  })
 })

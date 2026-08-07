@@ -32,6 +32,8 @@ import type { AppDatabase } from '../database/client'
 import { clearMetadataFailure, saveMetadataFailure } from '../database/metadataFailuresRepository'
 import { getSetting } from '../database/settingsRepository'
 import { encodeThumbnail } from './scannerHandlers'
+import type { GameCode } from '../../../shared/types/scanner'
+import { metadataFailureReasonFromError } from '../metadata/metadataSourceError'
 
 const metadataSearchFns: Record<
   MetadataSearchSource,
@@ -53,6 +55,13 @@ function toDto(row: ReturnType<typeof getGameMetadata>): GameMetadataDto | null 
     genres: row.genres,
     coverImagePath: row.coverImagePath,
   }
+}
+
+function initialMetadataSource(code: GameCode): string {
+  if (code.type === 'ST') return 'steam'
+  if (code.type === 'VN' || code.type === 'VR') return 'vndb'
+  if (code.type === 'GC') return 'getchu'
+  return 'dlsite-html'
 }
 
 export function registerMetadataHandlers(db: AppDatabase): void {
@@ -84,15 +93,23 @@ export function registerMetadataHandlers(db: AppDatabase): void {
     const { code } = CrawlAndSaveMetadataRequestSchema.parse(payload)
 
     clearMetadataFailure(db, code.value)
-    const externalConfig = {
-      enabled: getSetting(db, 'external-metadata-provider-enabled') === 'true',
-      endpointUrl: getSetting(db, 'external-metadata-provider-url') ?? '',
-      apiKey: getSetting(db, 'external-metadata-provider-api-key'),
+    let result
+    try {
+      const externalConfig = {
+        enabled: getSetting(db, 'external-metadata-provider-enabled') === 'true',
+        endpointUrl: getSetting(db, 'external-metadata-provider-url') ?? '',
+        apiKey: getSetting(db, 'external-metadata-provider-api-key'),
+      }
+      result = await crawlGameMetadataWithTrace(code, createCrawlGameMetadataDeps(externalConfig))
+    } catch (error) {
+      saveMetadataFailure(
+        db,
+        code.value,
+        [initialMetadataSource(code)],
+        metadataFailureReasonFromError(error, 'network')
+      )
+      return null
     }
-    const result = await crawlGameMetadataWithTrace(
-      code,
-      createCrawlGameMetadataDeps(externalConfig)
-    )
     const crawled = result.metadata
     if (!crawled) {
       saveMetadataFailure(db, code.value, result.attemptedSources, result.reason ?? 'blocked')

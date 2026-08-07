@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   crawlGameMetadata,
   crawlGameMetadataWithTrace,
   type CrawlGameMetadataDeps,
 } from './crawlGameMetadata'
+import { MetadataSourceError } from './metadataSourceError'
 
 function createDeps(overrides: Partial<CrawlGameMetadataDeps> = {}): CrawlGameMetadataDeps {
   return {
@@ -13,6 +14,10 @@ function createDeps(overrides: Partial<CrawlGameMetadataDeps> = {}): CrawlGameMe
     ...overrides,
   }
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('crawlGameMetadata', () => {
   it('tries html then json then enabled external provider for DLsite codes', async () => {
@@ -71,6 +76,21 @@ describe('crawlGameMetadata', () => {
 })
 
 describe('crawlGameMetadataWithTrace', () => {
+  it.each([
+    [{ type: 'ST' as const, value: 'ST123' }, 'steam'],
+    [{ type: 'VN' as const, value: 'VN17' }, 'vndb'],
+    [{ type: 'VR' as const, value: 'VR45775' }, 'vndb'],
+    [{ type: 'GC' as const, value: 'GC123' }, 'getchu'],
+  ])('traces a network failure from %s without rejecting', async (code, source) => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')))
+
+    await expect(crawlGameMetadataWithTrace(code)).resolves.toEqual({
+      metadata: null,
+      attemptedSources: [source],
+      reason: 'network',
+    })
+  })
+
   it('returns exact attempted sources and a blocked reason when all fallbacks return null', async () => {
     await expect(
       crawlGameMetadataWithTrace({ type: 'RJ', value: 'RJ01494021' }, createDeps())
@@ -95,6 +115,27 @@ describe('crawlGameMetadataWithTrace', () => {
       metadata: null,
       attemptedSources: ['dlsite-html', 'dlsite-json', 'external'],
       reason: 'network',
+    })
+  })
+
+  it.each([
+    ['parse' as const, 'parse'],
+    ['blocked' as const, 'blocked'],
+  ])('preserves a typed DLsite JSON %s failure in the trace', async (reason, expected) => {
+    await expect(
+      crawlGameMetadataWithTrace(
+        { type: 'RJ', value: 'RJ01494021' },
+        createDeps({
+          crawlDlsiteJson: async () => {
+            throw new MetadataSourceError(reason, 'typed failure')
+          },
+          shouldCrawlExternal: () => false,
+        })
+      )
+    ).resolves.toEqual({
+      metadata: null,
+      attemptedSources: ['dlsite-html', 'dlsite-json'],
+      reason: expected,
     })
   })
 

@@ -9,6 +9,10 @@ import {
 } from './externalMetadataProvider'
 import type { GameCode } from '../../../shared/types/scanner'
 import type { MetadataFailureReason } from '../database/metadataFailuresRepository'
+import {
+  metadataFailureReasonFromError,
+  type MetadataSourceFailureReason,
+} from './metadataSourceError'
 
 export type { CrawledGameMetadata }
 
@@ -122,11 +126,19 @@ async function crawlSingleSource(
   source: string,
   crawl: () => Promise<CrawledGameMetadata | null>
 ): Promise<CrawlTraceResult> {
-  const metadata = await crawl()
-  return {
-    metadata,
-    attemptedSources: [source],
-    reason: metadata ? null : 'not_found',
+  try {
+    const metadata = await crawl()
+    return {
+      metadata,
+      attemptedSources: [source],
+      reason: metadata ? null : 'not_found',
+    }
+  } catch (error) {
+    return {
+      metadata: null,
+      attemptedSources: [source],
+      reason: metadataFailureReasonFromError(error, 'network'),
+    }
   }
 }
 
@@ -145,7 +157,7 @@ export async function crawlGameMetadataWithTrace(
   const sources: {
     name: string
     crawl: (code: GameCode) => Promise<CrawledGameMetadata | null>
-    failureReason: MetadataFailureReason
+    failureReason: MetadataSourceFailureReason
   }[] = [
     { name: 'dlsite-html', crawl: deps.crawlDlsiteHtml, failureReason: 'network' },
     { name: 'dlsite-json', crawl: deps.crawlDlsiteJson, failureReason: 'network' },
@@ -163,8 +175,8 @@ export async function crawlGameMetadataWithTrace(
     try {
       const metadata = await source.crawl(code)
       if (metadata) return { metadata, attemptedSources, reason: null }
-    } catch {
-      reason = source.failureReason
+    } catch (error) {
+      reason = metadataFailureReasonFromError(error, source.failureReason)
     }
   }
 
