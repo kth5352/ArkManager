@@ -19,6 +19,7 @@ import {
   clearIsMediaPlaying,
 } from './ipc/mediaWindowHandlers'
 import { registerMediaThumbnailHandlers } from './ipc/mediaThumbnailHandlers'
+import { registerMediaLyricsHandlers } from './ipc/mediaLyricsHandlers'
 import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
@@ -297,6 +298,7 @@ if (!gotSingleInstanceLock) {
     registerMediaThumbnailProtocolHandler(db)
     closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
     registerMediaThumbnailHandlers(db)
+    registerMediaLyricsHandlers(db)
     registerExcludedEntriesHandlers(db)
     registerUpdateHandlers(() => mainWindow)
 

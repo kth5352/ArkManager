@@ -339,6 +339,10 @@ const api = {
     reportTime: (seconds: number): void =>
       ipcRenderer.send(IPC_CHANNELS.MEDIA_REPORT_TIME, seconds),
   },
+  mediaLyrics: {
+    get: (filePath: string): Promise<{ path: string; text: string } | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_GET_LYRICS, { filePath }),
+  },
   mediaThumbnail: {
     pickFile: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE),

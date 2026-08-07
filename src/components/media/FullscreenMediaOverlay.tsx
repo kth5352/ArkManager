@@ -6,6 +6,7 @@ import { MediaPlaylistPanel } from './MediaPlaylistPanel'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
+import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
 
 interface FullscreenMediaOverlayProps {
@@ -14,6 +15,9 @@ interface FullscreenMediaOverlayProps {
   visible: boolean
   onMinimize?: () => void
   onDetach?: () => void
+  lyricsEnabled?: boolean
+  parsedLyrics?: ParsedLyrics | null
+  onToggleLyrics?: () => void
 }
 
 // Always mounted whenever this window is hosting playback and isn't
@@ -32,6 +36,9 @@ export function FullscreenMediaOverlay({
   visible,
   onMinimize,
   onDetach,
+  lyricsEnabled = false,
+  parsedLyrics = null,
+  onToggleLyrics,
 }: FullscreenMediaOverlayProps) {
   const { t } = useTranslation()
   const [showPlaylist, setShowPlaylist] = useState(false)
@@ -67,9 +74,25 @@ export function FullscreenMediaOverlay({
             )}
           </>
         )}
+        {lyricsEnabled && parsedLyrics?.kind === 'synced' && (
+          <div className="pointer-events-none absolute bottom-6 left-6 right-6 text-center text-lg font-medium text-white">
+            {getActiveLyricLine(parsedLyrics, playback.currentTime)?.text}
+          </div>
+        )}
+        {lyricsEnabled && parsedLyrics?.kind === 'static' && (
+          <div className="pointer-events-none absolute bottom-6 left-6 right-6 max-h-48 overflow-y-auto text-center text-lg font-medium whitespace-pre-wrap text-white">
+            {parsedLyrics.lines.join('\n')}
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-2 bg-black/80 p-3">
-        <MediaTransportBar playback={playback} dark />
+        <MediaTransportBar
+          playback={playback}
+          dark
+          lyricsEnabled={lyricsEnabled}
+          hasLyrics={parsedLyrics !== null}
+          onToggleLyrics={onToggleLyrics}
+        />
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={() => setShowPlaylist((v) => !v)}

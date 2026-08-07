@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaPlayback } from './useMediaPlayback'
 import { MediaPlayerBar } from './MediaPlayerBar'
 import { FullscreenMediaOverlay } from './FullscreenMediaOverlay'
+import { parseLrc } from '../../lib/lrc'
+import { useMediaLyrics } from './useMediaLyrics'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -17,6 +19,12 @@ export function MediaPlayerHost() {
   const isDetached = useMediaPlayerStore((s) => s.isDetached)
   const setDetached = useMediaPlayerStore((s) => s.setDetached)
   const { mediaRef, playback } = useMediaPlayback({ isHost: !isDetached })
+  const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
+  const parsedLyrics = useMemo(
+    () => (lyricsQuery.data ? parseLrc(lyricsQuery.data.text) : null),
+    [lyricsQuery.data]
+  )
+  const [lyricsEnabled, setLyricsEnabled] = useState(false)
 
   // Starts minimized (false), not expanded - the auto-expand effect below
   // flips this true the first time a VIDEO track becomes current, but
@@ -101,6 +109,9 @@ export function MediaPlayerHost() {
           visible={mediaExpanded}
           onMinimize={() => setMediaExpanded(false)}
           onDetach={handleDetach}
+          lyricsEnabled={lyricsEnabled}
+          parsedLyrics={parsedLyrics}
+          onToggleLyrics={() => setLyricsEnabled((enabled) => !enabled)}
         />
       )}
       {(isDetached || !mediaExpanded) && (
@@ -108,6 +119,9 @@ export function MediaPlayerHost() {
           playback={playback}
           isDetached={isDetached}
           onExpandVideo={() => setMediaExpanded(true)}
+          lyricsEnabled={lyricsEnabled}
+          parsedLyrics={parsedLyrics}
+          onToggleLyrics={() => setLyricsEnabled((enabled) => !enabled)}
         />
       )}
     </>

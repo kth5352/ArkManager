@@ -73,6 +73,7 @@ export const IPC_CHANNELS = {
   MEDIA_STATE_BROADCAST: 'media:state-broadcast',
   MEDIA_STATE_SYNC: 'media:state-sync',
   MEDIA_REPORT_TIME: 'media:report-time',
+  MEDIA_GET_LYRICS: 'media:get-lyrics',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',
@@ -538,6 +539,11 @@ export const MediaSyncStateSchema = z.object({
 export type MediaSyncState = z.infer<typeof MediaSyncStateSchema>
 
 export const MediaReportTimeRequestSchema = z.number()
+
+export const MediaGetLyricsRequestSchema = z.object({
+  filePath: z.string(),
+})
+export type MediaGetLyricsRequest = z.infer<typeof MediaGetLyricsRequestSchema>
 
 export const SetMediaThumbnailFromFileRequestSchema = z.object({
   filePath: z.string(),

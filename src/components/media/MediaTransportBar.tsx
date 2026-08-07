@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Pause,
+  Captions,
   Play,
   Repeat,
   Repeat1,
@@ -25,6 +26,9 @@ function formatTime(seconds: number): string {
 interface MediaTransportBarProps {
   playback: MediaPlaybackState
   dark?: boolean
+  lyricsEnabled?: boolean
+  hasLyrics?: boolean
+  onToggleLyrics?: () => void
 }
 
 // Prev/play-pause/next/seek/volume row - shared by the docked bar, the
@@ -34,7 +38,13 @@ interface MediaTransportBarProps {
 // (fine to drive directly) or a remote control for whichever OTHER window
 // is hosting (also fine - that's the whole point of keeping these in the
 // shared cross-window control plane, see mediaPlayerStore.ts).
-export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
+export function MediaTransportBar({
+  playback,
+  dark,
+  lyricsEnabled = false,
+  hasLyrics = false,
+  onToggleLyrics,
+}: MediaTransportBarProps) {
   const { t } = useTranslation()
   const playlist = useMediaPlayerStore((s) => s.playlist)
   const togglePlay = useMediaPlayerStore((s) => s.togglePlay)
@@ -109,6 +119,20 @@ export function MediaTransportBar({ playback, dark }: MediaTransportBarProps) {
       >
         <Shuffle className="h-4 w-4" />
       </button>
+      {onToggleLyrics && (
+        <button
+          onClick={onToggleLyrics}
+          disabled={!hasLyrics}
+          aria-label={t('media.toggleLyrics')}
+          aria-pressed={lyricsEnabled}
+          className={cn(
+            'shrink-0 disabled:opacity-40',
+            lyricsEnabled && hasLyrics ? (dark ? 'text-white' : 'text-primary') : mutedText
+          )}
+        >
+          <Captions className="h-4 w-4" />
+        </button>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className={`truncate text-xs ${dark ? 'text-white' : ''}`}>

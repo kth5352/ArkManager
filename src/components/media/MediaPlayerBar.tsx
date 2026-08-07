@@ -5,12 +5,16 @@ import { MediaTransportBar } from './MediaTransportBar'
 import { MediaPlaylistPanel } from './MediaPlaylistPanel'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
+import type { ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
 
 interface MediaPlayerBarProps {
   playback: MediaPlaybackState
   isDetached: boolean
   onExpandVideo?: () => void
+  lyricsEnabled?: boolean
+  parsedLyrics?: ParsedLyrics | null
+  onToggleLyrics?: () => void
 }
 
 // The slim, always-docked bar - used whenever the current track (video or
@@ -19,7 +23,14 @@ interface MediaPlayerBarProps {
 // FullscreenMediaOverlay, which stays mounted (just CSS-hidden) whenever
 // this window isn't detached, for both video and audio, so minimizing back
 // to this bar doesn't tear down and rebuffer anything.
-export function MediaPlayerBar({ playback, isDetached, onExpandVideo }: MediaPlayerBarProps) {
+export function MediaPlayerBar({
+  playback,
+  isDetached,
+  onExpandVideo,
+  lyricsEnabled = false,
+  parsedLyrics = null,
+  onToggleLyrics,
+}: MediaPlayerBarProps) {
   const { t } = useTranslation()
   const [showPlaylist, setShowPlaylist] = useState(false)
   const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
@@ -32,7 +43,12 @@ export function MediaPlayerBar({ playback, isDetached, onExpandVideo }: MediaPla
         </span>
       )}
 
-      <MediaTransportBar playback={playback} />
+      <MediaTransportBar
+        playback={playback}
+        lyricsEnabled={lyricsEnabled}
+        hasLyrics={parsedLyrics !== null}
+        onToggleLyrics={onToggleLyrics}
+      />
 
       <button
         onClick={() => setShowPlaylist((v) => !v)}
@@ -73,6 +89,11 @@ export function MediaPlayerBar({ playback, isDetached, onExpandVideo }: MediaPla
       {showPlaylist && (
         <div className="absolute bottom-full right-3 z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-md">
           <MediaPlaylistPanel />
+        </div>
+      )}
+      {lyricsEnabled && parsedLyrics?.kind === 'static' && (
+        <div className="absolute bottom-full left-3 right-3 z-40 mb-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover p-3 text-sm whitespace-pre-wrap shadow-md">
+          {parsedLyrics.lines.join('\n')}
         </div>
       )}
     </div>
