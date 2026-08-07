@@ -18,7 +18,9 @@ export const explorerTabs = sqliteTable('explorer_tabs', {
   path: text('path').notNull(),
   position: integer('position').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull(),
-  viewMode: text('view_mode', { enum: ['list', 'grid'] }).notNull().default('list'),
+  viewMode: text('view_mode', { enum: ['list', 'grid'] })
+    .notNull()
+    .default('list'),
 })
 
 export const sortPreferences = sqliteTable('sort_preferences', {
@@ -35,6 +37,13 @@ export const gameMetadata = sqliteTable('game_metadata', {
   genres: text('genres'), // JSON 배열 문자열로 저장
   coverImagePath: text('cover_image_path'), // Task 3에서 채움, 지금은 항상 null
   createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const metadataFailures = sqliteTable('metadata_failures', {
+  code: text('code').primaryKey(),
+  attemptedSources: text('attempted_sources').notNull(),
+  reason: text('reason').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
 

@@ -2,7 +2,13 @@ import { parseDlsiteWorkPage, type CrawledGameMetadata } from './dlsiteParser'
 import { parseSteamStorePage } from './steamParser'
 import { crawlVndb } from './vndbClient'
 import { parseGetchuWorkPage } from './getchuParser'
+import { crawlDlsiteJsonFallback } from './dlsiteJsonFallback'
+import {
+  crawlExternalMetadataProvider,
+  type ExternalMetadataProviderConfig,
+} from './externalMetadataProvider'
 import type { GameCode } from '../../../shared/types/scanner'
+import type { MetadataFailureReason } from '../database/metadataFailuresRepository'
 
 export type { CrawledGameMetadata }
 
@@ -32,7 +38,7 @@ function dlsiteWorkPageUrl(code: GameCode): string {
 const STEAM_AGE_CHECK_COOKIE =
   'birthtime=283996801; lastagecheckage=1-0-1979; wants_mature_content=1'
 
-async function crawlDlsite(code: GameCode): Promise<CrawledGameMetadata | null> {
+export async function crawlDlsiteHtml(code: GameCode): Promise<CrawledGameMetadata | null> {
   const response = await fetch(dlsiteWorkPageUrl(code), {
     headers: { 'User-Agent': USER_AGENT },
     signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
@@ -81,9 +87,93 @@ async function crawlGetchu(code: GameCode): Promise<CrawledGameMetadata | null> 
   return parseGetchuWorkPage(html)
 }
 
-export async function crawlGameMetadata(code: GameCode): Promise<CrawledGameMetadata | null> {
-  if (code.type === 'ST') return crawlSteam(code)
-  if (code.type === 'VN' || code.type === 'VR') return crawlVndb(code)
-  if (code.type === 'GC') return crawlGetchu(code)
-  return crawlDlsite(code)
+export interface CrawlGameMetadataDeps {
+  crawlDlsiteHtml: (code: GameCode) => Promise<CrawledGameMetadata | null>
+  crawlDlsiteJson: (code: GameCode) => Promise<CrawledGameMetadata | null>
+  crawlExternal: (code: GameCode) => Promise<CrawledGameMetadata | null>
+  shouldCrawlExternal?: () => boolean
+}
+
+export interface CrawlTraceResult {
+  metadata: CrawledGameMetadata | null
+  attemptedSources: string[]
+  reason: MetadataFailureReason | null
+}
+
+const DISABLED_EXTERNAL_PROVIDER: ExternalMetadataProviderConfig = {
+  enabled: false,
+  endpointUrl: '',
+}
+
+export function createCrawlGameMetadataDeps(
+  externalConfig: ExternalMetadataProviderConfig = DISABLED_EXTERNAL_PROVIDER
+): CrawlGameMetadataDeps {
+  return {
+    crawlDlsiteHtml,
+    crawlDlsiteJson: crawlDlsiteJsonFallback,
+    crawlExternal: (code) => crawlExternalMetadataProvider(code, externalConfig),
+    shouldCrawlExternal: () => externalConfig.enabled && externalConfig.endpointUrl.trim() !== '',
+  }
+}
+
+const defaultDeps = createCrawlGameMetadataDeps()
+
+async function crawlSingleSource(
+  source: string,
+  crawl: () => Promise<CrawledGameMetadata | null>
+): Promise<CrawlTraceResult> {
+  const metadata = await crawl()
+  return {
+    metadata,
+    attemptedSources: [source],
+    reason: metadata ? null : 'not_found',
+  }
+}
+
+export async function crawlGameMetadataWithTrace(
+  code: GameCode,
+  deps: CrawlGameMetadataDeps = defaultDeps
+): Promise<CrawlTraceResult> {
+  if (code.type === 'ST') return crawlSingleSource('steam', () => crawlSteam(code))
+  if (code.type === 'VN' || code.type === 'VR') {
+    return crawlSingleSource('vndb', () => crawlVndb(code))
+  }
+  if (code.type === 'GC') return crawlSingleSource('getchu', () => crawlGetchu(code))
+
+  const attemptedSources: string[] = []
+  let reason: MetadataFailureReason = 'blocked'
+  const sources: {
+    name: string
+    crawl: (code: GameCode) => Promise<CrawledGameMetadata | null>
+    failureReason: MetadataFailureReason
+  }[] = [
+    { name: 'dlsite-html', crawl: deps.crawlDlsiteHtml, failureReason: 'network' },
+    { name: 'dlsite-json', crawl: deps.crawlDlsiteJson, failureReason: 'network' },
+  ]
+  if (deps.shouldCrawlExternal?.() ?? true) {
+    sources.push({
+      name: 'external',
+      crawl: deps.crawlExternal,
+      failureReason: 'provider_error',
+    })
+  }
+
+  for (const source of sources) {
+    attemptedSources.push(source.name)
+    try {
+      const metadata = await source.crawl(code)
+      if (metadata) return { metadata, attemptedSources, reason: null }
+    } catch {
+      reason = source.failureReason
+    }
+  }
+
+  return { metadata: null, attemptedSources, reason }
+}
+
+export async function crawlGameMetadata(
+  code: GameCode,
+  deps: CrawlGameMetadataDeps = defaultDeps
+): Promise<CrawledGameMetadata | null> {
+  return (await crawlGameMetadataWithTrace(code, deps)).metadata
 }

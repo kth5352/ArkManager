@@ -12,7 +12,10 @@ import {
   type MetadataSearchSource,
   type MetadataSearchResultDto,
 } from '../../../shared/types/ipc'
-import { crawlGameMetadata } from '../metadata/crawlGameMetadata'
+import {
+  crawlGameMetadataWithTrace,
+  createCrawlGameMetadataDeps,
+} from '../metadata/crawlGameMetadata'
 import { crawlDlsiteSearch } from '../metadata/crawlDlsiteSearch'
 import { searchVndb } from '../metadata/vndbClient'
 import { crawlSteamSearch } from '../metadata/steamSearchClient'
@@ -26,6 +29,8 @@ import {
   getManyGameMetadata,
 } from '../database/gameMetadataRepository'
 import type { AppDatabase } from '../database/client'
+import { clearMetadataFailure, saveMetadataFailure } from '../database/metadataFailuresRepository'
+import { getSetting } from '../database/settingsRepository'
 import { encodeThumbnail } from './scannerHandlers'
 
 const metadataSearchFns: Record<
@@ -78,10 +83,24 @@ export function registerMetadataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.METADATA_CRAWL_AND_SAVE, async (_event, payload: unknown) => {
     const { code } = CrawlAndSaveMetadataRequestSchema.parse(payload)
 
-    const crawled = await crawlGameMetadata(code)
-    if (!crawled) return null
+    clearMetadataFailure(db, code.value)
+    const externalConfig = {
+      enabled: getSetting(db, 'external-metadata-provider-enabled') === 'true',
+      endpointUrl: getSetting(db, 'external-metadata-provider-url') ?? '',
+      apiKey: getSetting(db, 'external-metadata-provider-api-key'),
+    }
+    const result = await crawlGameMetadataWithTrace(
+      code,
+      createCrawlGameMetadataDeps(externalConfig)
+    )
+    const crawled = result.metadata
+    if (!crawled) {
+      saveMetadataFailure(db, code.value, result.attemptedSources, result.reason ?? 'blocked')
+      return null
+    }
 
     saveGameMetadata(db, code.value, crawled)
+    clearMetadataFailure(db, code.value)
 
     if (crawled.coverImageUrl) {
       const cacheDir = join(app.getPath('userData'), 'cache', 'covers')
