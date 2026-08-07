@@ -1,4 +1,11 @@
-import { app, BrowserWindow, dialog, Menu, type MenuItemConstructorOptions } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  Menu,
+  Tray,
+  type MenuItemConstructorOptions,
+} from 'electron'
 import { IPC_CHANNELS } from '../../shared/types/ipc'
 import { join } from 'node:path'
 import { createDbClient } from './database/client'
@@ -49,12 +56,18 @@ if (!gotSingleInstanceLock) {
 } else {
   let mainWindow: BrowserWindow | null = null
   let closePlayerWindow: (() => void) | null = null
+  let tray: Tray | null = null
+  let isQuitting = false
 
-  app.on('second-instance', () => {
+  function showMainWindow(): void {
+    if (!mainWindow) createWindow()
     if (!mainWindow) return
     if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
     mainWindow.focus()
-  })
+  }
+
+  app.on('second-instance', showMainWindow)
 
   // Must happen before app.whenReady() - Electron requires privileged scheme
   // registration at module load time.
@@ -75,6 +88,26 @@ if (!gotSingleInstanceLock) {
     return app.isPackaged
       ? join(process.resourcesPath, 'LOGO.png')
       : join(__dirname, '../../LOGO.png')
+  }
+
+  function createTray(): void {
+    if (tray) return
+    tray = new Tray(resolveLogoPath())
+    tray.setToolTip('Ark Manager')
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'Open', click: showMainWindow },
+        {
+          label: 'Exit',
+          click: () => {
+            isQuitting = true
+            closePlayerWindow?.()
+            app.quit()
+          },
+        },
+      ])
+    )
+    tray.on('double-click', showMainWindow)
   }
 
   // Shows a confirm dialog before Reload/Force Reload if media is currently
@@ -253,13 +286,13 @@ if (!gotSingleInstanceLock) {
     }
 
     mainWindow = win
+    win.on('close', (event) => {
+      if (isQuitting) return
+      event.preventDefault()
+      win.hide()
+    })
     win.on('closed', () => {
       if (mainWindow === win) mainWindow = null
-      // Closing the main window with a detached player still open would
-      // otherwise strand it as the only window left, with no way back to
-      // the actual app (no tray icon, no way to reopen the main window on
-      // Windows) - closing the app closes everything.
-      closePlayerWindow?.()
     })
   }
 
@@ -316,6 +349,7 @@ if (!gotSingleInstanceLock) {
 
     buildApplicationMenu()
     createWindow()
+    createTray()
 
     // Delayed so it never competes with the window's own initial load for
     // network/CPU - a background check the user never asked for shouldn't
@@ -328,6 +362,6 @@ if (!gotSingleInstanceLock) {
   })
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    if (isQuitting || process.platform === 'darwin') return
   })
 }
