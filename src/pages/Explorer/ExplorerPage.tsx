@@ -154,7 +154,11 @@ export function ExplorerPage() {
     >
       <div className="flex h-full">
         {sidebarOpen && (
-          <ExplorerSidebar onNavigate={handleSidebarNavigate} activePath={activeTab?.path} />
+          <ExplorerSidebar
+            onNavigate={handleSidebarNavigate}
+            onClose={() => setSidebarOpenMutation.mutate(false)}
+            activePath={activeTab?.path}
+          />
         )}
         <div className="flex h-full min-w-0 flex-1 flex-col">
           <TabBar />

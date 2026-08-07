@@ -1,5 +1,5 @@
 import { useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import { useLibraries } from '../../services/librariesService'
 import { useFolderScan } from '../../services/scannerService'
@@ -14,6 +14,7 @@ import type { ExplorerDropData } from './dragTypes'
 
 interface ExplorerSidebarProps {
   onNavigate: (path: string) => void
+  onClose: () => void
   activePath?: string
 }
 
@@ -119,7 +120,7 @@ function TreeNode({
   )
 }
 
-export function ExplorerSidebar({ onNavigate, activePath }: ExplorerSidebarProps) {
+export function ExplorerSidebar({ onNavigate, onClose, activePath }: ExplorerSidebarProps) {
   const { t } = useTranslation()
   const { data: libraries = [] } = useLibraries()
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
@@ -224,6 +225,17 @@ export function ExplorerSidebar({ onNavigate, activePath }: ExplorerSidebarProps
         onPointerDown={handleResizePointerDown}
         className="absolute right-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-primary/40"
       />
+      <div className="flex items-center justify-end border-b border-border p-1">
+        <button
+          type="button"
+          aria-label={t('explorer.closeSidebar')}
+          title={t('explorer.closeSidebar')}
+          onClick={onClose}
+          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <div className="flex flex-col gap-0.5 p-2">
         {rootPath === null ? (
           <p className="px-1 py-2 text-xs text-muted-foreground">{t('explorer.sidebarEmpty')}</p>
