@@ -24,6 +24,10 @@ describe('buildExternalUrl', () => {
     expect(buildExternalUrl({ type: 'VN', value: 'VN17' })).toBe('https://vndb.org/v17')
   })
 
+  it('builds a VNDB release URL for VR codes', () => {
+    expect(buildExternalUrl({ type: 'VR', value: 'VR45775' })).toBe('https://vndb.org/r45775')
+  })
+
   it('builds a getchu.com URL for a GC code, stripping the GC prefix', () => {
     expect(buildExternalUrl({ type: 'GC', value: 'GC1370494' })).toBe(
       'https://www.getchu.com/soft.phtml?id=1370494'

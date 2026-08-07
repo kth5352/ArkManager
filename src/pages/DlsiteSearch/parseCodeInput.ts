@@ -1,6 +1,7 @@
 import type { GameCode, GameCodeType } from '../../../shared/types/scanner'
 
-const CODE_PATTERN = /^(RJ|VJ|ST|VN|GC)(\d+)$/i
+const CODE_PATTERN = /^(RJ|VJ|ST|VN|VR|GC)(\d+)$/i
+const VNDB_SHORT_PATTERN = /^([vr])(\d+)$/i
 
 // 입력이 RJ/VJ/ST/VN/GC 코드 형식이면 GameCode로, 아니면 null(자유 텍스트 제목
 // 검색으로 취급)을 반환한다. electron/main/scanner/codeRecognition.ts의
@@ -8,6 +9,11 @@ const CODE_PATTERN = /^(RJ|VJ|ST|VN|GC)(\d+)$/i
 // 입력 "전체가" 코드인지 판별하므로 앵커(^...$)가 다르다 - 별도 구현.
 export function parseCodeInput(input: string): GameCode | null {
   const trimmed = input.trim()
+  const short = VNDB_SHORT_PATTERN.exec(trimmed)
+  if (short) {
+    const type = short[1].toLowerCase() === 'v' ? 'VN' : 'VR'
+    return { type, value: `${type}${short[2]}` }
+  }
   const match = CODE_PATTERN.exec(trimmed)
   if (!match) return null
   const type = match[1].toUpperCase() as GameCodeType

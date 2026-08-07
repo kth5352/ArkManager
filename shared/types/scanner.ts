@@ -1,4 +1,4 @@
-export type GameCodeType = 'RJ' | 'VJ' | 'ST' | 'VN' | 'GC'
+export type GameCodeType = 'RJ' | 'VJ' | 'ST' | 'VN' | 'VR' | 'GC'
 
 export interface GameCode {
   type: GameCodeType

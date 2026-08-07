@@ -11,6 +11,10 @@ export function buildExternalUrl(code: GameCode): string {
     const numericId = code.value.slice(2)
     return `https://vndb.org/v${numericId}`
   }
+  if (code.type === 'VR') {
+    const numericId = code.value.slice(2)
+    return `https://vndb.org/r${numericId}`
+  }
   if (code.type === 'GC') {
     const numericId = code.value.slice(2)
     return `https://www.getchu.com/soft.phtml?id=${numericId}`

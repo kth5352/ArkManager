@@ -18,6 +18,14 @@ describe('extractCode', () => {
     expect(extractCode('VN17 - Steins;Gate')).toEqual({ type: 'VN', value: 'VN17' })
   })
 
+  it('extracts a VNDB visual novel id from a filename', () => {
+    expect(extractCode('[v45775] Game')).toEqual({ type: 'VN', value: 'VN45775' })
+  })
+
+  it('extracts a VNDB release id from a filename without mapping it to VN', () => {
+    expect(extractCode('[r45775] Game')).toEqual({ type: 'VR', value: 'VR45775' })
+  })
+
   it('recognizes a GC (getchu) code', () => {
     expect(extractCode('GC1370494 - 何らかの作品')).toEqual({ type: 'GC', value: 'GC1370494' })
   })

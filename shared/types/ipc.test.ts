@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   GetSettingRequestSchema,
+  GameCodeSchema,
   RestoreSaveSnapshotRequestSchema,
   SaveDiffRequestSchema,
   SetSettingRequestSchema,
@@ -15,6 +16,15 @@ describe('ThemeSchema', () => {
 
   it('rejects anything else', () => {
     expect(() => ThemeSchema.parse('blue')).toThrow()
+  })
+})
+
+describe('GameCodeSchema', () => {
+  it('accepts VNDB release codes', () => {
+    expect(GameCodeSchema.parse({ type: 'VR', value: 'VR45775' })).toEqual({
+      type: 'VR',
+      value: 'VR45775',
+    })
   })
 })
 
