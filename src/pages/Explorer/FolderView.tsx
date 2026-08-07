@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Music } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { Grid, type CellComponentProps } from 'react-window'
+import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { pathToBreadcrumbSegments, type BreadcrumbSegment } from './breadcrumb'
 import { useExplorerStore } from '../../stores/explorerStore'
@@ -36,7 +38,9 @@ import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
 interface FolderViewProps {
   tabId: string
   path: string
+  viewMode: 'list' | 'grid'
   onNavigate: (path: string) => void
+  onViewModeChange: (mode: 'list' | 'grid') => void
 }
 
 // Every row gets exactly one icon now, where before only coded/media entries
@@ -88,11 +92,7 @@ function EntryIcon({ entry }: { entry: ScannedEntry }) {
 // makes "dropped a folder onto itself" fall out of ExplorerPage.tsx's
 // existing `active.id === over.id` guard for free, no extra check needed.
 function useEntryDragAndDrop(entry: ScannedEntry) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setDraggableNodeRef,
-  } = useDraggable({
+  const { attributes, listeners, setNodeRef: setDraggableNodeRef } = useDraggable({
     id: entry.path,
     data: { type: 'entry', entry } satisfies ExplorerDragData,
   })
@@ -177,6 +177,97 @@ function FolderEntryRow({
   )
 }
 
+// The grid's card equivalent of FolderEntryRow - same selection/drag/click
+// wiring (this app's established Row/Card duplication convention, see
+// ListPage.tsx's GameRow vs GalleryPage.tsx's GameCard: two structurally
+// parallel components, not one shared hook), different layout. Kept at
+// Explorer's established "light" density (no favorite/rating/playtime/
+// genre badges, unlike GalleryPage's own GameCard) - just a large icon,
+// the name, and a code line if one exists.
+function FolderEntryCard({
+  entry,
+  cardWidth,
+  onOpenInNewTab,
+  onEntryClick,
+  onOpenDetail,
+  onRename,
+  onMove,
+  onDelete,
+}: {
+  entry: ScannedEntry
+  cardWidth: number
+  onOpenInNewTab: (entry: ScannedEntry) => void
+  onEntryClick: (entry: ScannedEntry) => void
+  onOpenDetail: (entry: ScannedEntry) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
+}) {
+  const activateSelection = useSelectionStore((s) => s.activate)
+  const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
+    activateSelection(entry.path)
+  )
+  const { attributes, listeners, setNodeRef, isOver } = useEntryDragAndDrop(entry)
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <motion.div
+          ref={setNodeRef}
+          {...attributes}
+          {...longPressHandlers}
+          onPointerDown={(event) => {
+            longPressHandlers.onPointerDown(event)
+            listeners?.onPointerDown?.(event)
+          }}
+          whileHover={{ scale: 1.03 }}
+          transition={{ duration: 0.15 }}
+          style={{ width: cardWidth }}
+          className={`relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-md border border-border bg-card ${
+            isOver ? 'ring-1 ring-inset ring-primary' : ''
+          }`}
+          onClick={() => {
+            if (consumeLongPressClick()) return
+            onEntryClick(entry)
+          }}
+        >
+          <SelectionCheckbox
+            path={entry.path}
+            className="absolute left-2 top-2 z-10 h-4 w-4 rounded-sm"
+          />
+          <div className="flex aspect-[3/4] w-full items-center justify-center bg-muted">
+            {entry.code ? (
+              <GameThumbnail entry={entry} />
+            ) : entry.kind === 'file' && isMediaFile(entry.name) ? (
+              <Music className="h-10 w-10 text-muted-foreground" />
+            ) : (
+              <FileKindIcon
+                kind={entry.kind}
+                name={entry.name}
+                className={`h-10 w-10 ${entry.kind === 'folder' ? 'text-yellow-500' : 'text-muted-foreground'}`}
+              />
+            )}
+          </div>
+          <div className="flex flex-col gap-0.5 p-2">
+            <p className="line-clamp-2 break-words text-sm font-medium">{entry.name}</p>
+            {entry.code && (
+              <p className="truncate text-xs text-muted-foreground">{entry.code.value}</p>
+            )}
+          </div>
+        </motion.div>
+      </ContextMenuTrigger>
+      <GameEntryContextMenu
+        entry={entry}
+        onOpenDetail={onOpenDetail}
+        onOpenInNewTab={onOpenInNewTab}
+        onRename={onRename}
+        onMove={onMove}
+        onDelete={onDelete}
+      />
+    </ContextMenu>
+  )
+}
+
 function SearchResultRow({
   entry,
   onOpenDetail,
@@ -247,10 +338,73 @@ function BreadcrumbSegmentButton({
   )
 }
 
-export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
+const CARD_WIDTH = 180
+const GAP = 16
+const SCROLLBAR_GUTTER = 17
+// Just a 2-line name + a single code line, no genre/rating/playtime rows
+// like GalleryPage's own card - matches Explorer's established "light"
+// density (the visual-polish sub-project's EntryIcon decision).
+const CARD_TEXT_BLOCK_HEIGHT = 16 + 36 + 4 + 16 // p-2 top/bottom + 2-line name + gap + code line
+
+function computeCardHeight(cardWidth: number): number {
+  return cardWidth * (4 / 3) + CARD_TEXT_BLOCK_HEIGHT
+}
+
+const ZOOM_MIN = 0.6
+const ZOOM_MAX = 1.8
+
+interface GridCellProps {
+  entries: ScannedEntry[]
+  columnCount: number
+  gap: number
+  cardWidth: number
+  onOpenInNewTab: (entry: ScannedEntry) => void
+  onEntryClick: (entry: ScannedEntry) => void
+  onOpenDetail: (entry: ScannedEntry) => void
+  onRename: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
+  onDelete: (entry: ScannedEntry) => void
+}
+
+function FolderEntryCell({
+  columnIndex,
+  rowIndex,
+  style,
+  entries,
+  columnCount,
+  gap,
+  cardWidth,
+  onOpenInNewTab,
+  onEntryClick,
+  onOpenDetail,
+  onRename,
+  onMove,
+  onDelete,
+}: CellComponentProps<GridCellProps>) {
+  const index = rowIndex * columnCount + columnIndex
+  const entry = entries[index]
+  if (!entry) return null
+  return (
+    <div style={{ ...style, padding: gap / 2, display: 'flex', justifyContent: 'center' }}>
+      <FolderEntryCard
+        entry={entry}
+        cardWidth={cardWidth}
+        onOpenInNewTab={onOpenInNewTab}
+        onEntryClick={onEntryClick}
+        onOpenDetail={onOpenDetail}
+        onRename={onRename}
+        onMove={onMove}
+        onDelete={onDelete}
+      />
+    </div>
+  )
+}
+
+export function FolderView({ tabId, path, viewMode, onNavigate, onViewModeChange }: FolderViewProps) {
   const { t } = useTranslation()
   const addTab = useExplorerStore((s) => s.addTab)
   const breadcrumbs = pathToBreadcrumbSegments(path)
+  const [zoom, setZoom] = useState(1)
 
   // useFolderScan's queryKey includes `path`, so React Query automatically
   // re-fetches when it changes - ExplorerPage keys FolderView only on the
@@ -346,6 +500,8 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
     }
   }
 
+  const sortedShallowEntries = sortEntries(shallowEntries, sortField, sortDirection)
+
   return (
     <div className="flex h-full flex-col" data-tab-id={tabId}>
       <div className="flex items-center gap-1 border-b border-border px-4 py-2 text-sm text-muted-foreground">
@@ -367,7 +523,19 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
             setExcludedGenres(nextExcluded)
           }}
         />
-        <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+        <PageToolbar
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={setSort}
+          viewMode={viewMode}
+          onViewModeChange={onViewModeChange}
+          // Zoom only makes sense in grid mode (matching GalleryPage's own
+          // "zoom only shown for a grid" precedent) - undefined here hides
+          // PageToolbar's zoom slider entirely, its existing conditional
+          // already handles that, unchanged.
+          zoom={viewMode === 'grid' ? zoom : undefined}
+          onZoomChange={viewMode === 'grid' ? setZoom : undefined}
+        />
         <SelectionToolbar allEntries={selectionTargets} />
       </div>
       {isSearching ? (
@@ -414,6 +582,66 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           {t('explorer.cannotAccessFolder')}
         </div>
+      ) : viewMode === 'grid' ? (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={path}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="min-h-0 flex-1 p-4"
+          >
+            <AutoSizer
+              style={{ height: '100%', width: '100%' }}
+              renderProp={({ height, width }) => {
+                if (height === undefined || width === undefined) return null
+                const cardWidth = CARD_WIDTH * zoom
+                const cardHeight = computeCardHeight(cardWidth)
+                const gap = GAP * zoom
+                // No scroll-anchor preservation across a columnCount change
+                // here, unlike GalleryPage's own grid - that logic exists
+                // there specifically to compensate for its resizable detail
+                // SIDEBAR changing the grid's own width; Explorer's detail
+                // view is an OVERLAY (useGameDetailOverlay), which never
+                // changes FolderView's own width, so the one remaining
+                // trigger (a plain window resize) is rare enough to accept
+                // a lost scroll position on, matching Explorer's
+                // established "light"/simpler-than-Gallery scope.
+                const availableWidth = Math.max(0, width - SCROLLBAR_GUTTER)
+                const columnCount = Math.max(1, Math.floor(availableWidth / (cardWidth + gap)))
+                const usedWidth = columnCount * (cardWidth + gap)
+                const extraPerColumn =
+                  columnCount > 0 ? (availableWidth - usedWidth) / columnCount : 0
+                const effectiveColumnWidth = cardWidth + gap + extraPerColumn
+                const rowCount = Math.ceil(sortedShallowEntries.length / columnCount)
+
+                return (
+                  <Grid
+                    cellComponent={FolderEntryCell}
+                    cellProps={{
+                      entries: sortedShallowEntries,
+                      columnCount,
+                      gap,
+                      cardWidth,
+                      onOpenInNewTab: openInNewTab,
+                      onEntryClick: handleEntryClick,
+                      onOpenDetail: openDetail,
+                      onRename: openRename,
+                      onMove: openMove,
+                      onDelete: openDelete,
+                    }}
+                    columnCount={columnCount}
+                    columnWidth={effectiveColumnWidth}
+                    rowCount={rowCount}
+                    rowHeight={cardHeight + gap}
+                    style={{ height, width, overflowX: 'hidden' }}
+                  />
+                )
+              }}
+            />
+          </motion.div>
+        </AnimatePresence>
       ) : (
         <AnimatePresence mode="wait">
           <motion.ul
@@ -424,7 +652,7 @@ export function FolderView({ tabId, path, onNavigate }: FolderViewProps) {
             transition={{ duration: 0.15 }}
             className="flex-1 divide-y divide-border overflow-auto"
           >
-            {sortEntries(shallowEntries, sortField, sortDirection).map((entry) => (
+            {sortedShallowEntries.map((entry) => (
               <FolderEntryRow
                 key={entry.path}
                 entry={entry}

@@ -32,6 +32,7 @@ export function ExplorerPage() {
   const activeTab = useExplorerStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
   const navigateTab = useExplorerStore((s) => s.navigateTab)
   const reorderTabs = useExplorerStore((s) => s.reorderTabs)
+  const setViewMode = useExplorerStore((s) => s.setViewMode)
   const moveEntries = useMoveEntries()
   const { data: libraries } = useLibraries()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
@@ -138,7 +139,9 @@ export function ExplorerPage() {
             key={activeTab.id}
             tabId={activeTab.id}
             path={activeTab.path}
+            viewMode={activeTab.viewMode}
             onNavigate={(path) => navigateTab(activeTab.id, path)}
+            onViewModeChange={(mode) => setViewMode(activeTab.id, mode)}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">

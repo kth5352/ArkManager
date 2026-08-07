@@ -97,6 +97,7 @@ const ko = {
   'pageToolbar.mtime': '변경시간',
   'pageToolbar.extension': '확장자',
   'pageToolbar.toggleSortDirection': '정렬 방향 전환',
+  'pageToolbar.toggleViewMode': '보기 방식 전환',
 
   'duplicatesOnly.label': '중복만',
   'duplicatesOnly.tooltip': '중복만 보기',
@@ -400,6 +401,7 @@ const ja: Record<keyof typeof ko, string> = {
   'pageToolbar.mtime': '更新日時',
   'pageToolbar.extension': '拡張子',
   'pageToolbar.toggleSortDirection': '並べ替え方向を切り替え',
+  'pageToolbar.toggleViewMode': '表示方式を切り替え',
 
   'duplicatesOnly.label': '重複のみ',
   'duplicatesOnly.tooltip': '重複のみ表示',
@@ -702,6 +704,7 @@ const en: Record<keyof typeof ko, string> = {
   'pageToolbar.mtime': 'Modified',
   'pageToolbar.extension': 'Extension',
   'pageToolbar.toggleSortDirection': 'Toggle sort direction',
+  'pageToolbar.toggleViewMode': 'Toggle view mode',
 
   'duplicatesOnly.label': 'Duplicates',
   'duplicatesOnly.tooltip': 'Show duplicates only',
