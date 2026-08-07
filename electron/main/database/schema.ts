@@ -18,6 +18,7 @@ export const explorerTabs = sqliteTable('explorer_tabs', {
   path: text('path').notNull(),
   position: integer('position').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull(),
+  viewMode: text('view_mode', { enum: ['list', 'grid'] }).notNull().default('list'),
 })
 
 export const sortPreferences = sqliteTable('sort_preferences', {

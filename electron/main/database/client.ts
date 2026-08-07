@@ -60,9 +60,13 @@ export function createDbClient(filePath: string) {
       label TEXT NOT NULL,
       path TEXT NOT NULL,
       position INTEGER NOT NULL,
-      is_active INTEGER NOT NULL
+      is_active INTEGER NOT NULL,
+      view_mode TEXT NOT NULL DEFAULT 'list'
     )
   `)
+  ensureColumns(sqlite, 'explorer_tabs', [
+    { name: 'view_mode', ddl: "view_mode TEXT NOT NULL DEFAULT 'list'" },
+  ])
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS sort_preferences (

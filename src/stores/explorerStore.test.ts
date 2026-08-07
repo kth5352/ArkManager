@@ -5,9 +5,9 @@ describe('useExplorerStore', () => {
   beforeEach(() => {
     useExplorerStore.setState({
       tabs: [
-        { id: 'a', label: 'A', path: '/a' },
-        { id: 'b', label: 'B', path: '/b' },
-        { id: 'c', label: 'C', path: '/c' },
+        { id: 'a', label: 'A', path: '/a', viewMode: 'list' },
+        { id: 'b', label: 'B', path: '/b', viewMode: 'list' },
+        { id: 'c', label: 'C', path: '/c', viewMode: 'list' },
       ],
       activeTabId: 'a',
     })
@@ -48,5 +48,12 @@ describe('useExplorerStore', () => {
     const tabs = useExplorerStore.getState().tabs
     expect(tabs.find((t) => t.id === 'a')?.path).toBe('/a/sub')
     expect(tabs.find((t) => t.id === 'b')?.path).toBe('/b')
+  })
+
+  it('setViewMode updates only the target tab', () => {
+    useExplorerStore.getState().setViewMode('a', 'grid')
+    const tabs = useExplorerStore.getState().tabs
+    expect(tabs.find((t) => t.id === 'a')?.viewMode).toBe('grid')
+    expect(tabs.find((t) => t.id === 'b')?.viewMode).toBe('list')
   })
 })

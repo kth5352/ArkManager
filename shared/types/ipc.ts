@@ -162,6 +162,7 @@ export const PersistedExplorerTabSchema = z.object({
   path: z.string(),
   position: z.number(),
   isActive: z.boolean(),
+  viewMode: z.enum(['list', 'grid']),
 })
 export type PersistedExplorerTab = z.infer<typeof PersistedExplorerTabSchema>
 

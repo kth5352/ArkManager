@@ -15,22 +15,33 @@ describe('explorerTabsRepository', () => {
 
   it('saves and reloads tabs in position order', () => {
     saveExplorerTabs(db, [
-      { id: 'a', label: 'A', path: 'D:\\A', position: 0, isActive: false },
-      { id: 'b', label: 'B', path: 'D:\\B', position: 1, isActive: true },
+      { id: 'a', label: 'A', path: 'D:\\A', position: 0, isActive: false, viewMode: 'list' },
+      { id: 'b', label: 'B', path: 'D:\\B', position: 1, isActive: true, viewMode: 'grid' },
     ])
 
     expect(loadExplorerTabs(db)).toEqual([
-      { id: 'a', label: 'A', path: 'D:\\A', position: 0, isActive: false },
-      { id: 'b', label: 'B', path: 'D:\\B', position: 1, isActive: true },
+      { id: 'a', label: 'A', path: 'D:\\A', position: 0, isActive: false, viewMode: 'list' },
+      { id: 'b', label: 'B', path: 'D:\\B', position: 1, isActive: true, viewMode: 'grid' },
     ])
   })
 
   it('replaces the previous tab set entirely on each save (not additive)', () => {
-    saveExplorerTabs(db, [{ id: 'a', label: 'A', path: 'D:\\A', position: 0, isActive: true }])
-    saveExplorerTabs(db, [{ id: 'b', label: 'B', path: 'D:\\B', position: 0, isActive: true }])
+    saveExplorerTabs(db, [
+      { id: 'a', label: 'A', path: 'D:\\A', position: 0, isActive: true, viewMode: 'list' },
+    ])
+    saveExplorerTabs(db, [
+      { id: 'b', label: 'B', path: 'D:\\B', position: 0, isActive: true, viewMode: 'list' },
+    ])
 
     expect(loadExplorerTabs(db)).toEqual([
-      { id: 'b', label: 'B', path: 'D:\\B', position: 0, isActive: true },
+      { id: 'b', label: 'B', path: 'D:\\B', position: 0, isActive: true, viewMode: 'list' },
     ])
+  })
+
+  it('round-trips a grid-mode tab', () => {
+    saveExplorerTabs(db, [
+      { id: 'a', label: 'A', path: 'D:\\A', position: 0, isActive: true, viewMode: 'grid' },
+    ])
+    expect(loadExplorerTabs(db)[0].viewMode).toBe('grid')
   })
 })

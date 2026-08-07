@@ -4,18 +4,20 @@ export interface ExplorerTab {
   id: string
   label: string
   path: string
+  viewMode: 'list' | 'grid'
 }
 
 interface ExplorerState {
   tabs: ExplorerTab[]
   activeTabId: string
-  addTab: (tab: Omit<ExplorerTab, 'id'>) => void
+  addTab: (tab: Omit<ExplorerTab, 'id' | 'viewMode'>) => void
   closeTab: (id: string) => void
   closeOtherTabs: (id: string) => void
   duplicateTab: (id: string) => void
   reorderTabs: (fromId: string, toId: string) => void
   setActiveTab: (id: string) => void
   navigateTab: (id: string, path: string) => void
+  setViewMode: (id: string, mode: ExplorerTab['viewMode']) => void
 }
 
 function createTabId(): string {
@@ -36,7 +38,7 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
   addTab: (tab) =>
     set((state) => {
       const id = createTabId()
-      return { tabs: [...state.tabs, { ...tab, id }], activeTabId: id }
+      return { tabs: [...state.tabs, { ...tab, id, viewMode: 'list' }], activeTabId: id }
     }),
 
   closeTab: (id) =>
@@ -75,4 +77,9 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
 
   navigateTab: (id, path) =>
     set((state) => ({ tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, path } : tab)) })),
+
+  setViewMode: (id, mode) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, viewMode: mode } : tab)),
+    })),
 }))

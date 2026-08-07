@@ -7,6 +7,7 @@ export interface PersistedExplorerTab {
   path: string
   position: number
   isActive: boolean
+  viewMode: 'list' | 'grid'
 }
 
 export function loadExplorerTabs(db: AppDatabase): PersistedExplorerTab[] {

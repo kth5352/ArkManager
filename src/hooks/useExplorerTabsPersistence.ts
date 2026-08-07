@@ -27,7 +27,7 @@ export function useExplorerTabsPersistence(): void {
       if (persisted.length > 0 && useExplorerStore.getState() === snapshotAtMount) {
         const tabs = [...persisted]
           .sort((a, b) => a.position - b.position)
-          .map(({ id, label, path }) => ({ id, label, path }))
+          .map(({ id, label, path, viewMode }) => ({ id, label, path, viewMode }))
         const active = persisted.find((tab) => tab.isActive)
         useExplorerStore.setState({ tabs, activeTabId: active?.id ?? tabs[0].id })
       }
