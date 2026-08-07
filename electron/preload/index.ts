@@ -20,6 +20,7 @@ import {
   type RenameResultDto,
   type SaveDiffEntryDto,
   type SaveSnapshotDto,
+  type SetMediaThumbnailFromFileResult,
   type SortPage,
   type SortPreference,
   type Theme,
@@ -346,7 +347,10 @@ const api = {
   mediaThumbnail: {
     pickFile: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE),
-    setFromFile: (filePath: string, sourcePath: string): Promise<void> =>
+    setFromFile: (
+      filePath: string,
+      sourcePath: string
+    ): Promise<SetMediaThumbnailFromFileResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_SET_FROM_FILE, { filePath, sourcePath }),
   },
   cache: {

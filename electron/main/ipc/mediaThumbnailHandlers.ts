@@ -2,8 +2,10 @@ import { app, dialog, ipcMain } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS, SetMediaThumbnailFromFileRequestSchema } from '../../../shared/types/ipc'
+import { isAudioFile } from '../../../shared/isMediaFile'
 import { setMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
+import { getAudioCoverWriteSupport, writeAudioCoverWithBackup } from '../media/audioCover'
 import type { AppDatabase } from '../database/client'
 
 function mediaThumbnailOverrideCacheDir(): string {
@@ -36,7 +38,14 @@ export function registerMediaThumbnailHandlers(db: AppDatabase): void {
     }
     lastPickedThumbnailPath = null
     const buffer = await readFile(sourcePath)
+    let warning: string | undefined
+    if (isAudioFile(filePath) && getAudioCoverWriteSupport(filePath) === 'supported') {
+      const result = await writeAudioCoverWithBackup(filePath, sourcePath)
+      if (result.ok) return { mode: 'embedded' as const, warning: result.warning }
+      warning = result.warning
+    }
     const savedPath = await saveCustomCoverImage(mediaThumbnailOverrideCacheDir(), filePath, buffer)
     setMediaThumbnailOverride(db, filePath, savedPath)
+    return { mode: 'override' as const, warning }
   })
 }

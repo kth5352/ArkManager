@@ -553,6 +553,11 @@ export type SetMediaThumbnailFromFileRequest = z.infer<
   typeof SetMediaThumbnailFromFileRequestSchema
 >
 
+export interface SetMediaThumbnailFromFileResult {
+  mode: 'embedded' | 'override'
+  warning?: string
+}
+
 export interface ReleaseNote {
   version: string
   note: string

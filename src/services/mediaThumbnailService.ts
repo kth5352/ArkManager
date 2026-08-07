@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import type { SetMediaThumbnailFromFileResult } from '../../shared/types/ipc'
 
 export function usePickMediaThumbnailFile() {
   return useMutation({
@@ -8,7 +9,13 @@ export function usePickMediaThumbnailFile() {
 
 export function useSetMediaThumbnailFromFile() {
   return useMutation({
-    mutationFn: ({ filePath, sourcePath }: { filePath: string; sourcePath: string }) =>
+    mutationFn: ({
+      filePath,
+      sourcePath,
+    }: {
+      filePath: string
+      sourcePath: string
+    }): Promise<SetMediaThumbnailFromFileResult> =>
       window.api.mediaThumbnail.setFromFile(filePath, sourcePath),
   })
 }
