@@ -8,7 +8,11 @@ import { UnlinkCodeDialog } from './UnlinkCodeDialog'
 import { GameThumbnail } from './GameThumbnail'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
-import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
+import {
+  useCrawlGameMetadata,
+  useGameMetadata,
+  useMetadataFailure,
+} from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
 import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
@@ -26,6 +30,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
   const { data: metadata } = useGameMetadata(game?.code ?? null)
+  const { data: metadataFailure } = useMetadataFailure(game?.code ?? null)
   const [editingRating, setEditingRating] = useState(false)
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
   const [linkingCode, setLinkingCode] = useState(false)
@@ -122,6 +127,9 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                 </Button>
               )}
             </div>
+            {metadataFailure && !crawlMetadata.isPending && (
+              <p className="text-xs text-destructive">{t('game.metadataRefreshFailed')}</p>
+            )}
             {crawlMetadata.isPending && (
               <div className="mt-3 flex flex-col gap-1">
                 <IndeterminateProgressBar />

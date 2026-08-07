@@ -21,7 +21,11 @@ import {
   useSetCustomCoverFromFile,
   useToggleCleared,
 } from '../../services/gameUserDataService'
-import { useCrawlGameMetadata, useGameMetadata } from '../../services/metadataService'
+import {
+  useCrawlGameMetadata,
+  useGameMetadata,
+  useMetadataFailure,
+} from '../../services/metadataService'
 import { formatPlaytime } from '../../pages/RecentlyPlayed/formatPlaytime'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
@@ -47,6 +51,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
   const { data: metadata } = useGameMetadata(game?.code ?? null)
+  const { data: metadataFailure } = useMetadataFailure(game?.code ?? null)
   const { data: userData } = useGameUserData(game ?? { code: null, path: '' })
   const pickCoverFile = usePickCustomCoverFile()
   const setCoverFromFile = useSetCustomCoverFromFile()
@@ -307,6 +312,9 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
             {t('common.delete')}
           </Button>
         </div>
+        {metadataFailure && !crawlMetadata.isPending && (
+          <p className="text-xs text-destructive">{t('game.metadataRefreshFailed')}</p>
+        )}
         {crawlMetadata.isPending && (
           <div className="flex flex-col gap-1">
             <IndeterminateProgressBar />

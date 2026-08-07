@@ -194,3 +194,53 @@ export function useSetExplorerTreeWidthMutation() {
     },
   })
 }
+
+export interface ExternalMetadataProviderSettings {
+  enabled: boolean
+  url: string
+  apiKey: string
+}
+
+export const EXTERNAL_METADATA_PROVIDER_SETTINGS_QUERY_KEY = [
+  'settings',
+  'external-metadata-provider',
+] as const
+
+export function useExternalMetadataProviderSettings() {
+  return useQuery<ExternalMetadataProviderSettings>({
+    queryKey: EXTERNAL_METADATA_PROVIDER_SETTINGS_QUERY_KEY,
+    queryFn: async () => {
+      const [enabled, url, apiKey] = await Promise.all([
+        window.api.settings.getExternalMetadataProviderEnabled(),
+        window.api.settings.getExternalMetadataProviderUrl(),
+        window.api.settings.getExternalMetadataProviderApiKey(),
+      ])
+      return { enabled, url, apiKey }
+    },
+  })
+}
+
+export function useSetExternalMetadataProviderSettings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (settings: Partial<ExternalMetadataProviderSettings>) => {
+      await Promise.all([
+        settings.enabled === undefined
+          ? undefined
+          : window.api.settings.setExternalMetadataProviderEnabled(settings.enabled),
+        settings.url === undefined
+          ? undefined
+          : window.api.settings.setExternalMetadataProviderUrl(settings.url),
+        settings.apiKey === undefined
+          ? undefined
+          : window.api.settings.setExternalMetadataProviderApiKey(settings.apiKey),
+      ])
+    },
+    onSuccess: (_data, settings) => {
+      queryClient.setQueryData<ExternalMetadataProviderSettings>(
+        EXTERNAL_METADATA_PROVIDER_SETTINGS_QUERY_KEY,
+        (current) => ({ enabled: false, url: '', apiKey: '', ...current, ...settings })
+      )
+    },
+  })
+}

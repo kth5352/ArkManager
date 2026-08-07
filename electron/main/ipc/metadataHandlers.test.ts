@@ -38,6 +38,14 @@ function crawlAndSaveHandler(): RegisteredHandler {
   return registration[1] as RegisteredHandler
 }
 
+function getFailureHandler(): RegisteredHandler {
+  const registration = electronMocks.handle.mock.calls.find(
+    ([channel]) => channel === IPC_CHANNELS.METADATA_GET_FAILURE
+  )
+  if (!registration) throw new Error('metadata failure handler was not registered')
+  return registration[1] as RegisteredHandler
+}
+
 describe('METADATA_CRAWL_AND_SAVE', () => {
   let db: AppDatabase
 
@@ -122,6 +130,16 @@ describe('METADATA_CRAWL_AND_SAVE', () => {
     expect(getMetadataFailure(db, 'ST123')).toMatchObject({
       attemptedSources: ['steam'],
       reason: 'network',
+    })
+  })
+
+  it('returns the stored metadata failure for a code', () => {
+    saveMetadataFailure(db, 'RJ01494021', ['dlsite-html', 'dlsite-json'], 'blocked')
+
+    expect(getFailureHandler()({}, { code: { type: 'RJ', value: 'RJ01494021' } })).toMatchObject({
+      code: 'RJ01494021',
+      attemptedSources: ['dlsite-html', 'dlsite-json'],
+      reason: 'blocked',
     })
   })
 })

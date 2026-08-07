@@ -33,7 +33,9 @@ import {
 import {
   useLanguageQuery,
   useLocaleEmulatorPathQuery,
+  useExternalMetadataProviderSettings,
   useSetLanguageMutation,
+  useSetExternalMetadataProviderSettings,
   useSetLocaleEmulatorPathMutation,
 } from '../../services/settingsService'
 import {
@@ -44,7 +46,7 @@ import {
 } from '../../services/updateService'
 import { useTranslation } from '../../i18n/useTranslation'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
-import { useState, type DragEvent } from 'react'
+import { useEffect, useState, type DragEvent } from 'react'
 import type { Locale, ReleaseNote, UpdateStatus } from '../../../shared/types/ipc'
 
 function AddLibraryDialog() {
@@ -431,6 +433,55 @@ function LanguageSection() {
   )
 }
 
+function ExternalMetadataProviderSection() {
+  const { t } = useTranslation()
+  const { data: settings } = useExternalMetadataProviderSettings()
+  const setSettings = useSetExternalMetadataProviderSettings()
+  const [urlDraft, setUrlDraft] = useState('')
+  const [apiKeyDraft, setApiKeyDraft] = useState('')
+
+  useEffect(() => {
+    if (!settings) return
+    setUrlDraft(settings.url)
+    setApiKeyDraft(settings.apiKey)
+  }, [settings])
+
+  return (
+    <section className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+      <div>
+        <h2 className="text-sm font-semibold">{t('settings.externalMetadataProvider')}</h2>
+        <p className="text-xs text-muted-foreground">
+          {t('settings.externalMetadataProviderDesc')}
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={settings?.enabled ?? false}
+          onChange={(event) => setSettings.mutate({ enabled: event.target.checked })}
+          disabled={setSettings.isPending}
+        />
+        {t('settings.enableExternalMetadataProvider')}
+      </label>
+      <Input
+        value={urlDraft}
+        onChange={(event) => setUrlDraft(event.target.value)}
+        onBlur={() => setSettings.mutate({ url: urlDraft })}
+        placeholder={t('settings.externalMetadataProviderUrl')}
+        disabled={setSettings.isPending}
+      />
+      <Input
+        type="password"
+        value={apiKeyDraft}
+        onChange={(event) => setApiKeyDraft(event.target.value)}
+        onBlur={() => setSettings.mutate({ apiKey: apiKeyDraft })}
+        placeholder={t('settings.externalMetadataProviderApiKey')}
+        disabled={setSettings.isPending}
+      />
+    </section>
+  )
+}
+
 export function SettingsPage() {
   const { t } = useTranslation()
   const { data: libraries, isLoading } = useLibraries()
@@ -478,6 +529,7 @@ export function SettingsPage() {
       </div>
 
       <LocaleEmulatorSection />
+      <ExternalMetadataProviderSection />
       <LanguageSection />
       <UpdateSection />
 

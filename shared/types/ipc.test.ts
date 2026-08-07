@@ -5,6 +5,7 @@ import {
   RestoreSaveSnapshotRequestSchema,
   SaveDiffRequestSchema,
   SetSettingRequestSchema,
+  SettingKeySchema,
   ThemeSchema,
 } from './ipc'
 
@@ -104,5 +105,19 @@ describe('SaveDiffRequestSchema', () => {
     expect(
       SaveDiffRequestSchema.safeParse({ identifier, timestamp: '../../../../Windows' }).success
     ).toBe(false)
+  })
+})
+
+describe('SettingKeySchema', () => {
+  it('accepts external metadata provider setting keys', () => {
+    expect(SettingKeySchema.parse('external-metadata-provider-enabled')).toBe(
+      'external-metadata-provider-enabled'
+    )
+    expect(SettingKeySchema.parse('external-metadata-provider-url')).toBe(
+      'external-metadata-provider-url'
+    )
+    expect(SettingKeySchema.parse('external-metadata-provider-api-key')).toBe(
+      'external-metadata-provider-api-key'
+    )
   })
 })

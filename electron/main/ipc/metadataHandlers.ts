@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import {
   CrawlAndSaveMetadataRequestSchema,
   GetMetadataRequestSchema,
+  GetMetadataFailureRequestSchema,
   GetManyMetadataRequestSchema,
   GetCoverImageRequestSchema,
   MetadataSearchRequestSchema,
@@ -29,7 +30,11 @@ import {
   getManyGameMetadata,
 } from '../database/gameMetadataRepository'
 import type { AppDatabase } from '../database/client'
-import { clearMetadataFailure, saveMetadataFailure } from '../database/metadataFailuresRepository'
+import {
+  clearMetadataFailure,
+  getMetadataFailure,
+  saveMetadataFailure,
+} from '../database/metadataFailuresRepository'
 import { getSetting } from '../database/settingsRepository'
 import { encodeThumbnail } from './scannerHandlers'
 import type { GameCode } from '../../../shared/types/scanner'
@@ -70,6 +75,11 @@ export function registerMetadataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.METADATA_GET, (_event, payload: unknown) => {
     const { code } = GetMetadataRequestSchema.parse(payload)
     return toDto(getGameMetadata(db, code.value))
+  })
+
+  ipcMain.handle(IPC_CHANNELS.METADATA_GET_FAILURE, (_event, payload: unknown) => {
+    const { code } = GetMetadataFailureRequestSchema.parse(payload)
+    return getMetadataFailure(db, code.value) ?? null
   })
 
   ipcMain.handle(IPC_CHANNELS.METADATA_GET_MANY, (_event, payload: unknown) => {

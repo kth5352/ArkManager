@@ -14,6 +14,7 @@ import {
   type MediaSyncState,
   type MetadataSearchResultDto,
   type MetadataSearchSource,
+  type MetadataFailureDto,
   type MoveResultDto,
   type PersistedExplorerTab,
   type RenameResultDto,
@@ -74,6 +75,33 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-folder' }),
     setMediaFolder: (path: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-folder', value: path }),
+    getExternalMetadataProviderEnabled: (): Promise<boolean> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'external-metadata-provider-enabled' })
+        .then((value: string | null) => value === 'true'),
+    setExternalMetadataProviderEnabled: (enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'external-metadata-provider-enabled',
+        value: String(enabled),
+      }),
+    getExternalMetadataProviderUrl: (): Promise<string> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'external-metadata-provider-url' })
+        .then((value: string | null) => value ?? ''),
+    setExternalMetadataProviderUrl: (url: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'external-metadata-provider-url',
+        value: url,
+      }),
+    getExternalMetadataProviderApiKey: (): Promise<string> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'external-metadata-provider-api-key' })
+        .then((value: string | null) => value ?? ''),
+    setExternalMetadataProviderApiKey: (apiKey: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'external-metadata-provider-api-key',
+        value: apiKey,
+      }),
   },
   libraries: {
     list: (): Promise<LibraryWithStatus[]> => ipcRenderer.invoke(IPC_CHANNELS.LIBRARIES_LIST),
@@ -138,6 +166,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_AND_SAVE, { code }),
     get: (code: GameCode): Promise<GameMetadataDto | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET, { code }),
+    getFailure: (code: GameCode): Promise<MetadataFailureDto | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_FAILURE, { code }),
     getMany: (codes: string[]): Promise<Record<string, GameMetadataDto>> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_MANY, { codes }),
     getCoverImage: (code: GameCode): Promise<string | null> =>

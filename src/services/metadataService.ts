@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GameCode } from '../../shared/types/scanner'
 import type {
   GameMetadataDto,
+  MetadataFailureDto,
   MetadataSearchResultDto,
   MetadataSearchSource,
 } from '../../shared/types/ipc'
@@ -14,6 +15,14 @@ export function useGameMetadata(code: GameCode | null) {
   return useQuery<GameMetadataDto | null>({
     queryKey: code ? metadataQueryKey(code) : ['metadata', 'none'],
     queryFn: () => window.api.metadata.get(code!),
+    enabled: code !== null,
+  })
+}
+
+export function useMetadataFailure(code: GameCode | null) {
+  return useQuery<MetadataFailureDto | null>({
+    queryKey: code ? ['metadata', 'failure', code.value] : ['metadata', 'failure', 'none'],
+    queryFn: () => window.api.metadata.getFailure(code!),
     enabled: code !== null,
   })
 }
@@ -52,6 +61,7 @@ export function useCrawlGameMetadata() {
       // query key includes a per-call-site sorted codes array - invalidate by
       // prefix so every variation picks up the freshly crawled metadata.
       queryClient.invalidateQueries({ queryKey: ['metadata-many'] })
+      queryClient.invalidateQueries({ queryKey: ['metadata', 'failure', code.value] })
     },
   })
 }

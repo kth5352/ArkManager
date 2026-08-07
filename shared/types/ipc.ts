@@ -27,6 +27,7 @@ export const IPC_CHANNELS = {
   SHELL_SHOW_ITEM_IN_FOLDER: 'shell:show-item-in-folder',
   METADATA_CRAWL_AND_SAVE: 'metadata:crawl-and-save',
   METADATA_GET: 'metadata:get',
+  METADATA_GET_FAILURE: 'metadata:get-failure',
   METADATA_GET_MANY: 'metadata:get-many',
   METADATA_GET_COVER_IMAGE: 'metadata:get-cover-image',
   METADATA_SEARCH: 'metadata:search',
@@ -106,7 +107,11 @@ export const SettingKeySchema = z.enum([
   'media-folder',
   'explorer-tree-open',
   'explorer-tree-width',
+  'external-metadata-provider-enabled',
+  'external-metadata-provider-url',
+  'external-metadata-provider-api-key',
 ])
+export type SettingKey = z.infer<typeof SettingKeySchema>
 
 export const GetSettingRequestSchema = z.object({
   key: SettingKeySchema,
@@ -221,6 +226,11 @@ export const GetMetadataRequestSchema = z.object({
 })
 export type GetMetadataRequest = z.infer<typeof GetMetadataRequestSchema>
 
+export const GetMetadataFailureRequestSchema = z.object({
+  code: GameCodeSchema,
+})
+export type GetMetadataFailureRequest = z.infer<typeof GetMetadataFailureRequestSchema>
+
 export const GetManyMetadataRequestSchema = z.object({
   codes: z.array(z.string()),
 })
@@ -262,6 +272,13 @@ export interface GameMetadataDto {
   releaseDate: string | null
   genres: string[]
   coverImagePath: string | null
+}
+
+export interface MetadataFailureDto {
+  code: string
+  attemptedSources: string[]
+  reason: 'not_found' | 'blocked' | 'network' | 'parse' | 'provider_error'
+  updatedAt: string
 }
 
 // 렌더러는 항상 code와 path를 함께 보낸다 - 실제 키 도출(코드 있으면 코드,

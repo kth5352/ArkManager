@@ -56,6 +56,11 @@ function parseStoredExplorerTreeOpen(raw: string | undefined): string | null {
   return raw === 'true' || raw === 'false' ? raw : null
 }
 
+function parseStoredExternalMetadataProviderEnabled(raw: string | undefined): string | null {
+  if (raw === undefined) return null
+  return raw === 'true' || raw === 'false' ? raw : null
+}
+
 export function registerSettingsHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
     const { key } = GetSettingRequestSchema.parse(payload)
@@ -64,6 +69,9 @@ export function registerSettingsHandlers(db: AppDatabase): void {
     if (key === 'locale') return parseStoredLocale(getSetting(db, key))
     if (key === 'explorer-tree-width') return parseStoredExplorerTreeWidth(getSetting(db, key))
     if (key === 'explorer-tree-open') return parseStoredExplorerTreeOpen(getSetting(db, key))
+    if (key === 'external-metadata-provider-enabled') {
+      return parseStoredExternalMetadataProviderEnabled(getSetting(db, key))
+    }
     return getSetting(db, key) ?? null
   })
 
