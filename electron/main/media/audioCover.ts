@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { COPYFILE_EXCL } from 'node:constants'
 import { copyFile, rm } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -22,7 +23,7 @@ export interface AudioCommandResult {
 export type AudioCommandRunner = (args: string[]) => Promise<AudioCommandResult>
 
 export interface AudioCoverDependencies {
-  copyFile: (sourcePath: string, destinationPath: string) => Promise<void>
+  copyFile: (sourcePath: string, destinationPath: string, mode?: number) => Promise<void>
   writeCover: (filePath: string, imagePath: string, outputPath: string) => Promise<void>
   validateAudio: (filePath: string, referencePath: string) => Promise<AudioValidation>
   replaceFile: (sourcePath: string, destinationPath: string) => Promise<void>
@@ -35,6 +36,13 @@ export interface AudioCoverDependencies {
 export type AudioCoverWriteResult =
   | { ok: true; mode: 'embedded'; warning?: string }
   | { ok: false; mode: 'override'; warning: string }
+
+export class AudioCoverRestoreError extends Error {
+  constructor(cause: unknown) {
+    super(`Audio cover backup restoration failed: ${errorMessage(cause)}`, { cause })
+    this.name = 'AudioCoverRestoreError'
+  }
+}
 
 export function getAudioCoverWriteSupport(filePath: string): 'supported' | 'unsupported' {
   return EMBEDDABLE_AUDIO_EXTENSIONS.has(extname(filePath).toLowerCase())
@@ -195,7 +203,7 @@ function runFfmpeg(args: string[]): Promise<AudioCommandResult> {
 
 function createDefaultDependencies(): AudioCoverDependencies {
   return {
-    copyFile,
+    copyFile: (sourcePath, destinationPath, mode) => copyFile(sourcePath, destinationPath, mode),
     writeCover: async (filePath, imagePath, outputPath) => {
       await runFfmpeg(buildAudioCoverArgs(filePath, imagePath, outputPath))
     },
@@ -212,7 +220,7 @@ function createDefaultDependencies(): AudioCoverDependencies {
       const stem = basename(filePath, extension)
       return join(dirname(filePath), `.${stem}.ark-cover-work-${randomUUID()}${extension}`)
     },
-    makeBackupPath: (filePath) => `${filePath}.ark-cover-backup`,
+    makeBackupPath: (filePath) => `${filePath}.ark-cover-backup-${randomUUID()}`,
   }
 }
 
@@ -256,7 +264,7 @@ export async function writeAudioCoverWithBackup(
   let warning = 'Audio cover embedding failed; an app-local override will be used.'
 
   try {
-    await deps.copyFile(filePath, backupPath)
+    await deps.copyFile(filePath, backupPath, COPYFILE_EXCL)
     backupCreated = true
     await deps.writeCover(filePath, imagePath, tempPath)
 
@@ -282,13 +290,20 @@ export async function writeAudioCoverWithBackup(
     if (!hasValidationWarning) {
       warning = `Audio cover embedding failed (${errorMessage(error)}); an app-local override will be used.`
     }
+    let restoreError: unknown
     if (backupCreated) {
       try {
         await deps.restoreBackup(backupPath, filePath)
-      } catch (restoreError) {
-        warning = `${warning} Backup restoration also failed: ${errorMessage(restoreError)}`
+      } catch (error) {
+        restoreError = error
       }
     }
+    try {
+      await deps.removeFile(tempPath)
+    } catch {
+      // Recovery status is more important than best-effort work-file cleanup.
+    }
+    if (restoreError !== undefined) throw new AudioCoverRestoreError(restoreError)
     return { ok: false, mode: 'override', warning }
   }
 }

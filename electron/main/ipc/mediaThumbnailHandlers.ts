@@ -4,8 +4,11 @@ import { join } from 'node:path'
 import { IPC_CHANNELS, SetMediaThumbnailFromFileRequestSchema } from '../../../shared/types/ipc'
 import { isAudioFile } from '../../../shared/isMediaFile'
 import { setMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
+import { listLibraries } from '../database/librariesRepository'
+import { getSetting } from '../database/settingsRepository'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
 import { getAudioCoverWriteSupport, writeAudioCoverWithBackup } from '../media/audioCover'
+import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
 import type { AppDatabase } from '../database/client'
 
 function mediaThumbnailOverrideCacheDir(): string {
@@ -37,6 +40,12 @@ export function registerMediaThumbnailHandlers(db: AppDatabase): void {
       throw new Error('선택된 파일이 아닙니다.')
     }
     lastPickedThumbnailPath = null
+    const libraryPaths = listLibraries(db).map((library) => library.path)
+    const mediaFolder = getSetting(db, 'media-folder')
+    const allowedRoots = mediaFolder ? [...libraryPaths, mediaFolder] : libraryPaths
+    if (!isPathWithinAnyLibrary(filePath, allowedRoots)) {
+      throw new Error('Media thumbnail target is outside authorized roots.')
+    }
     const buffer = await readFile(sourcePath)
     let warning: string | undefined
     if (isAudioFile(filePath) && getAudioCoverWriteSupport(filePath) === 'supported') {

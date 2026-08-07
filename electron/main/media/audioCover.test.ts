@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { COPYFILE_EXCL } from 'node:constants'
 import {
+  AudioCoverRestoreError,
   buildAudioCoverArgs,
   getAudioCoverWriteSupport,
   validateAudioWithFfmpeg,
@@ -34,8 +36,8 @@ function createDeps(
     replaceFile: async () => {
       calls.push('replace')
     },
-    removeFile: async () => {
-      calls.push('delete-backup')
+    removeFile: async (filePath) => {
+      calls.push(filePath.includes('cover-work') ? 'delete-work' : 'delete-backup')
     },
     restoreBackup: async () => {
       calls.push('restore')
@@ -244,6 +246,7 @@ describe('writeAudioCoverWithBackup', () => {
 
     expect(result).toMatchObject({ ok: false, mode: 'override' })
     expect(calls).toContain('restore')
+    expect(calls).toContain('delete-work')
     expect(calls).not.toContain('replace')
   })
 
@@ -265,7 +268,15 @@ describe('writeAudioCoverWithBackup', () => {
     )
 
     expect(result).toMatchObject({ ok: false, mode: 'override' })
-    expect(calls).toEqual(['backup', 'write', 'validate', 'replace', 'validate', 'restore'])
+    expect(calls).toEqual([
+      'backup',
+      'write',
+      'validate',
+      'replace',
+      'validate',
+      'restore',
+      'delete-work',
+    ])
     expect(calls).not.toContain('delete-backup')
   })
 
@@ -286,5 +297,75 @@ describe('writeAudioCoverWithBackup', () => {
     expect(result.warning).toMatch(/WAV/i)
     expect(calls).toContain('restore')
     expect(calls).not.toContain('replace')
+  })
+
+  it('does not overwrite a retained recovery backup when a retry collides', async () => {
+    const calls: string[] = []
+    let retainedBackup = 'known-good-audio'
+    const result = await writeAudioCoverWithBackup(
+      'D:\\Music\\Song.mp3',
+      'D:\\Cover.jpg',
+      createDeps(calls, {
+        copyFile: async (_sourcePath, _backupPath, mode) => {
+          calls.push('backup')
+          if (mode === COPYFILE_EXCL) {
+            throw Object.assign(new Error('backup already exists'), { code: 'EEXIST' })
+          }
+          retainedBackup = 'damaged-audio'
+        },
+        removeFile: async (filePath) => {
+          calls.push(filePath.includes('cover-work') ? 'delete-work' : 'delete-backup')
+          if (!filePath.includes('cover-work')) retainedBackup = ''
+        },
+      })
+    )
+
+    expect(result).toMatchObject({ ok: false, mode: 'override' })
+    expect(retainedBackup).toBe('known-good-audio')
+    expect(calls).not.toContain('write')
+    expect(calls).not.toContain('restore')
+  })
+
+  it('rejects fatally when restoring the backup fails', async () => {
+    const calls: string[] = []
+    const operation = writeAudioCoverWithBackup(
+      'D:\\Music\\Song.flac',
+      'D:\\Cover.jpg',
+      createDeps(calls, {
+        validateAudio: async () => {
+          calls.push('validate')
+          return { ...playableAudio, playable: false }
+        },
+        restoreBackup: async () => {
+          calls.push('restore')
+          throw new Error('disk write failed')
+        },
+      })
+    )
+
+    await expect(operation).rejects.toBeInstanceOf(AudioCoverRestoreError)
+    expect(calls).toContain('delete-work')
+  })
+
+  it('does not mask ordinary recovery when work-file cleanup fails', async () => {
+    const calls: string[] = []
+    const result = await writeAudioCoverWithBackup(
+      'D:\\Music\\Song.m4a',
+      'D:\\Cover.jpg',
+      createDeps(calls, {
+        writeCover: async () => {
+          calls.push('write')
+          throw new Error('ffmpeg failed')
+        },
+        removeFile: async () => {
+          calls.push('delete-work')
+          throw new Error('cleanup failed')
+        },
+      })
+    )
+
+    expect(result).toMatchObject({ ok: false, mode: 'override' })
+    expect(calls).toContain('restore')
+    expect(calls).toContain('delete-work')
   })
 })
