@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { filterFavorites } from './filterFavorites'
 import type { ScannedEntry } from '../../shared/types/scanner'
 
-function entry(overrides: Partial<ScannedEntry>): Pick<ScannedEntry, 'code' | 'path'> {
+function entry(overrides: Partial<ScannedEntry>): Pick<ScannedEntry, 'code' | 'path' | 'kind' | 'mtimeMs' | 'name'> {
   return {
+    name: 'Unnamed',
     code: null,
     path: 'D:\\Games\\Unnamed',
+    kind: 'folder',
+    mtimeMs: 0,
     ...overrides,
   }
 }
@@ -41,5 +44,31 @@ describe('filterFavorites', () => {
     const favoriteKeys = ['d:\\games\\rj01234567']
 
     expect(filterFavorites(games, favoriteKeys)).toEqual([])
+  })
+
+  it('collapses coded favorite duplicates to one representative', () => {
+    const folder = entry({
+      name: 'Folder',
+      path: 'D:\\Games\\RJ01234567',
+      kind: 'folder',
+      mtimeMs: 10,
+      code: { type: 'RJ', value: 'RJ01234567' },
+    })
+    const archive = entry({
+      name: 'Archive.zip',
+      path: 'D:\\Games\\RJ01234567.zip',
+      kind: 'file',
+      mtimeMs: 20,
+      code: { type: 'RJ', value: 'RJ01234567' },
+    })
+
+    expect(filterFavorites([archive, folder], ['RJ01234567'])).toEqual([folder])
+  })
+
+  it('keeps code-less favorites path-specific', () => {
+    const a = entry({ path: 'D:\\Games\\A', code: null, kind: 'folder', mtimeMs: 1 })
+    const b = entry({ path: 'D:\\Games\\B', code: null, kind: 'folder', mtimeMs: 2 })
+
+    expect(filterFavorites([a, b], ['d:\\games\\a', 'd:\\games\\b'])).toEqual([a, b])
   })
 })

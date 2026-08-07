@@ -1,12 +1,41 @@
 import type { ScannedEntry } from '../../shared/types/scanner'
+import { isArchiveFile } from '../../shared/isArchiveFile'
 import { normalizeLibraryPath } from '../../shared/normalizeLibraryPath'
 
-export function filterFavorites<T extends Pick<ScannedEntry, 'code' | 'path'>>(
+type FavoriteEntry = Pick<ScannedEntry, 'code' | 'path' | 'kind' | 'mtimeMs' | 'name'>
+
+function scoreEntry(entry: Pick<ScannedEntry, 'kind' | 'name' | 'mtimeMs'>): [number, number, number] {
+  const folderScore = entry.kind === 'folder' ? 1 : 0
+  const archiveScore = isArchiveFile(entry.name) ? 0 : 1
+  return [folderScore, archiveScore, entry.mtimeMs]
+}
+
+function isBetterRepresentative<T extends FavoriteEntry>(candidate: T, current: T): boolean {
+  const candidateScore = scoreEntry(candidate)
+  const currentScore = scoreEntry(current)
+  for (let i = 0; i < candidateScore.length; i += 1) {
+    if (candidateScore[i] !== currentScore[i]) return candidateScore[i] > currentScore[i]
+  }
+  return normalizeLibraryPath(candidate.path) < normalizeLibraryPath(current.path)
+}
+
+export function filterFavorites<T extends FavoriteEntry>(
   games: T[],
   favoriteKeys: string[]
 ): T[] {
   const favoriteKeySet = new Set(favoriteKeys)
-  return games.filter((game) =>
-    favoriteKeySet.has(game.code?.value ?? normalizeLibraryPath(game.path))
-  )
+  const byCode = new Map<string, T>()
+  const pathFavorites: T[] = []
+
+  for (const game of games) {
+    if (game.code) {
+      if (!favoriteKeySet.has(game.code.value)) continue
+      const current = byCode.get(game.code.value)
+      if (!current || isBetterRepresentative(game, current)) byCode.set(game.code.value, game)
+    } else if (favoriteKeySet.has(normalizeLibraryPath(game.path))) {
+      pathFavorites.push(game)
+    }
+  }
+
+  return [...byCode.values(), ...pathFavorites]
 }
