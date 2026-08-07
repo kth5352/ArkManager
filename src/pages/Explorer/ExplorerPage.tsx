@@ -21,7 +21,10 @@ import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { getParentPath } from '../../lib/groupMovesByOriginalParent'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useExplorerTabsPersistence } from '../../hooks/useExplorerTabsPersistence'
-import { useExplorerTreeOpenQuery, useSetExplorerTreeOpenMutation } from '../../services/settingsService'
+import {
+  useExplorerTreeOpenQuery,
+  useSetExplorerTreeOpenMutation,
+} from '../../services/settingsService'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
 
@@ -40,7 +43,7 @@ export function ExplorerPage() {
   const addTab = useExplorerStore((s) => s.addTab)
   const moveEntries = useMoveEntries()
   const { data: libraries } = useLibraries()
-  const { data: sidebarOpenSetting } = useExplorerTreeOpenQuery()
+  const { data: sidebarOpenSetting, isLoading: sidebarOpenLoading } = useExplorerTreeOpenQuery()
   const setSidebarOpenMutation = useSetExplorerTreeOpenMutation()
   const sidebarOpen = sidebarOpenSetting ?? true
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
@@ -157,7 +160,7 @@ export function ExplorerPage() {
       onDragCancel={() => setActiveDrag(null)}
     >
       <div className="flex h-full">
-        {sidebarOpen && (
+        {!sidebarOpenLoading && sidebarOpen && (
           <ExplorerSidebar
             onNavigate={handleSidebarNavigate}
             onClose={() => setSidebarOpenMutation.mutate(false)}

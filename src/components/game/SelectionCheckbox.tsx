@@ -21,6 +21,7 @@ export function SelectionCheckbox({ path, className }: SelectionCheckboxProps) {
     <input
       type="checkbox"
       aria-label={t('selection.select')}
+      tabIndex={-1}
       checked={isSelected}
       onClick={(e) => e.stopPropagation()}
       onChange={() => toggle(path)}

@@ -60,7 +60,7 @@ function EntryIcon({ entry }: { entry: ScannedEntry }) {
       <motion.div
         whileHover={{ scale: 1.08 }}
         transition={{ duration: 0.15 }}
-        className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-muted"
+        className="relative h-8 w-8 overflow-hidden rounded bg-muted"
       >
         <GameThumbnail entry={entry} />
         <div className="absolute bottom-0.5 right-0.5 rounded-full bg-background/70 p-0.5 text-muted-foreground">
@@ -71,13 +71,13 @@ function EntryIcon({ entry }: { entry: ScannedEntry }) {
   }
   if (entry.kind === 'file' && isMediaFile(entry.name)) {
     return (
-      <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.15 }} className="shrink-0">
+      <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.15 }}>
         <Music className="h-4 w-4 text-muted-foreground" />
       </motion.div>
     )
   }
   return (
-    <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.15 }} className="shrink-0">
+    <motion.div whileHover={{ scale: 1.08 }} transition={{ duration: 0.15 }}>
       <FileKindIcon
         kind={entry.kind}
         name={entry.name}
@@ -163,9 +163,18 @@ function FolderEntryRow({
             if (consumeLongPressClick()) return
             onEntryClick(entry)
           }}
+          onKeyDown={(event) => {
+            if (event.ctrlKey && event.shiftKey && event.key === 'ArrowUp') {
+              event.preventDefault()
+              onMove(entry)
+            }
+          }}
+          tabIndex={0}
         >
           <SelectionCheckbox path={entry.path} className="h-4 w-4 shrink-0 rounded-sm" />
-          <EntryIcon entry={entry} />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+            <EntryIcon entry={entry} />
+          </div>
           <span className="truncate">{entry.name}</span>
         </li>
       </ContextMenuTrigger>
@@ -275,10 +284,12 @@ function FolderEntryCard({
 function SearchResultRow({
   entry,
   onOpenDetail,
+  onMove,
   path,
 }: {
   entry: ScannedEntry
   onOpenDetail: (entry: ScannedEntry) => void
+  onMove: (entry: ScannedEntry) => void
   path: string
 }) {
   const activateSelection = useSelectionStore((s) => s.activate)
@@ -303,9 +314,18 @@ function SearchResultRow({
         if (consumeLongPressClick()) return
         onOpenDetail(entry)
       }}
+      onKeyDown={(event) => {
+        if (event.ctrlKey && event.shiftKey && event.key === 'ArrowUp') {
+          event.preventDefault()
+          onMove(entry)
+        }
+      }}
+      tabIndex={0}
     >
       <SelectionCheckbox path={entry.path} className="h-4 w-4 shrink-0 rounded-sm" />
-      <EntryIcon entry={entry} />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+        <EntryIcon entry={entry} />
+      </div>
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="truncate">{entry.name}</span>
         <span className="truncate text-xs text-muted-foreground">
@@ -523,7 +543,7 @@ export function FolderView({
           </span>
         ))}
       </div>
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+      <div className="flex min-h-[52px] items-center gap-2 border-b border-border px-4 py-2">
         <SearchHeader
           query={searchQuery}
           onQueryChange={setSearchQuery}
@@ -545,142 +565,127 @@ export function FolderView({
           // "zoom only shown for a grid" precedent) - undefined here hides
           // PageToolbar's zoom slider entirely, its existing conditional
           // already handles that, unchanged.
-          zoom={viewMode === 'grid' ? zoom : undefined}
-          onZoomChange={viewMode === 'grid' ? setZoom : undefined}
+          zoom={viewMode === 'grid' && !isSearching ? zoom : undefined}
+          onZoomChange={viewMode === 'grid' && !isSearching ? setZoom : undefined}
           sidebarOpen={sidebarOpen}
           onSidebarOpenChange={onSidebarOpenChange}
         />
         <SelectionToolbar allEntries={selectionTargets} />
       </div>
-      {isSearching ? (
-        isSearchLoading ? (
-          <div className="flex flex-1 flex-col">
-            <div className="flex flex-col gap-1 overflow-auto p-4">
-              {Array.from({ length: 10 }, (_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={isSearching ? `search:${path}` : `normal:${path}:${viewMode}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          {isSearching ? (
+            isSearchLoading ? (
+              <div className="flex flex-1 flex-col">
+                <div className="flex flex-col gap-1 overflow-auto p-4">
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+                <ScanProgressIndicator scanned={scanProgress} />
+              </div>
+            ) : isSearchError ? (
+              <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                {t('dlsiteSearch.searchError')}
+              </div>
+            ) : (
+              <ul className="flex-1 divide-y divide-border overflow-auto">
+                {sortedSearchResults.map((entry) => (
+                  <SearchResultRow
+                    key={entry.path}
+                    entry={entry}
+                    onOpenDetail={openDetail}
+                    onMove={openMove}
+                    path={path}
+                  />
+                ))}
+                {sortedSearchResults.length === 0 && (
+                  <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    {t('dlsiteSearch.noResults')}
+                  </li>
+                )}
+              </ul>
+            )
+          ) : isError ? (
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              {t('explorer.cannotAccessFolder')}
             </div>
-            <ScanProgressIndicator scanned={scanProgress} />
-          </div>
-        ) : isSearchError ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            {t('dlsiteSearch.searchError')}
-          </div>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.ul
-              key={path}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex-1 divide-y divide-border overflow-auto"
-            >
-              {sortedSearchResults.map((entry) => (
-                <SearchResultRow
+          ) : viewMode === 'grid' ? (
+            <div className="min-h-0 flex-1 p-4">
+              <AutoSizer
+                style={{ height: '100%', width: '100%' }}
+                renderProp={({ height, width }) => {
+                  if (height === undefined || width === undefined) return null
+                  const cardWidth = CARD_WIDTH * zoom
+                  const cardHeight = computeCardHeight(cardWidth)
+                  const gap = GAP * zoom
+                  // No scroll-anchor preservation across a columnCount change
+                  // here, unlike GalleryPage's own grid - that logic exists
+                  // there specifically to compensate for its resizable detail
+                  // SIDEBAR changing the grid's own width; Explorer's detail
+                  // view is an OVERLAY (useGameDetailOverlay), which never
+                  // changes FolderView's own width, so the one remaining
+                  // trigger (a plain window resize) is rare enough to accept
+                  // a lost scroll position on, matching Explorer's
+                  // established "light"/simpler-than-Gallery scope.
+                  const availableWidth = Math.max(0, width - SCROLLBAR_GUTTER)
+                  const columnCount = Math.max(1, Math.floor(availableWidth / (cardWidth + gap)))
+                  const usedWidth = columnCount * (cardWidth + gap)
+                  const extraPerColumn =
+                    columnCount > 0 ? (availableWidth - usedWidth) / columnCount : 0
+                  const effectiveColumnWidth = cardWidth + gap + extraPerColumn
+                  const rowCount = Math.ceil(sortedShallowEntries.length / columnCount)
+
+                  return (
+                    <Grid
+                      cellComponent={FolderEntryCell}
+                      cellProps={{
+                        entries: sortedShallowEntries,
+                        columnCount,
+                        gap,
+                        cardWidth,
+                        onOpenInNewTab: openInNewTab,
+                        onEntryClick: handleEntryClick,
+                        onOpenDetail: openDetail,
+                        onRename: openRename,
+                        onMove: openMove,
+                        onDelete: openDelete,
+                      }}
+                      columnCount={columnCount}
+                      columnWidth={effectiveColumnWidth}
+                      rowCount={rowCount}
+                      rowHeight={cardHeight + gap}
+                      style={{ height, width, overflowX: 'hidden' }}
+                    />
+                  )
+                }}
+              />
+            </div>
+          ) : (
+            <ul className="flex-1 divide-y divide-border overflow-auto">
+              {sortedShallowEntries.map((entry) => (
+                <FolderEntryRow
                   key={entry.path}
                   entry={entry}
+                  onOpenInNewTab={openInNewTab}
+                  onEntryClick={handleEntryClick}
                   onOpenDetail={openDetail}
-                  path={path}
+                  onRename={openRename}
+                  onMove={openMove}
+                  onDelete={openDelete}
                 />
               ))}
-              {sortedSearchResults.length === 0 && (
-                <li className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  {t('dlsiteSearch.noResults')}
-                </li>
-              )}
-            </motion.ul>
-          </AnimatePresence>
-        )
-      ) : isError ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          {t('explorer.cannotAccessFolder')}
-        </div>
-      ) : viewMode === 'grid' ? (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={path}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="min-h-0 flex-1 p-4"
-          >
-            <AutoSizer
-              style={{ height: '100%', width: '100%' }}
-              renderProp={({ height, width }) => {
-                if (height === undefined || width === undefined) return null
-                const cardWidth = CARD_WIDTH * zoom
-                const cardHeight = computeCardHeight(cardWidth)
-                const gap = GAP * zoom
-                // No scroll-anchor preservation across a columnCount change
-                // here, unlike GalleryPage's own grid - that logic exists
-                // there specifically to compensate for its resizable detail
-                // SIDEBAR changing the grid's own width; Explorer's detail
-                // view is an OVERLAY (useGameDetailOverlay), which never
-                // changes FolderView's own width, so the one remaining
-                // trigger (a plain window resize) is rare enough to accept
-                // a lost scroll position on, matching Explorer's
-                // established "light"/simpler-than-Gallery scope.
-                const availableWidth = Math.max(0, width - SCROLLBAR_GUTTER)
-                const columnCount = Math.max(1, Math.floor(availableWidth / (cardWidth + gap)))
-                const usedWidth = columnCount * (cardWidth + gap)
-                const extraPerColumn =
-                  columnCount > 0 ? (availableWidth - usedWidth) / columnCount : 0
-                const effectiveColumnWidth = cardWidth + gap + extraPerColumn
-                const rowCount = Math.ceil(sortedShallowEntries.length / columnCount)
-
-                return (
-                  <Grid
-                    cellComponent={FolderEntryCell}
-                    cellProps={{
-                      entries: sortedShallowEntries,
-                      columnCount,
-                      gap,
-                      cardWidth,
-                      onOpenInNewTab: openInNewTab,
-                      onEntryClick: handleEntryClick,
-                      onOpenDetail: openDetail,
-                      onRename: openRename,
-                      onMove: openMove,
-                      onDelete: openDelete,
-                    }}
-                    columnCount={columnCount}
-                    columnWidth={effectiveColumnWidth}
-                    rowCount={rowCount}
-                    rowHeight={cardHeight + gap}
-                    style={{ height, width, overflowX: 'hidden' }}
-                  />
-                )
-              }}
-            />
-          </motion.div>
-        </AnimatePresence>
-      ) : (
-        <AnimatePresence mode="wait">
-          <motion.ul
-            key={path}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-1 divide-y divide-border overflow-auto"
-          >
-            {sortedShallowEntries.map((entry) => (
-              <FolderEntryRow
-                key={entry.path}
-                entry={entry}
-                onOpenInNewTab={openInNewTab}
-                onEntryClick={handleEntryClick}
-                onOpenDetail={openDetail}
-                onRename={openRename}
-                onMove={openMove}
-                onDelete={openDelete}
-              />
-            ))}
-          </motion.ul>
-        </AnimatePresence>
-      )}
+            </ul>
+          )}
+        </motion.div>
+      </AnimatePresence>
       {detailOverlayElement}
       {dialogElement}
     </div>

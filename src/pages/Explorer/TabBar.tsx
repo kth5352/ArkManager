@@ -185,23 +185,27 @@ export function TabBar() {
             </motion.div>
           ))}
         </AnimatePresence>
-        <button
-          onClick={handleAddTab}
-          disabled={!hasLibraries}
-          aria-label={t('tabBar.addTab')}
-          title={hasLibraries ? t('tabBar.addTab') : t('tabBar.registerLibraryFirst')}
-          className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-        <button
-          onClick={handleOpenFolder}
-          aria-label={t('tabBar.openFolder')}
-          title={t('tabBar.openFolder')}
-          className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <FolderOpen className="h-4 w-4" />
-        </button>
+        <motion.div layout transition={{ duration: 0.15 }}>
+          <button
+            onClick={handleAddTab}
+            disabled={!hasLibraries}
+            aria-label={t('tabBar.addTab')}
+            title={hasLibraries ? t('tabBar.addTab') : t('tabBar.registerLibraryFirst')}
+            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </motion.div>
+        <motion.div layout transition={{ duration: 0.15 }}>
+          <button
+            onClick={handleOpenFolder}
+            aria-label={t('tabBar.openFolder')}
+            title={t('tabBar.openFolder')}
+            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <FolderOpen className="h-4 w-4" />
+          </button>
+        </motion.div>
       </div>
     </SortableContext>
   )

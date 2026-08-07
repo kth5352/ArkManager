@@ -334,7 +334,7 @@ export function ListPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+      <div className="flex min-h-[52px] flex-wrap items-center gap-2 border-b border-border px-4 py-2">
         <SearchHeader
           query={searchQuery}
           onQueryChange={setSearchQuery}

@@ -7,7 +7,10 @@ import {
   useExplorerTreeWidthQuery,
   useSetExplorerTreeWidthMutation,
 } from '../../services/settingsService'
-import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../../lib/clampExplorerTreeWidth'
+import {
+  clampExplorerTreeWidth,
+  EXPLORER_TREE_WIDTH_DEFAULT,
+} from '../../lib/clampExplorerTreeWidth'
 import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { useTranslation } from '../../i18n/useTranslation'
 import { pathToBreadcrumbSegments } from './breadcrumb'
@@ -189,9 +192,16 @@ export function ExplorerSidebar({ onNavigate, onClose, activePath }: ExplorerSid
     if (activePath) {
       const ancestorPaths = pathToBreadcrumbSegments(activePath).map((segment) => segment.path)
       setExpandedPaths((prev) => {
+        let changed = false
         const next = new Set(prev)
-        for (const ancestorPath of ancestorPaths) next.add(normalizePath(ancestorPath))
-        return next
+        for (const ancestorPath of ancestorPaths) {
+          const normalized = normalizePath(ancestorPath)
+          if (!next.has(normalized)) {
+            next.add(normalized)
+            changed = true
+          }
+        }
+        return changed ? next : prev
       })
     }
   }

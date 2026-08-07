@@ -28,9 +28,11 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
 
   if (!isActive) {
     return (
-      <Button size="sm" variant="ghost" className="ml-auto shrink-0" onClick={() => activate()}>
-        {t('selection.select')}
-      </Button>
+      <div className="ml-auto flex h-9 shrink-0 items-center">
+        <Button size="sm" variant="ghost" onClick={() => activate()}>
+          {t('selection.select')}
+        </Button>
+      </div>
     )
   }
 
@@ -43,40 +45,46 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
 
   return (
     <>
-      <div className="ml-auto flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
-        <span className="mr-1 whitespace-nowrap text-muted-foreground">
-          {t('selection.selectedCount', { count: selectedPaths.size })}
-        </span>
-        <Button size="sm" variant="ghost" onClick={() => selectAll(allEntries.map((e) => e.path))}>
-          {t('selection.selectAll')}
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => setDialogMode('rename')}
-          disabled={selectedPaths.size === 0}
-        >
-          {t('selection.rename')}
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => setDialogMode('move')}
-          disabled={selectedPaths.size === 0}
-        >
-          {t('selection.move')}
-        </Button>
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => setDialogMode('delete')}
-          disabled={selectedPaths.size === 0}
-        >
-          {t('common.delete')}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={deactivate}>
-          {t('common.cancel')}
-        </Button>
+      <div className="ml-auto flex h-9 shrink-0 items-center">
+        <div className="flex h-9 items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs">
+          <span className="mr-1 whitespace-nowrap text-muted-foreground">
+            {t('selection.selectedCount', { count: selectedPaths.size })}
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => selectAll(allEntries.map((e) => e.path))}
+          >
+            {t('selection.selectAll')}
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setDialogMode('rename')}
+            disabled={selectedPaths.size === 0}
+          >
+            {t('selection.rename')}
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setDialogMode('move')}
+            disabled={selectedPaths.size === 0}
+          >
+            {t('selection.move')}
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setDialogMode('delete')}
+            disabled={selectedPaths.size === 0}
+          >
+            {t('common.delete')}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={deactivate}>
+            {t('common.cancel')}
+          </Button>
+        </div>
       </div>
       {/* Each dialog's own fallback key must be unique across these three
           siblings, not just per-dialog - dialogMode is only ever one value
