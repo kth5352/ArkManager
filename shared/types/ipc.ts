@@ -29,10 +29,7 @@ export const IPC_CHANNELS = {
   METADATA_GET: 'metadata:get',
   METADATA_GET_MANY: 'metadata:get-many',
   METADATA_GET_COVER_IMAGE: 'metadata:get-cover-image',
-  METADATA_SEARCH_DLSITE: 'metadata:search-dlsite',
-  METADATA_SEARCH_VNDB: 'metadata:search-vndb',
-  METADATA_SEARCH_STEAM: 'metadata:search-steam',
-  METADATA_SEARCH_GETCHU: 'metadata:search-getchu',
+  METADATA_SEARCH: 'metadata:search',
   // Enqueues codes with no game_metadata row yet for background crawling,
   // one at a time with a delay between requests (see bulkCrawlQueue.ts) -
   // fire-and-forget, resolves once the codes are queued, not once crawled.
@@ -231,45 +228,16 @@ export const GetCoverImageRequestSchema = z.object({
 })
 export type GetCoverImageRequest = z.infer<typeof GetCoverImageRequestSchema>
 
-export const SearchDlsiteRequestSchema = z.object({
+export const MetadataSearchSourceSchema = z.enum(['dlsite', 'steam', 'vndb', 'getchu'])
+export type MetadataSearchSource = z.infer<typeof MetadataSearchSourceSchema>
+
+export const MetadataSearchRequestSchema = z.object({
+  source: MetadataSearchSourceSchema,
   query: z.string(),
 })
-export type SearchDlsiteRequest = z.infer<typeof SearchDlsiteRequestSchema>
+export type MetadataSearchRequest = z.infer<typeof MetadataSearchRequestSchema>
 
-export interface DlsiteSearchResultDto {
-  code: z.infer<typeof GameCodeSchema>
-  title: string
-  thumbnailUrl: string | null
-}
-
-export const SearchVndbRequestSchema = z.object({
-  query: z.string(),
-})
-export type SearchVndbRequest = z.infer<typeof SearchVndbRequestSchema>
-
-export interface VndbSearchResultDto {
-  code: z.infer<typeof GameCodeSchema>
-  title: string
-  thumbnailUrl: string | null
-}
-
-export const SearchSteamRequestSchema = z.object({
-  query: z.string(),
-})
-export type SearchSteamRequest = z.infer<typeof SearchSteamRequestSchema>
-
-export interface SteamSearchResultDto {
-  code: z.infer<typeof GameCodeSchema>
-  title: string
-  thumbnailUrl: string | null
-}
-
-export const SearchGetchuRequestSchema = z.object({
-  query: z.string(),
-})
-export type SearchGetchuRequest = z.infer<typeof SearchGetchuRequestSchema>
-
-export interface GetchuSearchResultDto {
+export interface MetadataSearchResultDto {
   code: z.infer<typeof GameCodeSchema>
   title: string
   thumbnailUrl: string | null

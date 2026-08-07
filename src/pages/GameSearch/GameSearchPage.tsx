@@ -6,35 +6,22 @@ import {
   useCrawlGameMetadata,
   useGameCoverImage,
   useGameMetadata,
-  useSearchDlsite,
-  useSearchGetchu,
-  useSearchSteam,
-  useSearchVndb,
+  useSearchMetadata,
 } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../../components/ui/progress-bar'
 import { parseCodeInput } from '../DlsiteSearch/parseCodeInput'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { GameCode } from '../../../shared/types/scanner'
-import type {
-  DlsiteSearchResultDto,
-  GetchuSearchResultDto,
-  SteamSearchResultDto,
-  VndbSearchResultDto,
-} from '../../../shared/types/ipc'
+import type { MetadataSearchResultDto } from '../../../shared/types/ipc'
 
 type SearchSource = 'all' | 'dlsite' | 'steam' | 'vndb' | 'getchu'
-type SearchResult =
-  | DlsiteSearchResultDto
-  | SteamSearchResultDto
-  | VndbSearchResultDto
-  | GetchuSearchResultDto
 interface SourceSearchState {
-  data: SearchResult[] | undefined
+  data: MetadataSearchResultDto[] | undefined
   isPending: boolean
   isError: boolean
 }
 
-function renderResultCard(result: SearchResult, onSelect: (result: SearchResult) => void) {
+function renderResultCard(result: MetadataSearchResultDto, onSelect: (result: MetadataSearchResultDto) => void) {
   return (
     <button
       key={result.code.value}
@@ -68,7 +55,7 @@ function renderResultCard(result: SearchResult, onSelect: (result: SearchResult)
 function renderSourceGroup(
   label: string,
   search: SourceSearchState,
-  onSelect: (result: SearchResult) => void,
+  onSelect: (result: MetadataSearchResultDto) => void,
   searchingText: string,
   errorText: string
 ) {
@@ -111,10 +98,10 @@ export function GameSearchPage() {
 
   const { data: metadata, isLoading } = useGameMetadata(activeCode)
   const crawlAndSave = useCrawlGameMetadata()
-  const searchDlsite = useSearchDlsite()
-  const searchSteam = useSearchSteam()
-  const searchVndb = useSearchVndb()
-  const searchGetchu = useSearchGetchu()
+  const searchDlsite = useSearchMetadata('dlsite')
+  const searchSteam = useSearchMetadata('steam')
+  const searchVndb = useSearchMetadata('vndb')
+  const searchGetchu = useSearchMetadata('getchu')
   const { data: coverImage } = useGameCoverImage(metadata?.coverImagePath ? activeCode : null)
 
   // Only meaningful for the 4 single-source tabs - 'all' fires and renders
@@ -128,7 +115,7 @@ export function GameSearchPage() {
           ? searchVndb
           : searchGetchu
 
-  const selectResult = (result: SearchResult): void => {
+  const selectResult = (result: MetadataSearchResultDto): void => {
     setActiveCode(result.code)
     crawlAndSave.mutate(result.code)
   }

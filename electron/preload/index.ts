@@ -3,17 +3,17 @@ import {
   IPC_CHANNELS,
   type BulkCrawlProgressDto,
   type DeleteResultDto,
-  type DlsiteSearchResultDto,
   type ExcludedEntryDto,
   type GameMetadataDto,
   type GameUserDataDto,
   type GameWithSavePathDto,
-  type GetchuSearchResultDto,
   type LaunchConfigDto,
   type Library,
   type LibraryWithStatus,
   type Locale,
   type MediaSyncState,
+  type MetadataSearchResultDto,
+  type MetadataSearchSource,
   type MoveResultDto,
   type PersistedExplorerTab,
   type RenameResultDto,
@@ -21,11 +21,9 @@ import {
   type SaveSnapshotDto,
   type SortPage,
   type SortPreference,
-  type SteamSearchResultDto,
   type Theme,
   type UpdateStatus,
   type VersionMismatchDto,
-  type VndbSearchResultDto,
 } from '../../shared/types/ipc'
 import type { GameCode, ScannedEntry } from '../../shared/types/scanner'
 
@@ -126,14 +124,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_MANY, { codes }),
     getCoverImage: (code: GameCode): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_GET_COVER_IMAGE, { code }),
-    searchDlsite: (query: string): Promise<DlsiteSearchResultDto[]> =>
-      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_DLSITE, { query }),
-    searchVndb: (query: string): Promise<VndbSearchResultDto[]> =>
-      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_VNDB, { query }),
-    searchSteam: (query: string): Promise<SteamSearchResultDto[]> =>
-      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_STEAM, { query }),
-    searchGetchu: (query: string): Promise<GetchuSearchResultDto[]> =>
-      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH_GETCHU, { query }),
+    search: (source: MetadataSearchSource, query: string): Promise<MetadataSearchResultDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.METADATA_SEARCH, { source, query }),
     crawlMissing: (codes: GameCode[]): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.METADATA_CRAWL_MISSING, { codes }),
     // See scanner.onScanProgress - same shape (subscribe, return an

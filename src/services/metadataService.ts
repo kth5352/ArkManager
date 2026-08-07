@@ -1,12 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GameCode } from '../../shared/types/scanner'
-import type {
-  DlsiteSearchResultDto,
-  GameMetadataDto,
-  GetchuSearchResultDto,
-  SteamSearchResultDto,
-  VndbSearchResultDto,
-} from '../../shared/types/ipc'
+import type { GameMetadataDto, MetadataSearchResultDto, MetadataSearchSource } from '../../shared/types/ipc'
 
 function metadataQueryKey(code: GameCode) {
   return ['metadata', code.value] as const
@@ -36,31 +30,10 @@ export function useGameCoverImage(code: GameCode | null) {
   })
 }
 
-export function useSearchDlsite() {
+export function useSearchMetadata(source: MetadataSearchSource) {
   return useMutation({
-    mutationFn: (query: string): Promise<DlsiteSearchResultDto[]> =>
-      window.api.metadata.searchDlsite(query),
-  })
-}
-
-export function useSearchVndb() {
-  return useMutation({
-    mutationFn: (query: string): Promise<VndbSearchResultDto[]> =>
-      window.api.metadata.searchVndb(query),
-  })
-}
-
-export function useSearchSteam() {
-  return useMutation({
-    mutationFn: (query: string): Promise<SteamSearchResultDto[]> =>
-      window.api.metadata.searchSteam(query),
-  })
-}
-
-export function useSearchGetchu() {
-  return useMutation({
-    mutationFn: (query: string): Promise<GetchuSearchResultDto[]> =>
-      window.api.metadata.searchGetchu(query),
+    mutationFn: (query: string): Promise<MetadataSearchResultDto[]> =>
+      window.api.metadata.search(source, query),
   })
 }
 

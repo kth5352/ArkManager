@@ -5,13 +5,12 @@ import {
   GetMetadataRequestSchema,
   GetManyMetadataRequestSchema,
   GetCoverImageRequestSchema,
-  SearchDlsiteRequestSchema,
-  SearchVndbRequestSchema,
-  SearchSteamRequestSchema,
-  SearchGetchuRequestSchema,
+  MetadataSearchRequestSchema,
   CrawlMissingMetadataRequestSchema,
   IPC_CHANNELS,
   type GameMetadataDto,
+  type MetadataSearchSource,
+  type MetadataSearchResultDto,
 } from '../../../shared/types/ipc'
 import { crawlGameMetadata } from '../metadata/crawlGameMetadata'
 import { crawlDlsiteSearch } from '../metadata/crawlDlsiteSearch'
@@ -28,6 +27,16 @@ import {
 } from '../database/gameMetadataRepository'
 import type { AppDatabase } from '../database/client'
 import { encodeThumbnail } from './scannerHandlers'
+
+const metadataSearchFns: Record<
+  MetadataSearchSource,
+  (query: string) => Promise<MetadataSearchResultDto[]>
+> = {
+  dlsite: crawlDlsiteSearch,
+  steam: crawlSteamSearch,
+  vndb: searchVndb,
+  getchu: crawlGetchuSearch,
+}
 
 function toDto(row: ReturnType<typeof getGameMetadata>): GameMetadataDto | null {
   if (!row) return null
@@ -92,24 +101,9 @@ export function registerMetadataHandlers(db: AppDatabase): void {
     return encodeThumbnail(row.coverImagePath).catch(() => null)
   })
 
-  ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_DLSITE, async (_event, payload: unknown) => {
-    const { query } = SearchDlsiteRequestSchema.parse(payload)
-    return crawlDlsiteSearch(query)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_VNDB, async (_event, payload: unknown) => {
-    const { query } = SearchVndbRequestSchema.parse(payload)
-    return searchVndb(query)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_STEAM, async (_event, payload: unknown) => {
-    const { query } = SearchSteamRequestSchema.parse(payload)
-    return crawlSteamSearch(query)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH_GETCHU, async (_event, payload: unknown) => {
-    const { query } = SearchGetchuRequestSchema.parse(payload)
-    return crawlGetchuSearch(query)
+  ipcMain.handle(IPC_CHANNELS.METADATA_SEARCH, async (_event, payload: unknown) => {
+    const { source, query } = MetadataSearchRequestSchema.parse(payload)
+    return metadataSearchFns[source](query)
   })
 
   ipcMain.handle(IPC_CHANNELS.METADATA_CRAWL_MISSING, (event, payload: unknown) => {
