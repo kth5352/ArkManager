@@ -350,9 +350,6 @@ function computeCardHeight(cardWidth: number): number {
   return cardWidth * (4 / 3) + CARD_TEXT_BLOCK_HEIGHT
 }
 
-const ZOOM_MIN = 0.6
-const ZOOM_MAX = 1.8
-
 interface GridCellProps {
   entries: ScannedEntry[]
   columnCount: number
