@@ -4,9 +4,9 @@ import {
   type QueryClient,
   type UseMutationResult,
 } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { useTranslation } from '../i18n/useTranslation'
 import { groupMovesByOriginalParent } from '../lib/groupMovesByOriginalParent'
+import { appToast } from '../lib/appToast'
 import { useLastMoveStore } from '../stores/lastMoveStore'
 import type { DeleteResultDto, MoveResultDto, RenameResultDto } from '../../shared/types/ipc'
 
@@ -97,14 +97,14 @@ export function useMoveEntries(): MoveEntriesMutation {
       )
       if (moved.length > 0) {
         useLastMoveStore.getState().setLastMove(moved)
-        toast.success(t('fileOps.movedToast', { count: moved.length }), {
+        appToast.success(t('fileOps.movedToast', { count: moved.length }), {
           action: { label: t('fileOps.undo'), onClick: () => performUndo(mutation) },
         })
       }
 
       const failedCount = results.filter((r) => !r.success).length
       if (failedCount > 0) {
-        toast.error(t('fileOps.moveFailedToast', { count: failedCount }))
+        appToast.error(t('fileOps.moveFailedToast', { count: failedCount }))
       }
     },
   })

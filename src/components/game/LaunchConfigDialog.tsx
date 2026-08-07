@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import {
@@ -12,6 +11,7 @@ import { useGameUserData } from '../../services/gameUserDataService'
 import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
 import { SaveManagerDialog } from './SaveManagerDialog'
 import { useTranslation } from '../../i18n/useTranslation'
+import { appToast } from '../../lib/appToast'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { LaunchConfigDto } from '../../../shared/types/ipc'
 
@@ -61,13 +61,13 @@ export function LaunchConfigDialog({ entry, onClose, autoLaunchOnSave }: LaunchC
     setLaunchConfig
       .mutateAsync({ entry, config: { executablePath: selectedExe, launchMode } })
       .then(() => {
-        toast.success(t('launchConfig.saved'))
+        appToast.success(t('launchConfig.saved'))
         onClose()
         if (autoLaunchOnSave) {
-          launchGame.mutateAsync(entry).catch(() => toast.error(t('launchConfig.launchFailed')))
+          launchGame.mutateAsync(entry).catch(() => appToast.error(t('launchConfig.launchFailed')))
         }
       })
-      .catch(() => toast.error(t('launchConfig.saveFailed')))
+      .catch(() => appToast.error(t('launchConfig.saveFailed')))
   }
 
   const handlePickSaveFolder = async (): Promise<void> => {

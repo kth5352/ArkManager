@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
+import { Button } from '../ui/button'
 
 interface MediaPlaylistPanelProps {
   className?: string
@@ -39,16 +40,18 @@ export function MediaPlaylistPanel({ className, dark }: MediaPlaylistPanelProps)
           >
             {track.name}
           </button>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => removeFromPlaylist(i)}
             aria-label={t('media.removeFromPlaylist')}
             className={cn(
-              'shrink-0 hover:text-destructive',
+              'h-7 w-7 shrink-0 hover:text-destructive',
               dark ? 'text-white/70' : 'text-muted-foreground'
             )}
           >
             <X className="h-3 w-3" />
-          </button>
+          </Button>
         </div>
       ))}
     </div>

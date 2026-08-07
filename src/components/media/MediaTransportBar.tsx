@@ -15,6 +15,7 @@ import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
 import type { MediaPlaybackState } from './useMediaPlayback'
+import { Button } from '../ui/button'
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -79,30 +80,38 @@ export function MediaTransportBar({
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={prev}
         disabled={playlist.length < 2}
         aria-label={t('media.previousTrack')}
         className={`shrink-0 disabled:opacity-40 ${mutedText}`}
       >
         <SkipBack className="h-4 w-4" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={togglePlay}
         aria-label={playback.isPlaying ? t('media.pause') : t('media.play')}
         className={`shrink-0 ${mainText}`}
       >
         {playback.isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={next}
         disabled={playlist.length < 2}
         aria-label={t('media.nextTrack')}
         className={`shrink-0 disabled:opacity-40 ${mutedText}`}
       >
         <SkipForward className="h-4 w-4" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={cycleRepeatMode}
         aria-label={t('media.repeatMode')}
         className={cn(
@@ -111,16 +120,20 @@ export function MediaTransportBar({
         )}
       >
         {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={toggleShuffle}
         aria-label={t('media.shuffleMode')}
         className={cn('shrink-0', shuffleMode ? (dark ? 'text-white' : 'text-primary') : mutedText)}
       >
         <Shuffle className="h-4 w-4" />
-      </button>
+      </Button>
       {onToggleLyrics && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onToggleLyrics}
           disabled={!hasLyrics}
           aria-label={t('media.toggleLyrics')}
@@ -131,7 +144,7 @@ export function MediaTransportBar({
           )}
         >
           <Captions className="h-4 w-4" />
-        </button>
+        </Button>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -171,9 +184,15 @@ export function MediaTransportBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <button onClick={toggleMute} aria-label={t('media.toggleMute')} className={mutedText}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleMute}
+          aria-label={t('media.toggleMute')}
+          className={mutedText}
+        >
           {volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        </button>
+        </Button>
         <input
           type="range"
           min={0}

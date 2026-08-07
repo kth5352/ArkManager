@@ -131,17 +131,22 @@ export function RenameDialog({ targets, onClose, onCompleted }: RenameDialogProp
             {hasEmptyNameInBatch && (
               <p className="text-xs text-destructive">{t('rename.emptyNames')}</p>
             )}
-            <Button
-              onClick={handleApply}
-              disabled={
-                !pattern.trim() ||
-                hasDuplicateInBatch ||
-                hasEmptyNameInBatch ||
-                renameEntries.isPending
-              }
-            >
-              {renameEntries.isPending ? t('rename.changing') : t('rename.bulkApply')}
-            </Button>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={onClose}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={handleApply}
+                disabled={
+                  !pattern.trim() ||
+                  hasDuplicateInBatch ||
+                  hasEmptyNameInBatch ||
+                  renameEntries.isPending
+                }
+              >
+                {renameEntries.isPending ? t('rename.changing') : t('rename.bulkApply')}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -151,9 +156,14 @@ export function RenameDialog({ targets, onClose, onCompleted }: RenameDialogProp
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
             />
-            <Button onClick={handleApply} disabled={!singleName.trim() || renameEntries.isPending}>
-              {renameEntries.isPending ? t('rename.changing') : t('rename.apply')}
-            </Button>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={onClose}>
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={handleApply} disabled={!singleName.trim() || renameEntries.isPending}>
+                {renameEntries.isPending ? t('rename.changing') : t('rename.apply')}
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

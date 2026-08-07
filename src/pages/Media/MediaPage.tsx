@@ -13,6 +13,7 @@ import { isMediaFile } from '../../../shared/isMediaFile'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useTranslation } from '../../i18n/useTranslation'
+import { appToast } from '../../lib/appToast'
 
 // A single track row - thumbnail state (whether the current mediathumb://
 // request 404'd, and a cache-busting counter bumped after the user manually
@@ -39,7 +40,9 @@ function MediaTrackRow({
   const handlePickThumbnail = async (): Promise<void> => {
     const sourcePath = await pickFile.mutateAsync()
     if (!sourcePath) return
-    await setFromFile.mutateAsync({ filePath: track.path, sourcePath })
+    const result = await setFromFile.mutateAsync({ filePath: track.path, sourcePath })
+    appToast.success(t('media.thumbnailSet'))
+    if (result.warning) appToast.info(result.warning)
     // mediathumb:// is a plain URL, not a react-query cache entry - nothing
     // to invalidate. Bumping this query param forces the <img> to actually
     // re-request instead of reusing Chromium's cached response for the
@@ -50,7 +53,7 @@ function MediaTrackRow({
 
   return (
     <li className="flex items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-accent">
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
         {!thumbFailed && (
           <img
             src={`${buildMediaThumbnailUrl(track.path)}?v=${refreshToken}`}
@@ -65,20 +68,24 @@ function MediaTrackRow({
         <Play className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="truncate">{track.name}</span>
       </button>
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         aria-label={t('media.setThumbnail')}
-        className="shrink-0 text-muted-foreground hover:text-foreground"
+        className="shrink-0"
         onClick={handlePickThumbnail}
       >
         <ImagePlus className="h-4 w-4" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
         aria-label={t('media.addToPlaylist')}
-        className="shrink-0 text-muted-foreground hover:text-foreground"
+        className="shrink-0"
         onClick={onAddToPlaylist}
       >
         <Plus className="h-4 w-4" />
-      </button>
+      </Button>
     </li>
   )
 }

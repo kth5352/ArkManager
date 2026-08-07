@@ -75,7 +75,7 @@ export function MoveDialog({ targets, onClose }: MoveDialogProps) {
               </p>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={onClose}>
+              <Button variant="ghost" onClick={onClose}>
                 {t('common.cancel')}
               </Button>
               <Button onClick={handleMove} disabled={!destDir || moveEntries.isPending}>

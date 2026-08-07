@@ -70,7 +70,7 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
               <DialogTitle>{game.name}</DialogTitle>
             </DialogHeader>
             <div className="flex gap-4">
-              <div className="h-40 w-32 shrink-0 overflow-hidden rounded bg-muted">
+              <div className="flex h-40 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                 <GameThumbnail entry={game} />
               </div>
               <div className="flex flex-col gap-1 text-sm text-muted-foreground">

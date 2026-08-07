@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { toast } from 'sonner'
 import {
   DndContext,
   DragOverlay,
@@ -20,6 +19,7 @@ import { useLibraries } from '../../services/librariesService'
 import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { getParentPath } from '../../lib/groupMovesByOriginalParent'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
+import { appToast } from '../../lib/appToast'
 import { useExplorerTabsPersistence } from '../../hooks/useExplorerTabsPersistence'
 import {
   useExplorerTreeOpenQuery,
@@ -97,7 +97,7 @@ export function ExplorerPage() {
       // target's own droppable/disabled state was computed, so it still
       // catches any future drop-target type that doesn't yet gate itself.
       if (!findLibraryForPath(destDir, libraries ?? [])) {
-        toast.error(t('explorer.dropOutsideLibrary'))
+        appToast.error(t('explorer.dropOutsideLibrary'))
         return
       }
 

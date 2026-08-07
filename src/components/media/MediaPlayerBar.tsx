@@ -7,6 +7,7 @@ import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
 import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
+import { Button } from '../ui/button'
 
 interface MediaPlayerBarProps {
   playback: MediaPlaybackState
@@ -56,16 +57,18 @@ export function MediaPlayerBar({
         onToggleLyrics={onToggleLyrics}
       />
 
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={() => setShowPlaylist((v) => !v)}
         aria-label={t('media.playlist')}
         className={cn(
-          'shrink-0 text-muted-foreground hover:text-foreground',
+          'shrink-0',
           showPlaylist && 'text-foreground'
         )}
       >
         <ListMusic className="h-4 w-4" />
-      </button>
+      </Button>
       {/* Right-aligned to match FullscreenMediaOverlay's minimize button
           position (also the rightmost of its own icon row) - previously
           this sat on the far left of the docked bar, so expanding then
@@ -75,22 +78,26 @@ export function MediaPlayerBar({
           toggling the expanded view - and a misclick here should never
           land on that button instead. */}
       {!isDetached && onExpandVideo && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onExpandVideo}
           aria-label={t('media.expand')}
-          className="shrink-0 text-muted-foreground hover:text-foreground"
+          className="shrink-0"
         >
           <Maximize2 className="h-4 w-4" />
-        </button>
+        </Button>
       )}
       <div className="h-4 w-px shrink-0 bg-border" />
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={clearPlaylist}
         aria-label={t('media.closePlaylist')}
-        className="shrink-0 text-muted-foreground hover:text-destructive"
+        className="shrink-0 hover:text-destructive"
       >
         <X className="h-4 w-4" />
-      </button>
+      </Button>
 
       {showPlaylist && (
         <div className="absolute bottom-full right-3 z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-md">

@@ -171,13 +171,15 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
       />
       <div className="sticky top-0 z-10 flex items-start justify-between gap-2 border-b border-border bg-card p-4">
         <p className="text-sm font-medium">{game.name}</p>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           aria-label={t('game.closeSidebar')}
           onClick={onClose}
-          className="shrink-0 text-muted-foreground hover:text-foreground"
+          className="shrink-0"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
       <div className="flex flex-col gap-3 p-4">
         <div
@@ -191,20 +193,22 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
               <span className="px-2 text-center text-xs">{t('customCover.clickToChange')}</span>
             </div>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             type="button"
             aria-label={t('game.toggleCleared')}
             onClick={(e) => {
               e.stopPropagation()
               toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
             }}
-            className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+            className="absolute right-2 top-2 z-10 rounded-full bg-background/70"
           >
             <CheckCircle2
               className={`h-5 w-5 ${userData?.isCleared ? 'text-green-500' : ''}`}
               fill={userData?.isCleared ? 'currentColor' : 'none'}
             />
-          </button>
+          </Button>
         </div>
         {metadata?.title && metadata.title !== game.name && (
           <p className="text-sm text-muted-foreground">{metadata.title}</p>
@@ -270,11 +274,10 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
               {t('game.openFolder')}
             </Button>
             {game.code && (
-              <HoverTooltip content={t('game.refreshMetadata')} className="flex-1">
+              <HoverTooltip content={t('game.refreshMetadata')} className="shrink-0">
                 <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
+                  size="icon"
+                  variant="ghost"
                   onClick={() => game.code && crawlMetadata.mutate(game.code)}
                   disabled={crawlMetadata.isPending}
                   aria-label={t('game.refreshMetadata')}

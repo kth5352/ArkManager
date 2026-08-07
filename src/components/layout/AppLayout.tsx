@@ -76,7 +76,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           own fixed bottom-4 right-4 position. richColors gives success/error
           toasts distinct color treatment without this app hand-rolling
           variant styling. */}
-      <Toaster theme={theme} position="top-right" richColors />
+      <Toaster theme={theme} position="top-right" richColors closeButton />
     </div>
   )
 }

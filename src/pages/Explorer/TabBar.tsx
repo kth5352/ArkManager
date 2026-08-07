@@ -18,6 +18,7 @@ import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { useShowItemInFolder } from '../../services/shellService'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ExplorerDragData } from './dragTypes'
+import { Button } from '../../components/ui/button'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
   const { t } = useTranslation()
@@ -80,16 +81,18 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
           } ${isFileDropTarget ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
         >
           <span>{tab.label}</span>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             aria-label={t('tabBar.closeTab')}
             onClick={(e) => {
               e.stopPropagation()
               closeTab(tab.id)
             }}
-            className="rounded p-0.5 opacity-0 hover:bg-accent group-hover:opacity-100"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100"
           >
             <X className="h-3 w-3" />
-          </button>
+          </Button>
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -186,25 +189,29 @@ export function TabBar() {
           ))}
         </AnimatePresence>
         <motion.div layout transition={{ duration: 0.15 }}>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleAddTab}
             disabled={!hasLibraries}
             aria-label={t('tabBar.addTab')}
             title={hasLibraries ? t('tabBar.addTab') : t('tabBar.registerLibraryFirst')}
-            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            className="shrink-0 rounded-t-md"
           >
             <Plus className="h-4 w-4" />
-          </button>
+          </Button>
         </motion.div>
         <motion.div layout transition={{ duration: 0.15 }}>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleOpenFolder}
             aria-label={t('tabBar.openFolder')}
             title={t('tabBar.openFolder')}
-            className="flex shrink-0 items-center justify-center rounded-t-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="shrink-0 rounded-t-md"
           >
             <FolderOpen className="h-4 w-4" />
-          </button>
+          </Button>
         </motion.div>
       </div>
     </SortableContext>
