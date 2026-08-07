@@ -279,6 +279,7 @@ const ko = {
   'explorer.dragCount': '{count}개 항목',
   'explorer.sidebarEmpty': '탭을 열면 폴더 트리가 표시됩니다.',
   'explorer.closeSidebar': '탐색 사이드바 닫기',
+  'explorer.toggleFolderExpand': '폴더 펼치기/접기',
 
   'media.addAllToPlaylist': '전체 재생목록에 추가',
   'media.pickFolderPrompt': '폴더를 선택하면 동영상/음성 파일을 찾아 보여줍니다.',
@@ -584,6 +585,7 @@ const ja: Record<keyof typeof ko, string> = {
   'explorer.dragCount': '{count}件',
   'explorer.sidebarEmpty': 'タブを開くとフォルダツリーが表示されます。',
   'explorer.closeSidebar': 'エクスプローラーサイドバーを閉じる',
+  'explorer.toggleFolderExpand': 'フォルダの展開/折りたたみ',
 
   'media.addAllToPlaylist': 'すべて再生リストに追加',
   'media.pickFolderPrompt': 'フォルダを選択すると動画/音声ファイルを探して表示します。',
@@ -890,6 +892,7 @@ const en: Record<keyof typeof ko, string> = {
   'explorer.dragCount': '{count} items',
   'explorer.sidebarEmpty': 'Open a tab to see the folder tree.',
   'explorer.closeSidebar': 'Close explorer sidebar',
+  'explorer.toggleFolderExpand': 'Expand/collapse folder',
 
   'media.addAllToPlaylist': 'Add All to Playlist',
   'media.pickFolderPrompt': 'Pick a folder to find video/audio files in it.',

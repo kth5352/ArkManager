@@ -8,6 +8,7 @@ import {
   useSetExplorerTreeWidthMutation,
 } from '../../services/settingsService'
 import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../../lib/clampExplorerTreeWidth'
+import { findLibraryForPath } from '../../lib/findLibraryForPath'
 import { useTranslation } from '../../i18n/useTranslation'
 import { pathToBreadcrumbSegments } from './breadcrumb'
 import type { ExplorerDropData } from './dragTypes'
@@ -59,12 +60,28 @@ function TreeNode({
   activePath,
 }: TreeNodeProps) {
   const { t } = useTranslation()
+  const { data: libraries } = useLibraries()
   const isExpanded = expandedPaths.has(normalizePath(path))
   const isActive = activePath !== undefined && normalizePath(path) === normalizePath(activePath)
   const { data: entries = [], isError } = useFolderScan(path, { enabled: isExpanded })
   const folders = entries.filter((entry) => entry.kind === 'folder')
+  // Namespaced ("tree:" prefix), not the raw path - FolderEntryRow and
+  // BreadcrumbSegmentButton in FolderView.tsx already register droppables
+  // keyed by the same raw path within this same DndContext (an expanded
+  // node's visible children are exactly the main pane's visible rows, and
+  // auto-expand always covers exactly what the breadcrumb bar shows - 100%
+  // overlap both ways, not an edge case). dnd-kit keeps one Map of
+  // droppables keyed by id, so an unnamespaced id here would silently lose
+  // its registration to whichever twin mounts later, making a drop onto a
+  // sidebar node with a live main-pane/breadcrumb twin either no-op or
+  // highlight the wrong element. `data.path` (used by handleDragEnd's
+  // destDir) is untouched, so this needs no changes on the drop-handling
+  // side. Also gated the same way BreadcrumbSegmentButton gates its own
+  // droppable, for the same reason: don't invite a drop attempt that
+  // findLibraryForPath would just reject downstream anyway.
   const { setNodeRef, isOver } = useDroppable({
-    id: path,
+    id: `tree:${path}`,
+    disabled: !findLibraryForPath(path, libraries ?? []),
     data: { type: 'folder-entry', path } satisfies ExplorerDropData,
   })
 
@@ -73,12 +90,13 @@ function TreeNode({
       <div
         ref={setNodeRef}
         style={{ paddingLeft: depth * 16 }}
-        className={`flex h-8 items-center gap-1 rounded px-1 text-sm hover:bg-accent ${
+        className={`flex h-8 min-w-0 items-center gap-1 rounded px-1 text-sm hover:bg-accent ${
           isActive ? 'bg-accent font-medium' : ''
         } ${isOver ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
       >
         <button
           type="button"
+          aria-label={t('explorer.toggleFolderExpand')}
           onClick={(event) => {
             event.stopPropagation()
             onToggleExpand(path)
@@ -225,7 +243,7 @@ export function ExplorerSidebar({ onNavigate, onClose, activePath }: ExplorerSid
         onPointerDown={handleResizePointerDown}
         className="absolute right-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-primary/40"
       />
-      <div className="flex items-center justify-end border-b border-border p-1">
+      <div className="sticky top-0 z-10 flex items-center justify-end border-b border-border bg-card p-1">
         <button
           type="button"
           aria-label={t('explorer.closeSidebar')}
