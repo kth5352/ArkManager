@@ -243,6 +243,13 @@ function FolderEntryCard({
             if (consumeLongPressClick()) return
             onEntryClick(entry)
           }}
+          onKeyDown={(event) => {
+            if (event.ctrlKey && event.shiftKey && event.key === 'ArrowUp') {
+              event.preventDefault()
+              onMove(entry)
+            }
+          }}
+          tabIndex={0}
         >
           <SelectionCheckbox
             path={entry.path}
