@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { CheckCircle2, Clock, Copy, Heart, Star } from 'lucide-react'
@@ -37,6 +38,7 @@ import { useGameMetadataMany } from '../../services/metadataService'
 import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import { useTranslation } from '../../i18n/useTranslation'
+import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 84 // 64 + 20 (제목 2번째 줄분)
@@ -252,6 +254,8 @@ function Row({
 
 export function ListPage() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const refreshFiles = (): void => invalidateFileListQueries(queryClient)
   const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('list')
   const [searchQuery, setSearchQuery] = useState('')
@@ -344,7 +348,12 @@ export function ListPage() {
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
         <DuplicatesOnlyToggle value={duplicatesOnly} onChange={setDuplicatesOnly} />
         <LibraryVisibilityDialog />
-        <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+        <PageToolbar
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={setSort}
+          onRefresh={refreshFiles}
+        />
         <SelectionToolbar allEntries={visibleGames} />
       </div>
       <div className="flex min-h-0 flex-1">

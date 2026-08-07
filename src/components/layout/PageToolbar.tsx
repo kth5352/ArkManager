@@ -1,4 +1,12 @@
-import { ArrowDownAZ, ArrowUpAZ, LayoutGrid, List, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  LayoutGrid,
+  List,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RefreshCw,
+} from 'lucide-react'
 import { Button } from '../ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Slider } from '../ui/slider'
@@ -15,6 +23,8 @@ interface PageToolbarProps {
   onViewModeChange?: (mode: 'list' | 'grid') => void
   sidebarOpen?: boolean
   onSidebarOpenChange?: (open: boolean) => void
+  onRefresh?: () => void
+  isRefreshing?: boolean
 }
 
 export function PageToolbar({
@@ -27,6 +37,8 @@ export function PageToolbar({
   onViewModeChange,
   sidebarOpen,
   onSidebarOpenChange,
+  onRefresh,
+  isRefreshing,
 }: PageToolbarProps) {
   const { t } = useTranslation()
 
@@ -44,6 +56,17 @@ export function PageToolbar({
           ) : (
             <PanelLeftOpen className="h-4 w-4" />
           )}
+        </Button>
+      )}
+      {onRefresh && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t('pageToolbar.refreshFiles')}
+          onClick={onRefresh}
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={isRefreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
         </Button>
       )}
       <Select

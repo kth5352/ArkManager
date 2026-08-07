@@ -1,4 +1,5 @@
 import { List, useListCallbackRef, type RowComponentProps } from 'react-window'
+import { useQueryClient } from '@tanstack/react-query'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Copy, Star } from 'lucide-react'
@@ -30,6 +31,7 @@ import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
 import { useTranslation } from '../../i18n/useTranslation'
+import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const ROW_HEIGHT = 32
@@ -272,6 +274,8 @@ function Row({
 
 export function DetailListPage() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const refreshFiles = (): void => invalidateFileListQueries(queryClient)
   const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('detail-list')
   const [searchQuery, setSearchQuery] = useState('')
@@ -391,7 +395,12 @@ export function DetailListPage() {
         <FileKindFilterToggle value={fileKindFilter} onChange={setFileKindFilter} />
         <DuplicatesOnlyToggle value={duplicatesOnly} onChange={setDuplicatesOnly} />
         <LibraryVisibilityDialog />
-        <PageToolbar sortField={sortField} sortDirection={sortDirection} onSortChange={setSort} />
+        <PageToolbar
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={setSort}
+          onRefresh={refreshFiles}
+        />
         <SelectionToolbar allEntries={visible} />
       </div>
       <div className="flex min-h-0 flex-1">

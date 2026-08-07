@@ -25,9 +25,10 @@ interface RenameDialogProps {
   // state instead of carrying over the previous open's draft.
   targets: ScannedEntry[]
   onClose: () => void
+  onCompleted?: () => void
 }
 
-export function RenameDialog({ targets, onClose }: RenameDialogProps) {
+export function RenameDialog({ targets, onClose, onCompleted }: RenameDialogProps) {
   const { t } = useTranslation()
   const isBulk = targets.length > 1
   const [singleName, setSingleName] = useState(() => targets[0]?.name ?? '')
@@ -67,7 +68,12 @@ export function RenameDialog({ targets, onClose }: RenameDialogProps) {
         ? [{ path: targets[0].path, newName: singleName.trim() }]
         : []
     if (renames.length === 0) return
-    renameEntries.mutate(renames, { onSuccess: setResults })
+    renameEntries.mutate(renames, {
+      onSuccess: (nextResults) => {
+        setResults(nextResults)
+        onCompleted?.()
+      },
+    })
   }
 
   return (

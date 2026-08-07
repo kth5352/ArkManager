@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
 import { useTranslation } from '../../i18n/useTranslation'
+import { cn } from '../../lib/utils'
 
 interface SearchHeaderProps {
   query: string
@@ -92,9 +93,15 @@ export function SearchHeader({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div
-        className={`flex items-center gap-2 overflow-hidden rounded-md border border-border bg-background px-2 transition-[width] duration-200 ${
-          isExpanded ? 'w-64' : 'w-8'
-        }`}
+        onFocusCapture={() => setExpanded(true)}
+        onBlurCapture={(event) => {
+          if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+          setExpanded(false)
+        }}
+        className={cn(
+          'flex items-center gap-2 overflow-hidden rounded-md border border-border bg-background px-2 transition-[width] duration-200',
+          isExpanded ? 'w-[28rem]' : 'w-8'
+        )}
       >
         <button
           type="button"
@@ -111,19 +118,18 @@ export function SearchHeader({
           ref={inputRef}
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          onFocus={() => setExpanded(true)}
-          onBlur={() => setExpanded(false)}
           placeholder={t('search.placeholder')}
-          className="h-7 border-none p-0 shadow-none focus-visible:ring-0"
+          className="h-7 min-w-0 border-none p-0 shadow-none focus-visible:ring-0"
+        />
+        <div className="h-4 w-px shrink-0 bg-border" />
+        <Input
+          value={genreInput}
+          onChange={(e) => setGenreInput(e.target.value)}
+          onKeyDown={handleGenreInputKeyDown}
+          placeholder={t('search.tagFilterPlaceholder')}
+          className="h-7 min-w-0 border-none p-0 shadow-none focus-visible:ring-0"
         />
       </div>
-      <Input
-        value={genreInput}
-        onChange={(e) => setGenreInput(e.target.value)}
-        onKeyDown={handleGenreInputKeyDown}
-        placeholder={t('search.tagFilterPlaceholder')}
-        className="h-7 w-40"
-      />
       {includedGenres.map((genre) => (
         <span
           key={`include-${genre}`}

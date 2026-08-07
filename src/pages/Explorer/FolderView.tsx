@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Music } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
@@ -33,6 +34,7 @@ import { useLongPress } from '../../hooks/useLongPress'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useLibraries } from '../../services/librariesService'
 import { findLibraryForPath } from '../../lib/findLibraryForPath'
+import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ExplorerDragData, ExplorerDropData } from './dragTypes'
 
 interface FolderViewProps {
@@ -409,6 +411,8 @@ export function FolderView({
   onSidebarOpenChange,
 }: FolderViewProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const refreshFiles = (): void => invalidateFileListQueries(queryClient)
   const addTab = useExplorerStore((s) => s.addTab)
   const breadcrumbs = pathToBreadcrumbSegments(path)
   const [zoom, setZoom] = useState(1)
@@ -536,6 +540,7 @@ export function FolderView({
           onSortChange={setSort}
           viewMode={viewMode}
           onViewModeChange={onViewModeChange}
+          onRefresh={refreshFiles}
           // Zoom only makes sense in grid mode (matching GalleryPage's own
           // "zoom only shown for a grid" precedent) - undefined here hides
           // PageToolbar's zoom slider entirely, its existing conditional

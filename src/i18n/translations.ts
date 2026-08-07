@@ -104,6 +104,7 @@ const ko = {
   'pageToolbar.toggleSortDirection': '정렬 방향 전환',
   'pageToolbar.toggleViewMode': '보기 방식 전환',
   'pageToolbar.toggleSidebar': '사이드바 전환',
+  'pageToolbar.refreshFiles': '파일 새로 고침',
 
   'duplicatesOnly.label': '중복만',
   'duplicatesOnly.tooltip': '중복만 보기',
@@ -418,6 +419,7 @@ const ja: Record<keyof typeof ko, string> = {
   'pageToolbar.toggleSortDirection': '並べ替え方向を切り替え',
   'pageToolbar.toggleViewMode': '表示方式を切り替え',
   'pageToolbar.toggleSidebar': 'サイドバーを切り替え',
+  'pageToolbar.refreshFiles': 'ファイルを更新',
 
   'duplicatesOnly.label': '重複のみ',
   'duplicatesOnly.tooltip': '重複のみ表示',
@@ -731,6 +733,7 @@ const en: Record<keyof typeof ko, string> = {
   'pageToolbar.toggleSortDirection': 'Toggle sort direction',
   'pageToolbar.toggleViewMode': 'Toggle view mode',
   'pageToolbar.toggleSidebar': 'Toggle sidebar',
+  'pageToolbar.refreshFiles': 'Refresh files',
 
   'duplicatesOnly.label': 'Duplicates',
   'duplicatesOnly.tooltip': 'Show duplicates only',

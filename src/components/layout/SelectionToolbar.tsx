@@ -88,6 +88,7 @@ export function SelectionToolbar({ allEntries }: SelectionToolbarProps) {
           dialogMode === 'rename' ? selectedEntries.map((e) => e.path).join('|') : 'rename-closed'
         }
         targets={dialogMode === 'rename' ? selectedEntries : []}
+        onCompleted={deactivate}
         onClose={closeDialog}
       />
       <DeleteConfirmDialog

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Grid, useGridRef, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { motion } from 'framer-motion'
@@ -39,6 +40,7 @@ import { useGameMetadataMany } from '../../services/metadataService'
 import { useExcludeEntry } from '../../services/excludedEntriesService'
 import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import { useTranslation } from '../../i18n/useTranslation'
+import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 const CARD_WIDTH = 180
@@ -280,6 +282,8 @@ function GameCell({
 
 export function GalleryPage() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const refreshFiles = (): void => invalidateFileListQueries(queryClient)
   const { data: games, isLoading, isError } = useVisibleGames()
   const { field: sortField, direction: sortDirection, setSort } = useSortPreference('gallery')
   const [zoom, setZoom] = useState(1)
@@ -442,6 +446,7 @@ export function GalleryPage() {
           onSortChange={setSort}
           zoom={zoom}
           onZoomChange={setZoom}
+          onRefresh={refreshFiles}
         />
         <SelectionToolbar allEntries={visibleGames} />
       </div>
