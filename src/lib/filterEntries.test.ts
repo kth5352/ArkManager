@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest'
+import type { GameCode } from '../../shared/types/scanner'
 import { filterEntries } from './filterEntries'
 
 interface TestEntry {
   name: string
   kind: 'folder' | 'file'
-  code: { type: 'RJ' | 'VJ' | 'ST' | 'VN' | 'GC'; value: string } | null
+  code: GameCode | null
 }
 
 const metadataByCode = {
@@ -41,6 +42,16 @@ describe('filterEntries', () => {
     expect(filterEntries(entries, metadataByCode, 'RJ02222222', [], []).map((e) => e.name)).toEqual(
       ['beta.zip']
     )
+  })
+
+  it('matches by VNDB release code', () => {
+    const vrEntries: TestEntry[] = [
+      { name: 'release.zip', kind: 'file', code: { type: 'VR', value: 'VR45775' } },
+    ]
+
+    expect(filterEntries(vrEntries, {}, 'VR45775', [], []).map((e) => e.name)).toEqual([
+      'release.zip',
+    ])
   })
 
   it('returns everything when query is empty and no genre filters are set', () => {

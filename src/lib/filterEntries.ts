@@ -1,4 +1,5 @@
 import { isArchiveFile } from '../../shared/isArchiveFile'
+import type { GameCode } from '../../shared/types/scanner'
 
 export interface FilterableMetadata {
   title: string | null
@@ -9,7 +10,7 @@ export interface FilterableMetadata {
 export interface FilterableEntry {
   name: string
   kind: 'folder' | 'file'
-  code: { type: 'RJ' | 'VJ' | 'ST' | 'VN' | 'GC'; value: string } | null
+  code: GameCode | null
 }
 
 export type FileKindFilter = 'all' | 'archive-only' | 'no-archive'
