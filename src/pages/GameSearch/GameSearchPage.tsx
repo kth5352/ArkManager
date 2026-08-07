@@ -21,7 +21,10 @@ interface SourceSearchState {
   isError: boolean
 }
 
-function renderResultCard(result: MetadataSearchResultDto, onSelect: (result: MetadataSearchResultDto) => void) {
+function renderResultCard(
+  result: MetadataSearchResultDto,
+  onSelect: (result: MetadataSearchResultDto) => void
+) {
   return (
     <button
       key={result.code.value}
