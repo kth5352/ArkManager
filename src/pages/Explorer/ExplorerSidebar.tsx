@@ -123,7 +123,18 @@ export function ExplorerSidebar({ onNavigate, activePath }: ExplorerSidebarProps
   const { t } = useTranslation()
   const { data: libraries = [] } = useLibraries()
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
-  const [syncedActivePath, setSyncedActivePath] = useState(activePath)
+  // Always starts undefined, deliberately NOT useState(activePath) - a fresh
+  // mount can already have a real, non-empty activePath (e.g. toggling the
+  // sidebar off/on remounts it entirely via ExplorerPage's `{sidebarOpen &&
+  // ...}`, or a restart hydrates a persisted tab on a nested path), and
+  // seeding this from activePath itself would make `activePath !==
+  // syncedActivePath` false on that very first render - skipping the
+  // auto-expand the sync block below exists to run. Starting undefined
+  // guarantees a mismatch (and therefore one sync pass) on mount whenever
+  // activePath is already set, matching what the useEffect this replaced
+  // would have done (effects always run once after the initial commit,
+  // regardless of the dependency's starting value).
+  const [syncedActivePath, setSyncedActivePath] = useState<string | undefined>(undefined)
   const { data: persistedWidth } = useExplorerTreeWidthQuery()
   const setWidthMutation = useSetExplorerTreeWidthMutation()
   const [width, setWidth] = useState(persistedWidth ?? EXPLORER_TREE_WIDTH_DEFAULT)
