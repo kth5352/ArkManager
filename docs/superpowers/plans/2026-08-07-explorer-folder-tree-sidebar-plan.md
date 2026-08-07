@@ -2,9 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a folder-tree navigation sidebar to Explorer — one root node per registered library, lazily-expandable, click-to-navigate, drag-and-drop move target, collapsible with persisted open/closed state and width.
+**Goal:** Add a folder-tree navigation sidebar to Explorer — rooted at the active tab's own drive, lazily-expandable, click-to-navigate, drag-and-drop move target, collapsible with persisted open/closed state and width, auto-syncing to whatever the active tab is browsing.
 
 **Architecture:** A new `ExplorerSidebar.tsx` component renders as a sibling to `TabBar`/`FolderView` inside `ExplorerPage.tsx`'s existing `DndContext` (not a second one). It is a single global panel (not per-tab), reusing `useFolderScan` for lazy per-node child fetching and `ExplorerPage.tsx`'s existing drag-and-drop handler unchanged (new droppables just produce the same `ExplorerDropData` shape existing rows/breadcrumbs already produce).
+
+> **Revision note (2026-08-07):** Tasks 2 and 3 below were written and Task 2 was implemented (commit `c5794eb`) against an earlier root design (one root node per registered library). Live-testing surfaced that this doesn't match the app's existing navigation model — see `docs/superpowers/specs/2026-08-07-explorer-folder-tree-sidebar-design.md`'s revision note. **Task 2 and Task 3 below are superseded by "Task 2R: Rework ExplorerSidebar to root at the active tab's drive" at the end of this document** — read Task 2R instead of executing Tasks 2/3 as originally written. They're kept here only for history/traceability.
 
 **Tech Stack:** React 19, TypeScript strict, Tailwind, `@dnd-kit/core` (`useDroppable`), TanStack Query, Zod, Zustand.
 
@@ -1416,3 +1418,350 @@ EOF
 - **Spec coverage:** Single global tree (Task 2's `ExplorerSidebar` is rendered once in `ExplorerPage.tsx`, not per-tab) ✓. Lazy expansion reusing `useFolderScan` ✓ (Task 2 Step 1/3). Click-to-navigate with new-tab fallback ✓ (Task 2 Step 6). Auto-sync/highlight ✓ (Task 3). Collapsible + persisted open/width ✓ (Task 1 + Task 2 Steps 4/6). Drag-and-drop move target reusing the existing `DndContext`/`handleDragEnd` unchanged ✓ (Task 2 Step 3's `useDroppable` producing the same `ExplorerDropData` shape; Task 2 Step 6 explicitly calls out that `handleDragEnd`'s body is untouched). Light density (name + chevron only) ✓. Library `exists: false` dimmed/non-expandable/non-droppable ✓ (Task 2 Step 3's `disabled` prop gates the chevron, click, and `useDroppable`'s own `disabled` option together). Error state on a failed node expansion ✓ (Task 2 Step 3's `isError` branch, reusing `explorer.cannotAccessFolder`). Out-of-scope items (per-tab sidebars, persisted expand-state, file-count badges, tree context-menu actions, search integration) are not implemented by any task.
 - **Placeholder scan:** No TBD/TODO; every step contains complete, literal code.
 - **Type consistency:** `ExplorerSidebarProps`/`TreeNodeProps` gain `activePath` in Task 3 without changing any name introduced in Task 2 (`onNavigate`, `expandedPaths`, `onToggleExpand`, `disabled` all stay the same). `useFolderScan`'s new `options?: { enabled?: boolean }` parameter (Task 2 Step 1) matches `useFolderScanRecursive`'s existing `options: { enabled: boolean }` shape in the same file. `clampExplorerTreeWidth`/`EXPLORER_TREE_WIDTH_*` names from Task 1 are used identically in Task 2's `ExplorerSidebar.tsx` and `settingsService.ts`.
+
+---
+
+## Task 2R: Rework ExplorerSidebar to root at the active tab's drive
+
+**Supersedes Task 2 and Task 3 above.** Task 1 (settings plumbing) is unaffected and stays as-is. This task reworks the already-shipped `ExplorerSidebar.tsx` (commit `c5794eb`, built against the original library-list-root design) into the revised design, and folds in what would have been Task 3's auto-sync — the two are no longer separable, since the root itself now depends on the active tab's path. See `docs/superpowers/specs/2026-08-07-explorer-folder-tree-sidebar-design.md`'s revision note for the full rationale.
+
+**Files:**
+- Modify: `src/pages/Explorer/ExplorerSidebar.tsx` (full-file rewrite)
+- Modify: `src/pages/Explorer/ExplorerPage.tsx` (one prop addition)
+- Modify: `src/i18n/translations.ts` (rename `explorer.sidebarNoLibraries` → `explorer.sidebarEmpty`, all 3 locales, and update its text to reflect the new empty condition)
+
+**Interfaces:**
+- Consumes: `pathToBreadcrumbSegments(path: string): BreadcrumbSegment[]` from `src/pages/Explorer/breadcrumb.ts` (existing, unchanged) — now used for two purposes: deriving the tree's root (`[0].path`) and computing the auto-expand ancestor chain (the full list).
+- Produces: `ExplorerSidebar` now takes `{ onNavigate: (path: string) => void; activePath?: string }` (the `activePath` prop is new — there is no other prop change).
+- `useLibraries()` is still consumed, but only for the "no active tab yet" fallback (`libraries[0]?.path`), not for a list of roots.
+
+- [ ] **Step 1: Rewrite `ExplorerSidebar.tsx` in full**
+
+Replace the entire contents of `src/pages/Explorer/ExplorerSidebar.tsx` with:
+
+```tsx
+import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { useDroppable } from '@dnd-kit/core'
+import { useLibraries } from '../../services/librariesService'
+import { useFolderScan } from '../../services/scannerService'
+import {
+  useExplorerTreeWidthQuery,
+  useSetExplorerTreeWidthMutation,
+} from '../../services/settingsService'
+import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../../lib/clampExplorerTreeWidth'
+import { useTranslation } from '../../i18n/useTranslation'
+import { pathToBreadcrumbSegments } from './breadcrumb'
+import type { ExplorerDropData } from './dragTypes'
+
+interface ExplorerSidebarProps {
+  onNavigate: (path: string) => void
+  activePath?: string
+}
+
+// Set membership is normalized (lowercase, forward-slash) rather than exact
+// string match - the same path can reach this set two different ways (a
+// real ScannedEntry.path from a scan, or a reconstructed path from
+// pathToBreadcrumbSegments in the auto-expand effect below), and those two
+// sources aren't guaranteed to agree on casing/separator for the same real
+// folder. Matches the normalization findLibraryForPath.ts and
+// ExplorerPage.tsx's handleDragEnd already use for the identical reason.
+function normalizePath(path: string): string {
+  return path.toLowerCase().replace(/\\/g, '/')
+}
+
+// The sidebar's single root is whichever drive the active tab's path is
+// currently on - not a fixed list of registered libraries (registered
+// libraries just appear as ordinary folders within that drive's tree, no
+// special treatment). pathToBreadcrumbSegments already special-cases a bare
+// drive letter as its own root segment ("C:" -> "C:\\"), so the first
+// segment of any real path IS that path's drive root.
+function getDriveRoot(path: string): string | null {
+  return pathToBreadcrumbSegments(path)[0]?.path ?? null
+}
+
+interface TreeNodeProps {
+  path: string
+  label: string
+  depth: number
+  onNavigate: (path: string) => void
+  expandedPaths: Set<string>
+  onToggleExpand: (path: string) => void
+  activePath?: string
+}
+
+function TreeNode({
+  path,
+  label,
+  depth,
+  onNavigate,
+  expandedPaths,
+  onToggleExpand,
+  activePath,
+}: TreeNodeProps) {
+  const { t } = useTranslation()
+  const isExpanded = expandedPaths.has(normalizePath(path))
+  const isActive = activePath !== undefined && normalizePath(path) === normalizePath(activePath)
+  const { data: entries = [], isError } = useFolderScan(path, { enabled: isExpanded })
+  const folders = entries.filter((entry) => entry.kind === 'folder')
+  const { setNodeRef, isOver } = useDroppable({
+    id: path,
+    data: { type: 'folder-entry', path } satisfies ExplorerDropData,
+  })
+
+  return (
+    <div>
+      <div
+        ref={setNodeRef}
+        style={{ paddingLeft: depth * 16 }}
+        className={`flex h-8 items-center gap-1 rounded px-1 text-sm hover:bg-accent ${
+          isActive ? 'bg-accent font-medium' : ''
+        } ${isOver ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
+      >
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggleExpand(path)
+          }}
+          className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground"
+        >
+          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        </button>
+        <button type="button" onClick={() => onNavigate(path)} className="truncate text-left">
+          {label}
+        </button>
+      </div>
+      {isExpanded && (
+        <div>
+          {isError ? (
+            <p
+              style={{ paddingLeft: (depth + 1) * 16 + 4 }}
+              className="truncate text-xs text-muted-foreground"
+            >
+              {t('explorer.cannotAccessFolder')}
+            </p>
+          ) : (
+            folders.map((entry) => (
+              <TreeNode
+                key={entry.path}
+                path={entry.path}
+                label={entry.name}
+                depth={depth + 1}
+                onNavigate={onNavigate}
+                expandedPaths={expandedPaths}
+                onToggleExpand={onToggleExpand}
+                activePath={activePath}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function ExplorerSidebar({ onNavigate, activePath }: ExplorerSidebarProps) {
+  const { t } = useTranslation()
+  const { data: libraries = [] } = useLibraries()
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
+  const { data: persistedWidth } = useExplorerTreeWidthQuery()
+  const setWidthMutation = useSetExplorerTreeWidthMutation()
+  const [width, setWidth] = useState(persistedWidth ?? EXPLORER_TREE_WIDTH_DEFAULT)
+  const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
+
+  // Render-time sync, not a useEffect - same pattern DetailSidebar.tsx uses
+  // for its own persisted-width sync, so the width doesn't visibly snap
+  // one frame late after the query resolves.
+  if (persistedWidth !== syncedWidth) {
+    setSyncedWidth(persistedWidth)
+    if (persistedWidth !== undefined) setWidth(persistedWidth)
+  }
+
+  // Falls back to the first registered library's own drive only when no tab
+  // is open at all, so the sidebar still has something to show/click before
+  // a first tab exists (matches TabBar.tsx's own handleAddTab fallback
+  // logic). null (neither a tab nor a library) means nothing to root on.
+  const rootSourcePath = activePath ?? libraries[0]?.path
+  const rootPath = rootSourcePath ? getDriveRoot(rootSourcePath) : null
+
+  // Reveals activePath in the tree whenever the active tab's path changes
+  // (tab switch, breadcrumb click, drilling into a subfolder) - expands the
+  // root itself plus every ancestor folder between it and activePath,
+  // inclusive of activePath itself (so its own children are fetched too,
+  // matching normal file-tree "navigate into" behavior).
+  useEffect(() => {
+    if (!activePath) return
+    const ancestorPaths = pathToBreadcrumbSegments(activePath).map((segment) => segment.path)
+    setExpandedPaths((prev) => {
+      const next = new Set(prev)
+      for (const ancestorPath of ancestorPaths) next.add(normalizePath(ancestorPath))
+      return next
+    })
+  }, [activePath])
+
+  const toggleExpand = (path: string): void => {
+    const normalized = normalizePath(path)
+    setExpandedPaths((prev) => {
+      const next = new Set(prev)
+      if (next.has(normalized)) next.delete(normalized)
+      else next.add(normalized)
+      return next
+    })
+  }
+
+  const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    event.preventDefault()
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+    const startX = event.clientX
+    const startWidth = width
+    let latestWidth = startWidth
+
+    const handlePointerMove = (moveEvent: PointerEvent): void => {
+      // Sidebar sits on the LEFT edge of the content area (opposite
+      // DetailSidebar, which sits on the right) - dragging right (positive
+      // delta) should widen it, the opposite sign from DetailSidebar's own
+      // startX - moveEvent.clientX.
+      latestWidth = clampExplorerTreeWidth(startWidth + (moveEvent.clientX - startX))
+      setWidth(latestWidth)
+    }
+    const finishDrag = (): void => {
+      target.removeEventListener('pointermove', handlePointerMove)
+      target.removeEventListener('pointerup', finishDrag)
+      target.removeEventListener('pointercancel', finishDrag)
+      setWidthMutation.mutate(latestWidth)
+    }
+
+    target.addEventListener('pointermove', handlePointerMove)
+    target.addEventListener('pointerup', finishDrag)
+    target.addEventListener('pointercancel', finishDrag)
+  }
+
+  return (
+    <div
+      style={{ width }}
+      className="relative flex h-full shrink-0 flex-col overflow-y-auto border-r border-border bg-card"
+    >
+      <div
+        onPointerDown={handleResizePointerDown}
+        className="absolute right-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-primary/40"
+      />
+      <div className="flex flex-col gap-0.5 p-2">
+        {rootPath === null ? (
+          <p className="px-1 py-2 text-xs text-muted-foreground">{t('explorer.sidebarEmpty')}</p>
+        ) : (
+          <TreeNode
+            path={rootPath}
+            label={rootPath}
+            depth={0}
+            onNavigate={onNavigate}
+            expandedPaths={expandedPaths}
+            onToggleExpand={toggleExpand}
+            activePath={activePath}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 2: Pass `activePath` from `ExplorerPage.tsx`**
+
+In `src/pages/Explorer/ExplorerPage.tsx`, find:
+
+```tsx
+        {sidebarOpen && <ExplorerSidebar onNavigate={handleSidebarNavigate} />}
+```
+
+Replace with:
+
+```tsx
+        {sidebarOpen && (
+          <ExplorerSidebar onNavigate={handleSidebarNavigate} activePath={activeTab?.path} />
+        )}
+```
+
+No other line in `ExplorerPage.tsx` changes. Confirm after editing that `<DndContext>`'s opening tag and `handleDragStart`/`handleDragEnd`'s bodies are still byte-identical to `c5794eb` — this step only touches the single `<ExplorerSidebar .../>` line.
+
+- [ ] **Step 3: Rename and update the empty-state i18n string**
+
+In `src/i18n/translations.ts`, find (Korean block, line 280):
+
+```ts
+  'explorer.sidebarNoLibraries': '등록된 라이브러리가 없습니다.',
+```
+
+Replace with:
+
+```ts
+  'explorer.sidebarEmpty': '탭을 열면 폴더 트리가 표시됩니다.',
+```
+
+Find (Japanese block, line 584):
+
+```ts
+  'explorer.sidebarNoLibraries': 'ライブラリが登録されていません。',
+```
+
+Replace with:
+
+```ts
+  'explorer.sidebarEmpty': 'タブを開くとフォルダツリーが表示されます。',
+```
+
+Find (English block, line 889):
+
+```ts
+  'explorer.sidebarNoLibraries': 'No libraries registered.',
+```
+
+Replace with:
+
+```ts
+  'explorer.sidebarEmpty': 'Open a tab to see the folder tree.',
+```
+
+- [ ] **Step 4: Typecheck and lint**
+
+Run: `npm run typecheck`
+Expected: exits 0, no errors.
+
+Run: `npm run lint`
+Expected: no new problems vs. the pre-task baseline (2 pre-existing: `react-hooks/refs` in `AppLayout.tsx`, `react-refresh` warning in `button.tsx`).
+
+- [ ] **Step 5: Manual verification via `npm run dev`**
+
+Run: `npm run dev`. In the running app, verify:
+
+1. With no tabs open (and at least one library registered), the sidebar shows a single root row for that library's drive (e.g. `C:\`), not a per-library list.
+2. Expanding that root shows every immediate subfolder of the drive (not just registered library folders) — confirms it's a real drive tree, not scoped to libraries.
+3. Opening a tab and browsing into a nested folder auto-expands and highlights the sidebar down to that exact folder, with no manual chevron clicks.
+4. Clicking a breadcrumb segment or navigating elsewhere moves the highlight to match.
+5. Opening a second tab on a different drive (if more than one drive/library is available) switches the sidebar's root entirely to match.
+6. With zero tabs open and zero registered libraries, the sidebar shows the new empty-state message instead of a tree or an error.
+7. Drag-and-drop-onto-a-tree-node still works as a move target (unchanged from Task 2's original verification).
+8. Toggle button and resize handle still work and still persist across a restart (unchanged from Task 1/Task 2's original verification — just re-confirm nothing regressed).
+9. No console errors throughout.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/pages/Explorer/ExplorerSidebar.tsx src/pages/Explorer/ExplorerPage.tsx src/i18n/translations.ts
+git commit -m "fix: root Explorer sidebar at the active tab's drive, not library list
+
+Supersedes the original root-node-per-library design (c5794eb) after
+live-testing showed it didn't match Explorer's existing navigation
+model - breadcrumbs already let you go above a library to the bare
+drive letter. Folds in auto-expand/highlight-to-active-path, which is
+no longer separable from root selection.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
+
+### Task 2R Self-Review
+
+- **Spec coverage:** Single root = active tab's drive, library-list fallback only when no tab is open, empty state when neither ✓ (Step 1). Auto-expand/highlight folded in from the start (no separate deferred step) ✓ (Step 1's `useEffect`). Click-to-navigate, drag-and-drop reusing the unchanged `handleDragEnd`, resize+persist, toggle+persist — all carried over unchanged from the original `ExplorerSidebar.tsx`, only the root-derivation and `disabled`-removal parts differ from the superseded version ✓. Light density unchanged ✓.
+- **Placeholder scan:** No TBD/TODO.
+- **Type consistency:** `ExplorerSidebarProps`/`TreeNodeProps` match Task 2's original names exactly except `disabled` is removed (no longer meaningful - there's no more "library doesn't exist" upfront check, an unreadable node just surfaces `isError` on expand like any other) and `activePath` is added directly rather than as a separate later change.
