@@ -13,4 +13,8 @@ describe('getParentPath', () => {
   it('returns malformed UNC server root defensively when share is missing', () => {
     expect(getParentPath('\\\\server')).toBe('\\\\server\\')
   })
+
+  it('returns the bare UNC root defensively', () => {
+    expect(getParentPath('\\\\')).toBe('\\\\')
+  })
 })

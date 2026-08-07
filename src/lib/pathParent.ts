@@ -1,5 +1,5 @@
 export function getParentPath(path: string): string {
-  const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '')
+  const normalized = path.replace(/\\/g, '/')
   if (normalized.startsWith('//')) {
     const parts = normalized.slice(2).split('/').filter(Boolean)
     if (parts.length === 0) return '\\\\'
