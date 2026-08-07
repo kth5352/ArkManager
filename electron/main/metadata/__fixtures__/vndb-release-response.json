@@ -1,0 +1,12 @@
+{
+  "id": "r45775",
+  "title": "Release Title",
+  "released": "2024-01-02",
+  "producers": [{ "developer": true, "name": "Release Developer" }],
+  "vns": [
+    {
+      "title": "Fallback VN Title",
+      "image": { "url": "https://t.vndb.org/cv/1.jpg" }
+    }
+  ]
+}

@@ -1,12 +1,39 @@
 import { describe, it, expect } from 'vitest'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { mapVnToMetadata, mapVnToSearchResult } from './vndbClient'
+import {
+  mapReleaseToMetadata,
+  mapVnToMetadata,
+  mapVnToSearchResult,
+  toVndbId,
+} from './vndbClient'
 
 async function loadFixture(name: string): Promise<unknown> {
   const raw = await readFile(join(__dirname, '__fixtures__', name), 'utf-8')
   return JSON.parse(raw)
 }
+
+it('maps app VR code to VNDB release id', () => {
+  expect(toVndbId({ type: 'VR', value: 'VR45775' })).toBe('r45775')
+})
+
+it('maps a VNDB release response to metadata without changing identity', () => {
+  expect(
+    mapReleaseToMetadata({
+      id: 'r45775',
+      title: 'Release Title',
+      released: '2024-01-02',
+      producers: [{ developer: true, name: 'Release Developer' }],
+      vns: [{ title: 'Fallback VN Title', image: { url: 'https://t.vndb.org/cv/1.jpg' } }],
+    })
+  ).toEqual({
+    title: 'Release Title',
+    circle: 'Release Developer',
+    releaseDate: '2024-01-02',
+    genres: [],
+    coverImageUrl: 'https://t.vndb.org/cv/1.jpg',
+  })
+})
 
 describe('mapVnToMetadata', () => {
   it('maps a realistic VNDB /vn response record to CrawledGameMetadata, capping genres at the top 10 tags by rating, excluding spoiler tags', async () => {

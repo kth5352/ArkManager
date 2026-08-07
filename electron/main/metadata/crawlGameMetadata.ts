@@ -83,7 +83,7 @@ async function crawlGetchu(code: GameCode): Promise<CrawledGameMetadata | null> 
 
 export async function crawlGameMetadata(code: GameCode): Promise<CrawledGameMetadata | null> {
   if (code.type === 'ST') return crawlSteam(code)
-  if (code.type === 'VN') return crawlVndb(code)
+  if (code.type === 'VN' || code.type === 'VR') return crawlVndb(code)
   if (code.type === 'GC') return crawlGetchu(code)
   return crawlDlsite(code)
 }

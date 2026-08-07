@@ -8,7 +8,8 @@ const NETWORK_TIMEOUT_MS = 15_000
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0'
 
-const VNDB_API_URL = 'https://api.vndb.org/kana/vn'
+const VNDB_VN_API_URL = 'https://api.vndb.org/kana/vn'
+const VNDB_RELEASE_API_URL = 'https://api.vndb.org/kana/release'
 
 interface VndbApiVn {
   id: string
@@ -21,6 +22,18 @@ interface VndbApiVn {
 
 interface VndbApiResponse {
   results: VndbApiVn[]
+}
+
+interface VndbApiRelease {
+  id: string
+  title: string
+  released: string | null
+  producers: { name: string; developer: boolean }[]
+  vns: { title: string; image: { url: string } | null }[]
+}
+
+interface VndbReleaseApiResponse {
+  results: VndbApiRelease[]
 }
 
 // VNDB attaches hundreds of tags with a relevance `rating` per VN -
@@ -48,14 +61,29 @@ export function mapVnToMetadata(vn: VndbApiVn): CrawledGameMetadata {
   }
 }
 
-// code.value is this app's own two-letter-prefixed convention (e.g. "VN17")
-// - VNDB's real ID drops the extra letter ("v17").
-function toVndbId(code: GameCode): string {
+// code.value is this app's own two-letter-prefixed convention (e.g. "VN17"
+// or "VR17") - VNDB's real ID drops the extra letter and uses a lowercase
+// prefix ("v17" or "r17").
+export function toVndbId(code: GameCode): string {
+  if (code.type === 'VR') return `r${code.value.slice(2)}`
   return `v${code.value.slice(2)}`
 }
 
-export async function crawlVndb(code: GameCode): Promise<CrawledGameMetadata | null> {
-  const response = await fetch(VNDB_API_URL, {
+export function mapReleaseToMetadata(release: VndbApiRelease): CrawledGameMetadata {
+  return {
+    title: release.title || release.vns[0]?.title || release.id,
+    circle:
+      release.producers.find((producer) => producer.developer)?.name ??
+      release.producers[0]?.name ??
+      '',
+    releaseDate: release.released ?? '',
+    genres: [],
+    coverImageUrl: release.vns[0]?.image?.url ?? null,
+  }
+}
+
+async function crawlVndbVn(code: GameCode): Promise<CrawledGameMetadata | null> {
+  const response = await fetch(VNDB_VN_API_URL, {
     method: 'POST',
     headers: {
       'User-Agent': USER_AGENT,
@@ -73,6 +101,31 @@ export async function crawlVndb(code: GameCode): Promise<CrawledGameMetadata | n
   const data = (await response.json()) as VndbApiResponse
   const vn = data.results?.[0]
   return vn ? mapVnToMetadata(vn) : null
+}
+
+async function crawlVndbRelease(code: GameCode): Promise<CrawledGameMetadata | null> {
+  const response = await fetch(VNDB_RELEASE_API_URL, {
+    method: 'POST',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      filters: ['id', '=', toVndbId(code)],
+      fields: 'title, released, producers.name, producers.developer, vns.title, vns.image.url',
+    }),
+    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+  })
+  if (!response.ok) return null
+
+  const data = (await response.json()) as VndbReleaseApiResponse
+  const release = data.results?.[0]
+  return release ? mapReleaseToMetadata(release) : null
+}
+
+export async function crawlVndb(code: GameCode): Promise<CrawledGameMetadata | null> {
+  return code.type === 'VR' ? crawlVndbRelease(code) : crawlVndbVn(code)
 }
 
 export interface VndbSearchResult {
@@ -107,7 +160,7 @@ export async function searchVndb(query: string): Promise<VndbSearchResult[]> {
   const trimmed = query.trim()
   if (trimmed === '') return []
 
-  const response = await fetch(VNDB_API_URL, {
+  const response = await fetch(VNDB_VN_API_URL, {
     method: 'POST',
     headers: {
       'User-Agent': USER_AGENT,
