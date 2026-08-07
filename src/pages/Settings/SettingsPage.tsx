@@ -46,8 +46,9 @@ import {
 } from '../../services/updateService'
 import { useTranslation } from '../../i18n/useTranslation'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
-import { useEffect, useState, type DragEvent } from 'react'
+import { useState, type DragEvent } from 'react'
 import type { Locale, ReleaseNote, UpdateStatus } from '../../../shared/types/ipc'
+import type { ExternalMetadataProviderSettings } from '../../services/settingsService'
 
 function AddLibraryDialog() {
   const { t } = useTranslation()
@@ -433,18 +434,44 @@ function LanguageSection() {
   )
 }
 
+function ExternalMetadataProviderForm({
+  settings,
+  isPending,
+  onUpdate,
+}: {
+  settings: ExternalMetadataProviderSettings
+  isPending: boolean
+  onUpdate: (settings: Partial<ExternalMetadataProviderSettings>) => void
+}) {
+  const { t } = useTranslation()
+  const [urlDraft, setUrlDraft] = useState(settings.url)
+  const [apiKeyDraft, setApiKeyDraft] = useState(settings.apiKey)
+
+  return (
+    <>
+      <Input
+        value={urlDraft}
+        onChange={(event) => setUrlDraft(event.target.value)}
+        onBlur={() => onUpdate({ url: urlDraft })}
+        placeholder={t('settings.externalMetadataProviderUrl')}
+        disabled={isPending}
+      />
+      <Input
+        type="password"
+        value={apiKeyDraft}
+        onChange={(event) => setApiKeyDraft(event.target.value)}
+        onBlur={() => onUpdate({ apiKey: apiKeyDraft })}
+        placeholder={t('settings.externalMetadataProviderApiKey')}
+        disabled={isPending}
+      />
+    </>
+  )
+}
+
 function ExternalMetadataProviderSection() {
   const { t } = useTranslation()
   const { data: settings } = useExternalMetadataProviderSettings()
   const setSettings = useSetExternalMetadataProviderSettings()
-  const [urlDraft, setUrlDraft] = useState('')
-  const [apiKeyDraft, setApiKeyDraft] = useState('')
-
-  useEffect(() => {
-    if (!settings) return
-    setUrlDraft(settings.url)
-    setApiKeyDraft(settings.apiKey)
-  }, [settings])
 
   return (
     <section className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
@@ -463,21 +490,14 @@ function ExternalMetadataProviderSection() {
         />
         {t('settings.enableExternalMetadataProvider')}
       </label>
-      <Input
-        value={urlDraft}
-        onChange={(event) => setUrlDraft(event.target.value)}
-        onBlur={() => setSettings.mutate({ url: urlDraft })}
-        placeholder={t('settings.externalMetadataProviderUrl')}
-        disabled={setSettings.isPending}
-      />
-      <Input
-        type="password"
-        value={apiKeyDraft}
-        onChange={(event) => setApiKeyDraft(event.target.value)}
-        onBlur={() => setSettings.mutate({ apiKey: apiKeyDraft })}
-        placeholder={t('settings.externalMetadataProviderApiKey')}
-        disabled={setSettings.isPending}
-      />
+      {settings && (
+        <ExternalMetadataProviderForm
+          key={JSON.stringify([settings.url, settings.apiKey])}
+          settings={settings}
+          isPending={setSettings.isPending}
+          onUpdate={(update) => setSettings.mutate(update)}
+        />
+      )}
     </section>
   )
 }

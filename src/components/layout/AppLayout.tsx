@@ -20,13 +20,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
   // Global (not scoped to Explorer's TabBar, unlike its own Ctrl+W handler)
   // since a move - and therefore something to undo - can originate from
   // Gallery/List/DetailList's own right-click Move dialog too, not just
-  // Explorer. A ref (updated every render, read inside a mount-once effect)
+  // Explorer. A ref (kept in sync by an effect, read inside a mount-once effect)
   // avoids re-subscribing the listener on every mutation-object identity
   // change, which useMutation's return value isn't guaranteed to keep
   // stable across renders.
   const moveEntries = useMoveEntries()
   const moveEntriesRef = useRef(moveEntries)
-  moveEntriesRef.current = moveEntries
+
+  useEffect(() => {
+    moveEntriesRef.current = moveEntries
+  }, [moveEntries])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
