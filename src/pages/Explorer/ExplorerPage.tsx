@@ -153,7 +153,9 @@ export function ExplorerPage() {
       onDragCancel={() => setActiveDrag(null)}
     >
       <div className="flex h-full">
-        {sidebarOpen && <ExplorerSidebar onNavigate={handleSidebarNavigate} />}
+        {sidebarOpen && (
+          <ExplorerSidebar onNavigate={handleSidebarNavigate} activePath={activeTab?.path} />
+        )}
         <div className="flex h-full min-w-0 flex-1 flex-col">
           <TabBar />
           {activeTab ? (

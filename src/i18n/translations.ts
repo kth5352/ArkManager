@@ -277,7 +277,7 @@ const ko = {
   'explorer.openInOsExplorer': '탐색기(OS)에서 열기',
   'explorer.cannotAccessFolder': '이 폴더에 접근할 수 없습니다.',
   'explorer.dragCount': '{count}개 항목',
-  'explorer.sidebarNoLibraries': '등록된 라이브러리가 없습니다.',
+  'explorer.sidebarEmpty': '탭을 열면 폴더 트리가 표시됩니다.',
 
   'media.addAllToPlaylist': '전체 재생목록에 추가',
   'media.pickFolderPrompt': '폴더를 선택하면 동영상/음성 파일을 찾아 보여줍니다.',
@@ -581,7 +581,7 @@ const ja: Record<keyof typeof ko, string> = {
   'explorer.openInOsExplorer': 'エクスプローラー（OS）で開く',
   'explorer.cannotAccessFolder': 'このフォルダにアクセスできません。',
   'explorer.dragCount': '{count}件',
-  'explorer.sidebarNoLibraries': 'ライブラリが登録されていません。',
+  'explorer.sidebarEmpty': 'タブを開くとフォルダツリーが表示されます。',
 
   'media.addAllToPlaylist': 'すべて再生リストに追加',
   'media.pickFolderPrompt': 'フォルダを選択すると動画/音声ファイルを探して表示します。',
@@ -886,7 +886,7 @@ const en: Record<keyof typeof ko, string> = {
   'explorer.openInOsExplorer': 'Open in OS Explorer',
   'explorer.cannotAccessFolder': 'This folder cannot be accessed.',
   'explorer.dragCount': '{count} items',
-  'explorer.sidebarNoLibraries': 'No libraries registered.',
+  'explorer.sidebarEmpty': 'Open a tab to see the folder tree.',
 
   'media.addAllToPlaylist': 'Add All to Playlist',
   'media.pickFolderPrompt': 'Pick a folder to find video/audio files in it.',

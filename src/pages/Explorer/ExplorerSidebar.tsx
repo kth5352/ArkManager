@@ -9,51 +9,61 @@ import {
 } from '../../services/settingsService'
 import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../../lib/clampExplorerTreeWidth'
 import { useTranslation } from '../../i18n/useTranslation'
+import { pathToBreadcrumbSegments } from './breadcrumb'
 import type { ExplorerDropData } from './dragTypes'
 
 interface ExplorerSidebarProps {
   onNavigate: (path: string) => void
+  activePath?: string
 }
 
 // Set membership is normalized (lowercase, forward-slash) rather than exact
 // string match - the same path can reach this set two different ways (a
 // real ScannedEntry.path from a scan, or a reconstructed path from
-// pathToBreadcrumbSegments in Task 3's auto-sync), and those two sources
-// aren't guaranteed to agree on casing/separator for the same real folder.
-// Matches the normalization findLibraryForPath.ts and ExplorerPage.tsx's
-// handleDragEnd already use for the identical reason.
+// pathToBreadcrumbSegments in the auto-expand effect below), and those two
+// sources aren't guaranteed to agree on casing/separator for the same real
+// folder. Matches the normalization findLibraryForPath.ts and
+// ExplorerPage.tsx's handleDragEnd already use for the identical reason.
 function normalizePath(path: string): string {
   return path.toLowerCase().replace(/\\/g, '/')
+}
+
+// The sidebar's single root is whichever drive the active tab's path is
+// currently on - not a fixed list of registered libraries (registered
+// libraries just appear as ordinary folders within that drive's tree, no
+// special treatment). pathToBreadcrumbSegments already special-cases a bare
+// drive letter as its own root segment ("C:" -> "C:\\"), so the first
+// segment of any real path IS that path's drive root.
+function getDriveRoot(path: string): string | null {
+  return pathToBreadcrumbSegments(path)[0]?.path ?? null
 }
 
 interface TreeNodeProps {
   path: string
   label: string
   depth: number
-  disabled?: boolean
   onNavigate: (path: string) => void
   expandedPaths: Set<string>
   onToggleExpand: (path: string) => void
+  activePath?: string
 }
 
 function TreeNode({
   path,
   label,
   depth,
-  disabled,
   onNavigate,
   expandedPaths,
   onToggleExpand,
+  activePath,
 }: TreeNodeProps) {
   const { t } = useTranslation()
   const isExpanded = expandedPaths.has(normalizePath(path))
-  const { data: entries = [], isError } = useFolderScan(path, {
-    enabled: isExpanded && !disabled,
-  })
+  const isActive = activePath !== undefined && normalizePath(path) === normalizePath(activePath)
+  const { data: entries = [], isError } = useFolderScan(path, { enabled: isExpanded })
   const folders = entries.filter((entry) => entry.kind === 'folder')
   const { setNodeRef, isOver } = useDroppable({
     id: path,
-    disabled,
     data: { type: 'folder-entry', path } satisfies ExplorerDropData,
   })
 
@@ -62,31 +72,25 @@ function TreeNode({
       <div
         ref={setNodeRef}
         style={{ paddingLeft: depth * 16 }}
-        className={`flex h-8 items-center gap-1 rounded px-1 text-sm ${
-          disabled ? 'text-muted-foreground/50' : 'hover:bg-accent'
+        className={`flex h-8 items-center gap-1 rounded px-1 text-sm hover:bg-accent ${
+          isActive ? 'bg-accent font-medium' : ''
         } ${isOver ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
       >
         <button
           type="button"
-          disabled={disabled}
           onClick={(event) => {
             event.stopPropagation()
             onToggleExpand(path)
           }}
-          className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground disabled:opacity-0"
+          className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground"
         >
           {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onNavigate(path)}
-          className="truncate text-left disabled:cursor-default"
-        >
+        <button type="button" onClick={() => onNavigate(path)} className="truncate text-left">
           {label}
         </button>
       </div>
-      {isExpanded && !disabled && (
+      {isExpanded && (
         <div>
           {isError ? (
             <p
@@ -105,6 +109,7 @@ function TreeNode({
                 onNavigate={onNavigate}
                 expandedPaths={expandedPaths}
                 onToggleExpand={onToggleExpand}
+                activePath={activePath}
               />
             ))
           )}
@@ -114,10 +119,11 @@ function TreeNode({
   )
 }
 
-export function ExplorerSidebar({ onNavigate }: ExplorerSidebarProps) {
+export function ExplorerSidebar({ onNavigate, activePath }: ExplorerSidebarProps) {
   const { t } = useTranslation()
   const { data: libraries = [] } = useLibraries()
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
+  const [syncedActivePath, setSyncedActivePath] = useState(activePath)
   const { data: persistedWidth } = useExplorerTreeWidthQuery()
   const setWidthMutation = useSetExplorerTreeWidthMutation()
   const [width, setWidth] = useState(persistedWidth ?? EXPLORER_TREE_WIDTH_DEFAULT)
@@ -129,6 +135,35 @@ export function ExplorerSidebar({ onNavigate }: ExplorerSidebarProps) {
   if (persistedWidth !== syncedWidth) {
     setSyncedWidth(persistedWidth)
     if (persistedWidth !== undefined) setWidth(persistedWidth)
+  }
+
+  // Falls back to the first registered library's own drive only when no tab
+  // is open at all, so the sidebar still has something to show/click before
+  // a first tab exists (matches TabBar.tsx's own handleAddTab fallback
+  // logic). null (neither a tab nor a library) means nothing to root on.
+  const rootSourcePath = activePath ?? libraries[0]?.path
+  const rootPath = rootSourcePath ? getDriveRoot(rootSourcePath) : null
+
+  // Reveals activePath in the tree whenever the active tab's path changes
+  // (tab switch, breadcrumb click, drilling into a subfolder) - expands the
+  // root itself plus every ancestor folder between it and activePath,
+  // inclusive of activePath itself (so its own children are fetched too,
+  // matching normal file-tree "navigate into" behavior). Render-time sync,
+  // not a useEffect - same pattern as the persistedWidth sync above (and
+  // DetailSidebar.tsx's own persisted-width sync), so the highlight/expand
+  // doesn't visibly snap one frame late after activePath changes, and so
+  // this doesn't trip the set-state-in-effect lint rule the way a plain
+  // useEffect calling setExpandedPaths would.
+  if (activePath !== syncedActivePath) {
+    setSyncedActivePath(activePath)
+    if (activePath) {
+      const ancestorPaths = pathToBreadcrumbSegments(activePath).map((segment) => segment.path)
+      setExpandedPaths((prev) => {
+        const next = new Set(prev)
+        for (const ancestorPath of ancestorPaths) next.add(normalizePath(ancestorPath))
+        return next
+      })
+    }
   }
 
   const toggleExpand = (path: string): void => {
@@ -179,23 +214,19 @@ export function ExplorerSidebar({ onNavigate }: ExplorerSidebarProps) {
         className="absolute right-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-primary/40"
       />
       <div className="flex flex-col gap-0.5 p-2">
-        {libraries.length === 0 && (
-          <p className="px-1 py-2 text-xs text-muted-foreground">
-            {t('explorer.sidebarNoLibraries')}
-          </p>
-        )}
-        {libraries.map((library) => (
+        {rootPath === null ? (
+          <p className="px-1 py-2 text-xs text-muted-foreground">{t('explorer.sidebarEmpty')}</p>
+        ) : (
           <TreeNode
-            key={library.id}
-            path={library.path}
-            label={library.name}
+            path={rootPath}
+            label={rootPath}
             depth={0}
-            disabled={!library.exists}
             onNavigate={onNavigate}
             expandedPaths={expandedPaths}
             onToggleExpand={toggleExpand}
+            activePath={activePath}
           />
-        ))}
+        )}
       </div>
     </div>
   )
