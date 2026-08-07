@@ -100,8 +100,6 @@ if (!gotSingleInstanceLock) {
         {
           label: 'Exit',
           click: () => {
-            isQuitting = true
-            closePlayerWindow?.()
             app.quit()
           },
         },
@@ -341,6 +339,8 @@ if (!gotSingleInstanceLock) {
     // session would otherwise be lost. Flush whatever elapsed so far for any
     // still-running game before the process actually goes away.
     app.on('before-quit', () => {
+      isQuitting = true
+      closePlayerWindow?.()
       const now = Date.now()
       for (const session of getActiveSessions()) {
         recordPlaySession(db, session.key, session.keyType, now - session.startedAt)
