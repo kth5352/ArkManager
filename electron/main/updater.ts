@@ -26,7 +26,10 @@ autoUpdater.fullChangelog = true
 // app, regardless of which window is currently open.
 let lastStatus: UpdateStatus = { state: 'idle' }
 
-export function registerUpdateHandlers(getMainWindow: () => BrowserWindow | null): void {
+export function registerUpdateHandlers(
+  getMainWindow: () => BrowserWindow | null,
+  beginQuit: () => void
+): void {
   const sendStatus = (status: UpdateStatus): void => {
     lastStatus = status
     getMainWindow()?.webContents.send(IPC_CHANNELS.UPDATE_STATUS, status)
@@ -68,6 +71,7 @@ export function registerUpdateHandlers(getMainWindow: () => BrowserWindow | null
   })
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_INSTALL, () => {
+    beginQuit()
     autoUpdater.quitAndInstall()
   })
 }

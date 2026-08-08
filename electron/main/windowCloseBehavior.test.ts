@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   createWindowCloseController,
+  getOrCreateMainWindow,
   getWindowClosePrompt,
   resolveWindowCloseBehavior,
   type WindowCloseControllerDeps,
@@ -65,6 +66,23 @@ describe('getWindowClosePrompt', () => {
       buttons: ['프로그램 종료', '시스템 트레이에서 계속 실행', '취소'],
       checkboxLabel: '항상 이 옵션 사용',
     })
+  })
+})
+
+describe('getOrCreateMainWindow', () => {
+  it('does not create a window before the close controller is ready', () => {
+    const createWindow = vi.fn(() => ({ id: 'created' }))
+
+    expect(getOrCreateMainWindow(false, null, createWindow)).toBeNull()
+    expect(createWindow).not.toHaveBeenCalled()
+  })
+
+  it('reuses an existing window instead of replacing it during startup', () => {
+    const existingWindow = { id: 'existing' }
+    const createWindow = vi.fn(() => ({ id: 'replacement' }))
+
+    expect(getOrCreateMainWindow(true, existingWindow, createWindow)).toBe(existingWindow)
+    expect(createWindow).not.toHaveBeenCalled()
   })
 })
 
@@ -208,6 +226,28 @@ describe('createWindowCloseController', () => {
 
     expect(deps.hide).toHaveBeenCalledOnce()
     expect(deps.quit).not.toHaveBeenCalled()
+  })
+
+  it('keeps actions bound to the window that started the pending close request', async () => {
+    const prompt = createDeferred<{ response: 'tray'; remember: false }>()
+    const showPrompt = vi.fn((_window: string) => prompt.promise)
+    const hide = vi.fn((_window: string) => undefined)
+    const controller = createWindowCloseController<string>({
+      getBehavior: () => 'ask',
+      showPrompt,
+      persistBehavior: vi.fn(),
+      quit: vi.fn(),
+      hide,
+      reportError: vi.fn(),
+    })
+
+    const firstRequest = controller.requestClose('originating-window')
+    const secondRequest = controller.requestClose('later-window')
+    prompt.resolve({ response: 'tray', remember: false })
+    await Promise.all([firstRequest, secondRequest])
+
+    expect(showPrompt).toHaveBeenCalledWith('originating-window')
+    expect(hide).toHaveBeenCalledWith('originating-window')
   })
 
   it('keeps persistence pending when the stored policy changes', async () => {

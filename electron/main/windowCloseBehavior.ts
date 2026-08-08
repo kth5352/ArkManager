@@ -38,17 +38,26 @@ export function getWindowClosePrompt(locale: string | undefined): WindowClosePro
   return WINDOW_CLOSE_PROMPTS[parsedLocale.success ? parsedLocale.data : 'ko']
 }
 
+export function getOrCreateMainWindow<TWindow>(
+  isReady: boolean,
+  currentWindow: TWindow | null,
+  createWindow: () => TWindow
+): TWindow | null {
+  if (!isReady) return null
+  return currentWindow ?? createWindow()
+}
+
 export interface WindowClosePromptResult {
   response: 'quit' | 'tray' | 'cancel'
   remember: boolean
 }
 
-export interface WindowCloseControllerDeps {
+export interface WindowCloseControllerDeps<TTarget = void> {
   getBehavior(): string | undefined
-  showPrompt(): Promise<WindowClosePromptResult>
+  showPrompt(target: TTarget): Promise<WindowClosePromptResult>
   persistBehavior(behavior: Exclude<WindowCloseBehavior, 'ask'>): void | Promise<void>
   quit(): void
-  hide(): void
+  hide(target: TTarget): void
   reportError(error: unknown): void
 }
 
@@ -56,17 +65,19 @@ export function resolveWindowCloseBehavior(raw: string | undefined): WindowClose
   return WindowCloseBehaviorSchema.safeParse(raw).data ?? 'ask'
 }
 
-export function createWindowCloseController(deps: WindowCloseControllerDeps): {
-  requestClose(): Promise<void>
+export function createWindowCloseController<TTarget = void>(
+  deps: WindowCloseControllerDeps<TTarget>
+): {
+  requestClose(target: TTarget): Promise<void>
 } {
   let pendingRequest: Promise<void> | null = null
 
-  async function requestPrompt(): Promise<void> {
+  async function requestPrompt(target: TTarget): Promise<void> {
     try {
       let result: WindowClosePromptResult
 
       try {
-        result = await deps.showPrompt()
+        result = await deps.showPrompt(target)
       } catch {
         return
       }
@@ -84,14 +95,14 @@ export function createWindowCloseController(deps: WindowCloseControllerDeps): {
       if (result.response === 'quit') {
         deps.quit()
       } else {
-        deps.hide()
+        deps.hide(target)
       }
     } finally {
       pendingRequest = null
     }
   }
 
-  function requestClose(): Promise<void> {
+  function requestClose(target: TTarget): Promise<void> {
     if (pendingRequest) return pendingRequest
 
     const behavior = resolveWindowCloseBehavior(deps.getBehavior())
@@ -102,7 +113,7 @@ export function createWindowCloseController(deps: WindowCloseControllerDeps): {
     }
 
     if (behavior === 'tray') {
-      deps.hide()
+      deps.hide(target)
       return Promise.resolve()
     }
 
@@ -114,7 +125,7 @@ export function createWindowCloseController(deps: WindowCloseControllerDeps): {
     })
     pendingRequest = currentRequest
 
-    void requestPrompt().then(resolvePending, rejectPending)
+    void requestPrompt(target).then(resolvePending, rejectPending)
     return currentRequest
   }
 

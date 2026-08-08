@@ -38,7 +38,11 @@ import {
   registerMediaThumbnailProtocolScheme,
 } from './mediaThumbnailProtocol'
 import { installZoomInShortcut } from './zoomShortcuts'
-import { createWindowCloseController, getWindowClosePrompt } from './windowCloseBehavior'
+import {
+  createWindowCloseController,
+  getOrCreateMainWindow,
+  getWindowClosePrompt,
+} from './windowCloseBehavior'
 
 // better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
@@ -55,14 +59,16 @@ if (!gotSingleInstanceLock) {
   let closePlayerWindow: (() => void) | null = null
   let tray: Tray | null = null
   let isQuitting = false
-  let closeController: ReturnType<typeof createWindowCloseController> | null = null
+  let closeController: {
+    requestClose(target: BrowserWindow | null): Promise<void>
+  } | null = null
 
   function showMainWindow(): void {
-    if (!mainWindow) createWindow()
-    if (!mainWindow) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
-    mainWindow.focus()
+    const win = getOrCreateMainWindow(closeController !== null, mainWindow, createWindow)
+    if (!win) return
+    if (win.isMinimized()) win.restore()
+    win.show()
+    win.focus()
   }
 
   app.on('second-instance', showMainWindow)
@@ -240,7 +246,7 @@ if (!gotSingleInstanceLock) {
     Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   }
 
-  function createWindow(): void {
+  function createWindow(): BrowserWindow {
     const win = new BrowserWindow({
       width: 1280,
       height: 800,
@@ -284,13 +290,16 @@ if (!gotSingleInstanceLock) {
 
     mainWindow = win
     win.on('close', (event) => {
-      if (isQuitting) return
+      const controller = closeController
+      if (isQuitting || !controller) return
       event.preventDefault()
-      void closeController?.requestClose()
+      void controller.requestClose(win)
     })
     win.on('closed', () => {
       if (mainWindow === win) mainWindow = null
     })
+
+    return win
   }
 
   app.whenReady().then(async () => {
@@ -308,10 +317,9 @@ if (!gotSingleInstanceLock) {
 
     const dbPath = join(newUserDataPath, NEW_DB_FILENAME)
     const db = createDbClient(dbPath)
-    closeController = createWindowCloseController({
+    closeController = createWindowCloseController<BrowserWindow | null>({
       getBehavior: () => getSetting(db, 'window-close-behavior'),
-      showPrompt: async () => {
-        const win = mainWindow
+      showPrompt: async (win) => {
         if (!win || win.isDestroyed()) {
           return { response: 'cancel', remember: false }
         }
@@ -325,7 +333,7 @@ if (!gotSingleInstanceLock) {
             checkboxChecked: false,
           })
 
-          if (win.isDestroyed() || mainWindow !== win) {
+          if (win.isDestroyed()) {
             return { response: 'cancel', remember: false }
           }
 
@@ -338,9 +346,9 @@ if (!gotSingleInstanceLock) {
       },
       persistBehavior: (behavior) => setSetting(db, 'window-close-behavior', behavior),
       quit: () => app.quit(),
-      hide: () => {
-        if (!mainWindow || mainWindow.isDestroyed()) return
-        mainWindow.hide()
+      hide: (win) => {
+        if (!win || win.isDestroyed()) return
+        win.hide()
       },
       reportError: (error) => console.error('Failed to persist window close behavior:', error),
     })
@@ -367,24 +375,26 @@ if (!gotSingleInstanceLock) {
     registerMediaThumbnailHandlers(db)
     registerMediaLyricsHandlers(db)
     registerExcludedEntriesHandlers(db)
-    registerUpdateHandlers(() => mainWindow)
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a
     // game is still running, that promise never resolves and the whole
     // session would otherwise be lost. Flush whatever elapsed so far for any
     // still-running game before the process actually goes away.
-    app.on('before-quit', () => {
+    const beginQuit = (): void => {
+      if (isQuitting) return
       isQuitting = true
       closePlayerWindow?.()
       const now = Date.now()
       for (const session of getActiveSessions()) {
         recordPlaySession(db, session.key, session.keyType, now - session.startedAt)
       }
-    })
+    }
+    app.on('before-quit', beginQuit)
+    registerUpdateHandlers(() => mainWindow, beginQuit)
 
     buildApplicationMenu()
-    createWindow()
+    showMainWindow()
     createTray()
 
     // Delayed so it never competes with the window's own initial load for
@@ -393,7 +403,7 @@ if (!gotSingleInstanceLock) {
     setTimeout(checkForUpdatesOnStartup, 3000)
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      if (BrowserWindow.getAllWindows().length === 0) showMainWindow()
     })
   })
 
