@@ -37,6 +37,8 @@ import {
   useSetLanguageMutation,
   useSetExternalMetadataProviderSettings,
   useSetLocaleEmulatorPathMutation,
+  useSetWindowCloseBehaviorMutation,
+  useWindowCloseBehaviorQuery,
 } from '../../services/settingsService'
 import {
   useAppVersion,
@@ -47,7 +49,12 @@ import {
 import { useTranslation } from '../../i18n/useTranslation'
 import { deriveNameFromPath } from '../../lib/deriveNameFromPath'
 import { useState, type DragEvent } from 'react'
-import type { Locale, ReleaseNote, UpdateStatus } from '../../../shared/types/ipc'
+import type {
+  Locale,
+  ReleaseNote,
+  UpdateStatus,
+  WindowCloseBehavior,
+} from '../../../shared/types/ipc'
 import type { ExternalMetadataProviderSettings } from '../../services/settingsService'
 
 function AddLibraryDialog() {
@@ -434,6 +441,35 @@ function LanguageSection() {
   )
 }
 
+function WindowCloseBehaviorSection() {
+  const { t } = useTranslation()
+  const { data: behavior = 'ask' } = useWindowCloseBehaviorQuery()
+  const setWindowCloseBehavior = useSetWindowCloseBehaviorMutation()
+
+  return (
+    <section className="mt-4 flex items-center justify-between border-t border-border pt-4">
+      <div>
+        <h2 className="text-sm font-semibold">{t('settings.windowCloseBehavior')}</h2>
+        <p className="text-xs text-muted-foreground">{t('settings.windowCloseBehaviorDesc')}</p>
+      </div>
+      <Select
+        value={behavior}
+        onValueChange={(value) => setWindowCloseBehavior.mutate(value as WindowCloseBehavior)}
+        disabled={setWindowCloseBehavior.isPending}
+      >
+        <SelectTrigger className="w-56">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ask">{t('settings.windowCloseBehaviorAsk')}</SelectItem>
+          <SelectItem value="quit">{t('settings.windowCloseBehaviorQuit')}</SelectItem>
+          <SelectItem value="tray">{t('settings.windowCloseBehaviorTray')}</SelectItem>
+        </SelectContent>
+      </Select>
+    </section>
+  )
+}
+
 function ExternalMetadataProviderForm({
   settings,
   isPending,
@@ -509,7 +545,7 @@ export function SettingsPage() {
   const { data: version } = useAppVersion()
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
+    <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">{t('settings.libraryTitle')}</h1>
         <AddLibraryDialog />
@@ -550,6 +586,7 @@ export function SettingsPage() {
 
       <LocaleEmulatorSection />
       <ExternalMetadataProviderSection />
+      <WindowCloseBehaviorSection />
       <LanguageSection />
       <UpdateSection />
 

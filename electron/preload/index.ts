@@ -26,6 +26,7 @@ import {
   type Theme,
   type UpdateStatus,
   type VersionMismatchDto,
+  type WindowCloseBehavior,
 } from '../../shared/types/ipc'
 import type { GameCode, ScannedEntry } from '../../shared/types/scanner'
 
@@ -35,6 +36,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'theme' }),
     setTheme: (value: Theme): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'theme', value }),
+    getWindowCloseBehavior: (): Promise<WindowCloseBehavior | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'window-close-behavior' }),
+    setWindowCloseBehavior: (value: WindowCloseBehavior): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'window-close-behavior', value }),
     // Synchronous IPC round-trip used only to apply the persisted theme
     // before the renderer's first paint (see src/main.tsx). Do not use this
     // for anything else - prefer the async getTheme/setTheme above.
@@ -254,7 +259,8 @@ const api = {
     onOpenExcludedEntriesDialog: (callback: () => void): (() => void) => {
       const listener = (): void => callback()
       ipcRenderer.on(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG, listener)
-      return () => ipcRenderer.removeListener(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG, listener)
+      return () =>
+        ipcRenderer.removeListener(IPC_CHANNELS.MENU_OPEN_EXCLUDED_ENTRIES_DIALOG, listener)
     },
   },
   launch: {
@@ -349,10 +355,7 @@ const api = {
   mediaThumbnail: {
     pickFile: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE),
-    setFromFile: (
-      filePath: string,
-      sourcePath: string
-    ): Promise<SetMediaThumbnailFromFileResult> =>
+    setFromFile: (filePath: string, sourcePath: string): Promise<SetMediaThumbnailFromFileResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_SET_FROM_FILE, { filePath, sourcePath }),
   },
   cache: {

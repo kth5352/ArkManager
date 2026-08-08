@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import type { Locale, Theme } from '../../shared/types/ipc'
+import type { Locale, Theme, WindowCloseBehavior } from '../../shared/types/ipc'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../lib/clampSidebarWidth'
 import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../lib/clampExplorerTreeWidth'
 import { DEFAULT_LOCALE } from '../i18n/translations'
@@ -40,6 +40,29 @@ export function useSetThemeMutation() {
     mutationFn: (theme: Theme) => window.api.settings.setTheme(theme),
     onSuccess: (_data, theme) => {
       queryClient.setQueryData(THEME_QUERY_KEY, theme)
+    },
+  })
+}
+
+export const WINDOW_CLOSE_BEHAVIOR_QUERY_KEY = ['settings', 'window-close-behavior'] as const
+
+export function useWindowCloseBehaviorQuery() {
+  return useQuery({
+    queryKey: WINDOW_CLOSE_BEHAVIOR_QUERY_KEY,
+    queryFn: async (): Promise<WindowCloseBehavior> => {
+      const value = await window.api.settings.getWindowCloseBehavior()
+      return value ?? 'ask'
+    },
+  })
+}
+
+export function useSetWindowCloseBehaviorMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (behavior: WindowCloseBehavior) =>
+      window.api.settings.setWindowCloseBehavior(behavior),
+    onSuccess: (_data, behavior) => {
+      queryClient.setQueryData(WINDOW_CLOSE_BEHAVIOR_QUERY_KEY, behavior)
     },
   })
 }
