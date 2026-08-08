@@ -1,5 +1,34 @@
 import type { UpdateInfo } from 'electron-updater'
+import { load } from 'cheerio'
 import type { ReleaseNote } from '../../shared/types/ipc'
+
+const HTML_RELEASE_NOTE_PATTERN =
+  /<\/?(?:p|ul|ol|li|br|h[1-6]|div|blockquote|pre|script|style|template|noscript|svg|iframe|object)\b/i
+
+function releaseNoteToPlainText(note: string): string {
+  if (!HTML_RELEASE_NOTE_PATTERN.test(note)) return note
+
+  const $ = load(note, null, false)
+  $('script, style, template, noscript, svg, iframe, object').remove()
+  $('br').replaceWith('\n')
+  $('li').each((_index, element) => {
+    $(element).prepend('- ').append('\n')
+  })
+  $('p, h1, h2, h3, h4, h5, h6, div, blockquote, pre').each((_index, element) => {
+    $(element).append('\n\n')
+  })
+  $('ul, ol').each((_index, element) => {
+    $(element).append('\n')
+  })
+
+  return $.root()
+    .text()
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 
 // electron-updater reports releaseNotes as either a single string (GitHub
 // release body for the target version alone) or an array of
@@ -20,6 +49,11 @@ import type { ReleaseNote } from '../../shared/types/ipc'
 export function normalizeReleaseNotes(info: UpdateInfo): ReleaseNote[] {
   const { releaseNotes } = info
   if (!releaseNotes) return []
-  if (typeof releaseNotes === 'string') return [{ version: info.version, note: releaseNotes }]
-  return releaseNotes.map((entry) => ({ version: entry.version, note: entry.note ?? '' }))
+  if (typeof releaseNotes === 'string') {
+    return [{ version: info.version, note: releaseNoteToPlainText(releaseNotes) }]
+  }
+  return releaseNotes.map((entry) => ({
+    version: entry.version,
+    note: releaseNoteToPlainText(entry.note ?? ''),
+  }))
 }

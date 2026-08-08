@@ -107,6 +107,7 @@ DLsite, Steam, VNDB, Getchu 게임과 로컬 미디어 라이브러리를 한 �
 ### UI 및 시스템
 
 - 앱 전체의 버튼, 입력 필드, 토스트 알림과 상태 피드백 스타일을 통일했습니다.
+- 업데이트 내역에 GitHub HTML 태그가 그대로 표시되던 문제를 수정했습니다.
 - 검색 버튼을 열면 일반 검색과 태그 검색 필드가 함께 확장되고 축소됩니다.
 - 상세 사이드바의 실행, 삭제, 새로고침 버튼 배치와 툴팁을 정돈했습니다.
 - 실행 설정 저장 후 창을 닫고 결과를 토스트로 알리며 필요하면 즉시 실행합니다.
@@ -149,15 +150,15 @@ npm run build
 
 ## 스크립트
 
-| 명령 | 설명 |
-| --- | --- |
-| `npm run dev` | 개발 모드 실행 (HMR) |
-| `npm run build` | 프로덕션 빌드 + 패키징 |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript 프로젝트 참조 빌드 |
-| `npm run test` | Vitest |
-| `npm run format` | Prettier로 포맷 |
-| `npm run format:check` | 포맷 검사만 |
+| 명령                   | 설명                          |
+| ---------------------- | ----------------------------- |
+| `npm run dev`          | 개발 모드 실행 (HMR)          |
+| `npm run build`        | 프로덕션 빌드 + 패키징        |
+| `npm run lint`         | ESLint                        |
+| `npm run typecheck`    | TypeScript 프로젝트 참조 빌드 |
+| `npm run test`         | Vitest                        |
+| `npm run format`       | Prettier로 포맷               |
+| `npm run format:check` | 포맷 검사만                   |
 
 ## 프로젝트 구조
 
