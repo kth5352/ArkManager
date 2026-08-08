@@ -5,6 +5,7 @@ import {
   LocaleSchema,
   SetSettingRequestSchema,
   ThemeSchema,
+  WindowCloseBehaviorSchema,
 } from '../../../shared/types/ipc'
 import { getSetting, setSetting } from '../database/settingsRepository'
 import type { AppDatabase } from '../database/client'
@@ -61,6 +62,12 @@ function parseStoredExternalMetadataProviderEnabled(raw: string | undefined): st
   return raw === 'true' || raw === 'false' ? raw : null
 }
 
+function parseStoredWindowCloseBehavior(raw: string | undefined): 'ask' | 'quit' | 'tray' | null {
+  if (raw === undefined) return null
+  const result = WindowCloseBehaviorSchema.safeParse(raw)
+  return result.success ? result.data : null
+}
+
 export function registerSettingsHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
     const { key } = GetSettingRequestSchema.parse(payload)
@@ -71,6 +78,9 @@ export function registerSettingsHandlers(db: AppDatabase): void {
     if (key === 'explorer-tree-open') return parseStoredExplorerTreeOpen(getSetting(db, key))
     if (key === 'external-metadata-provider-enabled') {
       return parseStoredExternalMetadataProviderEnabled(getSetting(db, key))
+    }
+    if (key === 'window-close-behavior') {
+      return parseStoredWindowCloseBehavior(getSetting(db, key))
     }
     return getSetting(db, key) ?? null
   })

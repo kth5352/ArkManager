@@ -7,6 +7,7 @@ import {
   SetSettingRequestSchema,
   SettingKeySchema,
   ThemeSchema,
+  WindowCloseBehaviorSchema,
 } from './ipc'
 
 describe('ThemeSchema', () => {
@@ -17,6 +18,18 @@ describe('ThemeSchema', () => {
 
   it('rejects anything else', () => {
     expect(() => ThemeSchema.parse('blue')).toThrow()
+  })
+})
+
+describe('WindowCloseBehaviorSchema', () => {
+  it('accepts the supported window close behaviors', () => {
+    expect(WindowCloseBehaviorSchema.parse('ask')).toBe('ask')
+    expect(WindowCloseBehaviorSchema.parse('quit')).toBe('quit')
+    expect(WindowCloseBehaviorSchema.parse('tray')).toBe('tray')
+  })
+
+  it('rejects unsupported window close behaviors', () => {
+    expect(() => WindowCloseBehaviorSchema.parse('hide')).toThrow()
   })
 })
 
@@ -114,6 +127,10 @@ describe('SaveDiffRequestSchema', () => {
 })
 
 describe('SettingKeySchema', () => {
+  it('accepts the window close behavior setting key', () => {
+    expect(SettingKeySchema.parse('window-close-behavior')).toBe('window-close-behavior')
+  })
+
   it('accepts external metadata provider setting keys', () => {
     expect(SettingKeySchema.parse('external-metadata-provider-enabled')).toBe(
       'external-metadata-provider-enabled'

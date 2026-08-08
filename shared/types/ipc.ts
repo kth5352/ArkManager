@@ -98,6 +98,9 @@ export const IPC_CHANNELS = {
 export const ThemeSchema = z.enum(['light', 'dark'])
 export type Theme = z.infer<typeof ThemeSchema>
 
+export const WindowCloseBehaviorSchema = z.enum(['ask', 'quit', 'tray'])
+export type WindowCloseBehavior = z.infer<typeof WindowCloseBehaviorSchema>
+
 export const LocaleSchema = z.enum(['ko', 'ja', 'en'])
 export type Locale = z.infer<typeof LocaleSchema>
 
@@ -112,6 +115,7 @@ export const SettingKeySchema = z.enum([
   'external-metadata-provider-enabled',
   'external-metadata-provider-url',
   'external-metadata-provider-api-key',
+  'window-close-behavior',
 ])
 export type SettingKey = z.infer<typeof SettingKeySchema>
 

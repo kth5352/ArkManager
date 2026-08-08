@@ -44,4 +44,10 @@ describe('SETTINGS_GET', () => {
       getSettingHandler()({}, { key: 'external-metadata-provider-enabled' })
     ).toBeNull()
   })
+
+  it('returns null for an invalid window close behavior value', () => {
+    setSetting(db, 'window-close-behavior', 'invalid')
+
+    expect(getSettingHandler()({}, { key: 'window-close-behavior' })).toBeNull()
+  })
 })
