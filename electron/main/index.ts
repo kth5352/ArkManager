@@ -33,6 +33,7 @@ import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
 import { rewriteCoverImagePathPrefix } from './database/gameMetadataRepository'
 import { migrateUserDataFolder, NEW_DB_FILENAME } from './migrateUserDataFolder'
+import { migrateVndbSaveDirectories } from './save/migrateVndbSaveDirectories'
 import {
   registerThumbnailProtocolHandler,
   registerThumbnailProtocolScheme,
@@ -305,6 +306,7 @@ if (!gotSingleInstanceLock) {
     const oldUserDataPath = join(app.getPath('appData'), 'dlibrary')
     const newUserDataPath = app.getPath('userData')
     await migrateUserDataFolder(oldUserDataPath, newUserDataPath)
+    await migrateVndbSaveDirectories(join(newUserDataPath, 'saves'))
 
     const dbPath = join(newUserDataPath, NEW_DB_FILENAME)
     const db = createDbClient(dbPath)
