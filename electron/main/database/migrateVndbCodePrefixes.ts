@@ -64,8 +64,27 @@ export function legacyVndbCodeToCanonical(value: string): string | null {
   return vr ? `VNR${vr[1]}` : null
 }
 
+function collectReferencedLegacyCodes(sqlite: Database.Database): Set<string> {
+  const referenced = new Set<string>()
+  const rows = sqlite
+    .prepare(
+      `SELECT key AS value FROM game_user_data WHERE key_type = 'code'
+       UNION SELECT code AS value FROM path_code_overrides
+       UNION SELECT key AS value FROM save_snapshot_labels`
+    )
+    .all() as { value: string }[]
+
+  for (const row of rows) {
+    if (legacyVndbCodeToCanonical(row.value)) referenced.add(row.value)
+  }
+
+  return referenced
+}
+
 export function migrateVndbCodePrefixes(sqlite: Database.Database): void {
   sqlite.transaction(() => {
+    const referenced = collectReferencedLegacyCodes(sqlite)
+
     for (const migration of TABLE_MIGRATIONS) {
       const rows = sqlite.prepare(`SELECT * FROM ${migration.table}`).all() as Record<
         string,
@@ -84,8 +103,16 @@ export function migrateVndbCodePrefixes(sqlite: Database.Database): void {
       for (const row of rows) {
         const legacyKey = row[migration.keyColumn]
         if (typeof legacyKey !== 'string') continue
+        if (migration.table === 'game_user_data' && row.key_type !== 'code') continue
         const canonicalKey = legacyVndbCodeToCanonical(legacyKey)
         if (!canonicalKey) continue
+        if (
+          (migration.table === 'game_metadata' || migration.table === 'metadata_failures') &&
+          !referenced.has(legacyKey)
+        ) {
+          deleteSource.run(...migration.deleteColumns.map((column) => row[column]))
+          continue
+        }
 
         const values = migration.columns.map((column) =>
           column === migration.keyColumn ? canonicalKey : row[column]

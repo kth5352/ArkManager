@@ -125,28 +125,29 @@ describe('createDbClient legacy VNDB code migration', () => {
         PRIMARY KEY (key, timestamp)
       );
     `)
-    raw
-      .prepare(
-        `INSERT INTO game_metadata
-          (code, title, circle, release_date, genres, cover_image_path, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        'VN17',
-        'Legacy VN',
-        'Legacy Circle',
-        '2025-02-03',
-        '["adventure","drama"]',
-        'C:\\covers\\VN17.webp',
-        '2026-01-01T00:00:00.000Z',
-        '2026-01-02T00:00:00.000Z'
-      )
-    raw
-      .prepare(
-        `INSERT INTO metadata_failures (code, attempted_sources, reason, updated_at)
-         VALUES (?, ?, ?, ?)`
-      )
-      .run('VR20', '["vndb"]', 'not found', '2026-01-03T00:00:00.000Z')
+    const createdAt = '2026-01-08T00:00:00.000Z'
+    const metadataInsert = raw.prepare(
+      `INSERT INTO game_metadata
+        (code, title, circle, release_date, genres, cover_image_path, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    metadataInsert.run(
+      'VN17',
+      'Legacy VN',
+      'Legacy Circle',
+      '2025-02-03',
+      '["adventure","drama"]',
+      'C:\\covers\\VN17.webp',
+      '2026-01-01T00:00:00.000Z',
+      '2026-01-02T00:00:00.000Z'
+    )
+    metadataInsert.run('VN1', 'False filename cache', null, null, null, null, createdAt, createdAt)
+    const failureInsert = raw.prepare(
+      `INSERT INTO metadata_failures (code, attempted_sources, reason, updated_at)
+       VALUES (?, ?, ?, ?)`
+    )
+    failureInsert.run('VR20', '["vndb"]', 'not found', '2026-01-03T00:00:00.000Z')
+    failureInsert.run('VN912', '["vndb"]', 'not_found', createdAt)
     raw
       .prepare(
         `INSERT INTO game_user_data
@@ -190,6 +191,13 @@ describe('createDbClient legacy VNDB code migration', () => {
         .all(),
     }
     first.$client.close()
+
+    const metadataCodes = firstRows.metadata.map((row) => (row as { code: string }).code)
+    const failureCodes = firstRows.failures.map((row) => (row as { code: string }).code)
+    expect(metadataCodes).toEqual(['VNV17'])
+    expect(failureCodes).toEqual(['VNR20'])
+    expect(metadataCodes).not.toContain('VNV1')
+    expect(failureCodes).not.toContain('VNV912')
 
     expect(firstRows.metadata).toEqual([
       {
@@ -275,7 +283,12 @@ describe('createDbClient legacy VNDB code migration', () => {
         cover_image_path TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-      )
+      );
+      CREATE TABLE path_code_overrides (
+        path TEXT PRIMARY KEY,
+        code TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
     `)
     const insert = raw.prepare(
       `INSERT INTO game_metadata
@@ -302,6 +315,9 @@ describe('createDbClient legacy VNDB code migration', () => {
       '2026-02-01T00:00:00.000Z',
       '2026-02-01T00:00:00.000Z'
     )
+    raw
+      .prepare(`INSERT INTO path_code_overrides (path, code, created_at) VALUES (?, ?, ?)`)
+      .run('C:\\games\\legacy-vn', 'VN17', '2026-01-03T00:00:00.000Z')
     raw.close()
 
     const db = createDbClient(dbPath)
