@@ -141,13 +141,13 @@ describe('createDbClient legacy VNDB code migration', () => {
       '2026-01-01T00:00:00.000Z',
       '2026-01-02T00:00:00.000Z'
     )
-    metadataInsert.run('VN1', 'False filename cache', null, null, null, null, createdAt, createdAt)
+    metadataInsert.run('VNV1', 'False filename cache', null, null, null, null, createdAt, createdAt)
     const failureInsert = raw.prepare(
       `INSERT INTO metadata_failures (code, attempted_sources, reason, updated_at)
        VALUES (?, ?, ?, ?)`
     )
     failureInsert.run('VR20', '["vndb"]', 'not found', '2026-01-03T00:00:00.000Z')
-    failureInsert.run('VN912', '["vndb"]', 'not_found', createdAt)
+    failureInsert.run('VNV912', '["vndb"]', 'not_found', createdAt)
     raw
       .prepare(
         `INSERT INTO game_user_data

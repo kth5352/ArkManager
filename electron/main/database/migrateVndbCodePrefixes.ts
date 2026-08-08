@@ -64,14 +64,13 @@ export function legacyVndbCodeToCanonical(value: string): string | null {
   return vr ? `VNR${vr[1]}` : null
 }
 
-function canonicalVndbCodeToLegacy(value: string): string | null {
-  const vn = /^VNV(\d+)$/.exec(value)
-  if (vn) return `VN${vn[1]}`
-  const vr = /^VNR(\d+)$/.exec(value)
-  return vr ? `VR${vr[1]}` : null
+function vndbCodeToCanonicalIdentity(value: string): string | null {
+  const migrated = legacyVndbCodeToCanonical(value)
+  if (migrated) return migrated
+  return /^(?:VNV|VNR)\d+$/.test(value) ? value : null
 }
 
-function collectReferencedLegacyCodes(sqlite: Database.Database): Set<string> {
+function collectReferencedCanonicalCodes(sqlite: Database.Database): Set<string> {
   const referenced = new Set<string>()
   const rows = sqlite
     .prepare(
@@ -82,13 +81,8 @@ function collectReferencedLegacyCodes(sqlite: Database.Database): Set<string> {
     .all() as { value: string }[]
 
   for (const row of rows) {
-    if (legacyVndbCodeToCanonical(row.value)) {
-      referenced.add(row.value)
-      continue
-    }
-
-    const legacyAlias = canonicalVndbCodeToLegacy(row.value)
-    if (legacyAlias) referenced.add(legacyAlias)
+    const canonicalIdentity = vndbCodeToCanonicalIdentity(row.value)
+    if (canonicalIdentity) referenced.add(canonicalIdentity)
   }
 
   return referenced
@@ -96,7 +90,7 @@ function collectReferencedLegacyCodes(sqlite: Database.Database): Set<string> {
 
 export function migrateVndbCodePrefixes(sqlite: Database.Database): void {
   sqlite.transaction(() => {
-    const referenced = collectReferencedLegacyCodes(sqlite)
+    const referenced = collectReferencedCanonicalCodes(sqlite)
 
     for (const migration of TABLE_MIGRATIONS) {
       const rows = sqlite.prepare(`SELECT * FROM ${migration.table}`).all() as Record<
@@ -118,14 +112,14 @@ export function migrateVndbCodePrefixes(sqlite: Database.Database): void {
         if (typeof legacyKey !== 'string') continue
         if (migration.table === 'game_user_data' && row.key_type !== 'code') continue
         const canonicalKey = legacyVndbCodeToCanonical(legacyKey)
-        if (!canonicalKey) continue
-        if (
-          (migration.table === 'game_metadata' || migration.table === 'metadata_failures') &&
-          !referenced.has(legacyKey)
-        ) {
+        const isCacheTable =
+          migration.table === 'game_metadata' || migration.table === 'metadata_failures'
+        const canonicalIdentity = vndbCodeToCanonicalIdentity(legacyKey)
+        if (isCacheTable && canonicalIdentity && !referenced.has(canonicalIdentity)) {
           deleteSource.run(...migration.deleteColumns.map((column) => row[column]))
           continue
         }
+        if (!canonicalKey) continue
 
         const values = migration.columns.map((column) =>
           column === migration.keyColumn ? canonicalKey : row[column]

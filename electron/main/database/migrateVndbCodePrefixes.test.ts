@@ -12,7 +12,7 @@ describe('legacyVndbCodeToCanonical', () => {
 })
 
 describe('migrateVndbCodePrefixes', () => {
-  it('preserves caches only for exact user-owned legacy code references', () => {
+  it('preserves caches only for exact user-owned VNDB code references', () => {
     const sqlite = new Database(':memory:')
     sqlite.exec(`
       CREATE TABLE game_metadata (
@@ -65,7 +65,7 @@ describe('migrateVndbCodePrefixes', () => {
         (code, title, circle, release_date, genres, cover_image_path, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    for (const code of ['VN17', 'VN30', 'VN40', 'VN1']) {
+    for (const code of ['VN17', 'VN30', 'VN40', 'VN1', 'VNV1', 'VNV13774', 'VNV751']) {
       metadataInsert.run(code, code, null, null, null, null, createdAt, createdAt)
     }
     const failureInsert = sqlite.prepare(
@@ -74,36 +74,54 @@ describe('migrateVndbCodePrefixes', () => {
     )
     failureInsert.run('VR20', '["vndb"]', 'not_found', createdAt)
     failureInsert.run('VR2', '["vndb"]', 'not_found', createdAt)
+    failureInsert.run('VNV912', '["vndb"]', 'not_found', createdAt)
+    failureInsert.run('VNR30', '["vndb"]', 'not_found', createdAt)
     const userDataInsert = sqlite.prepare(
       `INSERT INTO game_user_data (key, key_type, created_at, updated_at)
        VALUES (?, ?, ?, ?)`
     )
     userDataInsert.run('VN17', 'code', createdAt, createdAt)
     userDataInsert.run('VN40', 'path', createdAt, createdAt)
+    userDataInsert.run('VNV13774', 'code', createdAt, createdAt)
     sqlite
       .prepare(`INSERT INTO path_code_overrides (path, code, created_at) VALUES (?, ?, ?)`)
       .run('C:\\games\\legacy-vr', 'VR20', createdAt)
+    sqlite
+      .prepare(`INSERT INTO path_code_overrides (path, code, created_at) VALUES (?, ?, ?)`)
+      .run('C:\\games\\canonical-vn', 'VNV751', createdAt)
     sqlite
       .prepare(
         `INSERT INTO save_snapshot_labels (key, timestamp, memo, version) VALUES (?, ?, ?, ?)`
       )
       .run('VN30', createdAt, 'owned snapshot', '1.0.0')
+    sqlite
+      .prepare(
+        `INSERT INTO save_snapshot_labels (key, timestamp, memo, version) VALUES (?, ?, ?, ?)`
+      )
+      .run('VNR30', '2026-01-02T00:00:00.000Z', 'canonical snapshot', '1.0.0')
 
     migrateVndbCodePrefixes(sqlite)
 
     expect(sqlite.prepare(`SELECT code FROM game_metadata ORDER BY code`).pluck().all()).toEqual([
+      'VNV13774',
       'VNV17',
       'VNV30',
+      'VNV751',
     ])
     expect(
       sqlite.prepare(`SELECT code FROM metadata_failures ORDER BY code`).pluck().all()
-    ).toEqual(['VNR20'])
+    ).toEqual(['VNR20', 'VNR30'])
     expect(sqlite.prepare(`SELECT key, key_type FROM game_user_data ORDER BY key`).all()).toEqual([
       { key: 'VN40', key_type: 'path' },
+      { key: 'VNV13774', key_type: 'code' },
       { key: 'VNV17', key_type: 'code' },
     ])
-    expect(sqlite.prepare(`SELECT code FROM path_code_overrides`).pluck().get()).toBe('VNR20')
-    expect(sqlite.prepare(`SELECT key FROM save_snapshot_labels`).pluck().get()).toBe('VNV30')
+    expect(
+      sqlite.prepare(`SELECT code FROM path_code_overrides ORDER BY code`).pluck().all()
+    ).toEqual(['VNR20', 'VNV751'])
+    expect(
+      sqlite.prepare(`SELECT key FROM save_snapshot_labels ORDER BY key`).pluck().all()
+    ).toEqual(['VNR30', 'VNV30'])
 
     sqlite.close()
   })
