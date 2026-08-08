@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrateVndbCodePrefixes } from './migrateVndbCodePrefixes'
 import * as schema from './schema'
 
 // CREATE TABLE IF NOT EXISTS only helps a table that doesn't exist yet - a
@@ -178,6 +179,8 @@ export function createDbClient(filePath: string) {
       excluded_at TEXT NOT NULL
     )
   `)
+
+  migrateVndbCodePrefixes(sqlite)
 
   return drizzle(sqlite, { schema })
 }
