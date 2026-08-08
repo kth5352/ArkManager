@@ -43,6 +43,7 @@ import {
   registerMediaThumbnailProtocolHandler,
   registerMediaThumbnailProtocolScheme,
 } from './mediaThumbnailProtocol'
+import { installZoomInShortcut } from './zoomShortcuts'
 
 // better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
@@ -259,6 +260,7 @@ if (!gotSingleInstanceLock) {
         preload: join(__dirname, '../preload/index.js'),
       },
     })
+    installZoomInShortcut(win.webContents)
 
     win.once('ready-to-show', () => win.show())
 

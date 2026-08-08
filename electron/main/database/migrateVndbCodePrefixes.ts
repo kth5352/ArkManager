@@ -64,8 +64,34 @@ export function legacyVndbCodeToCanonical(value: string): string | null {
   return vr ? `VNR${vr[1]}` : null
 }
 
+function vndbCodeToCanonicalIdentity(value: string): string | null {
+  const migrated = legacyVndbCodeToCanonical(value)
+  if (migrated) return migrated
+  return /^(?:VNV|VNR)\d+$/.test(value) ? value : null
+}
+
+function collectReferencedCanonicalCodes(sqlite: Database.Database): Set<string> {
+  const referenced = new Set<string>()
+  const rows = sqlite
+    .prepare(
+      `SELECT key AS value FROM game_user_data WHERE key_type = 'code'
+       UNION SELECT code AS value FROM path_code_overrides
+       UNION SELECT key AS value FROM save_snapshot_labels`
+    )
+    .all() as { value: string }[]
+
+  for (const row of rows) {
+    const canonicalIdentity = vndbCodeToCanonicalIdentity(row.value)
+    if (canonicalIdentity) referenced.add(canonicalIdentity)
+  }
+
+  return referenced
+}
+
 export function migrateVndbCodePrefixes(sqlite: Database.Database): void {
   sqlite.transaction(() => {
+    const referenced = collectReferencedCanonicalCodes(sqlite)
+
     for (const migration of TABLE_MIGRATIONS) {
       const rows = sqlite.prepare(`SELECT * FROM ${migration.table}`).all() as Record<
         string,
@@ -84,7 +110,15 @@ export function migrateVndbCodePrefixes(sqlite: Database.Database): void {
       for (const row of rows) {
         const legacyKey = row[migration.keyColumn]
         if (typeof legacyKey !== 'string') continue
+        if (migration.table === 'game_user_data' && row.key_type !== 'code') continue
         const canonicalKey = legacyVndbCodeToCanonical(legacyKey)
+        const isCacheTable =
+          migration.table === 'game_metadata' || migration.table === 'metadata_failures'
+        const canonicalIdentity = vndbCodeToCanonicalIdentity(legacyKey)
+        if (isCacheTable && canonicalIdentity && !referenced.has(canonicalIdentity)) {
+          deleteSource.run(...migration.deleteColumns.map((column) => row[column]))
+          continue
+        }
         if (!canonicalKey) continue
 
         const values = migration.columns.map((column) =>

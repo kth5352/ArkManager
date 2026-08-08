@@ -33,6 +33,7 @@ import { IndeterminateProgressBar } from '../ui/progress-bar'
 import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import { dialogInstanceKey } from './dialogInstanceKey'
 
 interface DetailSidebarProps {
   game: ScannedEntry | null
@@ -331,23 +332,23 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         <CodeLinkSection game={game} />
       </div>
       <LaunchConfigDialog
-        key={configuringLaunch ? game.path : 'closed'}
+        key={dialogInstanceKey('launch', configuringLaunch ? game.path : null)}
         entry={configuringLaunch ? game : null}
         onClose={() => setConfiguringLaunch(false)}
         autoLaunchOnSave
       />
       <RenameDialog
-        key={dialogMode === 'rename' ? game.path : 'closed'}
+        key={dialogInstanceKey('rename', dialogMode === 'rename' ? game.path : null)}
         targets={dialogMode === 'rename' ? [game] : []}
         onClose={() => setDialogMode(null)}
       />
       <DeleteConfirmDialog
-        key={dialogMode === 'delete' ? game.path : 'closed'}
+        key={dialogInstanceKey('delete', dialogMode === 'delete' ? game.path : null)}
         targets={dialogMode === 'delete' ? [game] : []}
         onClose={() => setDialogMode(null)}
       />
       <MoveDialog
-        key={dialogMode === 'move' ? game.path : 'closed'}
+        key={dialogInstanceKey('move', dialogMode === 'move' ? game.path : null)}
         targets={dialogMode === 'move' ? [game] : []}
         onClose={() => setDialogMode(null)}
       />

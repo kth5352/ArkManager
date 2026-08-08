@@ -1,11 +1,13 @@
 import { execFile } from 'node:child_process'
 import { COPYFILE_EXCL } from 'node:constants'
+import { createReadStream } from 'node:fs'
 import { copyFile, rm } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import ffmpegPath from 'ffmpeg-static'
+import { MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE } from '../../../shared/mediaThumbnailErrors'
 
-const EMBEDDABLE_AUDIO_EXTENSIONS = new Set(['.mp3', '.flac', '.m4a', '.wav'])
+const EMBEDDABLE_AUDIO_EXTENSIONS = new Set(['.mp3', '.flac', '.m4a'])
 const FFMPEG_TIMEOUT_MS = 5 * 60 * 1000
 
 export interface AudioValidation {
@@ -22,6 +24,9 @@ export interface AudioCommandResult {
 
 export type AudioCommandRunner = (args: string[]) => Promise<AudioCommandResult>
 
+export type AudioCoverFailureStage =
+  'embedding' | 'restore' | 'hash' | 'hash-mismatch' | 'backup-removal'
+
 export interface AudioCoverDependencies {
   copyFile: (sourcePath: string, destinationPath: string, mode?: number) => Promise<void>
   writeCover: (filePath: string, imagePath: string, outputPath: string) => Promise<void>
@@ -29,6 +34,8 @@ export interface AudioCoverDependencies {
   replaceFile: (sourcePath: string, destinationPath: string) => Promise<void>
   removeFile: (filePath: string) => Promise<void>
   restoreBackup: (backupPath: string, destinationPath: string) => Promise<void>
+  hashFile: (filePath: string) => Promise<string>
+  reportError: (stage: AudioCoverFailureStage, error: unknown, backupPath?: string) => void
   makeTempPath: (filePath: string) => string
   makeBackupPath: (filePath: string) => string
 }
@@ -39,7 +46,7 @@ export type AudioCoverWriteResult =
 
 export class AudioCoverRestoreError extends Error {
   constructor(cause: unknown) {
-    super(`Audio cover backup restoration failed: ${errorMessage(cause)}`, { cause })
+    super(MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE, { cause })
     this.name = 'AudioCoverRestoreError'
   }
 }
@@ -55,6 +62,9 @@ export function buildAudioCoverArgs(
   imagePath: string,
   outputPath: string
 ): string[] {
+  if (getAudioCoverWriteSupport(filePath) === 'unsupported') {
+    throw new Error('Unsupported audio cover format')
+  }
   const extension = extname(filePath).toLowerCase()
   if (extension === '.mp3') {
     return [
@@ -90,6 +100,16 @@ export function buildAudioCoverArgs(
     'attached_pic',
     outputPath,
   ]
+}
+
+export function sha256File(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256')
+    const stream = createReadStream(filePath)
+    stream.on('error', reject)
+    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('end', () => resolve(hash.digest('hex')))
+  })
 }
 
 function parseProgressDuration(stdout: string): number | null {
@@ -156,7 +176,10 @@ async function probeCover(filePath: string, runCommand: AudioCommandRunner): Pro
   }
 }
 
-function durationsAreClose(durationSeconds: number | null, referenceSeconds: number | null): boolean {
+function durationsAreClose(
+  durationSeconds: number | null,
+  referenceSeconds: number | null
+): boolean {
   if (durationSeconds === null || referenceSeconds === null || referenceSeconds <= 0) return false
   return Math.abs(durationSeconds - referenceSeconds) <= Math.max(1, referenceSeconds * 0.01)
 }
@@ -215,6 +238,12 @@ function createDefaultDependencies(): AudioCoverDependencies {
     },
     removeFile: (filePath) => rm(filePath, { force: true }),
     restoreBackup: (backupPath, destinationPath) => copyFile(backupPath, destinationPath),
+    hashFile: sha256File,
+    reportError: (stage, error, backupPath) =>
+      console.error(
+        `[audio-cover] ${stage}${backupPath ? `; recovery backup: ${backupPath}` : ''}`,
+        error
+      ),
     makeTempPath: (filePath) => {
       const extension = extname(filePath)
       const stem = basename(filePath, extension)
@@ -224,12 +253,12 @@ function createDefaultDependencies(): AudioCoverDependencies {
   }
 }
 
-function validationFailureWarning(filePath: string, validation: AudioValidation): string {
-  if (extname(filePath).toLowerCase() === '.wav' && !validation.hasCover) {
-    return 'WAV cover embedding could not be verified; the original file was restored and an app-local override will be used.'
-  }
+function validationFailureWarning(): string {
   return 'Audio cover embedding could not be validated; the original file was restored and an app-local override will be used.'
 }
+
+const RECOVERY_BACKUP_RETAINED_WARNING =
+  MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE
 
 function isValidEmbeddedAudio(validation: AudioValidation): boolean {
   return (
@@ -238,10 +267,6 @@ function isValidEmbeddedAudio(validation: AudioValidation): boolean {
     validation.durationSeconds !== null &&
     validation.hasCover
   )
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : 'Unknown error'
 }
 
 export async function writeAudioCoverWithBackup(
@@ -253,7 +278,8 @@ export async function writeAudioCoverWithBackup(
     return {
       ok: false,
       mode: 'override',
-      warning: 'This audio format does not support embedded cover writes; an app-local override will be used.',
+      warning:
+        'This audio format does not support embedded cover writes; an app-local override will be used.',
     }
   }
 
@@ -270,7 +296,7 @@ export async function writeAudioCoverWithBackup(
 
     const candidateValidation = await deps.validateAudio(tempPath, filePath)
     if (!isValidEmbeddedAudio(candidateValidation)) {
-      warning = validationFailureWarning(filePath, candidateValidation)
+      warning = validationFailureWarning()
       hasValidationWarning = true
       throw new Error('candidate validation failed')
     }
@@ -279,7 +305,7 @@ export async function writeAudioCoverWithBackup(
 
     const finalValidation = await deps.validateAudio(filePath, backupPath)
     if (!isValidEmbeddedAudio(finalValidation)) {
-      warning = validationFailureWarning(filePath, finalValidation)
+      warning = validationFailureWarning()
       hasValidationWarning = true
       throw new Error('final validation failed')
     }
@@ -287,8 +313,9 @@ export async function writeAudioCoverWithBackup(
     await deps.removeFile(backupPath)
     return { ok: true, mode: 'embedded' }
   } catch (error) {
+    deps.reportError('embedding', error, backupCreated ? backupPath : undefined)
     if (!hasValidationWarning) {
-      warning = `Audio cover embedding failed (${errorMessage(error)}); an app-local override will be used.`
+      warning = 'Audio cover embedding failed; an app-local override will be used.'
     }
     let restoreError: unknown
     if (backupCreated) {
@@ -296,6 +323,36 @@ export async function writeAudioCoverWithBackup(
         await deps.restoreBackup(backupPath, filePath)
       } catch (error) {
         restoreError = error
+        deps.reportError('restore', error, backupPath)
+      }
+      if (restoreError === undefined) {
+        let hashesMatch = false
+        try {
+          const [restoredHash, backupHash] = await Promise.all([
+            deps.hashFile(filePath),
+            deps.hashFile(backupPath),
+          ])
+          hashesMatch = restoredHash === backupHash
+          if (!hashesMatch) {
+            warning = RECOVERY_BACKUP_RETAINED_WARNING
+            deps.reportError(
+              'hash-mismatch',
+              new Error('Restored audio hash did not match the recovery backup'),
+              backupPath
+            )
+          }
+        } catch (error) {
+          warning = RECOVERY_BACKUP_RETAINED_WARNING
+          deps.reportError('hash', error, backupPath)
+        }
+        if (hashesMatch) {
+          try {
+            await deps.removeFile(backupPath)
+          } catch (error) {
+            warning = RECOVERY_BACKUP_RETAINED_WARNING
+            deps.reportError('backup-removal', error, backupPath)
+          }
+        }
       }
     }
     try {

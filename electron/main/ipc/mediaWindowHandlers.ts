@@ -5,6 +5,7 @@ import {
   MediaReportTimeRequestSchema,
   MediaSyncStateSchema,
 } from '../../../shared/types/ipc'
+import { installZoomInShortcut } from '../zoomShortcuts'
 
 // Detached video playback lives in its own BrowserWindow (see
 // FullscreenVideoOverlay's "새 창으로 분리" button) - only one at a time; a
@@ -61,6 +62,7 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
         preload: join(__dirname, '../preload/index.js'),
       },
     })
+    installZoomInShortcut(win.webContents)
 
     if (process.env['ELECTRON_RENDERER_URL']) {
       win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/player-window`)
