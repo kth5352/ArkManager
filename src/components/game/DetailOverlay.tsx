@@ -17,6 +17,7 @@ import { IndeterminateProgressBar } from '../ui/progress-bar'
 import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import { dialogInstanceKey } from './dialogInstanceKey'
 
 interface DetailOverlayProps {
   game: ScannedEntry | null
@@ -140,23 +141,29 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         )}
       </DialogContent>
       <RatingMemoDialog
-        key={editingRating && game ? (game.code ? game.code.value : game.path) : 'closed'}
+        key={dialogInstanceKey(
+          'rating',
+          editingRating && game ? (game.code ? game.code.value : game.path) : null
+        )}
         entry={editingRating ? game : null}
         onClose={() => setEditingRating(false)}
       />
       <LaunchConfigDialog
-        key={configuringLaunch && game ? (game.code ? game.code.value : game.path) : 'closed'}
+        key={dialogInstanceKey(
+          'launch',
+          configuringLaunch && game ? (game.code ? game.code.value : game.path) : null
+        )}
         entry={configuringLaunch ? game : null}
         onClose={() => setConfiguringLaunch(false)}
         autoLaunchOnSave={false}
       />
       <LinkCodeDialog
-        key={linkingCode && game ? game.path : 'closed'}
+        key={dialogInstanceKey('link', linkingCode && game ? game.path : null)}
         entry={linkingCode ? game : null}
         onClose={() => setLinkingCode(false)}
       />
       <UnlinkCodeDialog
-        key={unlinkingCode && game ? game.path : 'closed'}
+        key={dialogInstanceKey('unlink', unlinkingCode && game ? game.path : null)}
         entry={unlinkingCode ? game : null}
         onClose={() => setUnlinkingCode(false)}
       />
