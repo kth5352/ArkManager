@@ -39,6 +39,7 @@ import {
 } from './mediaThumbnailProtocol'
 import { installZoomInShortcut } from './zoomShortcuts'
 import {
+  createQuitLifecycle,
   createWindowCloseController,
   getOrCreateMainWindow,
   getWindowClosePrompt,
@@ -58,7 +59,7 @@ if (!gotSingleInstanceLock) {
   let mainWindow: BrowserWindow | null = null
   let closePlayerWindow: (() => void) | null = null
   let tray: Tray | null = null
-  let isQuitting = false
+  let quitLifecycle: ReturnType<typeof createQuitLifecycle> | null = null
   let closeController: {
     requestClose(target: BrowserWindow | null): Promise<void>
   } | null = null
@@ -291,7 +292,7 @@ if (!gotSingleInstanceLock) {
     mainWindow = win
     win.on('close', (event) => {
       const controller = closeController
-      if (isQuitting || !controller) return
+      if (quitLifecycle?.isQuitting() || !controller) return
       event.preventDefault()
       void controller.requestClose(win)
     })
@@ -381,17 +382,16 @@ if (!gotSingleInstanceLock) {
     // game is still running, that promise never resolves and the whole
     // session would otherwise be lost. Flush whatever elapsed so far for any
     // still-running game before the process actually goes away.
-    const beginQuit = (): void => {
-      if (isQuitting) return
-      isQuitting = true
+    const lifecycle = createQuitLifecycle(() => {
       closePlayerWindow?.()
       const now = Date.now()
       for (const session of getActiveSessions()) {
         recordPlaySession(db, session.key, session.keyType, now - session.startedAt)
       }
-    }
-    app.on('before-quit', beginQuit)
-    registerUpdateHandlers(() => mainWindow, beginQuit)
+    })
+    quitLifecycle = lifecycle
+    app.on('before-quit', lifecycle.commitQuit)
+    registerUpdateHandlers(() => mainWindow, lifecycle.beginUpdateQuit)
 
     buildApplicationMenu()
     showMainWindow()
@@ -408,6 +408,6 @@ if (!gotSingleInstanceLock) {
   })
 
   app.on('window-all-closed', () => {
-    if (isQuitting || process.platform === 'darwin') return
+    if (quitLifecycle?.isQuitting() || process.platform === 'darwin') return
   })
 }

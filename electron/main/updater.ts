@@ -25,11 +25,14 @@ autoUpdater.fullChangelog = true
 // per-window since there's only ever one update lifecycle for the whole
 // app, regardless of which window is currently open.
 let lastStatus: UpdateStatus = { state: 'idle' }
+const UPDATE_QUIT_ROLLBACK_MS = 5000
 
 export function registerUpdateHandlers(
   getMainWindow: () => BrowserWindow | null,
-  beginQuit: () => void
+  beginUpdateQuit: () => () => void
 ): void {
+  let installAttemptPending = false
+
   const sendStatus = (status: UpdateStatus): void => {
     lastStatus = status
     getMainWindow()?.webContents.send(IPC_CHANNELS.UPDATE_STATUS, status)
@@ -71,8 +74,23 @@ export function registerUpdateHandlers(
   })
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_INSTALL, () => {
-    beginQuit()
-    autoUpdater.quitAndInstall()
+    if (lastStatus.state !== 'downloaded' || installAttemptPending) return
+
+    const rollbackQuit = beginUpdateQuit()
+    installAttemptPending = true
+    const rollbackTimer = setTimeout(() => {
+      installAttemptPending = false
+      rollbackQuit()
+    }, UPDATE_QUIT_ROLLBACK_MS)
+
+    try {
+      autoUpdater.quitAndInstall()
+    } catch (error) {
+      clearTimeout(rollbackTimer)
+      installAttemptPending = false
+      rollbackQuit()
+      throw error
+    }
   })
 }
 

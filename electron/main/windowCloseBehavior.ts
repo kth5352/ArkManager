@@ -47,6 +47,41 @@ export function getOrCreateMainWindow<TWindow>(
   return currentWindow ?? createWindow()
 }
 
+export function createQuitLifecycle(commitCleanup: () => void): {
+  isQuitting(): boolean
+  beginUpdateQuit(): () => void
+  commitQuit(): void
+} {
+  let state: 'running' | 'update-admitted' | 'committed' = 'running'
+  let admissionToken = 0
+
+  function beginUpdateQuit(): () => void {
+    if (state === 'committed') return () => undefined
+
+    state = 'update-admitted'
+    const token = ++admissionToken
+    let active = true
+
+    return () => {
+      if (!active) return
+      active = false
+      if (state === 'update-admitted' && admissionToken === token) state = 'running'
+    }
+  }
+
+  function commitQuit(): void {
+    if (state === 'committed') return
+    state = 'committed'
+    commitCleanup()
+  }
+
+  return {
+    isQuitting: () => state !== 'running',
+    beginUpdateQuit,
+    commitQuit,
+  }
+}
+
 export interface WindowClosePromptResult {
   response: 'quit' | 'tray' | 'cancel'
   remember: boolean

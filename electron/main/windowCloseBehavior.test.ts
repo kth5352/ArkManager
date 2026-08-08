@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  createQuitLifecycle,
   createWindowCloseController,
   getOrCreateMainWindow,
   getWindowClosePrompt,
@@ -83,6 +84,44 @@ describe('getOrCreateMainWindow', () => {
 
     expect(getOrCreateMainWindow(true, existingWindow, createWindow)).toBe(existingWindow)
     expect(createWindow).not.toHaveBeenCalled()
+  })
+})
+
+describe('createQuitLifecycle', () => {
+  it('rolls reversible updater admission back without running quit cleanup', () => {
+    const cleanup = vi.fn()
+    const lifecycle = createQuitLifecycle(cleanup)
+
+    const rollback = lifecycle.beginUpdateQuit()
+    expect(lifecycle.isQuitting()).toBe(true)
+    expect(cleanup).not.toHaveBeenCalled()
+
+    rollback()
+    expect(lifecycle.isQuitting()).toBe(false)
+    expect(cleanup).not.toHaveBeenCalled()
+  })
+
+  it('keeps committed before-quit state when a pending updater rollback fires', () => {
+    const cleanup = vi.fn()
+    const lifecycle = createQuitLifecycle(cleanup)
+    const rollback = lifecycle.beginUpdateQuit()
+
+    lifecycle.commitQuit()
+    rollback()
+
+    expect(lifecycle.isQuitting()).toBe(true)
+    expect(cleanup).toHaveBeenCalledOnce()
+  })
+
+  it('commits direct application quit cleanup exactly once', () => {
+    const cleanup = vi.fn()
+    const lifecycle = createQuitLifecycle(cleanup)
+
+    lifecycle.commitQuit()
+    lifecycle.commitQuit()
+
+    expect(lifecycle.isQuitting()).toBe(true)
+    expect(cleanup).toHaveBeenCalledOnce()
   })
 })
 
