@@ -45,11 +45,11 @@ describe('filterEntries', () => {
   })
 
   it('matches by VNDB release code', () => {
-    const vrEntries: TestEntry[] = [
-      { name: 'release.zip', kind: 'file', code: { type: 'VR', value: 'VR45775' } },
+    const vnrEntries: TestEntry[] = [
+      { name: 'release.zip', kind: 'file', code: { type: 'VNR', value: 'VNR45775' } },
     ]
 
-    expect(filterEntries(vrEntries, {}, 'VR45775', [], []).map((e) => e.name)).toEqual([
+    expect(filterEntries(vnrEntries, {}, 'VNR45775', [], []).map((e) => e.name)).toEqual([
       'release.zip',
     ])
   })

@@ -1,6 +1,6 @@
 import { parseDlsiteWorkPage, type CrawledGameMetadata } from './dlsiteParser'
 import { parseSteamStorePage } from './steamParser'
-import { crawlVndb } from './vndbClient'
+import { crawlVndb, type VndbGameCode } from './vndbClient'
 import { parseGetchuWorkPage } from './getchuParser'
 import { crawlDlsiteJsonFallback } from './dlsiteJsonFallback'
 import {
@@ -147,8 +147,8 @@ export async function crawlGameMetadataWithTrace(
   deps: CrawlGameMetadataDeps = defaultDeps
 ): Promise<CrawlTraceResult> {
   if (code.type === 'ST') return crawlSingleSource('steam', () => crawlSteam(code))
-  if (code.type === 'VN' || code.type === 'VR') {
-    return crawlSingleSource('vndb', () => crawlVndb(code))
+  if (code.type === 'VNV' || code.type === 'VNR') {
+    return crawlSingleSource('vndb', () => crawlVndb(code as VndbGameCode))
   }
   if (code.type === 'GC') return crawlSingleSource('getchu', () => crawlGetchu(code))
 

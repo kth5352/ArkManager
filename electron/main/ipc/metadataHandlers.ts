@@ -64,7 +64,7 @@ function toDto(row: ReturnType<typeof getGameMetadata>): GameMetadataDto | null 
 
 function initialMetadataSource(code: GameCode): string {
   if (code.type === 'ST') return 'steam'
-  if (code.type === 'VN' || code.type === 'VR') return 'vndb'
+  if (code.type === 'VNV' || code.type === 'VNR') return 'vndb'
   if (code.type === 'GC') return 'getchu'
   return 'dlsite-html'
 }

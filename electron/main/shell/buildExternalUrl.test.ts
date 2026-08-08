@@ -20,12 +20,12 @@ describe('buildExternalUrl', () => {
     )
   })
 
-  it('builds a VNDB URL for a VN code, stripping the VN prefix', () => {
-    expect(buildExternalUrl({ type: 'VN', value: 'VN17' })).toBe('https://vndb.org/v17')
+  it('builds a VNDB URL for a VNV code', () => {
+    expect(buildExternalUrl({ type: 'VNV', value: 'VNV17' })).toBe('https://vndb.org/v17')
   })
 
-  it('builds a VNDB release URL for VR codes', () => {
-    expect(buildExternalUrl({ type: 'VR', value: 'VR45775' })).toBe('https://vndb.org/r45775')
+  it('builds a VNDB release URL for VNR codes', () => {
+    expect(buildExternalUrl({ type: 'VNR', value: 'VNR45775' })).toBe('https://vndb.org/r45775')
   })
 
   it('builds a getchu.com URL for a GC code, stripping the GC prefix', () => {

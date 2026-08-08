@@ -13,8 +13,9 @@ async function loadFixture(name: string): Promise<unknown> {
   return JSON.parse(raw)
 }
 
-it('maps app VR code to VNDB release id', () => {
-  expect(toVndbId({ type: 'VR', value: 'VR45775' })).toBe('r45775')
+it('maps app VNV and VNR codes to VNDB ids', () => {
+  expect(toVndbId({ type: 'VNV', value: 'VNV17' })).toBe('v17')
+  expect(toVndbId({ type: 'VNR', value: 'VNR45775' })).toBe('r45775')
 })
 
 it('maps a VNDB release response to metadata without changing identity', () => {
@@ -97,7 +98,7 @@ describe('mapVnToMetadata', () => {
 })
 
 describe('mapVnToSearchResult', () => {
-  it('reattaches the VN prefix so the code round-trips like a filename-recognized code', () => {
+  it('reattaches the VNV prefix so the code round-trips like a filename-recognized code', () => {
     expect(
       mapVnToSearchResult({
         id: 'v17',
@@ -105,7 +106,7 @@ describe('mapVnToSearchResult', () => {
         image: { url: 'https://t.vndb.org/cv/38/86738.jpg' },
       })
     ).toEqual({
-      code: { type: 'VN', value: 'VN17' },
+      code: { type: 'VNV', value: 'VNV17' },
       title: 'Steins;Gate',
       thumbnailUrl: 'https://t.vndb.org/cv/38/86738.jpg',
     })
@@ -113,7 +114,7 @@ describe('mapVnToSearchResult', () => {
 
   it('defaults thumbnailUrl to null when image is absent', () => {
     expect(mapVnToSearchResult({ id: 'v2', title: 'Untitled', image: null })).toEqual({
-      code: { type: 'VN', value: 'VN2' },
+      code: { type: 'VNV', value: 'VNV2' },
       title: 'Untitled',
       thumbnailUrl: null,
     })

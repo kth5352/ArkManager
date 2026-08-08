@@ -1,3 +1,4 @@
+import { numericGameCodeId } from '../../../shared/gameCode'
 import type { GameCode } from '../../../shared/types/scanner'
 
 // RJ and VJ are different DLsite work categories with different URL path
@@ -7,13 +8,10 @@ export function buildExternalUrl(code: GameCode): string {
     const numericId = code.value.slice(2)
     return `https://store.steampowered.com/app/${numericId}`
   }
-  if (code.type === 'VN') {
-    const numericId = code.value.slice(2)
-    return `https://vndb.org/v${numericId}`
-  }
-  if (code.type === 'VR') {
-    const numericId = code.value.slice(2)
-    return `https://vndb.org/r${numericId}`
+  if (code.type === 'VNV' || code.type === 'VNR') {
+    const numericId = numericGameCodeId(code)
+    const prefix = code.type === 'VNR' ? 'r' : 'v'
+    return `https://vndb.org/${prefix}${numericId}`
   }
   if (code.type === 'GC') {
     const numericId = code.value.slice(2)

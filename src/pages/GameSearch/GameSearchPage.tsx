@@ -127,7 +127,7 @@ export function GameSearchPage() {
     const trimmed = input.trim()
     if (trimmed === '') return
 
-    // A direct code (RJ/VJ/ST/VN/GC) resolves the same way regardless of
+    // A direct code (RJ/VJ/ST/VNV/VNR/GC) resolves the same way regardless of
     // which tab is selected - the toggle only decides which API(s) a
     // free-text title search hits.
     const code = parseCodeInput(trimmed)

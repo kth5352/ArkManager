@@ -1,4 +1,5 @@
 import type { CrawledGameMetadata } from './dlsiteParser'
+import { numericGameCodeId } from '../../../shared/gameCode'
 import type { GameCode } from '../../../shared/types/scanner'
 
 // Without this, an unresponsive api.vndb.org leaves this fetch pending
@@ -36,6 +37,8 @@ interface VndbReleaseApiResponse {
   results: VndbApiRelease[]
 }
 
+export type VndbGameCode = GameCode & { type: 'VNV' | 'VNR' }
+
 // VNDB attaches hundreds of tags with a relevance `rating` per VN -
 // DLsite/Steam's own `genres` are a short curated list, so this caps the
 // count to keep the display comparable rather than dumping VNDB's full tag
@@ -61,12 +64,11 @@ export function mapVnToMetadata(vn: VndbApiVn): CrawledGameMetadata {
   }
 }
 
-// code.value is this app's own two-letter-prefixed convention (e.g. "VN17"
-// or "VR17") - VNDB's real ID drops the extra letter and uses a lowercase
-// prefix ("v17" or "r17").
-export function toVndbId(code: GameCode): string {
-  if (code.type === 'VR') return `r${code.value.slice(2)}`
-  return `v${code.value.slice(2)}`
+// code.value uses this app's VNV/VNR convention (e.g. "VNV17" or
+// "VNR17"); VNDB's API uses a lowercase v/r prefix with the numeric ID.
+export function toVndbId(code: VndbGameCode): string {
+  if (code.type === 'VNR') return `r${numericGameCodeId(code)}`
+  return `v${numericGameCodeId(code)}`
 }
 
 export function mapReleaseToMetadata(release: VndbApiRelease): CrawledGameMetadata {
@@ -82,7 +84,7 @@ export function mapReleaseToMetadata(release: VndbApiRelease): CrawledGameMetada
   }
 }
 
-async function crawlVndbVn(code: GameCode): Promise<CrawledGameMetadata | null> {
+async function crawlVndbVn(code: VndbGameCode): Promise<CrawledGameMetadata | null> {
   const response = await fetch(VNDB_VN_API_URL, {
     method: 'POST',
     headers: {
@@ -103,7 +105,7 @@ async function crawlVndbVn(code: GameCode): Promise<CrawledGameMetadata | null> 
   return vn ? mapVnToMetadata(vn) : null
 }
 
-async function crawlVndbRelease(code: GameCode): Promise<CrawledGameMetadata | null> {
+async function crawlVndbRelease(code: VndbGameCode): Promise<CrawledGameMetadata | null> {
   const response = await fetch(VNDB_RELEASE_API_URL, {
     method: 'POST',
     headers: {
@@ -124,8 +126,8 @@ async function crawlVndbRelease(code: GameCode): Promise<CrawledGameMetadata | n
   return release ? mapReleaseToMetadata(release) : null
 }
 
-export async function crawlVndb(code: GameCode): Promise<CrawledGameMetadata | null> {
-  return code.type === 'VR' ? crawlVndbRelease(code) : crawlVndbVn(code)
+export async function crawlVndb(code: VndbGameCode): Promise<CrawledGameMetadata | null> {
+  return code.type === 'VNR' ? crawlVndbRelease(code) : crawlVndbVn(code)
 }
 
 export interface VndbSearchResult {
@@ -144,13 +146,13 @@ interface VndbSearchApiResponse {
   results: VndbSearchApiVn[]
 }
 
-// vn.id is VNDB's own "v17" shape - reattach this app's VN-prefix
+// vn.id is VNDB's own "v17" shape - reattach this app's VNV-prefix
 // convention (the inverse of toVndbId above) so the result's code round-
 // trips through parseCodeInput/extractCode/buildExternalUrl identically to
 // a code recognized from a filename.
 export function mapVnToSearchResult(vn: VndbSearchApiVn): VndbSearchResult {
   return {
-    code: { type: 'VN', value: `VN${vn.id.slice(1)}` },
+    code: { type: 'VNV', value: `VNV${vn.id.slice(1)}` },
     title: vn.title,
     thumbnailUrl: vn.image?.url ?? null,
   }

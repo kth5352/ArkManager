@@ -78,8 +78,8 @@ describe('crawlGameMetadata', () => {
 describe('crawlGameMetadataWithTrace', () => {
   it.each([
     [{ type: 'ST' as const, value: 'ST123' }, 'steam'],
-    [{ type: 'VN' as const, value: 'VN17' }, 'vndb'],
-    [{ type: 'VR' as const, value: 'VR45775' }, 'vndb'],
+    [{ type: 'VNV' as const, value: 'VNV17' }, 'vndb'],
+    [{ type: 'VNR' as const, value: 'VNR45775' }, 'vndb'],
     [{ type: 'GC' as const, value: 'GC123' }, 'getchu'],
   ])('traces a network failure from %s without rejecting', async (code, source) => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')))
