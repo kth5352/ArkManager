@@ -320,9 +320,15 @@ describe('createDbClient legacy VNDB code migration', () => {
       .run('C:\\games\\legacy-vn', 'VN17', '2026-01-03T00:00:00.000Z')
     raw.close()
 
-    const db = createDbClient(dbPath)
-    try {
-      expect(db.$client.prepare(`SELECT * FROM game_metadata ORDER BY code`).all()).toEqual([
+    const first = createDbClient(dbPath)
+    const firstRows = {
+      metadata: first.$client.prepare(`SELECT * FROM game_metadata ORDER BY code`).all(),
+      overrides: first.$client.prepare(`SELECT * FROM path_code_overrides ORDER BY path`).all(),
+    }
+    first.$client.close()
+
+    expect(firstRows).toEqual({
+      metadata: [
         {
           code: 'VN17',
           title: 'Legacy title',
@@ -343,9 +349,24 @@ describe('createDbClient legacy VNDB code migration', () => {
           created_at: '2026-02-01T00:00:00.000Z',
           updated_at: '2026-02-01T00:00:00.000Z',
         },
-      ])
+      ],
+      overrides: [
+        {
+          path: 'C:\\games\\legacy-vn',
+          code: 'VNV17',
+          created_at: '2026-01-03T00:00:00.000Z',
+        },
+      ],
+    })
+
+    const second = createDbClient(dbPath)
+    try {
+      expect({
+        metadata: second.$client.prepare(`SELECT * FROM game_metadata ORDER BY code`).all(),
+        overrides: second.$client.prepare(`SELECT * FROM path_code_overrides ORDER BY path`).all(),
+      }).toEqual(firstRows)
     } finally {
-      db.$client.close()
+      second.$client.close()
     }
   })
 })

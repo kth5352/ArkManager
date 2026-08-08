@@ -64,6 +64,13 @@ export function legacyVndbCodeToCanonical(value: string): string | null {
   return vr ? `VNR${vr[1]}` : null
 }
 
+function canonicalVndbCodeToLegacy(value: string): string | null {
+  const vn = /^VNV(\d+)$/.exec(value)
+  if (vn) return `VN${vn[1]}`
+  const vr = /^VNR(\d+)$/.exec(value)
+  return vr ? `VR${vr[1]}` : null
+}
+
 function collectReferencedLegacyCodes(sqlite: Database.Database): Set<string> {
   const referenced = new Set<string>()
   const rows = sqlite
@@ -75,7 +82,13 @@ function collectReferencedLegacyCodes(sqlite: Database.Database): Set<string> {
     .all() as { value: string }[]
 
   for (const row of rows) {
-    if (legacyVndbCodeToCanonical(row.value)) referenced.add(row.value)
+    if (legacyVndbCodeToCanonical(row.value)) {
+      referenced.add(row.value)
+      continue
+    }
+
+    const legacyAlias = canonicalVndbCodeToLegacy(row.value)
+    if (legacyAlias) referenced.add(legacyAlias)
   }
 
   return referenced
