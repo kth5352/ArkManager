@@ -54,6 +54,8 @@ export function createWindowCloseController(deps: WindowCloseControllerDeps): {
   }
 
   function requestClose(): Promise<void> {
+    if (pendingRequest) return pendingRequest
+
     const behavior = resolveWindowCloseBehavior(deps.getBehavior())
 
     if (behavior === 'quit') {
@@ -66,10 +68,16 @@ export function createWindowCloseController(deps: WindowCloseControllerDeps): {
       return Promise.resolve()
     }
 
-    if (pendingRequest) return pendingRequest
+    let resolvePending!: () => void
+    let rejectPending!: (error: unknown) => void
+    const currentRequest = new Promise<void>((resolve, reject) => {
+      resolvePending = resolve
+      rejectPending = reject
+    })
+    pendingRequest = currentRequest
 
-    pendingRequest = requestPrompt()
-    return pendingRequest
+    void requestPrompt().then(resolvePending, rejectPending)
+    return currentRequest
   }
 
   return { requestClose }

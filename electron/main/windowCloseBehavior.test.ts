@@ -139,12 +139,62 @@ describe('createWindowCloseController', () => {
     const firstRequest = controller.requestClose()
     const secondRequest = controller.requestClose()
 
+    expect(secondRequest).toBe(firstRequest)
     expect(deps.showPrompt).toHaveBeenCalledOnce()
 
     prompt.resolve({ response: 'quit', remember: false })
     await Promise.all([firstRequest, secondRequest])
 
     expect(deps.quit).toHaveBeenCalledOnce()
+  })
+
+  it('keeps an ask prompt pending when the stored policy changes', async () => {
+    let behavior = 'ask'
+    const prompt = createDeferred<{ response: 'tray'; remember: false }>()
+    const deps = createDeps({
+      getBehavior: () => behavior,
+      showPrompt: vi.fn(() => prompt.promise),
+    })
+    const controller = createWindowCloseController(deps)
+
+    const firstRequest = controller.requestClose()
+    behavior = 'quit'
+    const secondRequest = controller.requestClose()
+
+    expect(secondRequest).toBe(firstRequest)
+    expect(deps.quit).not.toHaveBeenCalled()
+
+    prompt.resolve({ response: 'tray', remember: false })
+    await Promise.all([firstRequest, secondRequest])
+
+    expect(deps.hide).toHaveBeenCalledOnce()
+    expect(deps.quit).not.toHaveBeenCalled()
+  })
+
+  it('keeps persistence pending when the stored policy changes', async () => {
+    let behavior = 'ask'
+    const persistence = createDeferred<void>()
+    const deps = createDeps({
+      getBehavior: () => behavior,
+      showPrompt: vi.fn().mockResolvedValue({ response: 'tray', remember: true }),
+      persistBehavior: vi.fn(() => persistence.promise),
+    })
+    const controller = createWindowCloseController(deps)
+
+    const firstRequest = controller.requestClose()
+    await Promise.resolve()
+    behavior = 'quit'
+    const secondRequest = controller.requestClose()
+
+    expect(secondRequest).toBe(firstRequest)
+    expect(deps.persistBehavior).toHaveBeenCalledWith('tray')
+    expect(deps.quit).not.toHaveBeenCalled()
+
+    persistence.resolve()
+    await Promise.all([firstRequest, secondRequest])
+
+    expect(deps.hide).toHaveBeenCalledOnce()
+    expect(deps.quit).not.toHaveBeenCalled()
   })
 
   it('does nothing when an ask prompt rejects', async () => {
@@ -168,7 +218,33 @@ describe('createWindowCloseController', () => {
     })
     const controller = createWindowCloseController(deps)
 
+    const firstRequest = controller.requestClose()
+
+    expect(firstRequest).toBeInstanceOf(Promise)
+
+    await firstRequest
     await controller.requestClose()
+
+    expect(deps.showPrompt).toHaveBeenCalledTimes(2)
+    expect(deps.hide).toHaveBeenCalledOnce()
+  })
+
+  it('allows a later close request after an ask prompt throws synchronously', async () => {
+    const deps = createDeps({
+      showPrompt: vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw new Error('dialog unavailable')
+        })
+        .mockResolvedValueOnce({ response: 'tray', remember: false }),
+    })
+    const controller = createWindowCloseController(deps)
+
+    const firstRequest = controller.requestClose()
+
+    expect(firstRequest).toBeInstanceOf(Promise)
+
+    await firstRequest
     await controller.requestClose()
 
     expect(deps.showPrompt).toHaveBeenCalledTimes(2)
