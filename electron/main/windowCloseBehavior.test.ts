@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   createWindowCloseController,
+  getWindowClosePrompt,
   resolveWindowCloseBehavior,
   type WindowCloseControllerDeps,
 } from './windowCloseBehavior'
@@ -28,6 +29,44 @@ function createDeferred<T>() {
 
   return { promise, resolve, reject }
 }
+
+describe('getWindowClosePrompt', () => {
+  it('returns the Korean close prompt', () => {
+    expect(getWindowClosePrompt('ko')).toEqual({
+      title: 'Ark Manager 닫기',
+      message: 'Ark Manager를 종료하거나 시스템 트레이에서 계속 실행할 수 있습니다.',
+      buttons: ['프로그램 종료', '시스템 트레이에서 계속 실행', '취소'],
+      checkboxLabel: '항상 이 옵션 사용',
+    })
+  })
+
+  it('returns the Japanese close prompt', () => {
+    expect(getWindowClosePrompt('ja')).toEqual({
+      title: 'Ark Managerを閉じる',
+      message: 'Ark Managerを終了するか、システムトレイで実行を続けるか選択してください。',
+      buttons: ['アプリを終了', 'システムトレイで実行を続ける', 'キャンセル'],
+      checkboxLabel: '常にこのオプションを使用',
+    })
+  })
+
+  it('returns the English close prompt', () => {
+    expect(getWindowClosePrompt('en')).toEqual({
+      title: 'Close Ark Manager',
+      message: 'Quit Ark Manager or keep it running in the system tray?',
+      buttons: ['Quit Ark Manager', 'Keep Running in System Tray', 'Cancel'],
+      checkboxLabel: 'Always use this option',
+    })
+  })
+
+  it('falls back to the Korean close prompt for an invalid locale', () => {
+    expect(getWindowClosePrompt('fr')).toEqual({
+      title: 'Ark Manager 닫기',
+      message: 'Ark Manager를 종료하거나 시스템 트레이에서 계속 실행할 수 있습니다.',
+      buttons: ['프로그램 종료', '시스템 트레이에서 계속 실행', '취소'],
+      checkboxLabel: '항상 이 옵션 사용',
+    })
+  })
+})
 
 describe('resolveWindowCloseBehavior', () => {
   it.each(['ask', 'quit', 'tray'] as const)('keeps the valid %s stored value', (raw) => {

@@ -1,4 +1,42 @@
-import { WindowCloseBehaviorSchema, type WindowCloseBehavior } from '../../shared/types/ipc'
+import {
+  LocaleSchema,
+  WindowCloseBehaviorSchema,
+  type Locale,
+  type WindowCloseBehavior,
+} from '../../shared/types/ipc'
+
+export interface WindowClosePrompt {
+  title: string
+  message: string
+  buttons: [quit: string, tray: string, cancel: string]
+  checkboxLabel: string
+}
+
+const WINDOW_CLOSE_PROMPTS: Record<Locale, WindowClosePrompt> = {
+  ko: {
+    title: 'Ark Manager 닫기',
+    message: 'Ark Manager를 종료하거나 시스템 트레이에서 계속 실행할 수 있습니다.',
+    buttons: ['프로그램 종료', '시스템 트레이에서 계속 실행', '취소'],
+    checkboxLabel: '항상 이 옵션 사용',
+  },
+  ja: {
+    title: 'Ark Managerを閉じる',
+    message: 'Ark Managerを終了するか、システムトレイで実行を続けるか選択してください。',
+    buttons: ['アプリを終了', 'システムトレイで実行を続ける', 'キャンセル'],
+    checkboxLabel: '常にこのオプションを使用',
+  },
+  en: {
+    title: 'Close Ark Manager',
+    message: 'Quit Ark Manager or keep it running in the system tray?',
+    buttons: ['Quit Ark Manager', 'Keep Running in System Tray', 'Cancel'],
+    checkboxLabel: 'Always use this option',
+  },
+}
+
+export function getWindowClosePrompt(locale: string | undefined): WindowClosePrompt {
+  const parsedLocale = LocaleSchema.safeParse(locale)
+  return WINDOW_CLOSE_PROMPTS[parsedLocale.success ? parsedLocale.data : 'ko']
+}
 
 export interface WindowClosePromptResult {
   response: 'quit' | 'tray' | 'cancel'

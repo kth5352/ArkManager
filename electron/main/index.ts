@@ -1,14 +1,8 @@
-import {
-  app,
-  BrowserWindow,
-  dialog,
-  Menu,
-  Tray,
-  type MenuItemConstructorOptions,
-} from 'electron'
+import { app, BrowserWindow, dialog, Menu, Tray, type MenuItemConstructorOptions } from 'electron'
 import { IPC_CHANNELS } from '../../shared/types/ipc'
 import { join } from 'node:path'
 import { createDbClient } from './database/client'
+import { getSetting, setSetting } from './database/settingsRepository'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
 import { registerLibrariesHandlers } from './ipc/librariesHandlers'
 import { registerScannerHandlers } from './ipc/scannerHandlers'
@@ -44,6 +38,7 @@ import {
   registerMediaThumbnailProtocolScheme,
 } from './mediaThumbnailProtocol'
 import { installZoomInShortcut } from './zoomShortcuts'
+import { createWindowCloseController, getWindowClosePrompt } from './windowCloseBehavior'
 
 // better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
@@ -60,6 +55,7 @@ if (!gotSingleInstanceLock) {
   let closePlayerWindow: (() => void) | null = null
   let tray: Tray | null = null
   let isQuitting = false
+  let closeController: ReturnType<typeof createWindowCloseController> | null = null
 
   function showMainWindow(): void {
     if (!mainWindow) createWindow()
@@ -290,7 +286,7 @@ if (!gotSingleInstanceLock) {
     win.on('close', (event) => {
       if (isQuitting) return
       event.preventDefault()
-      win.hide()
+      void closeController?.requestClose()
     })
     win.on('closed', () => {
       if (mainWindow === win) mainWindow = null
@@ -312,6 +308,42 @@ if (!gotSingleInstanceLock) {
 
     const dbPath = join(newUserDataPath, NEW_DB_FILENAME)
     const db = createDbClient(dbPath)
+    closeController = createWindowCloseController({
+      getBehavior: () => getSetting(db, 'window-close-behavior'),
+      showPrompt: async () => {
+        const win = mainWindow
+        if (!win || win.isDestroyed()) {
+          return { response: 'cancel', remember: false }
+        }
+
+        try {
+          const { response, checkboxChecked } = await dialog.showMessageBox(win, {
+            type: 'question',
+            ...getWindowClosePrompt(getSetting(db, 'locale')),
+            defaultId: 0,
+            cancelId: 2,
+            checkboxChecked: false,
+          })
+
+          if (win.isDestroyed() || mainWindow !== win) {
+            return { response: 'cancel', remember: false }
+          }
+
+          if (response === 0) return { response: 'quit', remember: checkboxChecked }
+          if (response === 1) return { response: 'tray', remember: checkboxChecked }
+          return { response: 'cancel', remember: false }
+        } catch {
+          return { response: 'cancel', remember: false }
+        }
+      },
+      persistBehavior: (behavior) => setSetting(db, 'window-close-behavior', behavior),
+      quit: () => app.quit(),
+      hide: () => {
+        if (!mainWindow || mainWindow.isDestroyed()) return
+        mainWindow.hide()
+      },
+      reportError: (error) => console.error('Failed to persist window close behavior:', error),
+    })
     // Moving the cached cover-image files (above) doesn't rewrite the
     // absolute paths already stored in game_metadata pointing at them - see
     // rewriteCoverImagePathPrefix's own comment for why this silently broke
