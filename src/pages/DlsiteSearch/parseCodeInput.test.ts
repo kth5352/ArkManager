@@ -10,20 +10,25 @@ describe('parseCodeInput', () => {
     expect(parseCodeInput('rj01169914')).toEqual({ type: 'RJ', value: 'RJ01169914' })
   })
 
-  it('recognizes a VN code typed directly', () => {
-    expect(parseCodeInput('VN17')).toEqual({ type: 'VN', value: 'VN17' })
+  it('recognizes a canonical VNV code typed directly', () => {
+    expect(parseCodeInput('VNV45775')).toEqual({ type: 'VNV', value: 'VNV45775' })
   })
 
   it('recognizes a VNDB visual novel id typed with v prefix', () => {
-    expect(parseCodeInput('v45775')).toEqual({ type: 'VN', value: 'VN45775' })
+    expect(parseCodeInput('v45775')).toEqual({ type: 'VNV', value: 'VNV45775' })
   })
 
   it('recognizes a VNDB release id typed with r prefix', () => {
-    expect(parseCodeInput('r45775')).toEqual({ type: 'VR', value: 'VR45775' })
+    expect(parseCodeInput('r45775')).toEqual({ type: 'VNR', value: 'VNR45775' })
   })
 
-  it('recognizes a VR code typed directly', () => {
-    expect(parseCodeInput('VR45775')).toEqual({ type: 'VR', value: 'VR45775' })
+  it('recognizes a canonical VNR code typed directly', () => {
+    expect(parseCodeInput('VNR45775')).toEqual({ type: 'VNR', value: 'VNR45775' })
+  })
+
+  it('rejects legacy VNDB prefixes', () => {
+    expect(parseCodeInput('VN45775')).toBeNull()
+    expect(parseCodeInput('VR45775')).toBeNull()
   })
 
   it('returns null for free-text title search input', () => {

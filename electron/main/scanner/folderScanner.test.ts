@@ -77,12 +77,12 @@ describe('scanFolderShallow', () => {
 
   it('resolves a code-less folder to its linked code via a path_code_overrides entry', async () => {
     await mkdir(join(dir, 'MyGame'))
-    const overrides = new Map([[normalizeLibraryPath(join(dir, 'MyGame')), 'RJ07777777']])
+    const overrides = new Map([[normalizeLibraryPath(join(dir, 'MyGame')), 'VNV17']])
 
     const entries = await scanFolderShallow(dir, overrides)
     expect(entries.find((e) => e.name === 'MyGame')?.code).toEqual({
-      type: 'RJ',
-      value: 'RJ07777777',
+      type: 'VNV',
+      value: 'VNV17',
     })
   })
 })
@@ -146,6 +146,16 @@ describe('scanLibraryRecursive', () => {
 
     const entries = await scanLibraryRecursive(dir)
     expect(entries.map((e) => e.name)).toEqual(['MyGame'])
+  })
+
+  it('does not unfold a game folder because an executable contains an ambiguous v-prefixed version', async () => {
+    await mkdir(join(dir, 'Arms Breath', 'bgm'), { recursive: true })
+    await writeFile(join(dir, 'Arms Breath', 'Game_v912.exe'), '')
+    await writeFile(join(dir, 'Arms Breath', 'System.ini'), '')
+    await writeFile(join(dir, 'Arms Breath', 'bgm', 'track.ogg'), '')
+
+    const entries = await scanLibraryRecursive(dir)
+    expect(entries.map((entry) => entry.name)).toEqual(['Arms Breath'])
   })
 
   it('excludes image files entirely, even when their filename carries a recognizable code', async () => {

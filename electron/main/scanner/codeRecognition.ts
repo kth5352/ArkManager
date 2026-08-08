@@ -1,4 +1,5 @@
-import type { GameCode, GameCodeType } from '../../../shared/types/scanner'
+import { parseCanonicalGameCode } from '../../../shared/gameCode'
+import type { GameCode } from '../../../shared/types/scanner'
 
 // \b treats underscore as a word character, so a plain \b(RJ|VJ|ST)(\d+)\b
 // pattern fails on DLsite's own most common naming convention - code and
@@ -9,19 +10,9 @@ import type { GameCode, GameCodeType } from '../../../shared/types/scanner'
 // by another digit (still rejects a longer number swallowing extra digits).
 // Underscore, space, punctuation, Korean text, or end-of-string are all
 // acceptable on either side.
-const CODE_PATTERN = /(?<![A-Za-z0-9])((?:RJ|VJ|ST|VN|VR|GC)\d+|[vr]\d+)(?![0-9])/i
+const CODE_PATTERN = /(?<![A-Za-z0-9])((?:RJ|VJ|ST|VNV|VNR|GC)\d+)(?![0-9])/i
 
 export function extractCode(name: string): GameCode | null {
   const match = CODE_PATTERN.exec(name)
-  if (!match) return null
-  const raw = match[1]
-  const lower = raw.toLowerCase()
-  if (/^v\d/i.test(raw)) {
-    return { type: 'VN', value: `VN${raw.slice(1)}` }
-  }
-  if (lower.startsWith('r') && !lower.startsWith('rj')) {
-    return { type: 'VR', value: `VR${raw.slice(1)}` }
-  }
-  const type = raw.slice(0, 2).toUpperCase() as GameCodeType
-  return { type, value: `${type}${raw.slice(2)}` }
+  return match ? parseCanonicalGameCode(match[1]) : null
 }

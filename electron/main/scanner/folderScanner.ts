@@ -1,6 +1,7 @@
 import { lstat, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { GameCodeType, ScannedEntry } from '../../../shared/types/scanner'
+import { parseCanonicalGameCode } from '../../../shared/gameCode'
+import type { ScannedEntry } from '../../../shared/types/scanner'
 import { isArchiveFile } from '../../../shared/isArchiveFile'
 import { normalizeLibraryPath } from '../database/librariesRepository'
 import { extractCode } from './codeRecognition'
@@ -19,8 +20,8 @@ function resolveCode(
   if (fromName) return { code: fromName, codeSource: 'filename' }
   const overrideCode = overrides.get(normalizeLibraryPath(path))
   if (!overrideCode) return { code: null, codeSource: undefined }
-  const type = overrideCode.slice(0, 2) as GameCodeType
-  return { code: { type, value: overrideCode }, codeSource: 'override' }
+  const code = parseCanonicalGameCode(overrideCode)
+  return code ? { code, codeSource: 'override' } : { code: null, codeSource: undefined }
 }
 
 // An entry can become unstattable between readdir() and stat() - a

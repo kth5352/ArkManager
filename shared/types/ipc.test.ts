@@ -22,10 +22,15 @@ describe('ThemeSchema', () => {
 
 describe('GameCodeSchema', () => {
   it('accepts VNDB release codes', () => {
-    expect(GameCodeSchema.parse({ type: 'VR', value: 'VR45775' })).toEqual({
-      type: 'VR',
-      value: 'VR45775',
+    expect(GameCodeSchema.parse({ type: 'VNR', value: 'VNR45775' })).toEqual({
+      type: 'VNR',
+      value: 'VNR45775',
     })
+  })
+
+  it('rejects legacy VNDB prefixes', () => {
+    expect(() => GameCodeSchema.parse({ type: 'VN', value: 'VN45775' })).toThrow()
+    expect(() => GameCodeSchema.parse({ type: 'VR', value: 'VR45775' })).toThrow()
   })
 })
 

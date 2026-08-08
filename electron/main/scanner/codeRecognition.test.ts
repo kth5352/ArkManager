@@ -14,16 +14,25 @@ describe('extractCode', () => {
     expect(extractCode('ST4282500')).toEqual({ type: 'ST', value: 'ST4282500' })
   })
 
-  it('recognizes a VN (VNDB) code', () => {
-    expect(extractCode('VN17 - Steins;Gate')).toEqual({ type: 'VN', value: 'VN17' })
+  it('recognizes a VNV (VNDB visual novel) code', () => {
+    expect(extractCode('[VNV45775] Game')).toEqual({ type: 'VNV', value: 'VNV45775' })
   })
 
-  it('extracts a VNDB visual novel id from a filename', () => {
-    expect(extractCode('[v45775] Game')).toEqual({ type: 'VN', value: 'VN45775' })
+  it('recognizes a VNR (VNDB release) code', () => {
+    expect(extractCode('VNR45775_release.zip')).toEqual({ type: 'VNR', value: 'VNR45775' })
   })
 
-  it('extracts a VNDB release id from a filename without mapping it to VN', () => {
-    expect(extractCode('[r45775] Game')).toEqual({ type: 'VR', value: 'VR45775' })
+  it.each([
+    'Game_v912.exe',
+    'Title v1.0.4',
+    'v8_context_snapshot.bin',
+    'model_v2.index',
+    '[v45775] Game',
+    '[r45775] Game',
+    'VN45775',
+    'VR45775',
+  ])('does not recognize ambiguous or legacy VNDB code in %s', (name) => {
+    expect(extractCode(name)).toBeNull()
   })
 
   it('recognizes a GC (getchu) code', () => {

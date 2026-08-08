@@ -1,6 +1,6 @@
-import type { GameCode, GameCodeType } from '../../../shared/types/scanner'
+import { parseCanonicalGameCode } from '../../../shared/gameCode'
+import type { GameCode } from '../../../shared/types/scanner'
 
-const CODE_PATTERN = /^(RJ|VJ|ST|VN|VR|GC)(\d+)$/i
 const VNDB_SHORT_PATTERN = /^([vr])(\d+)$/i
 
 // 입력이 RJ/VJ/ST/VN/GC 코드 형식이면 GameCode로, 아니면 null(자유 텍스트 제목
@@ -11,11 +11,8 @@ export function parseCodeInput(input: string): GameCode | null {
   const trimmed = input.trim()
   const short = VNDB_SHORT_PATTERN.exec(trimmed)
   if (short) {
-    const type = short[1].toLowerCase() === 'v' ? 'VN' : 'VR'
+    const type = short[1].toLowerCase() === 'v' ? 'VNV' : 'VNR'
     return { type, value: `${type}${short[2]}` }
   }
-  const match = CODE_PATTERN.exec(trimmed)
-  if (!match) return null
-  const type = match[1].toUpperCase() as GameCodeType
-  return { type, value: `${type}${match[2]}` }
+  return parseCanonicalGameCode(trimmed)
 }
