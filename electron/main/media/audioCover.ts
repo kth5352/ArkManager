@@ -5,6 +5,7 @@ import { copyFile, rm } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
 import ffmpegPath from 'ffmpeg-static'
+import { MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE } from '../../../shared/mediaThumbnailErrors'
 
 const EMBEDDABLE_AUDIO_EXTENSIONS = new Set(['.mp3', '.flac', '.m4a'])
 const FFMPEG_TIMEOUT_MS = 5 * 60 * 1000
@@ -23,6 +24,9 @@ export interface AudioCommandResult {
 
 export type AudioCommandRunner = (args: string[]) => Promise<AudioCommandResult>
 
+export type AudioCoverFailureStage =
+  'embedding' | 'restore' | 'hash' | 'hash-mismatch' | 'backup-removal'
+
 export interface AudioCoverDependencies {
   copyFile: (sourcePath: string, destinationPath: string, mode?: number) => Promise<void>
   writeCover: (filePath: string, imagePath: string, outputPath: string) => Promise<void>
@@ -31,7 +35,7 @@ export interface AudioCoverDependencies {
   removeFile: (filePath: string) => Promise<void>
   restoreBackup: (backupPath: string, destinationPath: string) => Promise<void>
   hashFile: (filePath: string) => Promise<string>
-  reportError: (error: unknown) => void
+  reportError: (stage: AudioCoverFailureStage, error: unknown, backupPath?: string) => void
   makeTempPath: (filePath: string) => string
   makeBackupPath: (filePath: string) => string
 }
@@ -42,7 +46,7 @@ export type AudioCoverWriteResult =
 
 export class AudioCoverRestoreError extends Error {
   constructor(cause: unknown) {
-    super(`Audio cover backup restoration failed: ${errorMessage(cause)}`, { cause })
+    super(MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE, { cause })
     this.name = 'AudioCoverRestoreError'
   }
 }
@@ -172,7 +176,10 @@ async function probeCover(filePath: string, runCommand: AudioCommandRunner): Pro
   }
 }
 
-function durationsAreClose(durationSeconds: number | null, referenceSeconds: number | null): boolean {
+function durationsAreClose(
+  durationSeconds: number | null,
+  referenceSeconds: number | null
+): boolean {
   if (durationSeconds === null || referenceSeconds === null || referenceSeconds <= 0) return false
   return Math.abs(durationSeconds - referenceSeconds) <= Math.max(1, referenceSeconds * 0.01)
 }
@@ -232,7 +239,11 @@ function createDefaultDependencies(): AudioCoverDependencies {
     removeFile: (filePath) => rm(filePath, { force: true }),
     restoreBackup: (backupPath, destinationPath) => copyFile(backupPath, destinationPath),
     hashFile: sha256File,
-    reportError: (error) => console.error('Audio cover embedding failed', error),
+    reportError: (stage, error, backupPath) =>
+      console.error(
+        `[audio-cover] ${stage}${backupPath ? `; recovery backup: ${backupPath}` : ''}`,
+        error
+      ),
     makeTempPath: (filePath) => {
       const extension = extname(filePath)
       const stem = basename(filePath, extension)
@@ -246,6 +257,9 @@ function validationFailureWarning(): string {
   return 'Audio cover embedding could not be validated; the original file was restored and an app-local override will be used.'
 }
 
+const RECOVERY_BACKUP_RETAINED_WARNING =
+  MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE
+
 function isValidEmbeddedAudio(validation: AudioValidation): boolean {
   return (
     validation.playable &&
@@ -253,10 +267,6 @@ function isValidEmbeddedAudio(validation: AudioValidation): boolean {
     validation.durationSeconds !== null &&
     validation.hasCover
   )
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : 'Unknown error'
 }
 
 export async function writeAudioCoverWithBackup(
@@ -268,7 +278,8 @@ export async function writeAudioCoverWithBackup(
     return {
       ok: false,
       mode: 'override',
-      warning: 'This audio format does not support embedded cover writes; an app-local override will be used.',
+      warning:
+        'This audio format does not support embedded cover writes; an app-local override will be used.',
     }
   }
 
@@ -302,7 +313,7 @@ export async function writeAudioCoverWithBackup(
     await deps.removeFile(backupPath)
     return { ok: true, mode: 'embedded' }
   } catch (error) {
-    deps.reportError(error)
+    deps.reportError('embedding', error, backupCreated ? backupPath : undefined)
     if (!hasValidationWarning) {
       warning = 'Audio cover embedding failed; an app-local override will be used.'
     }
@@ -312,22 +323,35 @@ export async function writeAudioCoverWithBackup(
         await deps.restoreBackup(backupPath, filePath)
       } catch (error) {
         restoreError = error
+        deps.reportError('restore', error, backupPath)
       }
       if (restoreError === undefined) {
+        let hashesMatch = false
         try {
           const [restoredHash, backupHash] = await Promise.all([
             deps.hashFile(filePath),
             deps.hashFile(backupPath),
           ])
-          if (restoredHash === backupHash) {
-            await deps.removeFile(backupPath)
-          } else {
-            warning =
-              'Audio cover embedding failed; the recovery backup was retained because restoration could not be verified.'
+          hashesMatch = restoredHash === backupHash
+          if (!hashesMatch) {
+            warning = RECOVERY_BACKUP_RETAINED_WARNING
+            deps.reportError(
+              'hash-mismatch',
+              new Error('Restored audio hash did not match the recovery backup'),
+              backupPath
+            )
           }
-        } catch {
-          warning =
-            'Audio cover embedding failed; the recovery backup was retained because restoration could not be verified.'
+        } catch (error) {
+          warning = RECOVERY_BACKUP_RETAINED_WARNING
+          deps.reportError('hash', error, backupPath)
+        }
+        if (hashesMatch) {
+          try {
+            await deps.removeFile(backupPath)
+          } catch (error) {
+            warning = RECOVERY_BACKUP_RETAINED_WARNING
+            deps.reportError('backup-removal', error, backupPath)
+          }
         }
       }
     }

@@ -296,6 +296,9 @@ const ko = {
   'media.addToPlaylist': '재생목록에 추가',
   'media.setThumbnail': '썸네일 설정',
   'media.thumbnailSet': '썸네일을 설정했습니다.',
+  'media.thumbnailSetFailed': '썸네일을 설정하지 못했습니다.',
+  'media.thumbnailRecoveryBackupRetained':
+    '썸네일 설정에 실패했습니다. 복구 백업이 보존되었습니다.',
   'media.previousTrack': '이전 트랙',
   'media.pause': '일시정지',
   'media.play': '재생',
@@ -613,6 +616,9 @@ const ja: Record<keyof typeof ko, string> = {
   'media.addToPlaylist': '再生リストに追加',
   'media.setThumbnail': 'サムネイル設定',
   'media.thumbnailSet': 'サムネイルを設定しました。',
+  'media.thumbnailSetFailed': 'サムネイルを設定できませんでした。',
+  'media.thumbnailRecoveryBackupRetained':
+    'サムネイルの設定に失敗しました。復旧バックアップは保持されています。',
   'media.previousTrack': '前のトラック',
   'media.pause': '一時停止',
   'media.play': '再生',
@@ -931,6 +937,9 @@ const en: Record<keyof typeof ko, string> = {
   'media.addToPlaylist': 'Add to playlist',
   'media.setThumbnail': 'Set thumbnail',
   'media.thumbnailSet': 'Thumbnail set.',
+  'media.thumbnailSetFailed': 'Failed to set thumbnail.',
+  'media.thumbnailRecoveryBackupRetained':
+    'Thumbnail update failed. The recovery backup was retained.',
   'media.previousTrack': 'Previous track',
   'media.pause': 'Pause',
   'media.play': 'Play',

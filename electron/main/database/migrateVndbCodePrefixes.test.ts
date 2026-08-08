@@ -77,12 +77,56 @@ describe('migrateVndbCodePrefixes', () => {
     failureInsert.run('VNV912', '["vndb"]', 'not_found', createdAt)
     failureInsert.run('VNR30', '["vndb"]', 'not_found', createdAt)
     const userDataInsert = sqlite.prepare(
-      `INSERT INTO game_user_data (key, key_type, created_at, updated_at)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO game_user_data
+        (key, key_type, is_favorite, is_cleared, rating, memo, launch_config,
+         total_playtime_ms, last_played_at, save_path, custom_cover_path, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    userDataInsert.run('VN17', 'code', createdAt, createdAt)
-    userDataInsert.run('VN40', 'path', createdAt, createdAt)
-    userDataInsert.run('VNV13774', 'code', createdAt, createdAt)
+    userDataInsert.run(
+      'VN17',
+      'code',
+      0,
+      0,
+      null,
+      null,
+      null,
+      0,
+      null,
+      null,
+      null,
+      createdAt,
+      createdAt
+    )
+    userDataInsert.run(
+      'VN40',
+      'path',
+      1,
+      1,
+      4,
+      'path memo',
+      '{"executablePath":"C:\\\\games\\\\vn40.exe","launchMode":"normal"}',
+      987654,
+      '2026-01-03T00:00:00.000Z',
+      'C:\\saves\\VN40',
+      'C:\\covers\\VN40.webp',
+      '2026-01-02T00:00:00.000Z',
+      '2026-01-04T00:00:00.000Z'
+    )
+    userDataInsert.run(
+      'VNV13774',
+      'code',
+      0,
+      0,
+      null,
+      null,
+      null,
+      0,
+      null,
+      null,
+      null,
+      createdAt,
+      createdAt
+    )
     sqlite
       .prepare(`INSERT INTO path_code_overrides (path, code, created_at) VALUES (?, ?, ?)`)
       .run('C:\\games\\legacy-vr', 'VR20', createdAt)
@@ -100,7 +144,21 @@ describe('migrateVndbCodePrefixes', () => {
       )
       .run('VNR30', '2026-01-02T00:00:00.000Z', 'canonical snapshot', '1.0.0')
 
+    const pathUserDataBefore = sqlite
+      .prepare(`SELECT * FROM game_user_data WHERE key = ?`)
+      .get('VN40')
+
     migrateVndbCodePrefixes(sqlite)
+    const pathUserDataAfterFirstRun = sqlite
+      .prepare(`SELECT * FROM game_user_data WHERE key = ?`)
+      .get('VN40')
+    migrateVndbCodePrefixes(sqlite)
+    const pathUserDataAfterSecondRun = sqlite
+      .prepare(`SELECT * FROM game_user_data WHERE key = ?`)
+      .get('VN40')
+
+    expect(pathUserDataAfterFirstRun).toEqual(pathUserDataBefore)
+    expect(pathUserDataAfterSecondRun).toEqual(pathUserDataBefore)
 
     expect(sqlite.prepare(`SELECT code FROM game_metadata ORDER BY code`).pluck().all()).toEqual([
       'VNV13774',

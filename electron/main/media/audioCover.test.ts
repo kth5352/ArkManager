@@ -53,19 +53,16 @@ function createDeps(
     reportError: () => {
       calls.push('report-error')
     },
-    makeTempPath: () => 'D:\\Music\\Song.mp3.cover-work',
-    makeBackupPath: () => 'D:\\Music\\Song.mp3.ark-cover-backup',
+    makeTempPath: (filePath) => `${filePath}.cover-work`,
+    makeBackupPath: (filePath) => `${filePath}.ark-cover-backup`,
     ...overrides,
   }
 }
 
 describe('getAudioCoverWriteSupport', () => {
-  it.each(['mp3', 'flac', 'm4a', 'MP3'])(
-    'supports cover embedding for .%s files',
-    (extension) => {
-      expect(getAudioCoverWriteSupport(`D:\\Music\\Song.${extension}`)).toBe('supported')
-    }
-  )
+  it.each(['mp3', 'flac', 'm4a', 'MP3'])('supports cover embedding for .%s files', (extension) => {
+    expect(getAudioCoverWriteSupport(`D:\\Music\\Song.${extension}`)).toBe('supported')
+  })
 
   it('routes WAV through an app-local override', () => {
     expect(getAudioCoverWriteSupport('D:\\Music\\Song.wav')).toBe('unsupported')
@@ -102,33 +99,30 @@ describe('buildAudioCoverArgs', () => {
     ])
   })
 
-  it.each(['flac', 'm4a'])(
-    'marks the image as attached cover art for .%s files',
-    (extension) => {
-      expect(
-        buildAudioCoverArgs(
-          `D:\\Music\\Song.${extension}`,
-          'D:\\Cover.jpg',
-          `D:\\Music\\Song.${extension}.cover-work`
-        )
-      ).toEqual([
-        '-y',
-        '-i',
+  it.each(['flac', 'm4a'])('marks the image as attached cover art for .%s files', (extension) => {
+    expect(
+      buildAudioCoverArgs(
         `D:\\Music\\Song.${extension}`,
-        '-i',
         'D:\\Cover.jpg',
-        '-map',
-        '0:a',
-        '-map',
-        '1:v',
-        '-c',
-        'copy',
-        '-disposition:v:0',
-        'attached_pic',
-        `D:\\Music\\Song.${extension}.cover-work`,
-      ])
-    }
-  )
+        `D:\\Music\\Song.${extension}.cover-work`
+      )
+    ).toEqual([
+      '-y',
+      '-i',
+      `D:\\Music\\Song.${extension}`,
+      '-i',
+      'D:\\Cover.jpg',
+      '-map',
+      '0:a',
+      '-map',
+      '1:v',
+      '-c',
+      'copy',
+      '-disposition:v:0',
+      'attached_pic',
+      `D:\\Music\\Song.${extension}.cover-work`,
+    ])
+  })
 
   it('rejects unsupported formats', () => {
     expect(() =>
@@ -300,6 +294,7 @@ describe('writeAudioCoverWithBackup', () => {
 
   it('retains the backup when restored source and backup hashes differ', async () => {
     const calls: string[] = []
+    const diagnostics: Array<{ stage: string; error: unknown; backupPath?: string }> = []
     let hashCall = 0
     const result = await writeAudioCoverWithBackup(
       'D:\\Music\\Song.m4a',
@@ -310,11 +305,86 @@ describe('writeAudioCoverWithBackup', () => {
           throw new Error('ffmpeg failed')
         },
         hashFile: async () => (++hashCall === 1 ? 'source-hash' : 'backup-hash'),
+        reportError: (stage, error, backupPath) => {
+          diagnostics.push({ stage, error, backupPath })
+        },
       })
     )
 
-    expect(result.warning).toMatch(/backup.*retained/i)
+    expect(result.warning).toBe('Audio cover update failed; the recovery backup was retained.')
     expect(calls).not.toContain('delete-backup')
+    expect(diagnostics).toContainEqual({
+      stage: 'hash-mismatch',
+      error: expect.any(Error),
+      backupPath: 'D:\\Music\\Song.m4a.ark-cover-backup',
+    })
+  })
+
+  it('retains the backup and reports its path when hashing rejects', async () => {
+    const calls: string[] = []
+    const hashError = new Error('EPERM while reading recovery file')
+    const diagnostics: Array<{ stage: string; error: unknown; backupPath?: string }> = []
+    const result = await writeAudioCoverWithBackup(
+      'D:\\Music\\Song.flac',
+      'D:\\Cover.jpg',
+      createDeps(calls, {
+        writeCover: async () => {
+          calls.push('write')
+          throw new Error('ffmpeg -i private-file stderr details')
+        },
+        hashFile: async () => {
+          throw hashError
+        },
+        reportError: (stage, error, backupPath) => {
+          diagnostics.push({ stage, error, backupPath })
+        },
+      })
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      mode: 'override',
+      warning: 'Audio cover update failed; the recovery backup was retained.',
+    })
+    expect(calls).not.toContain('delete-backup')
+    expect(diagnostics).toContainEqual({
+      stage: 'hash',
+      error: hashError,
+      backupPath: 'D:\\Music\\Song.flac.ark-cover-backup',
+    })
+  })
+
+  it('retains the backup and reports its path when verified-backup removal fails', async () => {
+    const calls: string[] = []
+    const removeError = new Error('EPERM deleting recovery backup')
+    const diagnostics: Array<{ stage: string; error: unknown; backupPath?: string }> = []
+    let backupRetained = true
+    const result = await writeAudioCoverWithBackup(
+      'D:\\Music\\Song.mp3',
+      'D:\\Cover.jpg',
+      createDeps(calls, {
+        writeCover: async () => {
+          calls.push('write')
+          throw new Error('ffmpeg failed')
+        },
+        removeFile: async (filePath) => {
+          calls.push(filePath.includes('cover-work') ? 'delete-work' : 'delete-backup')
+          if (!filePath.includes('cover-work')) throw removeError
+          backupRetained = true
+        },
+        reportError: (stage, error, backupPath) => {
+          diagnostics.push({ stage, error, backupPath })
+        },
+      })
+    )
+
+    expect(result.warning).toBe('Audio cover update failed; the recovery backup was retained.')
+    expect(backupRetained).toBe(true)
+    expect(diagnostics).toContainEqual({
+      stage: 'backup-removal',
+      error: removeError,
+      backupPath: 'D:\\Music\\Song.mp3.ark-cover-backup',
+    })
   })
 
   it('restores backup when the replaced file fails final validation', async () => {
@@ -327,9 +397,7 @@ describe('writeAudioCoverWithBackup', () => {
         validateAudio: async () => {
           calls.push('validate')
           validationCount += 1
-          return validationCount === 1
-            ? playableAudio
-            : { ...playableAudio, playable: false }
+          return validationCount === 1 ? playableAudio : { ...playableAudio, playable: false }
         },
       })
     )
@@ -355,8 +423,7 @@ describe('writeAudioCoverWithBackup', () => {
     const result = await writeAudioCoverWithBackup(
       'D:\\Music\\Song.wav',
       'D:\\Cover.jpg',
-      createDeps(calls, {
-      })
+      createDeps(calls, {})
     )
 
     expect(result).toMatchObject({ ok: false, mode: 'override' })
@@ -392,6 +459,8 @@ describe('writeAudioCoverWithBackup', () => {
 
   it('rejects fatally when restoring the backup fails', async () => {
     const calls: string[] = []
+    const restoreError = new Error('ffmpeg command and stderr must stay in main')
+    const diagnostics: Array<{ stage: string; error: unknown; backupPath?: string }> = []
     const operation = writeAudioCoverWithBackup(
       'D:\\Music\\Song.flac',
       'D:\\Cover.jpg',
@@ -402,12 +471,25 @@ describe('writeAudioCoverWithBackup', () => {
         },
         restoreBackup: async () => {
           calls.push('restore')
-          throw new Error('disk write failed')
+          throw restoreError
+        },
+        reportError: (stage, error, backupPath) => {
+          diagnostics.push({ stage, error, backupPath })
         },
       })
     )
 
-    await expect(operation).rejects.toBeInstanceOf(AudioCoverRestoreError)
+    const error = await operation.catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(AudioCoverRestoreError)
+    expect(error).toMatchObject({
+      message: 'Audio cover update failed; the recovery backup was retained.',
+    })
+    expect((error as Error).message).not.toContain('ffmpeg command')
+    expect(diagnostics).toContainEqual({
+      stage: 'restore',
+      error: restoreError,
+      backupPath: 'D:\\Music\\Song.flac.ark-cover-backup',
+    })
     expect(calls).toContain('delete-work')
     expect(calls).not.toContain('hash')
   })

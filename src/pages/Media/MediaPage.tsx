@@ -13,7 +13,7 @@ import { isMediaFile } from '../../../shared/isMediaFile'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useTranslation } from '../../i18n/useTranslation'
-import { appToast } from '../../lib/appToast'
+import { setMediaThumbnailWithFeedback } from './mediaThumbnailFeedback'
 
 // A single track row - thumbnail state (whether the current mediathumb://
 // request 404'd, and a cache-busting counter bumped after the user manually
@@ -38,11 +38,13 @@ function MediaTrackRow({
   const setFromFile = useSetMediaThumbnailFromFile()
 
   const handlePickThumbnail = async (): Promise<void> => {
-    const sourcePath = await pickFile.mutateAsync()
-    if (!sourcePath) return
-    const result = await setFromFile.mutateAsync({ filePath: track.path, sourcePath })
-    appToast.success(t('media.thumbnailSet'))
-    if (result.warning) appToast.info(result.warning)
+    const result = await setMediaThumbnailWithFeedback(
+      track.path,
+      () => pickFile.mutateAsync(),
+      (payload) => setFromFile.mutateAsync(payload),
+      t
+    )
+    if (!result) return
     // mediathumb:// is a plain URL, not a react-query cache entry - nothing
     // to invalidate. Bumping this query param forces the <img> to actually
     // re-request instead of reusing Chromium's cached response for the

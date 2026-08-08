@@ -3,16 +3,27 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS, SetMediaThumbnailFromFileRequestSchema } from '../../../shared/types/ipc'
 import { isAudioFile } from '../../../shared/isMediaFile'
+import { MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE } from '../../../shared/mediaThumbnailErrors'
 import { setMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
 import { listLibraries } from '../database/librariesRepository'
 import { getSetting } from '../database/settingsRepository'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
-import { getAudioCoverWriteSupport, writeAudioCoverWithBackup } from '../media/audioCover'
+import {
+  AudioCoverRestoreError,
+  getAudioCoverWriteSupport,
+  writeAudioCoverWithBackup,
+} from '../media/audioCover'
 import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
 import type { AppDatabase } from '../database/client'
 
 function mediaThumbnailOverrideCacheDir(): string {
   return join(app.getPath('userData'), 'cache', 'media-thumbnail-overrides')
+}
+
+function toRendererSafeAudioCoverError(error: unknown): unknown {
+  return error instanceof AudioCoverRestoreError
+    ? new Error(MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE)
+    : error
 }
 
 export function registerMediaThumbnailHandlers(db: AppDatabase): void {
@@ -49,7 +60,12 @@ export function registerMediaThumbnailHandlers(db: AppDatabase): void {
     const buffer = await readFile(sourcePath)
     let warning: string | undefined
     if (isAudioFile(filePath) && getAudioCoverWriteSupport(filePath) === 'supported') {
-      const result = await writeAudioCoverWithBackup(filePath, sourcePath)
+      let result
+      try {
+        result = await writeAudioCoverWithBackup(filePath, sourcePath)
+      } catch (error) {
+        throw toRendererSafeAudioCoverError(error)
+      }
       if (result.ok) return { mode: 'embedded' as const, warning: result.warning }
       warning = result.warning
     }
