@@ -1,11 +1,12 @@
 import { execFile } from 'node:child_process'
 import { COPYFILE_EXCL } from 'node:constants'
+import { createReadStream } from 'node:fs'
 import { copyFile, rm } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import ffmpegPath from 'ffmpeg-static'
 
-const EMBEDDABLE_AUDIO_EXTENSIONS = new Set(['.mp3', '.flac', '.m4a', '.wav'])
+const EMBEDDABLE_AUDIO_EXTENSIONS = new Set(['.mp3', '.flac', '.m4a'])
 const FFMPEG_TIMEOUT_MS = 5 * 60 * 1000
 
 export interface AudioValidation {
@@ -29,6 +30,8 @@ export interface AudioCoverDependencies {
   replaceFile: (sourcePath: string, destinationPath: string) => Promise<void>
   removeFile: (filePath: string) => Promise<void>
   restoreBackup: (backupPath: string, destinationPath: string) => Promise<void>
+  hashFile: (filePath: string) => Promise<string>
+  reportError: (error: unknown) => void
   makeTempPath: (filePath: string) => string
   makeBackupPath: (filePath: string) => string
 }
@@ -55,6 +58,9 @@ export function buildAudioCoverArgs(
   imagePath: string,
   outputPath: string
 ): string[] {
+  if (getAudioCoverWriteSupport(filePath) === 'unsupported') {
+    throw new Error('Unsupported audio cover format')
+  }
   const extension = extname(filePath).toLowerCase()
   if (extension === '.mp3') {
     return [
@@ -90,6 +96,16 @@ export function buildAudioCoverArgs(
     'attached_pic',
     outputPath,
   ]
+}
+
+export function sha256File(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256')
+    const stream = createReadStream(filePath)
+    stream.on('error', reject)
+    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('end', () => resolve(hash.digest('hex')))
+  })
 }
 
 function parseProgressDuration(stdout: string): number | null {
@@ -215,6 +231,8 @@ function createDefaultDependencies(): AudioCoverDependencies {
     },
     removeFile: (filePath) => rm(filePath, { force: true }),
     restoreBackup: (backupPath, destinationPath) => copyFile(backupPath, destinationPath),
+    hashFile: sha256File,
+    reportError: (error) => console.error('Audio cover embedding failed', error),
     makeTempPath: (filePath) => {
       const extension = extname(filePath)
       const stem = basename(filePath, extension)
@@ -224,10 +242,7 @@ function createDefaultDependencies(): AudioCoverDependencies {
   }
 }
 
-function validationFailureWarning(filePath: string, validation: AudioValidation): string {
-  if (extname(filePath).toLowerCase() === '.wav' && !validation.hasCover) {
-    return 'WAV cover embedding could not be verified; the original file was restored and an app-local override will be used.'
-  }
+function validationFailureWarning(): string {
   return 'Audio cover embedding could not be validated; the original file was restored and an app-local override will be used.'
 }
 
@@ -270,7 +285,7 @@ export async function writeAudioCoverWithBackup(
 
     const candidateValidation = await deps.validateAudio(tempPath, filePath)
     if (!isValidEmbeddedAudio(candidateValidation)) {
-      warning = validationFailureWarning(filePath, candidateValidation)
+      warning = validationFailureWarning()
       hasValidationWarning = true
       throw new Error('candidate validation failed')
     }
@@ -279,7 +294,7 @@ export async function writeAudioCoverWithBackup(
 
     const finalValidation = await deps.validateAudio(filePath, backupPath)
     if (!isValidEmbeddedAudio(finalValidation)) {
-      warning = validationFailureWarning(filePath, finalValidation)
+      warning = validationFailureWarning()
       hasValidationWarning = true
       throw new Error('final validation failed')
     }
@@ -287,8 +302,9 @@ export async function writeAudioCoverWithBackup(
     await deps.removeFile(backupPath)
     return { ok: true, mode: 'embedded' }
   } catch (error) {
+    deps.reportError(error)
     if (!hasValidationWarning) {
-      warning = `Audio cover embedding failed (${errorMessage(error)}); an app-local override will be used.`
+      warning = 'Audio cover embedding failed; an app-local override will be used.'
     }
     let restoreError: unknown
     if (backupCreated) {
@@ -296,6 +312,23 @@ export async function writeAudioCoverWithBackup(
         await deps.restoreBackup(backupPath, filePath)
       } catch (error) {
         restoreError = error
+      }
+      if (restoreError === undefined) {
+        try {
+          const [restoredHash, backupHash] = await Promise.all([
+            deps.hashFile(filePath),
+            deps.hashFile(backupPath),
+          ])
+          if (restoredHash === backupHash) {
+            await deps.removeFile(backupPath)
+          } else {
+            warning =
+              'Audio cover embedding failed; the recovery backup was retained because restoration could not be verified.'
+          }
+        } catch {
+          warning =
+            'Audio cover embedding failed; the recovery backup was retained because restoration could not be verified.'
+        }
       }
     }
     try {
