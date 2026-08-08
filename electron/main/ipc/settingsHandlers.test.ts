@@ -40,9 +40,7 @@ describe('SETTINGS_GET', () => {
   it('returns null for a corrupted external provider enabled value', () => {
     setSetting(db, 'external-metadata-provider-enabled', 'not-a-boolean')
 
-    expect(
-      getSettingHandler()({}, { key: 'external-metadata-provider-enabled' })
-    ).toBeNull()
+    expect(getSettingHandler()({}, { key: 'external-metadata-provider-enabled' })).toBeNull()
   })
 
   it('returns null for an invalid window close behavior value', () => {
