@@ -25,13 +25,23 @@ autoUpdater.fullChangelog = true
 // per-window since there's only ever one update lifecycle for the whole
 // app, regardless of which window is currently open.
 let lastStatus: UpdateStatus = { state: 'idle' }
-const UPDATE_QUIT_ROLLBACK_MS = 5000
 
 export function registerUpdateHandlers(
   getMainWindow: () => BrowserWindow | null,
   beginUpdateQuit: () => () => void
 ): void {
-  let installAttemptPending = false
+  // Releases target Windows NSIS only. NsisUpdater emits `error` when install
+  // cannot start and schedules app.quit after success, so admission lasts
+  // until one of those real events; an elapsed-time rollback could race a
+  // valid delayed handoff and reopen the close prompt.
+  let pendingInstallRollback: (() => void) | null = null
+
+  const rollbackPendingInstall = (): void => {
+    const rollback = pendingInstallRollback
+    if (!rollback) return
+    pendingInstallRollback = null
+    rollback()
+  }
 
   const sendStatus = (status: UpdateStatus): void => {
     lastStatus = status
@@ -57,7 +67,10 @@ export function registerUpdateHandlers(
       releaseNotes: normalizeReleaseNotes(info),
     })
   )
-  autoUpdater.on('error', (error) => sendStatus({ state: 'error', message: error.message }))
+  autoUpdater.on('error', (error) => {
+    rollbackPendingInstall()
+    sendStatus({ state: 'error', message: error.message })
+  })
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_GET_VERSION, () => app.getVersion())
   ipcMain.handle(IPC_CHANNELS.UPDATE_GET_STATUS, () => lastStatus)
@@ -74,21 +87,14 @@ export function registerUpdateHandlers(
   })
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_INSTALL, () => {
-    if (lastStatus.state !== 'downloaded' || installAttemptPending) return
+    if (lastStatus.state !== 'downloaded' || pendingInstallRollback) return
 
-    const rollbackQuit = beginUpdateQuit()
-    installAttemptPending = true
-    const rollbackTimer = setTimeout(() => {
-      installAttemptPending = false
-      rollbackQuit()
-    }, UPDATE_QUIT_ROLLBACK_MS)
+    pendingInstallRollback = beginUpdateQuit()
 
     try {
       autoUpdater.quitAndInstall()
     } catch (error) {
-      clearTimeout(rollbackTimer)
-      installAttemptPending = false
-      rollbackQuit()
+      rollbackPendingInstall()
       throw error
     }
   })
