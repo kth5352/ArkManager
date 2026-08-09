@@ -72,18 +72,51 @@ describe('getWindowClosePrompt', () => {
 
 describe('getOrCreateMainWindow', () => {
   it('does not create a window before the close controller is ready', () => {
-    const createWindow = vi.fn(() => ({ id: 'created' }))
+    const createWindow = vi.fn(() => ({
+      isMinimized: () => false,
+      restore: vi.fn(),
+      show: vi.fn(),
+      focus: vi.fn(),
+    }))
 
     expect(getOrCreateMainWindow(false, null, createWindow)).toBeNull()
     expect(createWindow).not.toHaveBeenCalled()
   })
 
-  it('reuses an existing window instead of replacing it during startup', () => {
-    const existingWindow = { id: 'existing' }
-    const createWindow = vi.fn(() => ({ id: 'replacement' }))
+  it('keeps a newly created window hidden until its ready-to-show listener runs', () => {
+    const createdWindow = {
+      isMinimized: () => false,
+      restore: vi.fn(),
+      show: vi.fn(),
+      focus: vi.fn(),
+    }
+    const createWindow = vi.fn(() => createdWindow)
+
+    expect(getOrCreateMainWindow(true, null, createWindow)).toBe(createdWindow)
+    expect(createdWindow.restore).not.toHaveBeenCalled()
+    expect(createdWindow.show).not.toHaveBeenCalled()
+    expect(createdWindow.focus).not.toHaveBeenCalled()
+  })
+
+  it('reuses and immediately restores, shows, and focuses an existing window', () => {
+    const existingWindow = {
+      isMinimized: () => true,
+      restore: vi.fn(),
+      show: vi.fn(),
+      focus: vi.fn(),
+    }
+    const createWindow = vi.fn(() => ({
+      isMinimized: () => false,
+      restore: vi.fn(),
+      show: vi.fn(),
+      focus: vi.fn(),
+    }))
 
     expect(getOrCreateMainWindow(true, existingWindow, createWindow)).toBe(existingWindow)
     expect(createWindow).not.toHaveBeenCalled()
+    expect(existingWindow.restore).toHaveBeenCalledOnce()
+    expect(existingWindow.show).toHaveBeenCalledOnce()
+    expect(existingWindow.focus).toHaveBeenCalledOnce()
   })
 })
 

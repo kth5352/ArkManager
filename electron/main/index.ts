@@ -65,11 +65,7 @@ if (!gotSingleInstanceLock) {
   } | null = null
 
   function showMainWindow(): void {
-    const win = getOrCreateMainWindow(closeController !== null, mainWindow, createWindow)
-    if (!win) return
-    if (win.isMinimized()) win.restore()
-    win.show()
-    win.focus()
+    getOrCreateMainWindow(closeController !== null, mainWindow, createWindow)
   }
 
   app.on('second-instance', showMainWindow)

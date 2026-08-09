@@ -38,13 +38,25 @@ export function getWindowClosePrompt(locale: string | undefined): WindowClosePro
   return WINDOW_CLOSE_PROMPTS[parsedLocale.success ? parsedLocale.data : 'ko']
 }
 
-export function getOrCreateMainWindow<TWindow>(
+export interface MainWindowVisibilityController {
+  isMinimized(): boolean
+  restore(): void
+  show(): void
+  focus(): void
+}
+
+export function getOrCreateMainWindow<TWindow extends MainWindowVisibilityController>(
   isReady: boolean,
   currentWindow: TWindow | null,
   createWindow: () => TWindow
 ): TWindow | null {
   if (!isReady) return null
-  return currentWindow ?? createWindow()
+  if (!currentWindow) return createWindow()
+
+  if (currentWindow.isMinimized()) currentWindow.restore()
+  currentWindow.show()
+  currentWindow.focus()
+  return currentWindow
 }
 
 export function createQuitLifecycle(commitCleanup: () => void): {
