@@ -79,7 +79,7 @@ describe('getOrCreateMainWindow', () => {
       focus: vi.fn(),
     }))
 
-    expect(getOrCreateMainWindow(false, null, createWindow)).toBeNull()
+    expect(getOrCreateMainWindow(false, null, createWindow, false)).toBeNull()
     expect(createWindow).not.toHaveBeenCalled()
   })
 
@@ -92,13 +92,49 @@ describe('getOrCreateMainWindow', () => {
     }
     const createWindow = vi.fn(() => createdWindow)
 
-    expect(getOrCreateMainWindow(true, null, createWindow)).toBe(createdWindow)
+    expect(getOrCreateMainWindow(true, null, createWindow, false)).toBe(createdWindow)
     expect(createdWindow.restore).not.toHaveBeenCalled()
     expect(createdWindow.show).not.toHaveBeenCalled()
     expect(createdWindow.focus).not.toHaveBeenCalled()
   })
 
-  it('reuses and immediately restores, shows, and focuses an existing window', () => {
+  it('keeps the same not-yet-ready window hidden across repeated show requests', () => {
+    const createdWindow = {
+      isMinimized: () => false,
+      restore: vi.fn(),
+      show: vi.fn(),
+      focus: vi.fn(),
+    }
+    const createWindow = vi.fn(() => createdWindow)
+
+    const firstWindow = getOrCreateMainWindow(true, null, createWindow, false)
+    const secondWindow = getOrCreateMainWindow(true, firstWindow, createWindow, false)
+
+    expect(secondWindow).toBe(createdWindow)
+    expect(createWindow).toHaveBeenCalledOnce()
+    expect(createdWindow.restore).not.toHaveBeenCalled()
+    expect(createdWindow.show).not.toHaveBeenCalled()
+    expect(createdWindow.focus).not.toHaveBeenCalled()
+  })
+
+  it('immediately restores, shows, and focuses a created window after it is ready', () => {
+    const createdWindow = {
+      isMinimized: () => true,
+      restore: vi.fn(),
+      show: vi.fn(),
+      focus: vi.fn(),
+    }
+    const createWindow = vi.fn(() => createdWindow)
+
+    expect(getOrCreateMainWindow(true, null, createWindow, false)).toBe(createdWindow)
+    expect(getOrCreateMainWindow(true, createdWindow, createWindow, true)).toBe(createdWindow)
+    expect(createWindow).toHaveBeenCalledOnce()
+    expect(createdWindow.restore).toHaveBeenCalledOnce()
+    expect(createdWindow.show).toHaveBeenCalledOnce()
+    expect(createdWindow.focus).toHaveBeenCalledOnce()
+  })
+
+  it('reuses and immediately restores, shows, and focuses an already-ready window', () => {
     const existingWindow = {
       isMinimized: () => true,
       restore: vi.fn(),
@@ -112,7 +148,7 @@ describe('getOrCreateMainWindow', () => {
       focus: vi.fn(),
     }))
 
-    expect(getOrCreateMainWindow(true, existingWindow, createWindow)).toBe(existingWindow)
+    expect(getOrCreateMainWindow(true, existingWindow, createWindow, true)).toBe(existingWindow)
     expect(createWindow).not.toHaveBeenCalled()
     expect(existingWindow.restore).toHaveBeenCalledOnce()
     expect(existingWindow.show).toHaveBeenCalledOnce()

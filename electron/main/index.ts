@@ -57,6 +57,7 @@ if (!gotSingleInstanceLock) {
   app.quit()
 } else {
   let mainWindow: BrowserWindow | null = null
+  let isMainWindowReadyToShow = false
   let closePlayerWindow: (() => void) | null = null
   let tray: Tray | null = null
   let quitLifecycle: ReturnType<typeof createQuitLifecycle> | null = null
@@ -65,7 +66,12 @@ if (!gotSingleInstanceLock) {
   } | null = null
 
   function showMainWindow(): void {
-    getOrCreateMainWindow(closeController !== null, mainWindow, createWindow)
+    getOrCreateMainWindow(
+      closeController !== null,
+      mainWindow,
+      createWindow,
+      isMainWindowReadyToShow
+    )
   }
 
   app.on('second-instance', showMainWindow)
@@ -244,6 +250,7 @@ if (!gotSingleInstanceLock) {
   }
 
   function createWindow(): BrowserWindow {
+    isMainWindowReadyToShow = false
     const win = new BrowserWindow({
       width: 1280,
       height: 800,
@@ -261,7 +268,11 @@ if (!gotSingleInstanceLock) {
     })
     installZoomInShortcut(win.webContents)
 
-    win.once('ready-to-show', () => win.show())
+    win.once('ready-to-show', () => {
+      if (mainWindow !== win) return
+      isMainWindowReadyToShow = true
+      win.show()
+    })
 
     // Renderer console.* calls don't reach this process's own stdout by
     // default, which makes a renderer-side crash (e.g. a blank white
@@ -293,7 +304,10 @@ if (!gotSingleInstanceLock) {
       void controller.requestClose(win)
     })
     win.on('closed', () => {
-      if (mainWindow === win) mainWindow = null
+      if (mainWindow === win) {
+        mainWindow = null
+        isMainWindowReadyToShow = false
+      }
     })
 
     return win

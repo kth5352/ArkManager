@@ -48,10 +48,12 @@ export interface MainWindowVisibilityController {
 export function getOrCreateMainWindow<TWindow extends MainWindowVisibilityController>(
   isReady: boolean,
   currentWindow: TWindow | null,
-  createWindow: () => TWindow
+  createWindow: () => TWindow,
+  isCurrentWindowReadyToShow: boolean
 ): TWindow | null {
   if (!isReady) return null
   if (!currentWindow) return createWindow()
+  if (!isCurrentWindowReadyToShow) return currentWindow
 
   if (currentWindow.isMinimized()) currentWindow.restore()
   currentWindow.show()
