@@ -52,6 +52,7 @@ DLsite(RJ, VJ), Steam(ST), VNDB(VNV, VNR), Getchu(GC) — 각각 알파벳으로
   <img src="docs/screenshots/15-media-popup-window.png" width="800" alt="팝업 창으로 여는 미디어 플레이어">
 </p>
 
+
 ### DLsite / Steam / VNDB / Getchu 통합 검색
 
 제목으로도, 식별코드로도 검색할 수 있습니다.
