@@ -1,5 +1,11 @@
 import { create } from 'zustand'
 import { generateShuffleOrderKeepingFront, generateShuffleOrderAvoidingFront } from './shuffleOrder'
+import {
+  navigateBrowseHistory,
+  goBackInHistory,
+  goForwardInHistory,
+  resetBrowseHistory,
+} from '../lib/mediaBrowseHistory'
 
 export interface MediaTrack {
   path: string
@@ -70,6 +76,17 @@ interface MediaPlayerState {
   // open/closed (useMediaSidebarOpenQuery) and its width are.
   sidebarActiveTab: MediaSidebarTab
   setSidebarActiveTab: (tab: MediaSidebarTab) => void
+  // AppLayout.tsx(MediaSidebar의 새 "폴더" 탭)와 MediaPage.tsx가 서로 다른
+  // 트리 위치에서 같은 폴더 탐색 위치/히스토리를 공유해야 하므로, 여기 store에
+  // 올린다 - sidebarActiveTab과 같은 이유. mediaBrowseHistory/-Index는
+  // src/lib/mediaBrowseHistory.ts의 순수 로직으로 갱신된다.
+  mediaBrowsePath: string | null
+  mediaBrowseHistory: string[]
+  mediaBrowseHistoryIndex: number
+  navigateMediaBrowseTo: (path: string) => void
+  mediaBrowseGoBack: () => void
+  mediaBrowseGoForward: () => void
+  resetMediaBrowseRoot: (rootPath: string) => void
   // Bridges playback's live currentTime/handleSeek (both tied to the actual
   // mounted <video>/<audio> element, which only exists inside
   // MediaPlayerHost's single useMediaPlayback() call) across the tree
@@ -126,6 +143,32 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   handoffTimeSeconds: null,
   sidebarActiveTab: 'playlists',
   setSidebarActiveTab: (tab) => set({ sidebarActiveTab: tab }),
+  mediaBrowsePath: null,
+  mediaBrowseHistory: [],
+  mediaBrowseHistoryIndex: 0,
+  navigateMediaBrowseTo: (path) =>
+    set((state) => {
+      const next = navigateBrowseHistory(
+        { entries: state.mediaBrowseHistory, index: state.mediaBrowseHistoryIndex },
+        path
+      )
+      return { mediaBrowsePath: path, mediaBrowseHistory: next.entries, mediaBrowseHistoryIndex: next.index }
+    }),
+  mediaBrowseGoBack: () =>
+    set((state) => {
+      const next = goBackInHistory({ entries: state.mediaBrowseHistory, index: state.mediaBrowseHistoryIndex })
+      return { mediaBrowsePath: next.entries[next.index], mediaBrowseHistoryIndex: next.index }
+    }),
+  mediaBrowseGoForward: () =>
+    set((state) => {
+      const next = goForwardInHistory({ entries: state.mediaBrowseHistory, index: state.mediaBrowseHistoryIndex })
+      return { mediaBrowsePath: next.entries[next.index], mediaBrowseHistoryIndex: next.index }
+    }),
+  resetMediaBrowseRoot: (rootPath) =>
+    set(() => {
+      const next = resetBrowseHistory(rootPath)
+      return { mediaBrowsePath: rootPath, mediaBrowseHistory: next.entries, mediaBrowseHistoryIndex: next.index }
+    }),
   playbackCurrentTime: 0,
   setPlaybackCurrentTime: (time) => set({ playbackCurrentTime: time }),
   // No-op default so LyricsLogTab's onSeek is always safe to call even

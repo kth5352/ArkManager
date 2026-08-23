@@ -89,3 +89,39 @@ describe('useMediaPlayerStore sidebarActiveTab', () => {
     useMediaPlayerStore.getState().setSidebarActiveTab('playlists')
   })
 })
+
+describe('useMediaPlayerStore media browse navigation', () => {
+  beforeEach(() => {
+    useMediaPlayerStore.setState({
+      mediaBrowsePath: null,
+      mediaBrowseHistory: [],
+      mediaBrowseHistoryIndex: 0,
+    })
+  })
+
+  it('resetMediaBrowseRoot starts a fresh single-entry history', () => {
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    const state = useMediaPlayerStore.getState()
+    expect(state.mediaBrowsePath).toBe('C:\\Media\\Work')
+    expect(state.mediaBrowseHistory).toEqual(['C:\\Media\\Work'])
+    expect(state.mediaBrowseHistoryIndex).toBe(0)
+  })
+
+  it('navigateMediaBrowseTo then mediaBrowseGoBack returns to the previous path', () => {
+    const store = useMediaPlayerStore.getState()
+    store.resetMediaBrowseRoot('C:\\Media\\Work')
+    useMediaPlayerStore.getState().navigateMediaBrowseTo('C:\\Media\\Work\\mp3')
+    expect(useMediaPlayerStore.getState().mediaBrowsePath).toBe('C:\\Media\\Work\\mp3')
+
+    useMediaPlayerStore.getState().mediaBrowseGoBack()
+    expect(useMediaPlayerStore.getState().mediaBrowsePath).toBe('C:\\Media\\Work')
+  })
+
+  it('mediaBrowseGoForward re-advances after going back', () => {
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    useMediaPlayerStore.getState().navigateMediaBrowseTo('C:\\Media\\Work\\mp3')
+    useMediaPlayerStore.getState().mediaBrowseGoBack()
+    useMediaPlayerStore.getState().mediaBrowseGoForward()
+    expect(useMediaPlayerStore.getState().mediaBrowsePath).toBe('C:\\Media\\Work\\mp3')
+  })
+})
