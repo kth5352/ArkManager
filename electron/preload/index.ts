@@ -11,6 +11,8 @@ import {
   type Library,
   type LibraryWithStatus,
   type Locale,
+  type MediaPlaylistDto,
+  type MediaPlaylistTrackDto,
   type MediaSyncState,
   type MetadataSearchResultDto,
   type MetadataSearchSource,
@@ -347,6 +349,25 @@ const api = {
     },
     reportTime: (seconds: number): void =>
       ipcRenderer.send(IPC_CHANNELS.MEDIA_REPORT_TIME, seconds),
+  },
+  mediaPlaylist: {
+    list: (): Promise<MediaPlaylistDto[]> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_LIST),
+    create: (name: string): Promise<MediaPlaylistDto> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_CREATE, { name }),
+    rename: (id: string, name: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_RENAME, { id, name }),
+    delete: (id: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_DELETE, { id }),
+    getTracks: (id: string): Promise<MediaPlaylistTrackDto[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_GET_TRACKS, { id }),
+    setTracks: (id: string, tracks: MediaPlaylistTrackDto[]): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_SET_TRACKS, { id, tracks }),
+    listLikedTracks: (): Promise<{ path: string }[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_TRACK_LIKE_LIST),
+    isTrackLiked: (path: string): Promise<boolean> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_TRACK_LIKE_IS_LIKED, { path }),
+    toggleTrackLike: (path: string, name: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_TRACK_LIKE_TOGGLE, { path, name }),
   },
   mediaLyrics: {
     get: (filePath: string): Promise<{ path: string; text: string } | null> =>

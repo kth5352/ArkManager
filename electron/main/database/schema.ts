@@ -95,3 +95,26 @@ export const excludedEntries = sqliteTable('excluded_entries', {
   name: text('name').notNull(), // ScannedEntry.name snapshot at exclude time
   excludedAt: text('excluded_at').notNull(),
 })
+
+export const mediaPlaylists = sqliteTable('media_playlists', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const mediaPlaylistTracks = sqliteTable(
+  'media_playlist_tracks',
+  {
+    playlistId: text('playlist_id').notNull(),
+    position: integer('position').notNull(),
+    path: text('path').notNull(),
+    name: text('name').notNull(),
+  },
+  (table) => ({ pk: primaryKey({ columns: [table.playlistId, table.position] }) })
+)
+
+export const mediaTrackLikes = sqliteTable('media_track_likes', {
+  path: text('path').primaryKey(),
+  likedAt: text('liked_at').notNull(),
+})

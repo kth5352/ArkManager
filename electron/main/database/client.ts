@@ -180,6 +180,32 @@ export function createDbClient(filePath: string) {
     )
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS media_playlists (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS media_playlist_tracks (
+      playlist_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      path TEXT NOT NULL,
+      name TEXT NOT NULL,
+      PRIMARY KEY (playlist_id, position)
+    )
+  `)
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS media_track_likes (
+      path TEXT PRIMARY KEY,
+      liked_at TEXT NOT NULL
+    )
+  `)
+
   migrateVndbCodePrefixes(sqlite)
 
   return drizzle(sqlite, { schema })

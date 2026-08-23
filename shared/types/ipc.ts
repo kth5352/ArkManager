@@ -93,6 +93,15 @@ export const IPC_CHANNELS = {
   // Push-only, main -> renderer: fired whenever the update check/download
   // lifecycle advances. No request/response schema.
   UPDATE_STATUS: 'update:status',
+  MEDIA_PLAYLIST_LIST: 'media-playlist:list',
+  MEDIA_PLAYLIST_CREATE: 'media-playlist:create',
+  MEDIA_PLAYLIST_RENAME: 'media-playlist:rename',
+  MEDIA_PLAYLIST_DELETE: 'media-playlist:delete',
+  MEDIA_PLAYLIST_GET_TRACKS: 'media-playlist:get-tracks',
+  MEDIA_PLAYLIST_SET_TRACKS: 'media-playlist:set-tracks',
+  MEDIA_TRACK_LIKE_LIST: 'media-track-like:list',
+  MEDIA_TRACK_LIKE_IS_LIKED: 'media-track-like:is-liked',
+  MEDIA_TRACK_LIKE_TOGGLE: 'media-track-like:toggle',
 } as const
 
 export const ThemeSchema = z.enum(['light', 'dark'])
@@ -588,3 +597,54 @@ export type UpdateStatus =
   | { state: 'downloading'; percent: number }
   | { state: 'downloaded'; version: string; releaseNotes: ReleaseNote[] }
   | { state: 'error'; message: string }
+
+export interface MediaPlaylistDto {
+  id: string
+  name: string
+  trackCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MediaPlaylistTrackDto {
+  path: string
+  name: string
+}
+
+export const CreateMediaPlaylistRequestSchema = z.object({
+  name: z.string().min(1),
+})
+export type CreateMediaPlaylistRequest = z.infer<typeof CreateMediaPlaylistRequestSchema>
+
+export const RenameMediaPlaylistRequestSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+})
+export type RenameMediaPlaylistRequest = z.infer<typeof RenameMediaPlaylistRequestSchema>
+
+export const DeleteMediaPlaylistRequestSchema = z.object({
+  id: z.string(),
+})
+export type DeleteMediaPlaylistRequest = z.infer<typeof DeleteMediaPlaylistRequestSchema>
+
+export const GetMediaPlaylistTracksRequestSchema = z.object({
+  id: z.string(),
+})
+export type GetMediaPlaylistTracksRequest = z.infer<typeof GetMediaPlaylistTracksRequestSchema>
+
+export const SetMediaPlaylistTracksRequestSchema = z.object({
+  id: z.string(),
+  tracks: z.array(MediaTrackSchema),
+})
+export type SetMediaPlaylistTracksRequest = z.infer<typeof SetMediaPlaylistTracksRequestSchema>
+
+export const IsTrackLikedRequestSchema = z.object({
+  path: z.string(),
+})
+export type IsTrackLikedRequest = z.infer<typeof IsTrackLikedRequestSchema>
+
+export const ToggleTrackLikeRequestSchema = z.object({
+  path: z.string(),
+  name: z.string(),
+})
+export type ToggleTrackLikeRequest = z.infer<typeof ToggleTrackLikeRequestSchema>

@@ -22,6 +22,7 @@ import {
 import { registerMediaThumbnailHandlers } from './ipc/mediaThumbnailHandlers'
 import { registerMediaLyricsHandlers } from './ipc/mediaLyricsHandlers'
 import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
+import { registerMediaPlaylistHandlers } from './ipc/mediaPlaylistHandlers'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
@@ -386,6 +387,7 @@ if (!gotSingleInstanceLock) {
     registerMediaThumbnailHandlers(db)
     registerMediaLyricsHandlers(db)
     registerExcludedEntriesHandlers(db)
+    registerMediaPlaylistHandlers(db)
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a
