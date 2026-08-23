@@ -1,7 +1,6 @@
 import { desc, eq, sql } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { mediaTrackLikes } from './schema'
-import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 export function isTrackLiked(db: AppDatabase, path: string): boolean {
   return db.select().from(mediaTrackLikes).where(eq(mediaTrackLikes.path, path)).get() !== undefined
