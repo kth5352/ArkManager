@@ -13,6 +13,7 @@ import { getExplorerEntryCapabilities } from '../../lib/explorerEntryCapabilitie
 import { isAsmrPlayableFolder } from '../../lib/asmrMediaCapability'
 import { useSetMediaFolderMutation } from '../../services/settingsService'
 import { useTranslation } from '../../i18n/useTranslation'
+import { isMediaFile } from '../../../shared/isMediaFile'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface GameEntryContextMenuProps {
@@ -78,10 +79,10 @@ export function GameEntryContextMenu({
   const isAsmrMedia = isAsmrPlayableFolder(entry, entry.code ?? null, workType)
 
   const handlePlayAsmrFolder = async (): Promise<void> => {
-    setMediaFolder.mutate(entry.path)
+    await setMediaFolder.mutateAsync(entry.path)
     const shallowEntries = await window.api.scanner.scanShallow(entry.path)
     const directFiles = shallowEntries
-      .filter((e) => e.kind === 'file')
+      .filter((e) => e.kind === 'file' && isMediaFile(e.name))
       .map((e) => ({ path: e.path, name: e.name }))
     // 자동재생 규칙: 루트에 파일이 직접 있으면 즉시 재생, 하위 폴더뿐이면
     // 탐색만 (MediaPage로 이동해서 사용자가 직접 고르게 함).
