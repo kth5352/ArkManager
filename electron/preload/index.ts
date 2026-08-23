@@ -360,6 +360,12 @@ const api = {
       ipcRenderer.on(IPC_CHANNELS.MEDIA_STATE_SYNC, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_STATE_SYNC, listener)
     },
+    requestStateSync: (): void => ipcRenderer.send(IPC_CHANNELS.MEDIA_REQUEST_STATE_SYNC),
+    onStateSyncRequested: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED, listener)
+    },
     onPlayerWindowClosed: (callback: (lastKnownTimeSeconds: number) => void): (() => void) => {
       const listener = (_event: unknown, seconds: number): void => callback(seconds)
       ipcRenderer.on(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED, listener)

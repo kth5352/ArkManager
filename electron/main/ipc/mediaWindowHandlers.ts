@@ -104,6 +104,20 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
     }
   })
 
+  // A newly-opened detached window (or any window, in principle) can ask
+  // every OTHER window to re-broadcast its current state - a backstop for
+  // MEDIA_OPEN_PLAYER_WINDOW's own did-finish-load push above, which can
+  // race a slow-to-mount renderer (see useMediaPlayerSync.ts's own comment
+  // on why a one-shot push isn't fully reliable). Relayed with the same
+  // "every window but the requester" exclusion as MEDIA_STATE_BROADCAST.
+  ipcMain.on(IPC_CHANNELS.MEDIA_REQUEST_STATE_SYNC, (event) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (win.webContents.id !== event.sender.id) {
+        win.webContents.send(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED)
+      }
+    }
+  })
+
   ipcMain.on(IPC_CHANNELS.MEDIA_REPORT_TIME, (_event, payload: unknown) => {
     lastKnownTimeSeconds = MediaReportTimeRequestSchema.parse(payload)
   })

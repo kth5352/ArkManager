@@ -73,6 +73,13 @@ export const IPC_CHANNELS = {
   MEDIA_PLAYER_WINDOW_CLOSED: 'media:player-window-closed',
   MEDIA_STATE_BROADCAST: 'media:state-broadcast',
   MEDIA_STATE_SYNC: 'media:state-sync',
+  // A newly-opened (or any) window can ask every OTHER window to
+  // re-broadcast its current MediaSyncState - a pull-based backstop for
+  // MEDIA_OPEN_PLAYER_WINDOW's one-shot did-finish-load push, which can race
+  // ahead of the new window's React mount (see useMediaPlayerSync.ts). Both
+  // fire-and-forget, no request/response schema.
+  MEDIA_REQUEST_STATE_SYNC: 'media:request-state-sync',
+  MEDIA_STATE_SYNC_REQUESTED: 'media:state-sync-requested',
   MEDIA_REPORT_TIME: 'media:report-time',
   MEDIA_GET_LYRICS: 'media:get-lyrics',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',

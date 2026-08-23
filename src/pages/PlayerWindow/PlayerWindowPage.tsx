@@ -24,7 +24,7 @@ import { useMediaLyrics } from '../../components/media/useMediaLyrics'
 // the main window's.
 export function PlayerWindowPage() {
   const { t } = useTranslation()
-  useMediaPlayerSync()
+  useMediaPlayerSync({ requestInitialStateOnMount: true })
   const { mediaRef, playback } = useMediaPlayback({ isHost: true, reportTimeToMainProcess: true })
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
   const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
