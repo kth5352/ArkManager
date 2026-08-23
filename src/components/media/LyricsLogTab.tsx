@@ -63,6 +63,7 @@ export function LyricsLogTab() {
   const [followEnabled, setFollowEnabled] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const lastAutoScrollAt = useRef(0)
+  const autoScrollStartedAt = useRef(0)
 
   const activeLine =
     parsedLyrics?.kind === 'synced' ? getActiveLyricLine(parsedLyrics, currentTime) : null
@@ -81,7 +82,9 @@ export function LyricsLogTab() {
     if (!followEnabled || !activeLine || !containerRef.current) return
     const el = containerRef.current.querySelector<HTMLElement>(`[data-time="${activeLine.time}"]`)
     if (!el) return
-    lastAutoScrollAt.current = Date.now()
+    const now = Date.now()
+    lastAutoScrollAt.current = now
+    autoScrollStartedAt.current = now
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [activeLine, followEnabled])
 
@@ -113,11 +116,20 @@ export function LyricsLogTab() {
       // so a large jump (opening the tab on a far-down active line, or a
       // click-seek across a long lyrics file) that keeps emitting scroll
       // events past the original fixed 600ms doesn't get misread as a user
-      // scroll partway through. Only a scroll event that arrives once
-      // events have actually stopped for 600ms - i.e. a genuine new
-      // gesture, not a continuation of ours - pauses auto-follow.
+      // scroll partway through. That refresh alone would let a continuous
+      // user scroll gesture (successive native scroll events well under
+      // 600ms apart, which is the normal case for wheel/trackpad input)
+      // re-arm the window forever and never pause auto-follow - so it's
+      // capped by a hard ceiling measured from when this auto-scroll
+      // originally started (autoScrollStartedAt, set once per triggered
+      // scrollIntoView, never refreshed here). A scroll event only counts
+      // as "still ours" while BOTH the short refresh window and the
+      // overall ceiling hold; once either lapses, it's treated as a
+      // genuine user gesture and pauses auto-follow.
       const now = Date.now()
-      if (now - lastAutoScrollAt.current < 600) {
+      const withinRefreshWindow = now - lastAutoScrollAt.current < 600
+      const withinCeiling = now - autoScrollStartedAt.current < 1500
+      if (withinRefreshWindow && withinCeiling) {
         lastAutoScrollAt.current = now
         return
       }
