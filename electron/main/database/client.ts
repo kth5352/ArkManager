@@ -85,12 +85,14 @@ export function createDbClient(filePath: string) {
       release_date TEXT,
       genres TEXT,
       cover_image_path TEXT,
+      work_type TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
   `)
   ensureColumns(sqlite, 'game_metadata', [
     { name: 'cover_image_path', ddl: 'cover_image_path TEXT' },
+    { name: 'work_type', ddl: 'work_type TEXT' },
   ])
 
   sqlite.exec(`

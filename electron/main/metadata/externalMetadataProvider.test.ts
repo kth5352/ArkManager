@@ -20,6 +20,7 @@ describe('mapExternalMetadataToMetadata', () => {
       releaseDate: '2024-01-02',
       genres: ['ADV'],
       coverImageUrl: 'https://example.test/cover.jpg',
+      workType: null,
     })
   })
 })

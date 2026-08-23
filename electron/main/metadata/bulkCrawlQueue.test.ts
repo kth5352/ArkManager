@@ -26,6 +26,7 @@ function metadataFor(value: string): CrawledGameMetadata {
     releaseDate: '2025-01-01',
     genres: [],
     coverImageUrl: null,
+    workType: null,
   }
 }
 

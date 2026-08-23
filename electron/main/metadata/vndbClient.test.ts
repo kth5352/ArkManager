@@ -33,6 +33,7 @@ it('maps a VNDB release response to metadata without changing identity', () => {
     releaseDate: '2024-01-02',
     genres: [],
     coverImageUrl: 'https://t.vndb.org/cv/1.jpg',
+    workType: null,
   })
 })
 
@@ -62,6 +63,7 @@ describe('mapVnToMetadata', () => {
         'Loli',
       ],
       coverImageUrl: 'https://t.vndb.org/cv/38/86738.jpg',
+      workType: null,
     })
   })
 
@@ -81,6 +83,7 @@ describe('mapVnToMetadata', () => {
       releaseDate: '',
       genres: [],
       coverImageUrl: null,
+      workType: null,
     })
   })
 

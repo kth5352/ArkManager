@@ -59,6 +59,7 @@ function toDto(row: ReturnType<typeof getGameMetadata>): GameMetadataDto | null 
     releaseDate: row.releaseDate,
     genres: row.genres,
     coverImagePath: row.coverImagePath,
+    workType: row.workType,
   }
 }
 
@@ -94,6 +95,7 @@ export function registerMetadataHandlers(db: AppDatabase): void {
         releaseDate: row.releaseDate,
         genres: row.genres,
         coverImagePath: row.coverImagePath,
+        workType: row.workType,
       }
     }
     return result

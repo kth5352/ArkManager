@@ -61,6 +61,7 @@ export function mapVnToMetadata(vn: VndbApiVn): CrawledGameMetadata {
     releaseDate: vn.released ?? '',
     genres: topTags.map((tag) => tag.name),
     coverImageUrl: vn.image?.url ?? null,
+    workType: null,
   }
 }
 
@@ -81,6 +82,7 @@ export function mapReleaseToMetadata(release: VndbApiRelease): CrawledGameMetada
     releaseDate: release.released ?? '',
     genres: [],
     coverImageUrl: release.vns[0]?.image?.url ?? null,
+    workType: null,
   }
 }
 

@@ -93,5 +93,5 @@ export function parseGetchuWorkPage(html: string): CrawledGameMetadata | null {
   const ogImage = $('meta[property="og:image"]').attr('content')
   const coverImageUrl = ogImage ? toAbsoluteImageUrl(ogImage) : null
 
-  return { title, circle, releaseDate, genres, coverImageUrl }
+  return { title, circle, releaseDate, genres, coverImageUrl, workType: null }
 }

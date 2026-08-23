@@ -17,6 +17,7 @@ describe('mapDlsiteJsonToMetadata', () => {
       releaseDate: '2024-01-02',
       genres: ['ADV'],
       coverImageUrl: 'https://img.dlsite.jp/modpub/images2/work/doujin/RJ000/RJ000001_img_main.jpg',
+      workType: null,
     })
   })
 

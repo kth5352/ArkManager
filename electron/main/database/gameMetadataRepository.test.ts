@@ -28,12 +28,27 @@ describe('gameMetadataRepository', () => {
       releaseDate: '2025-04-12',
       genres: ['ドット', 'シスター'],
       coverImageUrl: 'https://img.dlsite.jp/example.jpg',
+      workType: 'SOU',
     })
 
     const row = getGameMetadata(db, 'RJ01169914')
     expect(row?.title).toBe('シニシスタ2 SiNiSistar2')
     expect(row?.genres).toEqual(['ドット', 'シスター'])
     expect(row?.coverImagePath).toBeNull()
+    expect(row?.workType).toBe('SOU')
+  })
+
+  it('reads back workType as null for a row saved without it (pre-existing DB row simulation)', () => {
+    saveGameMetadata(db, 'RJ02000000', {
+      title: 'Old Row',
+      circle: 'Old Circle',
+      releaseDate: '2024-01-01',
+      genres: [],
+      coverImageUrl: null,
+      workType: null,
+    })
+
+    expect(getGameMetadata(db, 'RJ02000000')?.workType).toBeNull()
   })
 
   it('sets the cover image path independently of the crawled text fields', () => {
@@ -43,6 +58,7 @@ describe('gameMetadataRepository', () => {
       releaseDate: '2025-01-01',
       genres: [],
       coverImageUrl: null,
+      workType: null,
     })
 
     setGameMetadataCoverPath(db, 'RJ01169914', '/cache/covers/RJ01169914.webp')
@@ -57,6 +73,7 @@ describe('gameMetadataRepository', () => {
       releaseDate: '2025-01-01',
       genres: ['액션'],
       coverImageUrl: null,
+      workType: null,
     })
     saveGameMetadata(db, 'RJ02222222', {
       title: 'Game B',
@@ -64,6 +81,7 @@ describe('gameMetadataRepository', () => {
       releaseDate: '2025-02-02',
       genres: ['드라마'],
       coverImageUrl: null,
+      workType: null,
     })
 
     const result = getManyGameMetadata(db, ['RJ01111111', 'RJ02222222', 'RJ99999999'])
@@ -84,6 +102,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
       saveGameMetadata(db, 'RJ02222222', {
         title: 'B',
@@ -91,6 +110,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
 
       clearAllGameMetadata(db)
@@ -106,6 +126,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
       setFavorite(db, 'RJ01111111', 'code', true)
 
@@ -123,6 +144,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
       saveGameMetadata(db, 'RJ02222222', {
         title: 'B',
@@ -130,6 +152,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
       setGameMetadataCoverPath(db, 'RJ01111111', 'C:\\old\\cache\\covers\\RJ01111111.webp')
       setGameMetadataCoverPath(db, 'RJ02222222', 'C:\\old\\cache\\covers\\RJ02222222.webp')
@@ -151,6 +174,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
 
       expect(() => rewriteCoverImagePathPrefix(db, 'C:\\old', 'C:\\new')).not.toThrow()
@@ -164,6 +188,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
       setGameMetadataCoverPath(db, 'RJ01111111', 'C:\\unrelated\\RJ01111111.webp')
 
@@ -181,6 +206,7 @@ describe('gameMetadataRepository', () => {
         releaseDate: '2025-01-01',
         genres: [],
         coverImageUrl: null,
+        workType: null,
       })
       setGameMetadataCoverPath(db, 'RJ01111111', 'C:\\same\\RJ01111111.webp')
 

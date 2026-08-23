@@ -10,6 +10,7 @@ export interface GameMetadataRow {
   releaseDate: string | null
   genres: string[]
   coverImagePath: string | null
+  workType: string | null
   createdAt: string
   updatedAt: string
 }
@@ -47,6 +48,7 @@ export function saveGameMetadata(db: AppDatabase, code: string, data: CrawledGam
       circle: data.circle,
       releaseDate: data.releaseDate,
       genres: JSON.stringify(data.genres),
+      workType: data.workType,
       createdAt: now,
       updatedAt: now,
     })
@@ -57,6 +59,7 @@ export function saveGameMetadata(db: AppDatabase, code: string, data: CrawledGam
         circle: data.circle,
         releaseDate: data.releaseDate,
         genres: JSON.stringify(data.genres),
+        workType: data.workType,
         updatedAt: now,
       },
     })

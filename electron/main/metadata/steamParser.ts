@@ -46,5 +46,5 @@ export function parseSteamStorePage(html: string): CrawledGameMetadata | null {
     .get()
   const coverImageUrl = $('meta[property="og:image"]').attr('content') ?? null
 
-  return { title, circle, releaseDate, genres, coverImageUrl }
+  return { title, circle, releaseDate, genres, coverImageUrl, workType: null }
 }

@@ -21,6 +21,7 @@ describe('parseGetchuWorkPage', () => {
       releaseDate: '2026-11-26',
       genres: ['FILMIC NOVEL', 'アドベンチャー'],
       coverImageUrl: 'https://www.getchu.com/brandnew/1366941/c1366941package.jpg',
+      workType: null,
     })
   })
 

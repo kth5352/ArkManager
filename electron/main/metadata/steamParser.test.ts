@@ -17,6 +17,7 @@ describe('parseSteamStorePage', () => {
       genres: ['Cyberpunk', 'Open World', 'RPG'],
       coverImageUrl:
         'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/capsule_616x353.jpg',
+      workType: null,
     })
   })
 

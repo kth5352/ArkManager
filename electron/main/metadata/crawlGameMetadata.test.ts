@@ -41,6 +41,7 @@ describe('crawlGameMetadata', () => {
             releaseDate: '',
             genres: [],
             coverImageUrl: null,
+            workType: null,
           }
         },
       })
@@ -63,6 +64,7 @@ describe('crawlGameMetadata', () => {
           releaseDate: '',
           genres: [],
           coverImageUrl: null,
+          workType: null,
         }),
         crawlDlsiteJson,
         crawlExternal,

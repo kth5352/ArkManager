@@ -294,6 +294,7 @@ export interface GameMetadataDto {
   releaseDate: string | null
   genres: string[]
   coverImagePath: string | null
+  workType: string | null
 }
 
 export interface MetadataFailureDto {

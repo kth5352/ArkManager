@@ -12,6 +12,7 @@ const ExternalMetadataSchema = z.object({
   releaseDate: z.string().optional().default(''),
   genres: z.array(z.string()).optional().default([]),
   coverImageUrl: z.string().url().nullable().optional().default(null),
+  workType: z.string().nullable().optional().default(null),
 })
 
 export interface ExternalMetadataProviderConfig {

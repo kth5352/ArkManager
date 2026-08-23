@@ -39,6 +39,7 @@ export function mapDlsiteJsonToMetadata(value: unknown): CrawledGameMetadata | n
     releaseDate: parsed.data.regist_date ?? '',
     genres: (parsed.data.genres ?? []).map((genre) => genre.name),
     coverImageUrl: normalizeImageUrl(parsed.data.image_main),
+    workType: null,
   }
 }
 
