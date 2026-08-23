@@ -10,6 +10,7 @@ import {
   MEDIA_SIDEBAR_WIDTH_DEFAULT,
 } from '../../lib/clampMediaSidebarWidth'
 import { useTranslation } from '../../i18n/useTranslation'
+import { PlaylistManagementTab } from './PlaylistManagementTab'
 import type { MediaSidebarTab } from '../../stores/mediaPlayerStore'
 
 // Re-exported for existing importers - the canonical definition now lives in
@@ -117,9 +118,9 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {/* Task 4/5/6 replace these placeholders with PlaylistManagementTab/
-            CurrentQueueTab/LyricsLogTab respectively. */}
-        {activeTab === 'playlists' && <div data-testid="playlists-tab-placeholder" />}
+        {/* Task 5/6 replace the remaining placeholders with CurrentQueueTab/
+            LyricsLogTab respectively. */}
+        {activeTab === 'playlists' && <PlaylistManagementTab />}
         {activeTab === 'queue' && <div data-testid="queue-tab-placeholder" />}
         {activeTab === 'lyrics' && <div data-testid="lyrics-tab-placeholder" />}
       </div>
