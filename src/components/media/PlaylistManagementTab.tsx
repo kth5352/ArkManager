@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Pencil, Play, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -78,6 +78,7 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
   }
 
   const removeTrack = (path: string): void => {
+    if (setTracksMutation.isPending) return
     setTracksMutation.mutate(tracks.filter((track) => track.path !== path))
   }
 
@@ -140,7 +141,8 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
                 type="button"
                 aria-label={t('media.removeFromPlaylist')}
                 onClick={() => removeTrack(track.path)}
-                className="shrink-0 hover:text-destructive"
+                disabled={setTracksMutation.isPending}
+                className="shrink-0 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -158,8 +160,17 @@ export function PlaylistManagementTab() {
   const [newName, setNewName] = useState('')
   const { data: playlists = [] } = useMediaPlaylists()
   const createMutation = useCreateMediaPlaylist()
+  // Enter unmounts this Input (setCreating(false)), and browsers fire a
+  // synchronous 'blur' on the still-focused node as part of that removal -
+  // which re-invokes this exact same commitCreate closure via onBlur before
+  // any re-render can happen. A createMutation.isPending check would not
+  // catch this: both invocations read the same per-render snapshot. A ref
+  // mutates in place and is visible to the second call immediately.
+  const committedRef = useRef(false)
 
   const commitCreate = (): void => {
+    if (committedRef.current) return
+    committedRef.current = true
     const trimmed = newName.trim()
     if (trimmed) createMutation.mutate(trimmed)
     setNewName('')
@@ -186,7 +197,15 @@ export function PlaylistManagementTab() {
           className="h-7 text-sm"
         />
       ) : (
-        <Button variant="ghost" size="sm" className="justify-start gap-1" onClick={() => setCreating(true)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="justify-start gap-1"
+          onClick={() => {
+            committedRef.current = false
+            setCreating(true)
+          }}
+        >
           <Plus className="h-3.5 w-3.5" />
           {t('media.createPlaylist')}
         </Button>
