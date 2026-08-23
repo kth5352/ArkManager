@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ListMusic, Minimize2, Music2, PictureInPicture2 } from 'lucide-react'
 import { MediaTransportBar } from './MediaTransportBar'
 import { MediaPlaylistPanel } from './MediaPlaylistPanel'
+import { MediaLikeButton } from './MediaLikeButton'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
@@ -42,6 +43,11 @@ export function FullscreenMediaOverlay({
 }: FullscreenMediaOverlayProps) {
   const { t } = useTranslation()
   const [showPlaylist, setShowPlaylist] = useState(false)
+  // No pre-existing auto-hide/hover-tracking mechanism exists on this
+  // control bar to reuse (confirmed by reading this file fresh - the
+  // bottom bar is always visible, not idle-timeout-hidden) - this is a
+  // standalone hover state scoped to just the enlarge treatment.
+  const [controlsHovered, setControlsHovered] = useState(false)
   // Tracked by path (not a plain boolean) so switching to a different track
   // - even one whose own thumbnail also happens to fail - doesn't keep
   // showing a stale failure from whatever track played before it, same
@@ -75,17 +81,31 @@ export function FullscreenMediaOverlay({
           </>
         )}
         {lyricsEnabled && parsedLyrics?.kind === 'synced' && (
-          <div className="pointer-events-none absolute bottom-6 left-6 right-6 text-center text-lg font-medium text-white">
+          <div
+            className={cn(
+              'pointer-events-none absolute bottom-6 left-6 right-6 text-center font-medium text-white transition-all duration-200',
+              controlsHovered ? 'text-3xl' : 'text-lg'
+            )}
+          >
             {getActiveLyricLine(parsedLyrics, playback.currentTime)?.text}
           </div>
         )}
         {lyricsEnabled && parsedLyrics?.kind === 'static' && (
-          <div className="pointer-events-none absolute bottom-6 left-6 right-6 max-h-48 overflow-y-auto text-center text-lg font-medium whitespace-pre-wrap text-white">
+          <div
+            className={cn(
+              'pointer-events-none absolute bottom-6 left-6 right-6 max-h-48 overflow-y-auto text-center font-medium whitespace-pre-wrap text-white transition-all duration-200',
+              controlsHovered ? 'text-3xl' : 'text-lg'
+            )}
+          >
             {parsedLyrics.lines.join('\n')}
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-2 bg-black/80 p-3">
+      <div
+        onMouseEnter={() => setControlsHovered(true)}
+        onMouseLeave={() => setControlsHovered(false)}
+        className="flex flex-col gap-2 bg-black/80 p-3"
+      >
         <MediaTransportBar
           playback={playback}
           dark
@@ -94,6 +114,7 @@ export function FullscreenMediaOverlay({
           onToggleLyrics={onToggleLyrics}
         />
         <div className="flex items-center justify-end gap-3">
+          <MediaLikeButton path={playback.track.path} name={playback.track.name} className="text-white/70 hover:text-white" />
           <button
             onClick={() => setShowPlaylist((v) => !v)}
             aria-label={t('media.playlist')}
