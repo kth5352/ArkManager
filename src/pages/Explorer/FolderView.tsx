@@ -495,7 +495,17 @@ export function FolderView({
     MediaPlaylistTrackDto[] | null
   >(null)
 
-  const codes = recursiveEntries.flatMap((e) => (e.code ? [e.code.value] : []))
+  // Sourced from BOTH the always-on shallow scan and the search-only
+  // recursive scan - recursiveEntries alone is [] outside of search (see
+  // useFolderScanRecursive's `enabled: isSearching` above), which would
+  // leave metadataByCode empty and every workType null during normal
+  // browsing, silently disabling anything gated on workType (e.g. the
+  // ASMR "재생" action in GameEntryContextMenu) outside of search.
+  const codes = [
+    ...new Set(
+      [...shallowEntries, ...recursiveEntries].flatMap((e) => (e.code ? [e.code.value] : []))
+    ),
+  ]
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
 
   const searchResults = isSearching

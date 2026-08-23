@@ -1,4 +1,3 @@
-import { useNavigate } from '@tanstack/react-router'
 import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from '../ui/context-menu'
 import { useOpenExternal, useOpenPath, useShowItemInFolder } from '../../services/shellService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
@@ -11,9 +10,8 @@ import {
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { getExplorerEntryCapabilities } from '../../lib/explorerEntryCapabilities'
 import { isAsmrPlayableFolder } from '../../lib/asmrMediaCapability'
-import { useSetMediaFolderMutation } from '../../services/settingsService'
+import { usePlayAsmrFolder } from '../../hooks/usePlayAsmrFolder'
 import { useTranslation } from '../../i18n/useTranslation'
-import { isMediaFile } from '../../../shared/isMediaFile'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface GameEntryContextMenuProps {
@@ -62,7 +60,6 @@ export function GameEntryContextMenu({
   onDelete,
 }: GameEntryContextMenuProps) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const openExternal = useOpenExternal()
   const openPath = useOpenPath()
   const showItemInFolder = useShowItemInFolder()
@@ -75,25 +72,8 @@ export function GameEntryContextMenu({
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
 
   const capabilities = getExplorerEntryCapabilities(entry)
-  const setMediaFolder = useSetMediaFolderMutation()
   const isAsmrMedia = isAsmrPlayableFolder(entry, entry.code ?? null, workType)
-
-  const handlePlayAsmrFolder = async (): Promise<void> => {
-    await setMediaFolder.mutateAsync(entry.path)
-    const shallowEntries = await window.api.scanner.scanShallow(entry.path)
-    const directFiles = shallowEntries
-      .filter((e) => e.kind === 'file' && isMediaFile(e.name))
-      .map((e) => ({ path: e.path, name: e.name }))
-    // 자동재생 규칙: 루트에 파일이 직접 있으면 즉시 재생, 하위 폴더뿐이면
-    // 탐색만 (MediaPage로 이동해서 사용자가 직접 고르게 함).
-    if (directFiles.length > 0) {
-      useMediaPlayerStore.getState().playNow(directFiles[0], directFiles)
-    }
-    // Task 4의 MediaPage render-time sync가 useMediaFolderQuery 변경을
-    // 감지해 resetMediaBrowseRoot를 자동 호출하므로, 여기서 라우팅만 하면
-    // 된다.
-    navigate({ to: '/media' })
-  }
+  const playAsmrFolder = usePlayAsmrFolder()
 
   return (
     <ContextMenuContent>
@@ -120,7 +100,7 @@ export function GameEntryContextMenu({
         </ContextMenuItem>
       )}
       {entry.kind === 'folder' && isAsmrMedia && (
-        <ContextMenuItem onSelect={() => void handlePlayAsmrFolder()}>
+        <ContextMenuItem onSelect={() => void playAsmrFolder(entry.path)}>
           {t('game.play')}
         </ContextMenuItem>
       )}

@@ -31,6 +31,7 @@ import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
 import { isAsmrPlayableFolder } from '../../lib/asmrMediaCapability'
+import { usePlayAsmrFolder } from '../../hooks/usePlayAsmrFolder'
 import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -56,6 +57,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   const isAsmrMedia = game
     ? isAsmrPlayableFolder(game, game.code ?? null, metadata?.workType ?? null)
     : false
+  const playAsmrFolder = usePlayAsmrFolder()
   const { data: metadataFailure } = useMetadataFailure(game?.code ?? null)
   const { data: userData } = useGameUserData(game ?? { code: null, path: '' })
   const pickCoverFile = usePickCustomCoverFile()
@@ -254,9 +256,9 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
               size="sm"
               variant="outline"
               className="w-full bg-green-600 text-white hover:bg-green-600/90 hover:text-white"
-              onClick={handleLaunch}
+              onClick={isAsmrMedia ? () => void playAsmrFolder(game.path) : handleLaunch}
             >
-              {t('game.launch')}
+              {isAsmrMedia ? t('game.play') : t('game.launch')}
             </Button>
           )}
           <div className="flex gap-2">

@@ -14,6 +14,8 @@ import {
   useMetadataFailure,
 } from '../../services/metadataService'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
+import { isAsmrPlayableFolder } from '../../lib/asmrMediaCapability'
+import { usePlayAsmrFolder } from '../../hooks/usePlayAsmrFolder'
 import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -32,6 +34,10 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
   const crawlMetadata = useCrawlGameMetadata()
   const { data: metadata } = useGameMetadata(game?.code ?? null)
   const { data: metadataFailure } = useMetadataFailure(game?.code ?? null)
+  const isAsmrMedia = game
+    ? isAsmrPlayableFolder(game, game.code ?? null, metadata?.workType ?? null)
+    : false
+  const playAsmrFolder = usePlayAsmrFolder()
   const [editingRating, setEditingRating] = useState(false)
   const [configuringLaunch, setConfiguringLaunch] = useState(false)
   const [linkingCode, setLinkingCode] = useState(false)
@@ -55,12 +61,16 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
         const target = event.target as HTMLElement
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return // 메모 입력 중엔 무시
         event.preventDefault()
-        handleLaunch(game)
+        if (isAsmrMedia) {
+          void playAsmrFolder(game.path)
+        } else {
+          handleLaunch(game)
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [game, handleLaunch])
+  }, [game, handleLaunch, isAsmrMedia, playAsmrFolder])
 
   return (
     <Dialog open={game !== null} onOpenChange={(open) => !open && onClose()}>
@@ -107,13 +117,20 @@ export function DetailOverlay({ game, onClose }: DetailOverlayProps) {
                 {t('game.openFolder')}
               </Button>
               {game.kind === 'folder' && (
-                <Button variant="secondary" onClick={() => handleLaunch(game)}>
-                  {t('game.launch')}
+                <Button
+                  variant="secondary"
+                  onClick={
+                    isAsmrMedia ? () => void playAsmrFolder(game.path) : () => handleLaunch(game)
+                  }
+                >
+                  {isAsmrMedia ? t('game.play') : t('game.launch')}
                 </Button>
               )}
-              <Button variant="secondary" onClick={() => setConfiguringLaunch(true)}>
-                {t('launchConfig.title')}
-              </Button>
+              {!isAsmrMedia && (
+                <Button variant="secondary" onClick={() => setConfiguringLaunch(true)}>
+                  {t('launchConfig.title')}
+                </Button>
+              )}
               <Button variant="secondary" onClick={() => setEditingRating(true)}>
                 {t('game.ratingMemo')}
               </Button>
