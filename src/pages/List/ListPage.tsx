@@ -59,6 +59,7 @@ function formatMtime(mtimeMs: number): string {
 function GameRow({
   game,
   genres,
+  workType,
   duplicateCount,
   archiveExtracted,
   onFilterByGenre,
@@ -72,6 +73,7 @@ function GameRow({
 }: {
   game: ScannedEntry
   genres: string[]
+  workType: string | null
   duplicateCount: number | undefined
   archiveExtracted: boolean
   onFilterByGenre: (genre: string) => void
@@ -213,6 +215,7 @@ function GameRow({
         onOpenDetail={onOpenDetail}
         onExclude={onExclude}
         onAddToSavedPlaylist={onAddToSavedPlaylist}
+        workType={workType}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -223,7 +226,7 @@ function GameRow({
 
 interface ListRowProps {
   games: ScannedEntry[]
-  metadataByCode: Record<string, { genres: string[] }>
+  metadataByCode: Record<string, { genres: string[]; workType: string | null }>
   duplicateGroups: Map<string, ScannedEntry[]>
   extractedArchiveCodes: Set<string>
   onFilterByGenre: (genre: string) => void
@@ -255,6 +258,7 @@ function Row({
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
+  const workType = game.code ? (metadataByCode[game.code.value]?.workType ?? null) : null
   const duplicateCount = getDuplicateGroupForEntry(game, duplicateGroups)?.length
   const archiveExtracted = isArchiveExtracted(game, extractedArchiveCodes)
   return (
@@ -262,6 +266,7 @@ function Row({
       <GameRow
         game={game}
         genres={genres}
+        workType={workType}
         duplicateCount={duplicateCount}
         archiveExtracted={archiveExtracted}
         onFilterByGenre={onFilterByGenre}
