@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MediaPlaylistDto, MediaPlaylistTrackDto } from '../../shared/types/ipc'
+import { appToast } from '../lib/appToast'
+import { useTranslation } from '../i18n/useTranslation'
 
 export const MEDIA_PLAYLISTS_QUERY_KEY = ['media-playlists'] as const
 export const mediaPlaylistTracksQueryKey = (id: string) => ['media-playlist-tracks', id] as const
@@ -17,42 +19,74 @@ export function useMediaPlaylistTracks(id: string) {
   return useQuery<MediaPlaylistTrackDto[]>({
     queryKey: mediaPlaylistTracksQueryKey(id),
     queryFn: () => window.api.mediaPlaylist.getTracks(id),
+    // This is locally-stored SQLite data that only ever changes from inside
+    // this same app (via useSetMediaPlaylistTracks, which already
+    // invalidates this exact query key on success) - nothing external can
+    // mutate it out from under the cache. Without a staleTime, the default
+    // refetchOnWindowFocus=true (see main.tsx's default QueryClient) means
+    // every time the Electron window regains focus while a playlist is
+    // expanded, a background refetch briefly flips tracksQuery.isFetching
+    // true, which PlaylistManagementTab.tsx's UserPlaylistRow uses to guard
+    // remove/reorder - a visible button flicker, and a window where an
+    // in-flight drag can silently no-op. 5s is short enough that a genuine
+    // external edit (there is none today) would still show up almost
+    // immediately, while comfortably covering the normal
+    // click-away-and-back window-focus case.
+    staleTime: 5_000,
   })
 }
 
+// onError toasts below are the only user-facing error feedback anywhere in
+// the playlist CRUD flows (create/rename/delete/remove-track/reorder/
+// add-to-saved-playlist all funnel through these four hooks - see each
+// hook's call sites in PlaylistManagementTab.tsx and
+// AddToSavedPlaylistDialog.tsx) - before this, a failed mutation just did
+// nothing visible beyond the existing disabled-state feedback. Wired here at
+// the hook level (rather than at each call site) since both of those files
+// share these exact hooks and the failure message is the same regardless of
+// which one triggered it.
+
 export function useCreateMediaPlaylist() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: (name: string) => window.api.mediaPlaylist.create(name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY }),
+    onError: () => appToast.error(t('media.createPlaylistFailed')),
   })
 }
 
 export function useRenameMediaPlaylist() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       window.api.mediaPlaylist.rename(id, name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY }),
+    onError: () => appToast.error(t('media.renamePlaylistFailed')),
   })
 }
 
 export function useDeleteMediaPlaylist() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: (id: string) => window.api.mediaPlaylist.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY }),
+    onError: () => appToast.error(t('media.deletePlaylistFailed')),
   })
 }
 
 export function useSetMediaPlaylistTracks(id: string) {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: (tracks: MediaPlaylistTrackDto[]) => window.api.mediaPlaylist.setTracks(id, tracks),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mediaPlaylistTracksQueryKey(id) })
       queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY })
     },
+    onError: () => appToast.error(t('media.updatePlaylistTracksFailed')),
   })
 }
 

@@ -7,10 +7,10 @@ export function isTrackLiked(db: AppDatabase, path: string): boolean {
 }
 
 // Toggles like state for a single track - callers don't need to know the
-// current state first (mirrors toggleFavorite's callers elsewhere in this
-// codebase, which pass the NEXT desired state; this instead flips
-// unconditionally since the renderer's one call site always wants "the
-// opposite of whatever it is now").
+// current state first (unlike gameUserDataRepository.ts's setFavorite,
+// which takes the NEXT desired state as an explicit boolean argument; this
+// instead flips unconditionally since the renderer's one call site always
+// wants "the opposite of whatever it is now").
 export function toggleTrackLike(db: AppDatabase, path: string, name: string): void {
   const existing = db.select().from(mediaTrackLikes).where(eq(mediaTrackLikes.path, path)).get()
   if (existing) {
@@ -33,7 +33,7 @@ export function toggleTrackLike(db: AppDatabase, path: string, name: string): vo
 // currently just derive one from the path itself (e.g.
 // PlaylistManagementTab.tsx's `path.split(/[\\/]/).pop()`).
 // Tiebreak on rowid (same pattern as gameUserDataRepository.ts's
-// listRecentlyPlayed) - likedAt is an ISO string with millisecond
+// listRecentlyPlayedKeys) - likedAt is an ISO string with millisecond
 // precision, and two toggles in quick succession (e.g. back-to-back in a
 // test, or a fast double-click in the app) can land in the same
 // millisecond, making ORDER BY likedAt alone non-deterministic for ties.

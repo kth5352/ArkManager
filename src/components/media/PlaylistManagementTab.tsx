@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronDown, ChevronRight, Pencil, Play, Plus, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, GripVertical, Pencil, Play, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
@@ -96,10 +96,17 @@ function PlaylistTrackRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      {...attributes}
-      {...listeners}
       className="flex items-center gap-1 px-1 py-1 text-xs text-muted-foreground"
     >
+      <button
+        type="button"
+        aria-label={t('media.reorderTrack')}
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
       <span className="min-w-0 flex-1 truncate">{track.name}</span>
       <button
         type="button"
@@ -143,9 +150,15 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const commitRename = (): void => {
+    if (renameMutation.isPending) return
     const trimmed = nameDraft.trim()
     if (trimmed && trimmed !== name) renameMutation.mutate({ id, name: trimmed })
     setRenaming(false)
+  }
+
+  const deletePlaylist = (): void => {
+    if (deleteMutation.isPending) return
+    deleteMutation.mutate(id)
   }
 
   const removeTrack = (path: string): void => {
@@ -206,6 +219,7 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
           size="icon"
           className="h-6 w-6 shrink-0"
           aria-label={t('media.renamePlaylist')}
+          disabled={renameMutation.isPending}
           onClick={() => setRenaming(true)}
         >
           <Pencil className="h-3.5 w-3.5" />
@@ -215,7 +229,8 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
           size="icon"
           className="h-6 w-6 shrink-0 hover:text-destructive"
           aria-label={t('media.deletePlaylist')}
-          onClick={() => deleteMutation.mutate(id)}
+          disabled={deleteMutation.isPending}
+          onClick={deletePlaylist}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>

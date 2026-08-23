@@ -5,6 +5,26 @@ import { useTranslation } from '../../i18n/useTranslation'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaLyrics } from './useMediaLyrics'
 
+// Walks up from `start` looking for the nearest ancestor whose computed
+// overflow-y is 'auto' or 'scroll' - i.e. the element that actually scrolls
+// when this component's content overflows it. Today that always resolves to
+// MediaSidebar.tsx's `min-h-0 flex-1 overflow-y-auto` tab-content wrapper
+// (this component's direct DOM parent), but doing the walk structurally
+// rather than hardcoding "my parent IS the scroller" means an extra
+// intermediate wrapper div added later (e.g. for padding/animation) wouldn't
+// silently break the scroll-pause listener below - it would just resolve one
+// hop further up instead. document.body is a safety bound so this can never
+// walk past it even if no ancestor's overflow-y ever matches.
+function findScrollableAncestor(start: HTMLElement): HTMLElement {
+  let el: HTMLElement | null = start.parentElement
+  while (el && el !== document.body) {
+    const overflowY = getComputedStyle(el).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll') return el
+    el = el.parentElement
+  }
+  return document.body
+}
+
 // Rendered from MediaSidebar's `lyrics` tab, which AppLayout.tsx mounts as a
 // flex sibling of <main> - a different part of the tree than MediaPlayerHost,
 // which is the ONLY place useMediaPlayback() may be called (a second call
@@ -66,16 +86,13 @@ export function LyricsLogTab() {
   }, [activeLine, followEnabled])
 
   // This component's own root has no overflow/height constraint - the
-  // element that actually scrolls is MediaSidebar.tsx's shared
-  // `min-h-0 flex-1 overflow-y-auto` wrapper, a DOM ANCESTOR of this
-  // component's root (not this root itself). Native `scroll` events don't
-  // bubble, so an onScroll prop on this root would never fire - a plain
-  // useEffect that walks up to `containerRef.current.parentElement` (the
-  // real scrolling ancestor, confirmed against MediaSidebar.tsx's current
-  // JSX: this component is mounted as a direct child of that wrapper) and
-  // attaches a native listener there is required instead. React's
-  // synthetic onScroll can only ever attach to this component's own root,
-  // never an ancestor it doesn't render.
+  // element that actually scrolls is a DOM ANCESTOR of this component's
+  // root (not this root itself), found via findScrollableAncestor above.
+  // Native `scroll` events don't bubble, so an onScroll prop on this root
+  // would never fire - a plain useEffect that locates the real scrolling
+  // ancestor and attaches a native listener there is required instead.
+  // React's synthetic onScroll can only ever attach to this component's own
+  // root, never an ancestor it doesn't render.
   // Depends on parsedLyrics?.kind (not []) - this component stays mounted
   // across track changes (only its returned JSX changes), and the
   // scrollable `containerRef` div only exists in the 'synced' branch below
@@ -86,18 +103,28 @@ export function LyricsLogTab() {
   // with the stale "no element yet" result from whenever this effect last
   // ran.
   useEffect(() => {
-    const scrollParent = containerRef.current?.parentElement
-    if (!scrollParent) return
+    if (!containerRef.current) return
+    const scrollTarget = findScrollableAncestor(containerRef.current)
     const handleScroll = (): void => {
-      // Ignore scroll events for a short window after an auto-scroll we
-      // triggered ourselves (smooth scrollIntoView fires several scroll
-      // events over ~300-500ms) - only a scroll outside that window is a
-      // real user gesture that should pause auto-follow.
-      if (Date.now() - lastAutoScrollAt.current < 600) return
+      // A scroll event arriving within 600ms of the last one we attribute
+      // to our own auto-scroll is presumed to still be part of that same
+      // smooth scrollIntoView's event train (which fires several scroll
+      // events in a row) - refresh the window instead of just checking it,
+      // so a large jump (opening the tab on a far-down active line, or a
+      // click-seek across a long lyrics file) that keeps emitting scroll
+      // events past the original fixed 600ms doesn't get misread as a user
+      // scroll partway through. Only a scroll event that arrives once
+      // events have actually stopped for 600ms - i.e. a genuine new
+      // gesture, not a continuation of ours - pauses auto-follow.
+      const now = Date.now()
+      if (now - lastAutoScrollAt.current < 600) {
+        lastAutoScrollAt.current = now
+        return
+      }
       setFollowEnabled(false)
     }
-    scrollParent.addEventListener('scroll', handleScroll)
-    return () => scrollParent.removeEventListener('scroll', handleScroll)
+    scrollTarget.addEventListener('scroll', handleScroll)
+    return () => scrollTarget.removeEventListener('scroll', handleScroll)
   }, [parsedLyrics?.kind])
 
   if (parsedLyrics === null) {

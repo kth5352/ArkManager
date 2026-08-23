@@ -8,7 +8,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { X } from 'lucide-react'
+import { GripVertical, X } from 'lucide-react'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { MediaLikeButton } from './MediaLikeButton'
@@ -26,13 +26,20 @@ function QueueRow({ track, index, isCurrent }: { track: MediaTrack; index: numbe
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      {...attributes}
-      {...listeners}
       className={cn(
         'flex items-center gap-2 rounded px-1 py-1.5 text-sm',
         isCurrent ? 'bg-accent' : 'hover:bg-accent/50'
       )}
     >
+      <button
+        type="button"
+        aria-label={t('media.reorderTrack')}
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
       <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
         <img
           src={buildMediaThumbnailUrl(track.path)}

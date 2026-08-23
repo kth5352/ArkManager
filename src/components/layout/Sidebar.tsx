@@ -81,14 +81,15 @@ export function Sidebar() {
       <Button
         variant="ghost"
         size="sm"
-        className="justify-start gap-2"
+        className="min-w-0 justify-start gap-2"
         aria-label={t('media.sidebarToggle')}
+        aria-pressed={mediaSidebarOpen}
         title={t('media.sidebarToggle')}
-        disabled={mediaSidebarOpenLoading}
+        disabled={mediaSidebarOpenLoading || setMediaSidebarOpenMutation.isPending}
         onClick={() => setMediaSidebarOpenMutation.mutate(!mediaSidebarOpen)}
       >
-        <ListMusic className="h-4 w-4" />
-        {t('media.sidebarToggle')}
+        <ListMusic className="h-4 w-4 shrink-0" />
+        <span className="truncate">{t('media.sidebarToggle')}</span>
       </Button>
       <Button variant="ghost" size="sm" onClick={toggleTheme}>
         {theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}

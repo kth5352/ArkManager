@@ -12,6 +12,7 @@ import {
   mediaPlaylistTracksQueryKey,
 } from '../../services/mediaPlaylistService'
 import { useTranslation } from '../../i18n/useTranslation'
+import { appToast } from '../../lib/appToast'
 import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 interface AddToSavedPlaylistDialogProps {
@@ -93,12 +94,15 @@ export function AddToSavedPlaylistDialog({ tracks, onClose }: AddToSavedPlaylist
         // exist until this exact callback fires - call the underlying
         // preload API directly instead, then invalidate the same query keys
         // the hook itself would have on success.
-        window.api.mediaPlaylist.setTracks(playlist.id, tracks).then(() => {
-          queryClient.invalidateQueries({ queryKey: mediaPlaylistTracksQueryKey(playlist.id) })
-          queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY })
-          setNewName('')
-          onClose()
-        })
+        window.api.mediaPlaylist
+          .setTracks(playlist.id, tracks)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: mediaPlaylistTracksQueryKey(playlist.id) })
+            queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY })
+            setNewName('')
+            onClose()
+          })
+          .catch(() => appToast.error(t('media.updatePlaylistTracksFailed')))
       },
     })
   }
@@ -110,6 +114,9 @@ export function AddToSavedPlaylistDialog({ tracks, onClose }: AddToSavedPlaylist
           <DialogTitle>{t('media.selectPlaylist')}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-2">
+          {playlists.length === 0 && (
+            <p className="text-xs text-muted-foreground">{t('media.noPlaylistsForAdd')}</p>
+          )}
           {playlists.map((playlist) => (
             <div key={playlist.id} className="flex items-center justify-between gap-2 text-sm">
               <span className="truncate">{playlist.name}</span>
