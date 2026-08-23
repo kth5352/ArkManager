@@ -228,7 +228,13 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   // at once, not just the common cases.
   reorderPlaylist: (fromIndex, toIndex) =>
     set((state) => {
-      if (fromIndex === -1 || toIndex === -1 || fromIndex >= state.playlist.length || toIndex >= state.playlist.length) return state
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= state.playlist.length ||
+        toIndex >= state.playlist.length
+      )
+        return state
       const currentTrack = state.currentIndex !== null ? state.playlist[state.currentIndex] : null
       const playlist = [...state.playlist]
       const [moved] = playlist.splice(fromIndex, 1)

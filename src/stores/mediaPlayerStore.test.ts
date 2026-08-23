@@ -52,4 +52,25 @@ describe('useMediaPlayerStore reorderPlaylist', () => {
     expect(state.playlist[state.currentIndex!].name).toBe('a')
     expect(state.currentIndex).toBe(2)
   })
+
+  it('leaves playlist unchanged when fromIndex is a negative number other than -1', () => {
+    const initialPlaylist = useMediaPlayerStore.getState().playlist
+    const initialCurrentIndex = useMediaPlayerStore.getState().currentIndex
+    useMediaPlayerStore.getState().reorderPlaylist(-2, 0)
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist).toEqual(initialPlaylist)
+    expect(state.currentIndex).toBe(initialCurrentIndex)
+    // Verify no undefined entries were inserted
+    expect(state.playlist.every((track) => track && track.path)).toBe(true)
+  })
+
+  it('leaves empty playlist unchanged when given negative indices', () => {
+    useMediaPlayerStore.setState({ playlist: [], currentIndex: null })
+    useMediaPlayerStore.getState().reorderPlaylist(-2, -2)
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist).toEqual([])
+    expect(state.currentIndex).toBe(null)
+    // Verify no undefined entries were inserted
+    expect(state.playlist.every((track) => track && track.path)).toBe(true)
+  })
 })
