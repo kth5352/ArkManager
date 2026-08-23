@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, ImagePlus, Play, Plus, Folder as FolderIcon } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  ImagePlus,
+  ListMusic,
+  Play,
+  Plus,
+  Folder as FolderIcon,
+} from 'lucide-react'
 import { usePickLibraryFolder } from '../../services/librariesService'
 import { useFolderScan } from '../../services/scannerService'
-import { useMediaFolderQuery, useSetMediaFolderMutation } from '../../services/settingsService'
+import {
+  useMediaFolderQuery,
+  useMediaSidebarOpenQuery,
+  useSetMediaFolderMutation,
+  useSetMediaSidebarOpenMutation,
+} from '../../services/settingsService'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import {
@@ -167,6 +180,10 @@ export function MediaPage() {
   const { data: folder = null, isLoading: isFolderLoading } = useMediaFolderQuery()
   const setMediaFolder = useSetMediaFolderMutation()
   const pickFolder = usePickLibraryFolder()
+  const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
+    useMediaSidebarOpenQuery()
+  const setMediaSidebarOpenMutation = useSetMediaSidebarOpenMutation()
+  const mediaSidebarOpen = mediaSidebarOpenSetting ?? false
   const appendAndPlay = useMediaPlayerStore((s) => s.appendAndPlay)
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
   const mediaBrowsePath = useMediaPlayerStore((s) => s.mediaBrowsePath)
@@ -236,11 +253,23 @@ export function MediaPage() {
               </Button>
             </>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('media.sidebarToggle')}
+            aria-pressed={mediaSidebarOpen}
+            title={t('media.sidebarToggle')}
+            disabled={mediaSidebarOpenLoading || setMediaSidebarOpenMutation.isPending}
+            onClick={() => setMediaSidebarOpenMutation.mutate(!mediaSidebarOpen)}
+            className="ml-auto shrink-0"
+          >
+            <ListMusic className="h-4 w-4" />
+          </Button>
           {tracks.length > 0 && (
             <Button
               size="sm"
               variant="secondary"
-              className="ml-auto shrink-0"
+              className="shrink-0"
               onClick={() => addToPlaylist(tracks)}
             >
               {t('media.addFolderToPlaylist')}

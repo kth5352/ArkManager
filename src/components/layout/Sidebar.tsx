@@ -5,7 +5,6 @@ import {
   History,
   LayoutGrid,
   List,
-  ListMusic,
   Music,
   Rows3,
   Save,
@@ -17,10 +16,6 @@ import { useTranslation } from '../../i18n/useTranslation'
 import { Button } from '../ui/button'
 import logoUrl from '../../../LOGO.png'
 import type { TranslationKey } from '../../i18n/translations'
-import {
-  useMediaSidebarOpenQuery,
-  useSetMediaSidebarOpenMutation,
-} from '../../services/settingsService'
 
 const navItems = [
   { to: '/', labelKey: 'nav.gallery', icon: LayoutGrid },
@@ -38,26 +33,6 @@ const navItems = [
 export function Sidebar() {
   const { theme, toggleTheme } = useTheme()
   const { t } = useTranslation()
-  // The main left-nav's own always-visible toggle for MediaSidebar - the
-  // only other way to open it (the docked bar's queue button, see
-  // MediaPlayerBar.tsx) only exists during active playback, so without this
-  // a user who adds a track to a saved playlist via the context-menu action
-  // with nothing playing has no way to reach playlist management at all.
-  // Uses the same open/closed setting MediaSidebar's own close button
-  // writes to (useMediaSidebarOpenQuery/useSetMediaSidebarOpenMutation),
-  // toggling it rather than unconditionally opening, matching the
-  // already-translated, previously-unused `media.sidebarToggle` label's
-  // "toggle" framing.
-  const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
-    useMediaSidebarOpenQuery()
-  const setMediaSidebarOpenMutation = useSetMediaSidebarOpenMutation()
-  // Falls back to closed (false), matching useMediaSidebarOpenQuery's own
-  // default and AppLayout.tsx's read of the same setting - see that
-  // function's comment. isLoading is also checked below to disable the
-  // toggle button itself while the query is still in its initial fetch, so
-  // a click during that brief window can't write a value that then fights
-  // with whatever the query resolves to moments later.
-  const mediaSidebarOpen = mediaSidebarOpenSetting ?? false
 
   return (
     <aside className="flex w-56 flex-col border-r border-border bg-card p-4">
@@ -78,19 +53,6 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="min-w-0 justify-start gap-2"
-        aria-label={t('media.sidebarToggle')}
-        aria-pressed={mediaSidebarOpen}
-        title={t('media.sidebarToggle')}
-        disabled={mediaSidebarOpenLoading || setMediaSidebarOpenMutation.isPending}
-        onClick={() => setMediaSidebarOpenMutation.mutate(!mediaSidebarOpen)}
-      >
-        <ListMusic className="h-4 w-4 shrink-0" />
-        <span className="truncate">{t('media.sidebarToggle')}</span>
-      </Button>
       <Button variant="ghost" size="sm" onClick={toggleTheme}>
         {theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
       </Button>

@@ -111,7 +111,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             and LyricsLogTab's `parsedLyrics === null` guard, the latter
             fed by useMediaLyrics(null) short-circuiting via its own
             `enabled: trackPath !== null`). */}
-        {!mediaSidebarOpenLoading && mediaSidebarOpen && (
+        {pathname === '/media' && !mediaSidebarOpenLoading && mediaSidebarOpen && (
           <MediaSidebar
             activeTab={sidebarActiveTab}
             onActiveTabChange={setSidebarActiveTab}
