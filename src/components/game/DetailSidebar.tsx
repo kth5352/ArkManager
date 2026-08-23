@@ -30,6 +30,7 @@ import { formatPlaytime } from '../../pages/RecentlyPlayed/formatPlaytime'
 import { useSetSidebarWidthMutation, useSidebarWidthQuery } from '../../services/settingsService'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampSidebarWidth'
 import { IndeterminateProgressBar } from '../ui/progress-bar'
+import { isAsmrPlayableFolder } from '../../lib/asmrMediaCapability'
 import { useTranslation } from '../../i18n/useTranslation'
 import { isNoLaunchConfigError } from '../../../shared/launchErrors'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -52,6 +53,9 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   const launchGame = useLaunchGame()
   const crawlMetadata = useCrawlGameMetadata()
   const { data: metadata } = useGameMetadata(game?.code ?? null)
+  const isAsmrMedia = game
+    ? isAsmrPlayableFolder(game, game.code ?? null, metadata?.workType ?? null)
+    : false
   const { data: metadataFailure } = useMetadataFailure(game?.code ?? null)
   const { data: userData } = useGameUserData(game ?? { code: null, path: '' })
   const pickCoverFile = usePickCustomCoverFile()
@@ -327,8 +331,8 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         )}
         <CustomCoverSection game={game} hasCustomCover={!!userData?.customCoverPath} />
         <RatingMemoSection game={game} />
-        <LaunchConfigSection game={game} />
-        <SaveDataSection game={game} />
+        {!isAsmrMedia && <LaunchConfigSection game={game} />}
+        {!isAsmrMedia && <SaveDataSection game={game} />}
         <CodeLinkSection game={game} />
       </div>
       <LaunchConfigDialog

@@ -121,6 +121,7 @@ function useEntryDragAndDrop(entry: ScannedEntry) {
 
 function FolderEntryRow({
   entry,
+  metadataByCode,
   onOpenInNewTab,
   onEntryClick,
   onOpenDetail,
@@ -130,6 +131,7 @@ function FolderEntryRow({
   onDelete,
 }: {
   entry: ScannedEntry
+  metadataByCode: Record<string, { workType: string | null }>
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
@@ -189,6 +191,7 @@ function FolderEntryRow({
         onOpenDetail={onOpenDetail}
         onOpenInNewTab={onOpenInNewTab}
         onAddToSavedPlaylist={onAddToSavedPlaylist}
+        workType={entry.code ? (metadataByCode[entry.code.value]?.workType ?? null) : null}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -207,6 +210,7 @@ function FolderEntryRow({
 function FolderEntryCard({
   entry,
   cardWidth,
+  metadataByCode,
   onOpenInNewTab,
   onEntryClick,
   onOpenDetail,
@@ -217,6 +221,7 @@ function FolderEntryCard({
 }: {
   entry: ScannedEntry
   cardWidth: number
+  metadataByCode: Record<string, { workType: string | null }>
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
@@ -290,6 +295,7 @@ function FolderEntryCard({
         onOpenDetail={onOpenDetail}
         onOpenInNewTab={onOpenInNewTab}
         onAddToSavedPlaylist={onAddToSavedPlaylist}
+        workType={entry.code ? (metadataByCode[entry.code.value]?.workType ?? null) : null}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -396,6 +402,7 @@ interface GridCellProps {
   columnCount: number
   gap: number
   cardWidth: number
+  metadataByCode: Record<string, { workType: string | null }>
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
@@ -413,6 +420,7 @@ function FolderEntryCell({
   columnCount,
   gap,
   cardWidth,
+  metadataByCode,
   onOpenInNewTab,
   onEntryClick,
   onOpenDetail,
@@ -429,6 +437,7 @@ function FolderEntryCell({
       <FolderEntryCard
         entry={entry}
         cardWidth={cardWidth}
+        metadataByCode={metadataByCode}
         onOpenInNewTab={onOpenInNewTab}
         onEntryClick={onEntryClick}
         onOpenDetail={onOpenDetail}
@@ -683,6 +692,7 @@ export function FolderView({
                         columnCount,
                         gap,
                         cardWidth,
+                        metadataByCode,
                         onOpenInNewTab: openInNewTab,
                         onEntryClick: handleEntryClick,
                         onOpenDetail: openDetail,
@@ -707,6 +717,7 @@ export function FolderView({
                 <FolderEntryRow
                   key={entry.path}
                   entry={entry}
+                  metadataByCode={metadataByCode}
                   onOpenInNewTab={openInNewTab}
                   onEntryClick={handleEntryClick}
                   onOpenDetail={openDetail}

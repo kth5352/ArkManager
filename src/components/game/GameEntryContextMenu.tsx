@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from '../ui/context-menu'
 import { useOpenExternal, useOpenPath, useShowItemInFolder } from '../../services/shellService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
@@ -9,6 +10,8 @@ import {
 } from '../../services/gameUserDataService'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { getExplorerEntryCapabilities } from '../../lib/explorerEntryCapabilities'
+import { isAsmrPlayableFolder } from '../../lib/asmrMediaCapability'
+import { useSetMediaFolderMutation } from '../../services/settingsService'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -29,6 +32,12 @@ interface GameEntryContextMenuProps {
   // persistent named playlist, distinct from addToPlaylist below (the
   // ephemeral session queue).
   onAddToSavedPlaylist?: (tracks: { path: string; name: string }[]) => void
+  // Crawled DLsite work_type code for this entry's code, if any (null when
+  // uncrawled/unknown/no code) - drives the 실행->재생 swap via
+  // isAsmrPlayableFolder. Each page reads this from its own already-fetched
+  // useGameMetadataMany result (all 4 pages already call it for other
+  // fields like genres).
+  workType: string | null
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -46,11 +55,13 @@ export function GameEntryContextMenu({
   onOpenInNewTab,
   onExclude,
   onAddToSavedPlaylist,
+  workType,
   onRename,
   onMove,
   onDelete,
 }: GameEntryContextMenuProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const openExternal = useOpenExternal()
   const openPath = useOpenPath()
   const showItemInFolder = useShowItemInFolder()
@@ -63,6 +74,25 @@ export function GameEntryContextMenu({
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
 
   const capabilities = getExplorerEntryCapabilities(entry)
+  const setMediaFolder = useSetMediaFolderMutation()
+  const isAsmrMedia = isAsmrPlayableFolder(entry, entry.code ?? null, workType)
+
+  const handlePlayAsmrFolder = async (): Promise<void> => {
+    setMediaFolder.mutate(entry.path)
+    const shallowEntries = await window.api.scanner.scanShallow(entry.path)
+    const directFiles = shallowEntries
+      .filter((e) => e.kind === 'file')
+      .map((e) => ({ path: e.path, name: e.name }))
+    // 자동재생 규칙: 루트에 파일이 직접 있으면 즉시 재생, 하위 폴더뿐이면
+    // 탐색만 (MediaPage로 이동해서 사용자가 직접 고르게 함).
+    if (directFiles.length > 0) {
+      useMediaPlayerStore.getState().playNow(directFiles[0], directFiles)
+    }
+    // Task 4의 MediaPage render-time sync가 useMediaFolderQuery 변경을
+    // 감지해 resetMediaBrowseRoot를 자동 호출하므로, 여기서 라우팅만 하면
+    // 된다.
+    navigate({ to: '/media' })
+  }
 
   return (
     <ContextMenuContent>
@@ -88,7 +118,12 @@ export function GameEntryContextMenu({
           {t('game.launch')}
         </ContextMenuItem>
       )}
-      {entry.kind === 'folder' && (
+      {entry.kind === 'folder' && isAsmrMedia && (
+        <ContextMenuItem onSelect={() => void handlePlayAsmrFolder()}>
+          {t('game.play')}
+        </ContextMenuItem>
+      )}
+      {entry.kind === 'folder' && !isAsmrMedia && (
         <ContextMenuItem onSelect={() => launchGame.mutate(entry)}>
           {t('game.launch')}
         </ContextMenuItem>
