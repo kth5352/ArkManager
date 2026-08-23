@@ -62,6 +62,7 @@ interface MediaPlayerState {
   togglePlay: () => void
   setPlaying: (isPlaying: boolean) => void
   removeFromPlaylist: (index: number) => void
+  reorderPlaylist: (fromIndex: number, toIndex: number) => void
   clearPlaylist: () => void
   setVolume: (volume: number) => void
   toggleMute: () => void
@@ -217,6 +218,25 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
       isPlaying: nextPlaylist.length === 0 ? false : get().isPlaying,
     })
   },
+
+  // Mirrors explorerStore.reorderTabs's splice pattern. currentIndex must
+  // follow the track it pointed at, not stay a fixed number - dragging a
+  // LATER track to before the current one shifts the current one's own
+  // index by +1, and vice versa; recomputing from the moved track's actual
+  // new position (rather than adjusting currentIndex with a +-1 heuristic)
+  // is correct for every relative ordering of fromIndex/toIndex/currentIndex
+  // at once, not just the common cases.
+  reorderPlaylist: (fromIndex, toIndex) =>
+    set((state) => {
+      const currentTrack = state.currentIndex !== null ? state.playlist[state.currentIndex] : null
+      const playlist = [...state.playlist]
+      const [moved] = playlist.splice(fromIndex, 1)
+      playlist.splice(toIndex, 0, moved)
+      const currentIndex = currentTrack
+        ? playlist.findIndex((track) => track.path === currentTrack.path)
+        : null
+      return { playlist, currentIndex }
+    }),
 
   clearPlaylist: () => set({ playlist: [], currentIndex: null, isPlaying: false }),
   setVolume: (volume) => set({ volume: Math.min(1, Math.max(0, volume)) }),

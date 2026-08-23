@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import type { Locale, Theme, WindowCloseBehavior } from '../../shared/types/ipc'
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../lib/clampSidebarWidth'
 import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../lib/clampExplorerTreeWidth'
+import { clampMediaSidebarWidth, MEDIA_SIDEBAR_WIDTH_DEFAULT } from '../lib/clampMediaSidebarWidth'
 import { DEFAULT_LOCALE } from '../i18n/translations'
 
 export const THEME_QUERY_KEY = ['settings', 'theme'] as const
@@ -264,6 +265,51 @@ export function useSetExternalMetadataProviderSettings() {
         EXTERNAL_METADATA_PROVIDER_SETTINGS_QUERY_KEY,
         (current) => ({ enabled: false, url: '', apiKey: '', ...current, ...settings })
       )
+    },
+  })
+}
+
+export const MEDIA_SIDEBAR_OPEN_QUERY_KEY = ['settings', 'media-sidebar-open'] as const
+
+export function useMediaSidebarOpenQuery() {
+  return useQuery({
+    queryKey: MEDIA_SIDEBAR_OPEN_QUERY_KEY,
+    queryFn: async (): Promise<boolean> => {
+      const value = await window.api.settings.getMediaSidebarOpen()
+      return value ?? true
+    },
+  })
+}
+
+export function useSetMediaSidebarOpenMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (open: boolean) => window.api.settings.setMediaSidebarOpen(open),
+    onSuccess: (_data, open) => {
+      queryClient.setQueryData(MEDIA_SIDEBAR_OPEN_QUERY_KEY, open)
+    },
+  })
+}
+
+export const MEDIA_SIDEBAR_WIDTH_QUERY_KEY = ['settings', 'media-sidebar-width'] as const
+
+export function useMediaSidebarWidthQuery() {
+  return useQuery({
+    queryKey: MEDIA_SIDEBAR_WIDTH_QUERY_KEY,
+    queryFn: async (): Promise<number> => {
+      const value = await window.api.settings.getMediaSidebarWidth()
+      return value === null ? MEDIA_SIDEBAR_WIDTH_DEFAULT : clampMediaSidebarWidth(value)
+    },
+  })
+}
+
+export function useSetMediaSidebarWidthMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (width: number) =>
+      window.api.settings.setMediaSidebarWidth(clampMediaSidebarWidth(width)),
+    onSuccess: (_data, width) => {
+      queryClient.setQueryData(MEDIA_SIDEBAR_WIDTH_QUERY_KEY, clampMediaSidebarWidth(width))
     },
   })
 }

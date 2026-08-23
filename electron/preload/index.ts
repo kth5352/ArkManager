@@ -75,6 +75,24 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale-emulator-path' }),
     setLocaleEmulatorPath: (path: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'locale-emulator-path', value: path }),
+    getMediaSidebarOpen: (): Promise<boolean | null> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-sidebar-open' })
+        .then((value: string | null) => (value === null ? null : value === 'true')),
+    setMediaSidebarOpen: (open: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'media-sidebar-open',
+        value: String(open),
+      }),
+    getMediaSidebarWidth: (): Promise<number | null> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-sidebar-width' })
+        .then((value: string | null) => (value === null ? null : Number(value))),
+    setMediaSidebarWidth: (width: number): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'media-sidebar-width',
+        value: String(width),
+      }),
     getLocale: (): Promise<Locale | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale' }),
     setLocale: (value: Locale): Promise<void> =>

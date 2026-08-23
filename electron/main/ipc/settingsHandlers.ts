@@ -62,6 +62,20 @@ function parseStoredExternalMetadataProviderEnabled(raw: string | undefined): st
   return raw === 'true' || raw === 'false' ? raw : null
 }
 
+// Same self-healing principle as parseStoredExplorerTreeOpen, for the media
+// sidebar's own open/closed flag.
+function parseStoredMediaSidebarOpen(raw: string | undefined): string | null {
+  if (raw === undefined) return null
+  return raw === 'true' || raw === 'false' ? raw : null
+}
+
+// Same self-healing principle as parseStoredExplorerTreeWidth, for the media
+// sidebar's persisted width.
+function parseStoredMediaSidebarWidth(raw: string | undefined): string | null {
+  if (raw === undefined) return null
+  return Number.isFinite(Number(raw)) ? raw : null
+}
+
 function parseStoredWindowCloseBehavior(raw: string | undefined): 'ask' | 'quit' | 'tray' | null {
   if (raw === undefined) return null
   const result = WindowCloseBehaviorSchema.safeParse(raw)
@@ -82,6 +96,8 @@ export function registerSettingsHandlers(db: AppDatabase): void {
     if (key === 'window-close-behavior') {
       return parseStoredWindowCloseBehavior(getSetting(db, key))
     }
+    if (key === 'media-sidebar-open') return parseStoredMediaSidebarOpen(getSetting(db, key))
+    if (key === 'media-sidebar-width') return parseStoredMediaSidebarWidth(getSetting(db, key))
     return getSetting(db, key) ?? null
   })
 

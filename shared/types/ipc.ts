@@ -125,6 +125,8 @@ export const SettingKeySchema = z.enum([
   'external-metadata-provider-url',
   'external-metadata-provider-api-key',
   'window-close-behavior',
+  'media-sidebar-open',
+  'media-sidebar-width',
 ])
 export type SettingKey = z.infer<typeof SettingKeySchema>
 
