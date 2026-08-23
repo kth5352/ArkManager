@@ -26,6 +26,7 @@ import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
+import { AddToSavedPlaylistDialog } from '../../components/media/AddToSavedPlaylistDialog'
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { HoverTooltip } from '../../components/ui/hover-tooltip'
 import { Skeleton } from '../../components/ui/skeleton'
@@ -39,6 +40,7 @@ import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndic
 import { useTranslation } from '../../i18n/useTranslation'
 import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 const ROW_HEIGHT = 32
 const HEADER_HEIGHT = 28
@@ -158,6 +160,7 @@ interface DetailListRowProps {
   columnWidths: ColumnWidths
   onOpenDetail: (entry: ScannedEntry) => void
   onExclude: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -173,6 +176,7 @@ function Row({
   columnWidths,
   onOpenDetail,
   onExclude,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -278,6 +282,7 @@ function Row({
         entry={entry}
         onOpenDetail={onOpenDetail}
         onExclude={onExclude}
+        onAddToSavedPlaylist={onAddToSavedPlaylist}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -336,6 +341,9 @@ export function DetailListPage() {
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   const excludeEntry = useExcludeEntry()
+  const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
+    MediaPlaylistTrackDto[] | null
+  >(null)
   // Matches SelectionCheckbox's own condition exactly - it renders nothing
   // at all (not just hidden) while selection mode is off, so the header
   // must skip reserving that slot too, or every row column below silently
@@ -486,6 +494,7 @@ export function DetailListPage() {
                           columnWidths,
                           onOpenDetail: openDetail,
                           onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
+                          onAddToSavedPlaylist: setPendingSavedPlaylistTracks,
                           onRename: openRename,
                           onMove: openMove,
                           onDelete: openDelete,
@@ -504,6 +513,10 @@ export function DetailListPage() {
         {detailSidebarElement}
       </div>
       {dialogElement}
+      <AddToSavedPlaylistDialog
+        tracks={pendingSavedPlaylistTracks ?? []}
+        onClose={() => setPendingSavedPlaylistTracks(null)}
+      />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
+import { AddToSavedPlaylistDialog } from '../../components/media/AddToSavedPlaylistDialog'
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
@@ -46,6 +47,7 @@ import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import { useTranslation } from '../../i18n/useTranslation'
 import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 const ROW_HEIGHT = 84 // 64 + 20 (제목 2번째 줄분)
 
@@ -63,6 +65,7 @@ function GameRow({
   onOpenDetail,
   onHoverChange,
   onExclude,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -75,6 +78,7 @@ function GameRow({
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onExclude: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -208,6 +212,7 @@ function GameRow({
         entry={game}
         onOpenDetail={onOpenDetail}
         onExclude={onExclude}
+        onAddToSavedPlaylist={onAddToSavedPlaylist}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -225,6 +230,7 @@ interface ListRowProps {
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onExclude: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -241,6 +247,7 @@ function Row({
   onOpenDetail,
   onHoverChange,
   onExclude,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -261,6 +268,7 @@ function Row({
         onOpenDetail={onOpenDetail}
         onHoverChange={onHoverChange}
         onExclude={onExclude}
+        onAddToSavedPlaylist={onAddToSavedPlaylist}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -302,6 +310,9 @@ export function ListPage() {
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   const excludeEntry = useExcludeEntry()
+  const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
+    MediaPlaylistTrackDto[] | null
+  >(null)
   useFavoriteShortcut(hoveredGameRef)
   const scanProgress = useScanProgress(isLoading)
 
@@ -399,6 +410,7 @@ export function ListPage() {
                         onOpenDetail: openDetail,
                         onHoverChange: handleHoverChange,
                         onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
+                        onAddToSavedPlaylist: setPendingSavedPlaylistTracks,
                         onRename: openRename,
                         onMove: openMove,
                         onDelete: openDelete,
@@ -416,6 +428,10 @@ export function ListPage() {
         {detailSidebarElement}
       </div>
       {dialogElement}
+      <AddToSavedPlaylistDialog
+        tracks={pendingSavedPlaylistTracks ?? []}
+        onClose={() => setPendingSavedPlaylistTracks(null)}
+      />
     </div>
   )
 }

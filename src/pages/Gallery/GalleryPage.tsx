@@ -9,6 +9,7 @@ import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
+import { AddToSavedPlaylistDialog } from '../../components/media/AddToSavedPlaylistDialog'
 import { ContextMenu, ContextMenuTrigger } from '../../components/ui/context-menu'
 import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { FileKindFilterToggle } from '../../components/layout/FileKindFilterToggle'
@@ -48,6 +49,7 @@ import { formatPlaytime } from '../RecentlyPlayed/formatPlaytime'
 import { useTranslation } from '../../i18n/useTranslation'
 import { invalidateFileListQueries } from '../../services/fileOpsService'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 const CARD_WIDTH = 180
 const GAP = 16
@@ -87,6 +89,7 @@ function GameCard({
   onHoverChange,
   onOpenDetail,
   onExclude,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -100,6 +103,7 @@ function GameCard({
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
   onExclude: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -225,6 +229,7 @@ function GameCard({
         entry={game}
         onOpenDetail={onOpenDetail}
         onExclude={onExclude}
+        onAddToSavedPlaylist={onAddToSavedPlaylist}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -245,6 +250,7 @@ interface GridCellProps {
   onHoverChange: (game: ScannedEntry | null) => void
   onOpenDetail: (game: ScannedEntry) => void
   onExclude: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -265,6 +271,7 @@ function GameCell({
   onHoverChange,
   onOpenDetail,
   onExclude,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -288,6 +295,7 @@ function GameCell({
           onHoverChange={onHoverChange}
           onOpenDetail={onOpenDetail}
           onExclude={onExclude}
+          onAddToSavedPlaylist={onAddToSavedPlaylist}
           onRename={onRename}
           onMove={onMove}
           onDelete={onDelete}
@@ -335,6 +343,9 @@ export function GalleryPage() {
   const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   const excludeEntry = useExcludeEntry()
+  const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
+    MediaPlaylistTrackDto[] | null
+  >(null)
   useFavoriteShortcut(hoveredGameRef)
   const scanProgress = useScanProgress(isLoading)
 
@@ -559,6 +570,7 @@ export function GalleryPage() {
                         onHoverChange: handleHoverChange,
                         onOpenDetail: openDetail,
                         onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
+                        onAddToSavedPlaylist: setPendingSavedPlaylistTracks,
                         onRename: openRename,
                         onMove: openMove,
                         onDelete: openDelete,
@@ -582,6 +594,10 @@ export function GalleryPage() {
         {detailSidebarElement}
       </div>
       {dialogElement}
+      <AddToSavedPlaylistDialog
+        tracks={pendingSavedPlaylistTracks ?? []}
+        onClose={() => setPendingSavedPlaylistTracks(null)}
+      />
     </div>
   )
 }

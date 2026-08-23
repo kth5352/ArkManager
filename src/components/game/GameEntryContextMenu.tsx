@@ -22,6 +22,13 @@ interface GameEntryContextMenuProps {
   // filesystem browser, so its own usage never passes this and the item
   // below never renders there.
   onExclude?: (entry: ScannedEntry) => void
+  // All 4 pages pass this - optional only so the prop can be threaded down
+  // the same page-owns-the-dialog-state path as onExclude/onOpenInNewTab
+  // (see useEntryActionDialogs' own comment on why dialogs live at the page
+  // level, not inside a react-window-recycled row/card). Appends to a
+  // persistent named playlist, distinct from addToPlaylist below (the
+  // ephemeral session queue).
+  onAddToSavedPlaylist?: (tracks: { path: string; name: string }[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -38,6 +45,7 @@ export function GameEntryContextMenu({
   onOpenDetail,
   onOpenInNewTab,
   onExclude,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -65,6 +73,11 @@ export function GameEntryContextMenu({
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => addToPlaylist([{ path: entry.path, name: entry.name }])}>
             {t('media.addToPlaylist')}
+          </ContextMenuItem>
+          <ContextMenuItem
+            onSelect={() => onAddToSavedPlaylist?.([{ path: entry.path, name: entry.name }])}
+          >
+            {t('media.addToSavedPlaylist')}
           </ContextMenuItem>
         </>
       )}

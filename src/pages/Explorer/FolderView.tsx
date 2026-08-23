@@ -11,6 +11,7 @@ import { useExplorerStore } from '../../stores/explorerStore'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { GameEntryContextMenu } from '../../components/game/GameEntryContextMenu'
+import { AddToSavedPlaylistDialog } from '../../components/media/AddToSavedPlaylistDialog'
 import { useFolderScan, useFolderScanRecursive } from '../../services/scannerService'
 import { useGameDetailOverlay } from '../../hooks/useGameDetailOverlay'
 import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
@@ -29,6 +30,7 @@ import { sortEntries } from '../../lib/sortEntries'
 import { relativePath } from './relativePath'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
 import { SelectionToolbar } from '../../components/layout/SelectionToolbar'
 import { useLongPress } from '../../hooks/useLongPress'
@@ -122,6 +124,7 @@ function FolderEntryRow({
   onOpenInNewTab,
   onEntryClick,
   onOpenDetail,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -130,6 +133,7 @@ function FolderEntryRow({
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -184,6 +188,7 @@ function FolderEntryRow({
         entry={entry}
         onOpenDetail={onOpenDetail}
         onOpenInNewTab={onOpenInNewTab}
+        onAddToSavedPlaylist={onAddToSavedPlaylist}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -205,6 +210,7 @@ function FolderEntryCard({
   onOpenInNewTab,
   onEntryClick,
   onOpenDetail,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -214,6 +220,7 @@ function FolderEntryCard({
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -282,6 +289,7 @@ function FolderEntryCard({
         entry={entry}
         onOpenDetail={onOpenDetail}
         onOpenInNewTab={onOpenInNewTab}
+        onAddToSavedPlaylist={onAddToSavedPlaylist}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -391,6 +399,7 @@ interface GridCellProps {
   onOpenInNewTab: (entry: ScannedEntry) => void
   onEntryClick: (entry: ScannedEntry) => void
   onOpenDetail: (entry: ScannedEntry) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
   onRename: (entry: ScannedEntry) => void
   onMove: (entry: ScannedEntry) => void
   onDelete: (entry: ScannedEntry) => void
@@ -407,6 +416,7 @@ function FolderEntryCell({
   onOpenInNewTab,
   onEntryClick,
   onOpenDetail,
+  onAddToSavedPlaylist,
   onRename,
   onMove,
   onDelete,
@@ -422,6 +432,7 @@ function FolderEntryCell({
         onOpenInNewTab={onOpenInNewTab}
         onEntryClick={onEntryClick}
         onOpenDetail={onOpenDetail}
+        onAddToSavedPlaylist={onAddToSavedPlaylist}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -471,6 +482,9 @@ export function FolderView({
     ...recursiveEntries,
   ])
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
+  const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
+    MediaPlaylistTrackDto[] | null
+  >(null)
 
   const codes = recursiveEntries.flatMap((e) => (e.code ? [e.code.value] : []))
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
@@ -672,6 +686,7 @@ export function FolderView({
                         onOpenInNewTab: openInNewTab,
                         onEntryClick: handleEntryClick,
                         onOpenDetail: openDetail,
+                        onAddToSavedPlaylist: setPendingSavedPlaylistTracks,
                         onRename: openRename,
                         onMove: openMove,
                         onDelete: openDelete,
@@ -695,6 +710,7 @@ export function FolderView({
                   onOpenInNewTab={openInNewTab}
                   onEntryClick={handleEntryClick}
                   onOpenDetail={openDetail}
+                  onAddToSavedPlaylist={setPendingSavedPlaylistTracks}
                   onRename={openRename}
                   onMove={openMove}
                   onDelete={openDelete}
@@ -706,6 +722,10 @@ export function FolderView({
       </AnimatePresence>
       {detailOverlayElement}
       {dialogElement}
+      <AddToSavedPlaylistDialog
+        tracks={pendingSavedPlaylistTracks ?? []}
+        onClose={() => setPendingSavedPlaylistTracks(null)}
+      />
     </div>
   )
 }

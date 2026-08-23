@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
 import { useTranslation } from '../../i18n/useTranslation'
 import { setMediaThumbnailWithFeedback } from './mediaThumbnailFeedback'
+import { MediaLikeButton } from '../../components/media/MediaLikeButton'
 
 // A single track row - thumbnail state (whether the current mediathumb://
 // request 404'd, and a cache-busting counter bumped after the user manually
@@ -70,6 +71,7 @@ function MediaTrackRow({
         <Play className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="truncate">{track.name}</span>
       </button>
+      <MediaLikeButton path={track.path} name={track.name} />
       <Button
         variant="ghost"
         size="icon"
