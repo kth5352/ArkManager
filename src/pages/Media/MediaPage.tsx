@@ -109,10 +109,34 @@ function MediaFolderRow({ entry, onOpen }: { entry: ScannedEntry; onOpen: () => 
   )
 }
 
-function MediaBreadcrumb({ path, onNavigate }: { path: string; onNavigate: (path: string) => void }) {
-  const segments = pathToBreadcrumbSegments(path)
+// Only shows segments from the anchor root folder (rootPath) down - the
+// drive-letter/parent-folder prefix above the root (e.g. "C: / Media" above
+// a root of "C:\Media\Work") is never shown, since the user picked that
+// root specifically as their working anchor and everything above it is
+// irrelevant context. Falls back to showing the full path if rootPath
+// somehow isn't a real ancestor of path (shouldn't happen in practice,
+// since mediaBrowsePath is always navigated to from within rootPath's own
+// subtree, but a broken comparison degrading to "show everything" is safer
+// than one that degrades to "show nothing").
+function MediaBreadcrumb({
+  path,
+  rootPath,
+  onNavigate,
+}: {
+  path: string
+  rootPath: string
+  onNavigate: (path: string) => void
+}) {
+  const allSegments = pathToBreadcrumbSegments(path)
+  const rootSegments = pathToBreadcrumbSegments(rootPath)
+  const rootSegmentPath = rootSegments[rootSegments.length - 1]?.path
+  const rootIndex = rootSegmentPath
+    ? allSegments.findIndex((segment) => segment.path === rootSegmentPath)
+    : -1
+  const segments = rootIndex >= 0 ? allSegments.slice(rootIndex) : allSegments
+
   return (
-    <div className="flex min-w-0 items-center gap-1 overflow-x-auto text-xs">
+    <div className="flex min-w-0 items-center gap-1 overflow-x-auto text-xs [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {segments.map((segment, index) => (
         <span key={segment.path} className="flex shrink-0 items-center gap-1">
           {index > 0 && <span className="text-muted-foreground">/</span>}
@@ -183,44 +207,48 @@ export function MediaPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-        <Button size="sm" variant="secondary" onClick={handlePickFolder}>
-          {t('settings.pickFolder')}
-        </Button>
-        {folder && (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('media.goBack')}
-              disabled={!canGoBack}
-              onClick={mediaBrowseGoBack}
-              className="shrink-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('media.goForward')}
-              disabled={!canGoForward}
-              onClick={mediaBrowseGoForward}
-              className="shrink-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <MediaBreadcrumb path={currentPath} onNavigate={navigateMediaBrowseTo} />
-          </>
-        )}
-        {tracks.length > 0 && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="ml-auto shrink-0"
-            onClick={() => addToPlaylist(tracks)}
-          >
-            {t('media.addFolderToPlaylist')}
+      <div className="flex flex-col gap-1 border-b border-border px-4 py-2">
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={handlePickFolder}>
+            {t('settings.pickFolder')}
           </Button>
+          {folder && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('media.goBack')}
+                disabled={!canGoBack}
+                onClick={mediaBrowseGoBack}
+                className="shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('media.goForward')}
+                disabled={!canGoForward}
+                onClick={mediaBrowseGoForward}
+                className="shrink-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {tracks.length > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="ml-auto shrink-0"
+              onClick={() => addToPlaylist(tracks)}
+            >
+              {t('media.addFolderToPlaylist')}
+            </Button>
+          )}
+        </div>
+        {folder && (
+          <MediaBreadcrumb path={currentPath} rootPath={folder} onNavigate={navigateMediaBrowseTo} />
         )}
       </div>
       <div className="flex-1 overflow-auto">
