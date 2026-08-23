@@ -10,8 +10,13 @@ import {
   MEDIA_SIDEBAR_WIDTH_DEFAULT,
 } from '../../lib/clampMediaSidebarWidth'
 import { useTranslation } from '../../i18n/useTranslation'
+import type { MediaSidebarTab } from '../../stores/mediaPlayerStore'
 
-export type MediaSidebarTab = 'playlists' | 'queue' | 'lyrics'
+// Re-exported for existing importers - the canonical definition now lives in
+// mediaPlayerStore.ts (see its own comment) since the active-tab state this
+// type describes is owned there, shared between MediaPlayerHost and
+// AppLayout.tsx.
+export type { MediaSidebarTab }
 
 interface MediaSidebarProps {
   activeTab: MediaSidebarTab
@@ -70,7 +75,16 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
   return (
     <div
       style={{ width }}
-      className="relative flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-card"
+      // relative (stacking context anchor) + z-[60] - one above
+      // FullscreenMediaOverlay's z-50 - keeps this sidebar usable (browsing
+      // the queue/lyrics) even while a video is fullscreen. Now a normal
+      // flex child (not `fixed`, see AppLayout.tsx), but FullscreenMediaOverlay
+      // is still `fixed inset-0 z-50` elsewhere in the tree - since no
+      // ancestor here establishes an isolating stacking context (no
+      // transform/opacity/will-change/isolate on the plain flex/block divs in
+      // between), this element's z-[60] still stacks correctly against that
+      // fixed z-50 sibling per normal CSS stacking rules.
+      className="relative z-[60] flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-card"
     >
       <div
         onPointerDown={handleResizePointerDown}

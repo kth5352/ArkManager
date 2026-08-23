@@ -8,6 +8,14 @@ export interface MediaTrack {
 
 export type RepeatMode = 'off' | 'all' | 'one'
 
+// Owned here (not by MediaSidebar.tsx, which re-exports it) because
+// AppLayout.tsx now renders <MediaSidebar> in a different part of the tree
+// than MediaPlayerHost (which still owns MediaPlayerBar, whose queue button
+// a later task wires to this same tab) - a plain component-local useState
+// can't be shared across that boundary, so this needs to live in the store
+// both sides already import.
+export type MediaSidebarTab = 'playlists' | 'queue' | 'lyrics'
+
 interface MediaPlayerState {
   playlist: MediaTrack[]
   currentIndex: number | null
@@ -50,6 +58,13 @@ interface MediaPlayerState {
   // MediaPlayerCore, not in this store, since they change too often
   // (~4x/sec) to broadcast across windows.
   handoffTimeSeconds: number | null
+  // Which MediaSidebar tab is active. Current-queue-first per this
+  // feature's design (Task 3 brief) - unlike ExplorerTreeOpen/DetailSidebar's
+  // own persisted state, this isn't persisted across restarts, only whether
+  // the sidebar itself is open/closed (useMediaSidebarOpenQuery) and its
+  // width are.
+  sidebarActiveTab: MediaSidebarTab
+  setSidebarActiveTab: (tab: MediaSidebarTab) => void
   // Plays `track` immediately. `siblings` (when given, e.g. the other media
   // files in the same folder) replaces the whole playlist so next/prev walk
   // through them in listing order; omitted, the playlist becomes just this
@@ -86,6 +101,8 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   previousVolume: 1,
   isDetached: false,
   handoffTimeSeconds: null,
+  sidebarActiveTab: 'queue',
+  setSidebarActiveTab: (tab) => set({ sidebarActiveTab: tab }),
   repeatMode: 'off',
   shuffleMode: false,
   shuffleOrder: [],

@@ -6,16 +6,39 @@ import { Sidebar } from './Sidebar'
 import { BulkCrawlProgressBanner } from './BulkCrawlProgressBanner'
 import { useBulkCrawlProgress } from '../../hooks/useBulkCrawlMissingMetadata'
 import { MediaPlayerHost } from '../media/MediaPlayerHost'
+import { MediaSidebar } from '../media/MediaSidebar'
 import { useMediaPlayerSync } from '../../hooks/useMediaPlayerSync'
+import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { ExcludedEntriesDialog } from './ExcludedEntriesDialog'
 import { useTheme } from '../../hooks/useTheme'
 import { useMoveEntries, performUndo } from '../../services/fileOpsService'
+import {
+  useMediaSidebarOpenQuery,
+  useSetMediaSidebarOpenMutation,
+} from '../../services/settingsService'
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const bulkCrawlProgress = useBulkCrawlProgress()
   const { theme } = useTheme()
   useMediaPlayerSync()
+
+  // Gates MediaSidebar on whether there's an active/queued track, matching
+  // MediaPlayerHost's own `if (!playback) return null` guard's intent - this
+  // component can't call useMediaPlayback itself (that hook sets up the
+  // singular <video>/<audio> refs/listeners and must stay owned solely by
+  // MediaPlayerHost), so currentIndex !== null stands in as the proxy:
+  // useMediaPlayback derives `track` (and therefore `playback`) from
+  // `playlist[currentIndex]`, so currentIndex !== null is true in exactly
+  // the cases that matter here, modulo a transient/self-healing stale-index
+  // edge case documented in mediaPlayerStore.ts's next()/prev().
+  const hasActiveTrack = useMediaPlayerStore((s) => s.currentIndex !== null)
+  const sidebarActiveTab = useMediaPlayerStore((s) => s.sidebarActiveTab)
+  const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
+  const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
+    useMediaSidebarOpenQuery()
+  const setMediaSidebarOpenMutation = useSetMediaSidebarOpenMutation()
+  const mediaSidebarOpen = mediaSidebarOpenSetting ?? true
 
   // Global (not scoped to Explorer's TabBar, unlike its own Ctrl+W handler)
   // since a move - and therefore something to undo - can originate from
@@ -71,6 +94,25 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </motion.div>
           </AnimatePresence>
         </main>
+        {/* Real flex sibling of Sidebar/main (matches DetailSidebar's own
+            pattern) rather than a `fixed` overlay - this is what makes it
+            push `<main>`'s width instead of floating on top of
+            DetailSidebar/BulkCrawlProgressBanner, which both live outside
+            this row. MediaSidebar's own root still carries `relative
+            z-[60]` (see MediaSidebar.tsx) so it keeps painting above
+            FullscreenMediaOverlay's `fixed inset-0 z-50` (rendered elsewhere,
+            inside MediaPlayerHost) whenever both are visible at once - plain
+            flex/block divs like this row and this component's own root don't
+            establish an isolating stacking context, so that fixed z-50
+            element and this relative z-[60] element still stack against each
+            other by z-index alone, regardless of DOM position. */}
+        {hasActiveTrack && !mediaSidebarOpenLoading && mediaSidebarOpen && (
+          <MediaSidebar
+            activeTab={sidebarActiveTab}
+            onActiveTabChange={setSidebarActiveTab}
+            onClose={() => setMediaSidebarOpenMutation.mutate(false)}
+          />
+        )}
       </div>
       <MediaPlayerHost />
       <BulkCrawlProgressBanner progress={bulkCrawlProgress} />
