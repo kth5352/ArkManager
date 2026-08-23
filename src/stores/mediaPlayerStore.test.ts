@@ -75,6 +75,44 @@ describe('useMediaPlayerStore reorderPlaylist', () => {
   })
 })
 
+describe('useMediaPlayerStore appendAndPlay', () => {
+  beforeEach(() => {
+    useMediaPlayerStore.setState({
+      playlist: [
+        { path: 'C:/a.mp3', name: 'a' },
+        { path: 'C:/b.mp3', name: 'b' },
+      ],
+      currentIndex: 0,
+      isPlaying: false,
+    })
+  })
+
+  it('appends a new track to the end of the existing playlist and plays it', () => {
+    useMediaPlayerStore.getState().appendAndPlay({ path: 'C:/c.mp3', name: 'c' })
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist.map((t) => t.name)).toEqual(['a', 'b', 'c'])
+    expect(state.currentIndex).toBe(2)
+    expect(state.isPlaying).toBe(true)
+  })
+
+  it('jumps to an already-queued track instead of duplicating it', () => {
+    useMediaPlayerStore.getState().appendAndPlay({ path: 'C:/b.mp3', name: 'b' })
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist.map((t) => t.name)).toEqual(['a', 'b'])
+    expect(state.currentIndex).toBe(1)
+    expect(state.isPlaying).toBe(true)
+  })
+
+  it('works on an empty playlist (behaves like playNow for the first track)', () => {
+    useMediaPlayerStore.setState({ playlist: [], currentIndex: null, isPlaying: false })
+    useMediaPlayerStore.getState().appendAndPlay({ path: 'C:/a.mp3', name: 'a' })
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist).toEqual([{ path: 'C:/a.mp3', name: 'a' }])
+    expect(state.currentIndex).toBe(0)
+    expect(state.isPlaying).toBe(true)
+  })
+})
+
 describe('useMediaPlayerStore sidebarActiveTab', () => {
   it('defaults to "playlists"', () => {
     expect(useMediaPlayerStore.getState().sidebarActiveTab).toBe('playlists')

@@ -167,7 +167,7 @@ export function MediaPage() {
   const { data: folder = null, isLoading: isFolderLoading } = useMediaFolderQuery()
   const setMediaFolder = useSetMediaFolderMutation()
   const pickFolder = usePickLibraryFolder()
-  const playNow = useMediaPlayerStore((s) => s.playNow)
+  const appendAndPlay = useMediaPlayerStore((s) => s.appendAndPlay)
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
   const mediaBrowsePath = useMediaPlayerStore((s) => s.mediaBrowsePath)
   const mediaBrowseHistory = useMediaPlayerStore((s) => s.mediaBrowseHistory)
@@ -279,7 +279,7 @@ export function MediaPage() {
               <MediaTrackRow
                 key={track.path}
                 track={track}
-                onPlay={() => playNow(track, tracks)}
+                onPlay={() => appendAndPlay(track)}
                 onAddToPlaylist={() => addToPlaylist([track])}
               />
             ))}

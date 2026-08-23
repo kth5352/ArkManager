@@ -110,6 +110,12 @@ interface MediaPlayerState {
   // through them in listing order; omitted, the playlist becomes just this
   // one track (the dedicated Media page's "바로 재생" case).
   playNow: (track: MediaTrack, siblings?: MediaTrack[]) => void
+  // 큐를 통째로 교체하는 playNow와 달리, 기존 큐는 그대로 두고 이 트랙 하나만
+  // 끝에 추가(이미 큐에 있으면 새로 추가하지 않고 그 자리로 점프)한 뒤
+  // 재생을 전환한다 - MediaPage.tsx에서 파일 목록의 트랙 하나를 클릭했을 때
+  // 쓰는 것으로, "이 폴더 전체를 새 큐로 열기"가 의도인 playNow와는 다른
+  // 시맨틱이다.
+  appendAndPlay: (track: MediaTrack) => void
   addToPlaylist: (tracks: MediaTrack[]) => void
   playAt: (index: number) => void
   next: () => void
@@ -189,6 +195,17 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
     const list = siblings ?? [track]
     const index = list.findIndex((t) => t.path === track.path)
     set({ playlist: list, currentIndex: index === -1 ? 0 : index, isPlaying: true })
+  },
+
+  appendAndPlay: (track) => {
+    const { playlist } = get()
+    const existingIndex = playlist.findIndex((t) => t.path === track.path)
+    if (existingIndex !== -1) {
+      set({ currentIndex: existingIndex, isPlaying: true })
+      return
+    }
+    const nextPlaylist = [...playlist, track]
+    set({ playlist: nextPlaylist, currentIndex: nextPlaylist.length - 1, isPlaying: true })
   },
 
   addToPlaylist: (tracks) => {
