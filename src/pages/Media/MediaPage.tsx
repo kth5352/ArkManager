@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, ImagePlus, Play, Plus, Folder as FolderIcon } from 'lucide-react'
 import { usePickLibraryFolder } from '../../services/librariesService'
 import { useFolderScan } from '../../services/scannerService'
@@ -153,16 +153,17 @@ export function MediaPage() {
   const mediaBrowseGoForward = useMediaPlayerStore((s) => s.mediaBrowseGoForward)
   const resetMediaBrowseRoot = useMediaPlayerStore((s) => s.resetMediaBrowseRoot)
 
-  // Render-time sync (not a useEffect, matches this codebase's established
-  // pattern) - whenever the persisted root folder changes to a NEW value
-  // (a fresh pick, or first load), reset the browse path/history to that
-  // root. `syncedFolder` tracks which root we've already reset for, so this
-  // only fires once per actual root change, not on every render.
-  const [syncedFolder, setSyncedFolder] = useState<string | null | undefined>(undefined)
-  if (folder !== syncedFolder) {
-    setSyncedFolder(folder)
+  // A real useEffect, not the render-time compare-and-setState pattern this
+  // codebase uses elsewhere - that pattern is appropriate only for a
+  // component's own local React state (see FolderView.tsx's own comment on
+  // this), not for calling into an EXTERNAL Zustand store like
+  // resetMediaBrowseRoot, which now also has a second, independent
+  // subscriber (FolderTreeTab.tsx, mounted elsewhere in the tree via
+  // AppLayout) - this is exactly the side-effect-on-a-dependency-change
+  // case useEffect exists for.
+  useEffect(() => {
     if (folder !== null) resetMediaBrowseRoot(folder)
-  }
+  }, [folder, resetMediaBrowseRoot])
 
   const currentPath = mediaBrowsePath ?? folder ?? ''
   const { data: entries, isLoading } = useFolderScan(currentPath, { enabled: currentPath !== '' })

@@ -18,6 +18,7 @@ const TABLE_MIGRATIONS: TableMigration[] = [
       'release_date',
       'genres',
       'cover_image_path',
+      'work_type',
       'created_at',
       'updated_at',
     ],

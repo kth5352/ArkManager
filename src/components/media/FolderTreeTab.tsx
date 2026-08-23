@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useFolderScanRecursive } from '../../services/scannerService'
 import { useMediaFolderQuery } from '../../services/settingsService'
@@ -105,6 +106,7 @@ function TreeNodeRow({
 // it uses useFolderScanRecursive instead of useFolderScan.
 export function FolderTreeTab() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { data: rootPath = null } = useMediaFolderQuery()
   const mediaBrowsePath = useMediaPlayerStore((s) => s.mediaBrowsePath)
   const navigateMediaBrowseTo = useMediaPlayerStore((s) => s.navigateMediaBrowseTo)
@@ -152,6 +154,17 @@ export function FolderTreeTab() {
     }
   }
 
+  // This tab (MediaSidebar's 4th tab, mounted via AppLayout) can be visible
+  // from any page, not just /media - navigateMediaBrowseTo alone only
+  // updates shared store state, which has no visible effect unless
+  // MediaPage (the state's other consumer) happens to be mounted. Without
+  // this, clicking a node elsewhere silently updated state the user
+  // couldn't see.
+  const handleNavigate = (path: string): void => {
+    navigateMediaBrowseTo(path)
+    navigate({ to: '/media' })
+  }
+
   const toggleExpand = (path: string): void => {
     const normalized = normalizePath(path)
     setExpandedPaths((prev) => {
@@ -187,7 +200,7 @@ export function FolderTreeTab() {
           depth={0}
           expandedPaths={expandedPaths}
           onToggleExpand={toggleExpand}
-          onNavigate={navigateMediaBrowseTo}
+          onNavigate={handleNavigate}
           activePath={activePath}
         />
       )}

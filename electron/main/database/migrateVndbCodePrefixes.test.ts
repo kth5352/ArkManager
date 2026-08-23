@@ -22,6 +22,7 @@ describe('migrateVndbCodePrefixes', () => {
         release_date TEXT,
         genres TEXT,
         cover_image_path TEXT,
+        work_type TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -62,11 +63,11 @@ describe('migrateVndbCodePrefixes', () => {
     const createdAt = '2026-01-01T00:00:00.000Z'
     const metadataInsert = sqlite.prepare(
       `INSERT INTO game_metadata
-        (code, title, circle, release_date, genres, cover_image_path, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        (code, title, circle, release_date, genres, cover_image_path, work_type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     for (const code of ['VN17', 'VN30', 'VN40', 'VN1', 'VNV1', 'VNV13774', 'VNV751']) {
-      metadataInsert.run(code, code, null, null, null, null, createdAt, createdAt)
+      metadataInsert.run(code, code, null, null, null, null, null, createdAt, createdAt)
     }
     const failureInsert = sqlite.prepare(
       `INSERT INTO metadata_failures (code, attempted_sources, reason, updated_at)
