@@ -25,4 +25,31 @@ describe('useMediaPlayerStore reorderPlaylist', () => {
     const state = useMediaPlayerStore.getState()
     expect(state.playlist[state.currentIndex!].name).toBe('a')
   })
+
+  it('leaves playlist unchanged when fromIndex is out of bounds', () => {
+    const initialPlaylist = useMediaPlayerStore.getState().playlist
+    const initialCurrentIndex = useMediaPlayerStore.getState().currentIndex
+    useMediaPlayerStore.getState().reorderPlaylist(5, 1)
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist).toEqual(initialPlaylist)
+    expect(state.currentIndex).toBe(initialCurrentIndex)
+  })
+
+  it('leaves playlist unchanged when toIndex is out of bounds', () => {
+    const initialPlaylist = useMediaPlayerStore.getState().playlist
+    const initialCurrentIndex = useMediaPlayerStore.getState().currentIndex
+    useMediaPlayerStore.getState().reorderPlaylist(1, 10)
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist).toEqual(initialPlaylist)
+    expect(state.currentIndex).toBe(initialCurrentIndex)
+  })
+
+  it('correctly updates currentIndex when the playing track is moved', () => {
+    // currentIndex starts at 0 (track "a") - moving "a" to the end
+    // should update currentIndex to 2 to keep pointing at "a"
+    useMediaPlayerStore.getState().reorderPlaylist(0, 2)
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist[state.currentIndex!].name).toBe('a')
+    expect(state.currentIndex).toBe(2)
+  })
 })
