@@ -12,6 +12,7 @@ import {
 import { useTranslation } from '../../i18n/useTranslation'
 import { PlaylistManagementTab } from './PlaylistManagementTab'
 import { CurrentQueueTab } from './CurrentQueueTab'
+import { LyricsLogTab } from './LyricsLogTab'
 import type { MediaSidebarTab } from '../../stores/mediaPlayerStore'
 
 // Re-exported for existing importers - the canonical definition now lives in
@@ -119,10 +120,14 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {/* Task 6 replaces the remaining placeholder with LyricsLogTab. */}
         {activeTab === 'playlists' && <PlaylistManagementTab />}
         {activeTab === 'queue' && <CurrentQueueTab />}
-        {activeTab === 'lyrics' && <div data-testid="lyrics-tab-placeholder" />}
+        {/* No playback/parsedLyrics props threaded through here - see
+            LyricsLogTab's own top comment for why it sources both itself
+            (a store bridge for currentTime/seek, a fresh useMediaLyrics call
+            for parsedLyrics) rather than receiving them from this tree,
+            which sits outside MediaPlayerHost's (see AppLayout.tsx). */}
+        {activeTab === 'lyrics' && <LyricsLogTab />}
       </div>
     </div>
   )

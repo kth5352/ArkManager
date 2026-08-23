@@ -19,6 +19,8 @@ import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsT
 export function MediaPlayerHost() {
   const isDetached = useMediaPlayerStore((s) => s.isDetached)
   const setDetached = useMediaPlayerStore((s) => s.setDetached)
+  const setPlaybackCurrentTime = useMediaPlayerStore((s) => s.setPlaybackCurrentTime)
+  const setSeekPlayback = useMediaPlayerStore((s) => s.setSeekPlayback)
   const { mediaRef, playback } = useMediaPlayback({ isHost: !isDetached })
   const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
   const parsedLyrics = useMemo(
@@ -67,6 +69,24 @@ export function MediaPlayerHost() {
       setDetached(false, seconds)
     })
   }, [setDetached])
+
+  // Bridges playback.currentTime/handleSeek (tied to the live <video>/
+  // <audio> element this component alone mounts via useMediaPlayback) into
+  // mediaPlayerStore so LyricsLogTab - rendered from AppLayout.tsx, a
+  // separate part of the tree - can read/drive them without a second
+  // useMediaPlayback instance (which would mount a second live media
+  // element ref; forbidden, see this component's own top comment). A
+  // genuine external-system side effect (not a derived-value sync), so a
+  // plain useEffect is appropriate here, unlike the render-time adjustments
+  // above. Resets to 0/no-op once playback empties out (handleSeek would
+  // otherwise stay pointed at a stale, now-unmounted element).
+  useEffect(() => {
+    setPlaybackCurrentTime(playback?.currentTime ?? 0)
+  }, [playback?.currentTime, setPlaybackCurrentTime])
+
+  useEffect(() => {
+    setSeekPlayback(playback ? playback.handleSeek : () => {})
+  }, [playback, setSeekPlayback])
 
   // Resets the auto-expand state whenever playback empties out (e.g. the
   // last track gets removed from the playlist via MediaPlaylistPanel's

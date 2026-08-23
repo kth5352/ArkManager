@@ -65,6 +65,24 @@ interface MediaPlayerState {
   // width are.
   sidebarActiveTab: MediaSidebarTab
   setSidebarActiveTab: (tab: MediaSidebarTab) => void
+  // Bridges playback's live currentTime/handleSeek (both tied to the actual
+  // mounted <video>/<audio> element, which only exists inside
+  // MediaPlayerHost's single useMediaPlayback() call) across the tree
+  // boundary to LyricsLogTab, which AppLayout.tsx now renders as a sibling
+  // of MediaPlayerHost rather than a descendant of it - same cross-tree
+  // reasoning as sidebarActiveTab above, just for playback position instead
+  // of UI tab state. Unlike sidebarActiveTab (genuinely shared UI state),
+  // these two are a one-way bridge: MediaPlayerHost is the sole writer
+  // (via an effect syncing playback.currentTime/handleSeek into the store),
+  // LyricsLogTab the sole reader. parsedLyrics itself does NOT need this
+  // treatment - it's a pure derivation from useMediaLyrics (keyed by track
+  // path), so LyricsLogTab just calls that hook again itself; TanStack
+  // Query dedupes the identical query key against MediaPlayerHost's own
+  // call, so this isn't a duplicate fetch.
+  playbackCurrentTime: number
+  setPlaybackCurrentTime: (time: number) => void
+  seekPlayback: (value: number) => void
+  setSeekPlayback: (fn: (value: number) => void) => void
   // Plays `track` immediately. `siblings` (when given, e.g. the other media
   // files in the same folder) replaces the whole playlist so next/prev walk
   // through them in listing order; omitted, the playlist becomes just this
@@ -103,6 +121,14 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   handoffTimeSeconds: null,
   sidebarActiveTab: 'queue',
   setSidebarActiveTab: (tab) => set({ sidebarActiveTab: tab }),
+  playbackCurrentTime: 0,
+  setPlaybackCurrentTime: (time) => set({ playbackCurrentTime: time }),
+  // No-op default so LyricsLogTab's onSeek is always safe to call even
+  // before MediaPlayerHost's effect has registered the real handleSeek (or
+  // after playback has emptied out and it registers a no-op again - see
+  // MediaPlayerHost's sync effect).
+  seekPlayback: () => {},
+  setSeekPlayback: (fn) => set({ seekPlayback: fn }),
   repeatMode: 'off',
   shuffleMode: false,
   shuffleOrder: [],
