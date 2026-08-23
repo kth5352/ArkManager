@@ -82,6 +82,7 @@ const GENRE_BADGE_WIDTH_ESTIMATE = 60
 function GameCard({
   game,
   genres,
+  workType,
   cardWidth,
   duplicateCount,
   archiveExtracted,
@@ -96,6 +97,7 @@ function GameCard({
 }: {
   game: ScannedEntry
   genres: string[]
+  workType: string | null
   cardWidth: number
   duplicateCount: number | undefined
   archiveExtracted: boolean
@@ -230,6 +232,7 @@ function GameCard({
         onOpenDetail={onOpenDetail}
         onExclude={onExclude}
         onAddToSavedPlaylist={onAddToSavedPlaylist}
+        workType={workType}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
@@ -243,7 +246,7 @@ interface GridCellProps {
   columnCount: number
   gap: number
   cardWidth: number
-  metadataByCode: Record<string, { genres: string[] }>
+  metadataByCode: Record<string, { genres: string[]; workType: string | null }>
   duplicateGroups: Map<string, ScannedEntry[]>
   extractedArchiveCodes: Set<string>
   onFilterByGenre: (genre: string) => void
@@ -280,6 +283,7 @@ function GameCell({
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
+  const workType = game.code ? (metadataByCode[game.code.value]?.workType ?? null) : null
   const duplicateCount = getDuplicateGroupForEntry(game, duplicateGroups)?.length
   const archiveExtracted = isArchiveExtracted(game, extractedArchiveCodes)
   return (
@@ -288,6 +292,7 @@ function GameCell({
         <GameCard
           game={game}
           genres={genres}
+          workType={workType}
           cardWidth={cardWidth}
           duplicateCount={duplicateCount}
           archiveExtracted={archiveExtracted}
