@@ -154,7 +154,7 @@ function HeaderCell({
 
 interface DetailListRowProps {
   entries: ScannedEntry[]
-  metadataByCode: Record<string, { genres: string[] }>
+  metadataByCode: Record<string, { genres: string[]; workType: string | null }>
   duplicateGroups: Map<string, ScannedEntry[]>
   extractedArchiveCodes: Set<string>
   columnWidths: ColumnWidths
@@ -190,6 +190,7 @@ function Row({
   })
   if (!entry) return null
   const genres = entry.code ? (metadataByCode[entry.code.value]?.genres ?? []) : []
+  const workType = entry.code ? (metadataByCode[entry.code.value]?.workType ?? null) : null
   const duplicates = getDuplicateGroupForEntry(entry, duplicateGroups)
   const archiveExtracted = isArchiveExtracted(entry, extractedArchiveCodes)
 
@@ -283,6 +284,7 @@ function Row({
         onOpenDetail={onOpenDetail}
         onExclude={onExclude}
         onAddToSavedPlaylist={onAddToSavedPlaylist}
+        workType={workType}
         onRename={onRename}
         onMove={onMove}
         onDelete={onDelete}
