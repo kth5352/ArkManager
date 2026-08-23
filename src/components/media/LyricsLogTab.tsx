@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '../../lib/utils'
 import { getActiveLyricLine, parseLrc } from '../../lib/lrc'
+import { isScrollEventFromAutoScroll } from '../../lib/isScrollEventFromAutoScroll'
 import { useTranslation } from '../../i18n/useTranslation'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaLyrics } from './useMediaLyrics'
@@ -109,27 +110,17 @@ export function LyricsLogTab() {
     if (!containerRef.current) return
     const scrollTarget = findScrollableAncestor(containerRef.current)
     const handleScroll = (): void => {
-      // A scroll event arriving within 600ms of the last one we attribute
-      // to our own auto-scroll is presumed to still be part of that same
-      // smooth scrollIntoView's event train (which fires several scroll
-      // events in a row) - refresh the window instead of just checking it,
-      // so a large jump (opening the tab on a far-down active line, or a
-      // click-seek across a long lyrics file) that keeps emitting scroll
-      // events past the original fixed 600ms doesn't get misread as a user
-      // scroll partway through. That refresh alone would let a continuous
-      // user scroll gesture (successive native scroll events well under
-      // 600ms apart, which is the normal case for wheel/trackpad input)
-      // re-arm the window forever and never pause auto-follow - so it's
-      // capped by a hard ceiling measured from when this auto-scroll
-      // originally started (autoScrollStartedAt, set once per triggered
-      // scrollIntoView, never refreshed here). A scroll event only counts
-      // as "still ours" while BOTH the short refresh window and the
-      // overall ceiling hold; once either lapses, it's treated as a
-      // genuine user gesture and pauses auto-follow.
+      // See isScrollEventFromAutoScroll's doc comment for the full history
+      // of why this needs both a refresh window AND a hard ceiling (this
+      // decision has already been the site of two prior bugs). Refreshing
+      // lastAutoScrollAt on a "still ours" verdict lets a large jump
+      // (opening the tab on a far-down active line, or a click-seek across
+      // a long lyrics file) that keeps emitting scroll events past a single
+      // fixed window avoid being misread as a user scroll partway through,
+      // while the ceiling (never refreshed here) stops a continuous user
+      // scroll gesture from re-arming the window forever.
       const now = Date.now()
-      const withinRefreshWindow = now - lastAutoScrollAt.current < 600
-      const withinCeiling = now - autoScrollStartedAt.current < 1500
-      if (withinRefreshWindow && withinCeiling) {
+      if (isScrollEventFromAutoScroll(now, lastAutoScrollAt.current, autoScrollStartedAt.current)) {
         lastAutoScrollAt.current = now
         return
       }
