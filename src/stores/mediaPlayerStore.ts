@@ -157,11 +157,13 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   mediaBrowseGoBack: () =>
     set((state) => {
       const next = goBackInHistory({ entries: state.mediaBrowseHistory, index: state.mediaBrowseHistoryIndex })
+      if (next.entries.length === 0) return {}
       return { mediaBrowsePath: next.entries[next.index], mediaBrowseHistoryIndex: next.index }
     }),
   mediaBrowseGoForward: () =>
     set((state) => {
       const next = goForwardInHistory({ entries: state.mediaBrowseHistory, index: state.mediaBrowseHistoryIndex })
+      if (next.entries.length === 0) return {}
       return { mediaBrowsePath: next.entries[next.index], mediaBrowseHistoryIndex: next.index }
     }),
   resetMediaBrowseRoot: (rootPath) =>

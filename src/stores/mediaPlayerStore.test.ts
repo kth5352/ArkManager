@@ -124,4 +124,24 @@ describe('useMediaPlayerStore media browse navigation', () => {
     useMediaPlayerStore.getState().mediaBrowseGoForward()
     expect(useMediaPlayerStore.getState().mediaBrowsePath).toBe('C:\\Media\\Work\\mp3')
   })
+
+  it('mediaBrowseGoBack on empty history is a no-op and does not throw', () => {
+    const initialPath = useMediaPlayerStore.getState().mediaBrowsePath
+    expect(() => {
+      useMediaPlayerStore.getState().mediaBrowseGoBack()
+    }).not.toThrow()
+    const state = useMediaPlayerStore.getState()
+    expect(state.mediaBrowsePath).toBe(initialPath)
+    expect(state.mediaBrowsePath).toBe(null)
+  })
+
+  it('mediaBrowseGoForward on empty history is a no-op and does not throw', () => {
+    const initialPath = useMediaPlayerStore.getState().mediaBrowsePath
+    expect(() => {
+      useMediaPlayerStore.getState().mediaBrowseGoForward()
+    }).not.toThrow()
+    const state = useMediaPlayerStore.getState()
+    expect(state.mediaBrowsePath).toBe(initialPath)
+    expect(state.mediaBrowsePath).toBe(null)
+  })
 })
