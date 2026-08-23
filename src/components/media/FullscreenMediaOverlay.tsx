@@ -1,14 +1,16 @@
 // src/components/media/FullscreenMediaOverlay.tsx
 import { useState } from 'react'
-import { ListMusic, Minimize2, Music2, PictureInPicture2 } from 'lucide-react'
+import { ListMusic, Minimize2, PictureInPicture2 } from 'lucide-react'
 import { MediaTransportBar } from './MediaTransportBar'
-import { MediaPlaylistPanel } from './MediaPlaylistPanel'
 import { MediaLikeButton } from './MediaLikeButton'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { useTranslation } from '../../i18n/useTranslation'
+import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
+import { useSetMediaSidebarOpenMutation } from '../../services/settingsService'
 import { cn } from '../../lib/utils'
 import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
+import logoUrl from '../../../LOGO.png'
 
 interface FullscreenMediaOverlayProps {
   mediaRef: (el: HTMLVideoElement | HTMLAudioElement | null) => void
@@ -42,7 +44,8 @@ export function FullscreenMediaOverlay({
   onToggleLyrics,
 }: FullscreenMediaOverlayProps) {
   const { t } = useTranslation()
-  const [showPlaylist, setShowPlaylist] = useState(false)
+  const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
+  const setSidebarOpen = useSetMediaSidebarOpenMutation()
   // No pre-existing auto-hide/hover-tracking mechanism exists on this
   // control bar to reuse (confirmed by reading this file fresh - the
   // bottom bar is always visible, not idle-timeout-hidden) - this is a
@@ -54,6 +57,19 @@ export function FullscreenMediaOverlay({
   // reasoning as GameThumbnail.tsx's own localFailedPath.
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
   const thumbFailed = thumbFailedPath === playback.track.path
+
+  // Opens the sidebar's "current queue" tab instead of this overlay's own
+  // (now removed) showPlaylist/MediaPlaylistPanel popover - mirrors
+  // MediaPlayerBar.tsx's openQueueTab exactly (same two calls, both
+  // globally accessible so no prop threading through MediaPlayerHost is
+  // needed). The sidebar's z-[60] sits deliberately above this overlay's
+  // z-50 (see MediaSidebar.tsx's own comment) specifically so it stays
+  // usable during fullscreen, which is what made this overlay's own
+  // duplicate popover UI superseded in the first place.
+  const openQueueTab = (): void => {
+    setSidebarOpen.mutate(true)
+    setSidebarActiveTab('queue')
+  }
 
   return (
     <div className={cn('fixed inset-0 z-50 flex-col bg-black', visible ? 'flex' : 'hidden')}>
@@ -68,7 +84,9 @@ export function FullscreenMediaOverlay({
           <>
             <audio ref={mediaRef} {...playback.mediaElementProps} />
             {thumbFailed ? (
-              <Music2 className="h-32 w-32 text-white/30" />
+              <div className="flex h-32 w-32 items-center justify-center">
+                <img src={logoUrl} alt="" className="h-full w-full object-contain opacity-30" />
+              </div>
             ) : (
               <img
                 src={buildMediaThumbnailUrl(playback.track.path)}
@@ -116,9 +134,9 @@ export function FullscreenMediaOverlay({
         <div className="flex items-center justify-end gap-3">
           <MediaLikeButton path={playback.track.path} name={playback.track.name} className="text-white/70 hover:text-white" />
           <button
-            onClick={() => setShowPlaylist((v) => !v)}
+            onClick={openQueueTab}
             aria-label={t('media.playlist')}
-            className={cn('text-white/70 hover:text-white', showPlaylist && 'text-white')}
+            className="text-white/70 hover:text-white"
           >
             <ListMusic className="h-4 w-4" />
           </button>
@@ -141,7 +159,6 @@ export function FullscreenMediaOverlay({
             </button>
           )}
         </div>
-        {showPlaylist && <MediaPlaylistPanel dark className="max-h-40" />}
       </div>
     </div>
   )

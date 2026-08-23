@@ -74,11 +74,13 @@ export function GameEntryContextMenu({
           <ContextMenuItem onSelect={() => addToPlaylist([{ path: entry.path, name: entry.name }])}>
             {t('media.addToPlaylist')}
           </ContextMenuItem>
-          <ContextMenuItem
-            onSelect={() => onAddToSavedPlaylist?.([{ path: entry.path, name: entry.name }])}
-          >
-            {t('media.addToSavedPlaylist')}
-          </ContextMenuItem>
+          {onAddToSavedPlaylist && (
+            <ContextMenuItem
+              onSelect={() => onAddToSavedPlaylist([{ path: entry.path, name: entry.name }])}
+            >
+              {t('media.addToSavedPlaylist')}
+            </ContextMenuItem>
+          )}
         </>
       )}
       {capabilities.canDirectLaunchFile && (

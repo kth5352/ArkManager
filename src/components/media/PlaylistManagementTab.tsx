@@ -1,4 +1,14 @@
 import { useRef, useState } from 'react'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { ChevronDown, ChevronRight, Pencil, Play, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -13,6 +23,7 @@ import {
   useLikedTracks,
 } from '../../services/mediaPlaylistService'
 import { useTranslation } from '../../i18n/useTranslation'
+import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 // The "좋아요" entry is a virtual playlist backed entirely by
 // useLikedTracks() - it never has a row in media_playlists, so it has no
@@ -60,6 +71,49 @@ function LikedPlaylistRow() {
   )
 }
 
+// One track row within an expanded playlist - draggable via dnd-kit's
+// useSortable, mirroring CurrentQueueTab.tsx's QueueRow exactly (same
+// track.path-as-id convention). Kept as its own component (rather than
+// inline in the .map below) purely for readability; unlike
+// AddToSavedPlaylistDialog's AppendButton, this isn't a hooks-in-a-loop
+// requirement, useSortable is fine to call from inside a .map callback
+// too, but a named component reads clearer here.
+function PlaylistTrackRow({
+  track,
+  disabled,
+  onRemove,
+}: {
+  track: MediaPlaylistTrackDto
+  disabled: boolean
+  onRemove: () => void
+}) {
+  const { t } = useTranslation()
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: track.path,
+  })
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+      {...listeners}
+      className="flex items-center gap-1 px-1 py-1 text-xs text-muted-foreground"
+    >
+      <span className="min-w-0 flex-1 truncate">{track.name}</span>
+      <button
+        type="button"
+        aria-label={t('media.removeFromPlaylist')}
+        onClick={onRemove}
+        disabled={disabled}
+        className="shrink-0 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </li>
+  )
+}
+
 function UserPlaylistRow({ id, name }: { id: string; name: string }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
@@ -70,6 +124,13 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
   const deleteMutation = useDeleteMediaPlaylist()
   const setTracksMutation = useSetMediaPlaylistTracks(id)
   const playNow = useMediaPlayerStore((s) => s.playNow)
+  // Own DndContext scoped to just this row's track list (not one shared
+  // across all playlists) - multiple playlists can be expanded
+  // simultaneously, so a shared context would let a drag started in one
+  // playlist's list interact with another's. Same PointerSensor/
+  // closestCenter configuration as CurrentQueueTab.tsx's session-queue
+  // reorder.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const commitRename = (): void => {
     const trimmed = nameDraft.trim()
@@ -80,6 +141,24 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
   const removeTrack = (path: string): void => {
     if (setTracksMutation.isPending) return
     setTracksMutation.mutate(tracks.filter((track) => track.path !== path))
+  }
+
+  // Reuses the exact same setTracksMutation.isPending guard removeTrack
+  // already established (Task 4's race-condition fix) - a drag-reorder
+  // must not fire while a remove/create is still in flight for this same
+  // playlist, and vice versa, or the two mutate() calls would race against
+  // each other on the same full-replace endpoint.
+  const handleDragEnd = (event: DragEndEvent): void => {
+    if (setTracksMutation.isPending) return
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const fromIndex = tracks.findIndex((track) => track.path === active.id)
+    const toIndex = tracks.findIndex((track) => track.path === over.id)
+    if (fromIndex === -1 || toIndex === -1) return
+    const reordered = [...tracks]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+    setTracksMutation.mutate(reordered)
   }
 
   return (
@@ -134,20 +213,23 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
           {tracks.length === 0 && (
             <li className="px-1 py-1 text-xs text-muted-foreground">{t('media.emptyPlaylistTracks')}</li>
           )}
-          {tracks.map((track) => (
-            <li key={track.path} className="flex items-center gap-1 px-1 py-1 text-xs text-muted-foreground">
-              <span className="min-w-0 flex-1 truncate">{track.name}</span>
-              <button
-                type="button"
-                aria-label={t('media.removeFromPlaylist')}
-                onClick={() => removeTrack(track.path)}
-                disabled={setTracksMutation.isPending}
-                className="shrink-0 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+          {tracks.length > 0 && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext
+                items={tracks.map((track) => track.path)}
+                strategy={verticalListSortingStrategy}
               >
-                <X className="h-3 w-3" />
-              </button>
-            </li>
-          ))}
+                {tracks.map((track) => (
+                  <PlaylistTrackRow
+                    key={track.path}
+                    track={track}
+                    disabled={setTracksMutation.isPending}
+                    onRemove={() => removeTrack(track.path)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
         </ul>
       )}
     </div>

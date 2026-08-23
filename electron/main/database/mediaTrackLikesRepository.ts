@@ -24,11 +24,14 @@ export function toggleTrackLike(db: AppDatabase, path: string, name: string): vo
 // media_track_likes only stores `path` - the track's display name is
 // whatever the caller already knows (the row that owns the heart button
 // always already has the track's name in hand), so there's nothing to
-// persist redundantly here. listLikedTracks can't return a `name` from
-// this table alone; callers needing display names get them by joining
-// against the same `MediaTrack[]` source the caller already scanned from,
-// or the renderer can pass a name lookup - see mediaPlaylistService.ts's
-// useLikedTracks for how the IPC layer resolves this.
+// persist redundantly here. `name` is accepted by toggleTrackLike above
+// purely for API-shape symmetry with sibling endpoints that DO need a name
+// (e.g. setMediaPlaylistTracks) - it's discarded (`void name`), not
+// resolved anywhere. listLikedTracks below returns bare `{path}[]`;
+// mediaPlaylistService.ts's useLikedTracks passes that straight through
+// with no name resolution of its own - callers needing a display name
+// currently just derive one from the path itself (e.g.
+// PlaylistManagementTab.tsx's `path.split(/[\\/]/).pop()`).
 // Tiebreak on rowid (same pattern as gameUserDataRepository.ts's
 // listRecentlyPlayed) - likedAt is an ISO string with millisecond
 // precision, and two toggles in quick succession (e.g. back-to-back in a

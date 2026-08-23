@@ -1,6 +1,7 @@
+import { useMemo } from 'react'
 import { Heart } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useIsTrackLiked, useToggleTrackLike } from '../../services/mediaPlaylistService'
+import { useLikedTracks, useToggleTrackLike } from '../../services/mediaPlaylistService'
 import { useTranslation } from '../../i18n/useTranslation'
 
 interface MediaLikeButtonProps {
@@ -12,10 +13,19 @@ interface MediaLikeButtonProps {
 // Shared by the docked bar, fullscreen overlay, sidebar current-queue tab,
 // and the Media page's file list - every heart toggle in the app goes
 // through this one component so the liked-state query/mutation wiring
-// lives in exactly one place.
+// lives in exactly one place. Derives `liked` from the single shared
+// useLikedTracks() query (all liked paths in one IPC round-trip) rather
+// than a dedicated useIsTrackLiked(path) query per instance - MediaPage.tsx
+// renders a plain, non-virtualized list, so a folder with hundreds of
+// tracks would otherwise mount hundreds of simultaneous per-instance
+// queries (an N+1 IPC pattern). useIsTrackLiked itself is left exported
+// from mediaPlaylistService.ts as a reasonable standalone primitive, just
+// unused here.
 export function MediaLikeButton({ path, name, className }: MediaLikeButtonProps) {
   const { t } = useTranslation()
-  const { data: liked = false } = useIsTrackLiked(path)
+  const { data: likedTracks } = useLikedTracks()
+  const likedPaths = useMemo(() => new Set((likedTracks ?? []).map((track) => track.path)), [likedTracks])
+  const liked = likedPaths.has(path)
   const toggle = useToggleTrackLike()
 
   return (

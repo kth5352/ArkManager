@@ -65,22 +65,55 @@ export function LyricsLogTab() {
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [activeLine, followEnabled])
 
-  if (parsedLyrics === null || parsedLyrics.kind !== 'synced') {
+  // This component's own root has no overflow/height constraint - the
+  // element that actually scrolls is MediaSidebar.tsx's shared
+  // `min-h-0 flex-1 overflow-y-auto` wrapper, a DOM ANCESTOR of this
+  // component's root (not this root itself). Native `scroll` events don't
+  // bubble, so an onScroll prop on this root would never fire - a plain
+  // useEffect that walks up to `containerRef.current.parentElement` (the
+  // real scrolling ancestor, confirmed against MediaSidebar.tsx's current
+  // JSX: this component is mounted as a direct child of that wrapper) and
+  // attaches a native listener there is required instead. React's
+  // synthetic onScroll can only ever attach to this component's own root,
+  // never an ancestor it doesn't render.
+  // Depends on parsedLyrics?.kind (not []) - this component stays mounted
+  // across track changes (only its returned JSX changes), and the
+  // scrollable `containerRef` div only exists in the 'synced' branch below
+  // (the null/'static' branches return a plain <p>, so containerRef.current
+  // is null then). Re-running whenever `kind` flips ensures a track that
+  // switches into 'synced' lyrics after mounting with none/static gets its
+  // listener attached against the now-rendered div, rather than being stuck
+  // with the stale "no element yet" result from whenever this effect last
+  // ran.
+  useEffect(() => {
+    const scrollParent = containerRef.current?.parentElement
+    if (!scrollParent) return
+    const handleScroll = (): void => {
+      // Ignore scroll events for a short window after an auto-scroll we
+      // triggered ourselves (smooth scrollIntoView fires several scroll
+      // events over ~300-500ms) - only a scroll outside that window is a
+      // real user gesture that should pause auto-follow.
+      if (Date.now() - lastAutoScrollAt.current < 600) return
+      setFollowEnabled(false)
+    }
+    scrollParent.addEventListener('scroll', handleScroll)
+    return () => scrollParent.removeEventListener('scroll', handleScroll)
+  }, [parsedLyrics?.kind])
+
+  if (parsedLyrics === null) {
     return <p className="px-1 py-2 text-xs text-muted-foreground">{t('media.noSyncedLyrics')}</p>
   }
 
-  const handleScroll = (): void => {
-    // Ignore scroll events for a short window after an auto-scroll we
-    // triggered ourselves (smooth scrollIntoView fires several scroll
-    // events over ~300-500ms) - only a scroll outside that window is a
-    // real user gesture that should pause auto-follow. Reading a ref here
-    // is fine - this runs inside an event handler, not during render.
-    if (Date.now() - lastAutoScrollAt.current < 600) return
-    setFollowEnabled(false)
+  if (parsedLyrics.kind === 'static') {
+    return (
+      <p className="whitespace-pre-wrap px-2 py-1 text-sm text-muted-foreground">
+        {parsedLyrics.lines.join('\n')}
+      </p>
+    )
   }
 
   return (
-    <div ref={containerRef} onScroll={handleScroll} className="flex flex-col gap-0.5">
+    <div ref={containerRef} className="flex flex-col gap-0.5">
       {parsedLyrics.lines.map((line) => (
         <button
           key={`${line.time}-${line.text}`}

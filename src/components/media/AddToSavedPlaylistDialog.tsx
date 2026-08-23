@@ -33,9 +33,23 @@ function AppendButton({
   tracks: MediaPlaylistTrackDto[]
   onDone: () => void
 }) {
-  const { data: existingTracks = [] } = useMediaPlaylistTracks(playlistId)
+  // Reads the query object itself (not just `.data` with a `[]` default) -
+  // useSetMediaPlaylistTracks is a FULL-REPLACE API (delete-all-then-
+  // reinsert, see mediaPlaylistsRepository.ts's setMediaPlaylistTracks), so
+  // if existingTracks silently defaulted to [] while the per-playlist
+  // tracks query was still pending (or had errored), `merged` below would
+  // become just the new track(s) and clicking add would SILENTLY DELETE
+  // every existing track in this playlist. Disabling the button while
+  // pending/errored - mirroring PlaylistManagementTab's UserPlaylistRow
+  // removeTrack guard on setTracksMutation.isPending - prevents that.
+  const tracksQuery = useMediaPlaylistTracks(playlistId)
   const setTracks = useSetMediaPlaylistTracks(playlistId)
   const handleAdd = (): void => {
+    // Defense in depth beyond the disabled button above - bail out if the
+    // data genuinely isn't loaded yet (e.g. a stale click event queued
+    // right as the query resolves).
+    if (tracksQuery.data === undefined) return
+    const existingTracks = tracksQuery.data
     const existingPaths = new Set(existingTracks.map((track) => track.path))
     const merged = [
       ...existingTracks,
@@ -44,7 +58,12 @@ function AppendButton({
     setTracks.mutate(merged, { onSuccess: onDone })
   }
   return (
-    <Button variant="secondary" size="sm" onClick={handleAdd} disabled={setTracks.isPending}>
+    <Button
+      variant="secondary"
+      size="sm"
+      onClick={handleAdd}
+      disabled={tracksQuery.isPending || tracksQuery.isError || setTracks.isPending}
+    >
       +
     </Button>
   )

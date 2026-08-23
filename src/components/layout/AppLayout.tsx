@@ -23,16 +23,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { theme } = useTheme()
   useMediaPlayerSync()
 
-  // Gates MediaSidebar on whether there's an active/queued track, matching
-  // MediaPlayerHost's own `if (!playback) return null` guard's intent - this
-  // component can't call useMediaPlayback itself (that hook sets up the
-  // singular <video>/<audio> refs/listeners and must stay owned solely by
-  // MediaPlayerHost), so currentIndex !== null stands in as the proxy:
-  // useMediaPlayback derives `track` (and therefore `playback`) from
-  // `playlist[currentIndex]`, so currentIndex !== null is true in exactly
-  // the cases that matter here, modulo a transient/self-healing stale-index
-  // edge case documented in mediaPlayerStore.ts's next()/prev().
-  const hasActiveTrack = useMediaPlayerStore((s) => s.currentIndex !== null)
   const sidebarActiveTab = useMediaPlayerStore((s) => s.sidebarActiveTab)
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
   const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
@@ -106,7 +96,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
             establish an isolating stacking context, so that fixed z-50
             element and this relative z-[60] element still stack against each
             other by z-index alone, regardless of DOM position. */}
-        {hasActiveTrack && !mediaSidebarOpenLoading && mediaSidebarOpen && (
+        {/* No longer gated on whether a track is queued (currentIndex !==
+            null) - the sidebar's playlist-management tab is a persistent
+            feature (create/rename/delete/play saved playlists, reachable
+            from a context-menu action with nothing playing) that has no
+            business being tied to playback state; only the queue/lyrics
+            tabs legitimately need something playing, and both already
+            degrade to their own empty-state UI when playlist/currentIndex
+            are empty (see CurrentQueueTab's `playlist.length === 0` guard
+            and LyricsLogTab's `parsedLyrics === null` guard, the latter
+            fed by useMediaLyrics(null) short-circuiting via its own
+            `enabled: trackPath !== null`). */}
+        {!mediaSidebarOpenLoading && mediaSidebarOpen && (
           <MediaSidebar
             activeTab={sidebarActiveTab}
             onActiveTabChange={setSidebarActiveTab}

@@ -74,7 +74,7 @@ export function MediaPlayerBar({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          disabled={!onExpandVideo}
+          disabled={isDetached || !onExpandVideo}
           onClick={onExpandVideo}
           aria-label={t('media.expand')}
           className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
@@ -100,7 +100,7 @@ export function MediaPlayerBar({
             variant="ghost"
             size="icon"
             onClick={onExpandVideo}
-            aria-label={t('media.expand')}
+            aria-label={t('media.expandVideo')}
             className="shrink-0"
           >
             <Maximize2 className="h-4 w-4" />

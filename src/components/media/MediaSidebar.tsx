@@ -15,10 +15,14 @@ import { CurrentQueueTab } from './CurrentQueueTab'
 import { LyricsLogTab } from './LyricsLogTab'
 import type { MediaSidebarTab } from '../../stores/mediaPlayerStore'
 
-// Re-exported for existing importers - the canonical definition now lives in
-// mediaPlayerStore.ts (see its own comment) since the active-tab state this
-// type describes is owned there, shared between MediaPlayerHost and
-// AppLayout.tsx.
+// Re-exported so callers that only need the tab-name type can import it
+// alongside this component instead of reaching into mediaPlayerStore.ts
+// directly - the canonical definition still lives there (see its own
+// comment) since the active-tab state this type describes is owned there,
+// shared between MediaPlayerHost and AppLayout.tsx. No current importer
+// actually uses this re-export (both existing references go straight to
+// mediaPlayerStore.ts); kept as a convenience surface, not a compatibility
+// shim for anything that exists today.
 export type { MediaSidebarTab }
 
 interface MediaSidebarProps {
