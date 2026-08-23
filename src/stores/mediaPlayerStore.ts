@@ -58,11 +58,16 @@ interface MediaPlayerState {
   // MediaPlayerCore, not in this store, since they change too often
   // (~4x/sec) to broadcast across windows.
   handoffTimeSeconds: number | null
-  // Which MediaSidebar tab is active. Current-queue-first per this
-  // feature's design (Task 3 brief) - unlike ExplorerTreeOpen/DetailSidebar's
-  // own persisted state, this isn't persisted across restarts, only whether
-  // the sidebar itself is open/closed (useMediaSidebarOpenQuery) and its
-  // width are.
+  // Which MediaSidebar tab is active. Defaults to 'playlists' (changed from
+  // the original Task 3 brief's queue-first default) - now that the sidebar
+  // can genuinely open with nothing playing (AppLayout.tsx no longer gates
+  // it on hasActiveTrack, see that file's own comment), defaulting to
+  // 'queue' would greet a first-open user with the queue tab's empty
+  // "재생목록이 없습니다." state instead of the one tab that's always useful
+  // regardless of playback state: managing saved playlists. Unlike
+  // ExplorerTreeOpen/DetailSidebar's own persisted state, this still isn't
+  // persisted across restarts, only whether the sidebar itself is
+  // open/closed (useMediaSidebarOpenQuery) and its width are.
   sidebarActiveTab: MediaSidebarTab
   setSidebarActiveTab: (tab: MediaSidebarTab) => void
   // Bridges playback's live currentTime/handleSeek (both tied to the actual
@@ -119,7 +124,7 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   previousVolume: 1,
   isDetached: false,
   handoffTimeSeconds: null,
-  sidebarActiveTab: 'queue',
+  sidebarActiveTab: 'playlists',
   setSidebarActiveTab: (tab) => set({ sidebarActiveTab: tab }),
   playbackCurrentTime: 0,
   setPlaybackCurrentTime: (time) => set({ playbackCurrentTime: time }),

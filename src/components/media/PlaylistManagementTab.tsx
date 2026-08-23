@@ -93,7 +93,7 @@ function PlaylistTrackRow({
   })
 
   return (
-    <li
+    <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
@@ -110,7 +110,7 @@ function PlaylistTrackRow({
       >
         <X className="h-3 w-3" />
       </button>
-    </li>
+    </div>
   )
 }
 
@@ -119,7 +119,17 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
   const [expanded, setExpanded] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState(name)
-  const { data: tracks = [] } = useMediaPlaylistTracks(id)
+  // Read the full query object (not just `.data`) so removeTrack/
+  // handleDragEnd below can also guard on isFetching, not just the
+  // mutation's own isPending - useSetMediaPlaylistTracks's onSuccess fires
+  // invalidateQueries without awaiting it, so isPending flips back to false
+  // before the refetch it triggered actually lands with the post-reorder
+  // tracks. Without also checking isFetching, a second rapid drag/remove in
+  // that window reads this stale `tracks` array and full-replaces the
+  // playlist from it, silently discarding the first reorder - the same
+  // staleness race Task 4 already fixed once for removeTrack alone.
+  const tracksQuery = useMediaPlaylistTracks(id)
+  const tracks = tracksQuery.data ?? []
   const renameMutation = useRenameMediaPlaylist()
   const deleteMutation = useDeleteMediaPlaylist()
   const setTracksMutation = useSetMediaPlaylistTracks(id)
@@ -139,17 +149,19 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
   }
 
   const removeTrack = (path: string): void => {
-    if (setTracksMutation.isPending) return
+    if (setTracksMutation.isPending || tracksQuery.isFetching) return
     setTracksMutation.mutate(tracks.filter((track) => track.path !== path))
   }
 
-  // Reuses the exact same setTracksMutation.isPending guard removeTrack
-  // already established (Task 4's race-condition fix) - a drag-reorder
-  // must not fire while a remove/create is still in flight for this same
-  // playlist, and vice versa, or the two mutate() calls would race against
-  // each other on the same full-replace endpoint.
+  // Reuses the exact same guard removeTrack already established (Task 4's
+  // race-condition fix, extended here to also cover tracksQuery.isFetching
+  // - see the comment above tracksQuery's declaration) - a drag-reorder
+  // must not fire while a remove/create/reorder is still in flight (or its
+  // resulting refetch still pending) for this same playlist, and vice
+  // versa, or the two mutate() calls would race against each other on the
+  // same full-replace endpoint using stale data.
   const handleDragEnd = (event: DragEndEvent): void => {
-    if (setTracksMutation.isPending) return
+    if (setTracksMutation.isPending || tracksQuery.isFetching) return
     const { active, over } = event
     if (!over || active.id === over.id) return
     const fromIndex = tracks.findIndex((track) => track.path === active.id)
@@ -209,9 +221,9 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
         </Button>
       </div>
       {expanded && (
-        <ul className="ml-5 flex flex-col gap-0.5">
+        <div className="ml-5 flex flex-col gap-0.5">
           {tracks.length === 0 && (
-            <li className="px-1 py-1 text-xs text-muted-foreground">{t('media.emptyPlaylistTracks')}</li>
+            <p className="px-1 py-1 text-xs text-muted-foreground">{t('media.emptyPlaylistTracks')}</p>
           )}
           {tracks.length > 0 && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -223,14 +235,14 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
                   <PlaylistTrackRow
                     key={track.path}
                     track={track}
-                    disabled={setTracksMutation.isPending}
+                    disabled={setTracksMutation.isPending || tracksQuery.isFetching}
                     onRemove={() => removeTrack(track.path)}
                   />
                 ))}
               </SortableContext>
             </DndContext>
           )}
-        </ul>
+        </div>
       )}
     </div>
   )

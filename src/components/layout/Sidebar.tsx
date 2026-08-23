@@ -48,9 +48,16 @@ export function Sidebar() {
   // toggling it rather than unconditionally opening, matching the
   // already-translated, previously-unused `media.sidebarToggle` label's
   // "toggle" framing.
-  const { data: mediaSidebarOpenSetting } = useMediaSidebarOpenQuery()
+  const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
+    useMediaSidebarOpenQuery()
   const setMediaSidebarOpenMutation = useSetMediaSidebarOpenMutation()
-  const mediaSidebarOpen = mediaSidebarOpenSetting ?? true
+  // Falls back to closed (false), matching useMediaSidebarOpenQuery's own
+  // default and AppLayout.tsx's read of the same setting - see that
+  // function's comment. isLoading is also checked below to disable the
+  // toggle button itself while the query is still in its initial fetch, so
+  // a click during that brief window can't write a value that then fights
+  // with whatever the query resolves to moments later.
+  const mediaSidebarOpen = mediaSidebarOpenSetting ?? false
 
   return (
     <aside className="flex w-56 flex-col border-r border-border bg-card p-4">
@@ -77,6 +84,7 @@ export function Sidebar() {
         className="justify-start gap-2"
         aria-label={t('media.sidebarToggle')}
         title={t('media.sidebarToggle')}
+        disabled={mediaSidebarOpenLoading}
         onClick={() => setMediaSidebarOpenMutation.mutate(!mediaSidebarOpen)}
       >
         <ListMusic className="h-4 w-4" />

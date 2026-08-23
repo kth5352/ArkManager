@@ -28,7 +28,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
     useMediaSidebarOpenQuery()
   const setMediaSidebarOpenMutation = useSetMediaSidebarOpenMutation()
-  const mediaSidebarOpen = mediaSidebarOpenSetting ?? true
+  // Falls back to closed (false), matching useMediaSidebarOpenQuery's own
+  // default - see that function's comment. Only matters for the instant
+  // before the query resolves anyway, since mediaSidebarOpenLoading already
+  // gates rendering below.
+  const mediaSidebarOpen = mediaSidebarOpenSetting ?? false
 
   // Global (not scoped to Explorer's TabBar, unlike its own Ctrl+W handler)
   // since a move - and therefore something to undo - can originate from

@@ -76,16 +76,16 @@ describe('useMediaPlayerStore reorderPlaylist', () => {
 })
 
 describe('useMediaPlayerStore sidebarActiveTab', () => {
-  it('defaults to "queue"', () => {
-    expect(useMediaPlayerStore.getState().sidebarActiveTab).toBe('queue')
+  it('defaults to "playlists"', () => {
+    expect(useMediaPlayerStore.getState().sidebarActiveTab).toBe('playlists')
   })
 
   it('setSidebarActiveTab updates the active tab', () => {
     useMediaPlayerStore.getState().setSidebarActiveTab('lyrics')
     expect(useMediaPlayerStore.getState().sidebarActiveTab).toBe('lyrics')
-    useMediaPlayerStore.getState().setSidebarActiveTab('playlists')
-    expect(useMediaPlayerStore.getState().sidebarActiveTab).toBe('playlists')
-    // Reset back to the default so this test doesn't leak state into others.
     useMediaPlayerStore.getState().setSidebarActiveTab('queue')
+    expect(useMediaPlayerStore.getState().sidebarActiveTab).toBe('queue')
+    // Reset back to the default so this test doesn't leak state into others.
+    useMediaPlayerStore.getState().setSidebarActiveTab('playlists')
   })
 })

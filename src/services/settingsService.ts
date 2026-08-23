@@ -271,12 +271,19 @@ export function useSetExternalMetadataProviderSettings() {
 
 export const MEDIA_SIDEBAR_OPEN_QUERY_KEY = ['settings', 'media-sidebar-open'] as const
 
+// Defaults to closed (false) when nothing is persisted yet. Before commit
+// 72d5d38 removed AppLayout.tsx's hasActiveTrack gate on <MediaSidebar>, a
+// `true` default here was harmless - that gate suppressed rendering
+// whenever nothing was playing, regardless of this setting. Now that
+// <MediaSidebar> renders whenever this setting alone says open, a `true`
+// default would put every fresh install / never-toggled-it user into a
+// permanently-open 320px sidebar showing an empty queue on every page.
 export function useMediaSidebarOpenQuery() {
   return useQuery({
     queryKey: MEDIA_SIDEBAR_OPEN_QUERY_KEY,
     queryFn: async (): Promise<boolean> => {
       const value = await window.api.settings.getMediaSidebarOpen()
-      return value ?? true
+      return value ?? false
     },
   })
 }
