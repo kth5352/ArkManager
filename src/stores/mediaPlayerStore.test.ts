@@ -144,4 +144,35 @@ describe('useMediaPlayerStore media browse navigation', () => {
     expect(state.mediaBrowsePath).toBe(initialPath)
     expect(state.mediaBrowsePath).toBe(null)
   })
+
+  it('resetMediaBrowseRoot is idempotent - calling with same root leaves current sub-navigation unchanged', () => {
+    // First, set up the root
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    // Then navigate to a subfolder (e.g., via tree-node click)
+    useMediaPlayerStore.getState().navigateMediaBrowseTo('C:\\Media\\Work\\mp3')
+    expect(useMediaPlayerStore.getState().mediaBrowsePath).toBe('C:\\Media\\Work\\mp3')
+    const historyBeforeResetAgain = [...useMediaPlayerStore.getState().mediaBrowseHistory]
+    const indexBeforeResetAgain = useMediaPlayerStore.getState().mediaBrowseHistoryIndex
+    // Now call resetMediaBrowseRoot with the same root again (simulating MediaPage remount)
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    // The path should remain unchanged at the subfolder
+    const state = useMediaPlayerStore.getState()
+    expect(state.mediaBrowsePath).toBe('C:\\Media\\Work\\mp3')
+    expect(state.mediaBrowseHistory).toEqual(historyBeforeResetAgain)
+    expect(state.mediaBrowseHistoryIndex).toBe(indexBeforeResetAgain)
+  })
+
+  it('resetMediaBrowseRoot resets when the root genuinely changes', () => {
+    // Set up initial root and navigate to a subfolder
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    useMediaPlayerStore.getState().navigateMediaBrowseTo('C:\\Media\\Work\\mp3')
+    expect(useMediaPlayerStore.getState().mediaBrowsePath).toBe('C:\\Media\\Work\\mp3')
+    // Now reset to a different root (e.g., ASMR folder change)
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\ASMR')
+    // The path should be reset to the new root
+    const state = useMediaPlayerStore.getState()
+    expect(state.mediaBrowsePath).toBe('C:\\Media\\ASMR')
+    expect(state.mediaBrowseHistory).toEqual(['C:\\Media\\ASMR'])
+    expect(state.mediaBrowseHistoryIndex).toBe(0)
+  })
 })
