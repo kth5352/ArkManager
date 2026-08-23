@@ -1,5 +1,6 @@
 // src/components/media/FullscreenMediaOverlay.tsx
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { ListMusic, Minimize2, PictureInPicture2 } from 'lucide-react'
 import { MediaTransportBar } from './MediaTransportBar'
 import { MediaLikeButton } from './MediaLikeButton'
@@ -44,6 +45,7 @@ export function FullscreenMediaOverlay({
   onToggleLyrics,
 }: FullscreenMediaOverlayProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
   // No pre-existing auto-hide/hover-tracking mechanism exists on this
@@ -60,15 +62,20 @@ export function FullscreenMediaOverlay({
 
   // Opens the sidebar's "current queue" tab instead of this overlay's own
   // (now removed) showPlaylist/MediaPlaylistPanel popover - mirrors
-  // MediaPlayerBar.tsx's openQueueTab exactly (same two calls, both
+  // MediaPlayerBar.tsx's openQueueTab exactly (same three calls, all
   // globally accessible so no prop threading through MediaPlayerHost is
   // needed). The sidebar's z-[60] sits deliberately above this overlay's
   // z-50 (see MediaSidebar.tsx's own comment) specifically so it stays
   // usable during fullscreen, which is what made this overlay's own
-  // duplicate popover UI superseded in the first place.
+  // duplicate popover UI superseded in the first place. MediaSidebar only
+  // renders on /media though (AppLayout.tsx's render gate), and this
+  // overlay - like the docked bar - can be visible from any route, so the
+  // navigate() call is what actually makes the sidebar it just opened
+  // show up anywhere.
   const openQueueTab = (): void => {
     setSidebarOpen.mutate(true)
     setSidebarActiveTab('queue')
+    navigate({ to: '/media' })
   }
 
   return (

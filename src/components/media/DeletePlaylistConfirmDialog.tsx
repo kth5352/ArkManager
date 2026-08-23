@@ -19,7 +19,13 @@ export function DeletePlaylistConfirmDialog({ playlist, onClose }: DeletePlaylis
 
   return (
     <Dialog open={playlist !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      {/* MediaSidebar renders at a deliberate z-[60] (see its own comment)
+          to stay usable during fullscreen playback, which sits above this
+          dialog's default Radix z-50 with nothing in between establishing
+          an isolating stacking context. Raise both the content and its
+          dimming overlay above that so the sidebar can't visually cover
+          this dialog's buttons while it's open. */}
+      <DialogContent className="z-[70]" overlayClassName="z-[70]">
         <DialogHeader>
           <DialogTitle>{t('media.deletePlaylistConfirmTitle')}</DialogTitle>
         </DialogHeader>

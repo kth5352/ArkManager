@@ -29,10 +29,17 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    // Lets a specific dialog instance raise its dimming overlay above some
+    // other fixed/sticky element that would otherwise paint on top of it
+    // (e.g. MediaSidebar's deliberate z-[60] - see
+    // DeletePlaylistConfirmDialog.tsx) without changing the z-50 default
+    // every other DialogContent in the app still relies on.
+    overlayClassName?: string
+  }
+>(({ className, overlayClassName, children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

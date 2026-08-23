@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import logoUrl from '../../../LOGO.png'
 import { ListMusic, Maximize2, X } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
@@ -48,6 +49,7 @@ export function MediaPlayerBar({
   onToggleLyrics,
 }: MediaPlayerBarProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
@@ -58,9 +60,17 @@ export function MediaPlayerBar({
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
   const thumbFailed = thumbFailedPath === playback.track.path
 
+  // MediaSidebar (where the "queue" tab actually lives) only renders on
+  // /media - see AppLayout.tsx's render gate. This bar itself is mounted
+  // on every route (via MediaPlayerHost), so from anywhere else this used
+  // to silently write sidebar-open/queue-tab state with nothing visible
+  // rendering it. Navigating to /media makes the click do something the
+  // user can see, same pattern as FolderTreeTab.tsx/usePlayAsmrFolder.ts's
+  // own navigate({ to: '/media' }) calls from off-route.
   const openQueueTab = (): void => {
     setSidebarOpen.mutate(true)
     setSidebarActiveTab('queue')
+    navigate({ to: '/media' })
   }
 
   return (
