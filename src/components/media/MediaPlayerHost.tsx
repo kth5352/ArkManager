@@ -3,9 +3,14 @@ import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaPlayback } from './useMediaPlayback'
 import { MediaPlayerBar } from './MediaPlayerBar'
 import { FullscreenMediaOverlay } from './FullscreenMediaOverlay'
+import { MediaSidebar, type MediaSidebarTab } from './MediaSidebar'
 import { parseLrc } from '../../lib/lrc'
 import { useMediaLyrics } from './useMediaLyrics'
 import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsToggleState'
+import {
+  useMediaSidebarOpenQuery,
+  useSetMediaSidebarOpenMutation,
+} from '../../services/settingsService'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -35,6 +40,15 @@ export function MediaPlayerHost() {
     if (!playback?.track.path) return
     setLyricsDisabledTrackPaths((paths) => toggleLyricsDisabledForTrack(playback.track.path, paths))
   }
+
+  // Current-queue-first per this feature's design (Task 3 brief) - unlike
+  // ExplorerTreeOpen/DetailSidebar's own persisted state, which tab is
+  // active isn't persisted across restarts, only whether the sidebar itself
+  // is open/closed (useMediaSidebarOpenQuery) and its width are.
+  const [sidebarTab, setSidebarTab] = useState<MediaSidebarTab>('queue')
+  const { data: sidebarOpenSetting, isLoading: sidebarOpenLoading } = useMediaSidebarOpenQuery()
+  const setSidebarOpenMutation = useSetMediaSidebarOpenMutation()
+  const sidebarOpen = sidebarOpenSetting ?? true
 
   // Starts minimized (false), not expanded - the auto-expand effect below
   // flips this true the first time a VIDEO track becomes current, but
@@ -133,6 +147,29 @@ export function MediaPlayerHost() {
           parsedLyrics={parsedLyrics}
           onToggleLyrics={toggleLyrics}
         />
+      )}
+      {/* MediaSidebar's own root relies on a real-height ancestor for its
+          h-full (same assumption ExplorerSidebar/DetailSidebar make inside
+          their own flex-row parents) - but MediaPlayerHost itself is mounted
+          in AppLayout as a plain flow sibling below the main content row
+          (see AppLayout.tsx), with no such ancestor and no `main`-row access
+          from here. `fixed inset-y-0 right-0` gives it real viewport height
+          independent of that ancestry (the same technique
+          FullscreenMediaOverlay already uses via its own `fixed inset-0`),
+          rather than restructuring AppLayout.tsx just for this. z-[60] - one
+          above FullscreenMediaOverlay's z-50 - keeps it usable (browsing the
+          queue/lyrics) even while a video is fullscreen, deliberately
+          floating over the video's own right edge rather than squeezing
+          FullscreenMediaOverlay's layout, which would require changes there
+          out of this task's scope. */}
+      {!sidebarOpenLoading && sidebarOpen && (
+        <div className="fixed inset-y-0 right-0 z-[60]">
+          <MediaSidebar
+            activeTab={sidebarTab}
+            onActiveTabChange={setSidebarTab}
+            onClose={() => setSidebarOpenMutation.mutate(false)}
+          />
+        </div>
       )}
     </>
   )
