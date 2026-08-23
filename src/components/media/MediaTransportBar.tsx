@@ -30,6 +30,12 @@ interface MediaTransportBarProps {
   lyricsEnabled?: boolean
   hasLyrics?: boolean
   onToggleLyrics?: () => void
+  // Shrinks the repeat/shuffle/lyrics-toggle/volume cluster's icon sizes and
+  // hides the track-name label (the docked bar's own new top row already
+  // shows the name - rendering it a second time here would duplicate it).
+  // prev/play/next/seek-bar/time keep their normal size regardless, per the
+  // design spec's "지금과 동일한 비중 유지" requirement for those.
+  compact?: boolean
 }
 
 // Prev/play-pause/next/seek/volume row - shared by the docked bar, the
@@ -45,6 +51,7 @@ export function MediaTransportBar({
   lyricsEnabled = false,
   hasLyrics = false,
   onToggleLyrics,
+  compact = false,
 }: MediaTransportBarProps) {
   const { t } = useTranslation()
   const playlist = useMediaPlayerStore((s) => s.playlist)
@@ -119,7 +126,11 @@ export function MediaTransportBar({
           repeatMode === 'off' ? mutedText : dark ? 'text-white' : 'text-primary'
         )}
       >
-        {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+        {repeatMode === 'one' ? (
+          <Repeat1 className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+        ) : (
+          <Repeat className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+        )}
       </Button>
       <Button
         variant="ghost"
@@ -128,7 +139,7 @@ export function MediaTransportBar({
         aria-label={t('media.shuffleMode')}
         className={cn('shrink-0', shuffleMode ? (dark ? 'text-white' : 'text-primary') : mutedText)}
       >
-        <Shuffle className="h-4 w-4" />
+        <Shuffle className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
       </Button>
       {onToggleLyrics && (
         <Button
@@ -143,14 +154,16 @@ export function MediaTransportBar({
             lyricsEnabled && hasLyrics ? (dark ? 'text-white' : 'text-primary') : mutedText
           )}
         >
-          <Captions className="h-4 w-4" />
+          <Captions className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </Button>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className={`truncate text-xs ${dark ? 'text-white' : ''}`}>
-          {playback.track.name}
-        </span>
+        {!compact && (
+          <span className={`truncate text-xs ${dark ? 'text-white' : ''}`}>
+            {playback.track.name}
+          </span>
+        )}
         <div className="flex items-center gap-2">
           <span
             className={`w-9 shrink-0 text-[10px] ${dark ? 'text-white/70' : 'text-muted-foreground'}`}
@@ -191,7 +204,11 @@ export function MediaTransportBar({
           aria-label={t('media.toggleMute')}
           className={mutedText}
         >
-          {volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          {volume === 0 ? (
+            <VolumeX className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+          ) : (
+            <Volume2 className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+          )}
         </Button>
         <input
           type="range"
@@ -200,7 +217,7 @@ export function MediaTransportBar({
           step={0.05}
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
-          className="w-16"
+          className={compact ? 'w-12' : 'w-16'}
         />
       </div>
     </div>
