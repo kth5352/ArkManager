@@ -23,6 +23,7 @@ import {
   useLikedTracks,
 } from '../../services/mediaPlaylistService'
 import { useTranslation } from '../../i18n/useTranslation'
+import { DeletePlaylistConfirmDialog } from './DeletePlaylistConfirmDialog'
 import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 // The "좋아요" entry is a virtual playlist backed entirely by
@@ -121,7 +122,15 @@ function PlaylistTrackRow({
   )
 }
 
-function UserPlaylistRow({ id, name }: { id: string; name: string }) {
+function UserPlaylistRow({
+  id,
+  name,
+  onRequestDelete,
+}: {
+  id: string
+  name: string
+  onRequestDelete: (playlist: { id: string; name: string }) => void
+}) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -156,9 +165,9 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
     setRenaming(false)
   }
 
-  const deletePlaylist = (): void => {
+  const requestDelete = (): void => {
     if (deleteMutation.isPending) return
-    deleteMutation.mutate(id)
+    onRequestDelete({ id, name })
   }
 
   const removeTrack = (path: string): void => {
@@ -230,7 +239,7 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
           className="h-6 w-6 shrink-0 hover:text-destructive"
           aria-label={t('media.deletePlaylist')}
           disabled={deleteMutation.isPending}
-          onClick={deletePlaylist}
+          onClick={requestDelete}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -266,6 +275,10 @@ function UserPlaylistRow({ id, name }: { id: string; name: string }) {
 export function PlaylistManagementTab() {
   const { t } = useTranslation()
   const [creating, setCreating] = useState(false)
+  const [pendingDeletePlaylist, setPendingDeletePlaylist] = useState<{
+    id: string
+    name: string
+  } | null>(null)
   const [newName, setNewName] = useState('')
   const { data: playlists = [] } = useMediaPlaylists()
   const createMutation = useCreateMediaPlaylist()
@@ -287,38 +300,49 @@ export function PlaylistManagementTab() {
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <LikedPlaylistRow />
-      {playlists.length === 0 && !creating && (
-        <p className="px-1 py-2 text-xs text-muted-foreground">{t('media.emptyPlaylists')}</p>
-      )}
-      {playlists.map((playlist) => (
-        <UserPlaylistRow key={playlist.id} id={playlist.id} name={playlist.name} />
-      ))}
-      {creating ? (
-        <Input
-          autoFocus
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onBlur={commitCreate}
-          onKeyDown={(e) => e.key === 'Enter' && commitCreate()}
-          placeholder={t('media.newPlaylistNamePlaceholder')}
-          className="h-7 text-sm"
-        />
-      ) : (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="justify-start gap-1"
-          onClick={() => {
-            committedRef.current = false
-            setCreating(true)
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t('media.createPlaylist')}
-        </Button>
-      )}
-    </div>
+    <>
+      <div className="flex flex-col gap-1">
+        <LikedPlaylistRow />
+        {playlists.length === 0 && !creating && (
+          <p className="px-1 py-2 text-xs text-muted-foreground">{t('media.emptyPlaylists')}</p>
+        )}
+        {playlists.map((playlist) => (
+          <UserPlaylistRow
+            key={playlist.id}
+            id={playlist.id}
+            name={playlist.name}
+            onRequestDelete={setPendingDeletePlaylist}
+          />
+        ))}
+        {creating ? (
+          <Input
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onBlur={commitCreate}
+            onKeyDown={(e) => e.key === 'Enter' && commitCreate()}
+            placeholder={t('media.newPlaylistNamePlaceholder')}
+            className="h-7 text-sm"
+          />
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start gap-1"
+            onClick={() => {
+              committedRef.current = false
+              setCreating(true)
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('media.createPlaylist')}
+          </Button>
+        )}
+      </div>
+      <DeletePlaylistConfirmDialog
+        playlist={pendingDeletePlaylist}
+        onClose={() => setPendingDeletePlaylist(null)}
+      />
+    </>
   )
 }

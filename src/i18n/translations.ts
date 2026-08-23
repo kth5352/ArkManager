@@ -330,6 +330,9 @@ const ko = {
   'media.newPlaylistNamePlaceholder': '재생목록 이름',
   'media.playPlaylist': '재생',
   'media.deletePlaylist': '삭제',
+  'media.deletePlaylistConfirmTitle': '재생목록 삭제',
+  'media.deletePlaylistConfirmBody':
+    "'{name}' 재생목록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
   'media.renamePlaylist': '이름 변경',
   'media.emptyPlaylists': '재생목록이 없습니다.',
   'media.emptyPlaylistTracks': '트랙이 없습니다.',
@@ -684,6 +687,9 @@ const ja: Record<keyof typeof ko, string> = {
   'media.newPlaylistNamePlaceholder': 'プレイリスト名',
   'media.playPlaylist': '再生',
   'media.deletePlaylist': '削除',
+  'media.deletePlaylistConfirmTitle': 'プレイリストを削除',
+  'media.deletePlaylistConfirmBody':
+    '「{name}」プレイリストを削除しますか？この操作は元に戻せません。',
   'media.renamePlaylist': '名前を変更',
   'media.emptyPlaylists': 'プレイリストがありません。',
   'media.emptyPlaylistTracks': 'トラックがありません。',
@@ -1039,6 +1045,8 @@ const en: Record<keyof typeof ko, string> = {
   'media.newPlaylistNamePlaceholder': 'Playlist name',
   'media.playPlaylist': 'Play',
   'media.deletePlaylist': 'Delete',
+  'media.deletePlaylistConfirmTitle': 'Delete playlist',
+  'media.deletePlaylistConfirmBody': 'Delete the playlist "{name}"? This cannot be undone.',
   'media.renamePlaylist': 'Rename',
   'media.emptyPlaylists': 'No playlists yet.',
   'media.emptyPlaylistTracks': 'No tracks yet.',
