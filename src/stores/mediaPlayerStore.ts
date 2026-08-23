@@ -20,7 +20,7 @@ export type RepeatMode = 'off' | 'all' | 'one'
 // a later task wires to this same tab) - a plain component-local useState
 // can't be shared across that boundary, so this needs to live in the store
 // both sides already import.
-export type MediaSidebarTab = 'playlists' | 'queue' | 'lyrics'
+export type MediaSidebarTab = 'playlists' | 'queue' | 'lyrics' | 'folder'
 
 interface MediaPlayerState {
   playlist: MediaTrack[]

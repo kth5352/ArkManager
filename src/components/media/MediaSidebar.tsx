@@ -13,6 +13,7 @@ import { useTranslation } from '../../i18n/useTranslation'
 import { PlaylistManagementTab } from './PlaylistManagementTab'
 import { CurrentQueueTab } from './CurrentQueueTab'
 import { LyricsLogTab } from './LyricsLogTab'
+import { FolderTreeTab } from './FolderTreeTab'
 import type { MediaSidebarTab } from '../../stores/mediaPlayerStore'
 
 // Re-exported so callers that only need the tab-name type can import it
@@ -31,7 +32,7 @@ interface MediaSidebarProps {
   onClose: () => void
 }
 
-const TABS: MediaSidebarTab[] = ['playlists', 'queue', 'lyrics']
+const TABS: MediaSidebarTab[] = ['playlists', 'queue', 'lyrics', 'folder']
 
 // Right-edge panel (opposite ExplorerSidebar, which sits on the left) - the
 // resize handle sign mirrors DetailSidebar.tsx (also right-edge), not
@@ -77,7 +78,13 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
   }
 
   const tabLabel = (tab: MediaSidebarTab): string =>
-    tab === 'playlists' ? t('media.tabPlaylists') : tab === 'queue' ? t('media.tabQueue') : t('media.tabLyrics')
+    tab === 'playlists'
+      ? t('media.tabPlaylists')
+      : tab === 'queue'
+        ? t('media.tabQueue')
+        : tab === 'lyrics'
+          ? t('media.tabLyrics')
+          : t('media.folderTab')
 
   return (
     <div
@@ -132,6 +139,7 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
             for parsedLyrics) rather than receiving them from this tree,
             which sits outside MediaPlayerHost's (see AppLayout.tsx). */}
         {activeTab === 'lyrics' && <LyricsLogTab />}
+        {activeTab === 'folder' && <FolderTreeTab />}
       </div>
     </div>
   )
