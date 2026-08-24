@@ -72,6 +72,7 @@ function MediaTrackRow({
           <img
             src={`${buildMediaThumbnailUrl(track.path)}?v=${refreshToken}`}
             alt=""
+            loading="lazy"
             className="h-full w-full object-cover"
             draggable={false}
             onError={() => setThumbFailed(true)}

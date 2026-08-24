@@ -44,6 +44,7 @@ function QueueRow({ track, index, isCurrent }: { track: MediaTrack; index: numbe
         <img
           src={buildMediaThumbnailUrl(track.path)}
           alt=""
+          loading="lazy"
           className="h-full w-full object-cover"
           draggable={false}
           onError={(e) => (e.currentTarget.style.visibility = 'hidden')}

@@ -68,6 +68,7 @@ function LikedPlaylistRow() {
                 <img
                   src={buildMediaThumbnailUrl(track.path)}
                   alt=""
+                  loading="lazy"
                   className="h-full w-full object-cover"
                   draggable={false}
                   onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
@@ -122,6 +123,7 @@ function PlaylistTrackRow({
         <img
           src={buildMediaThumbnailUrl(track.path)}
           alt=""
+          loading="lazy"
           className="h-full w-full object-cover"
           draggable={false}
           onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
