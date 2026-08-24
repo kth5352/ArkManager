@@ -117,15 +117,18 @@ export function FullscreenMediaOverlay({
             )}
           </>
         )}
-        {lyricsEnabled && parsedLyrics?.kind === 'synced' && (
-          <div className="pointer-events-none absolute bottom-6 left-6 right-6 text-center">
-            {getActiveLyricLine(parsedLyrics, playback.currentTime)?.text && (
-              <span className="rounded bg-black/70 px-3 py-1.5 text-lg font-medium text-white">
-                {getActiveLyricLine(parsedLyrics, playback.currentTime)?.text}
-              </span>
-            )}
-          </div>
-        )}
+        {lyricsEnabled && parsedLyrics?.kind === 'synced' && (() => {
+          const activeLine = getActiveLyricLine(parsedLyrics, playback.currentTime)
+          return (
+            <div className="pointer-events-none absolute bottom-6 left-6 right-6 text-center">
+              {activeLine?.text && (
+                <span className="inline-block rounded bg-black/70 px-3 py-1.5 text-lg font-medium text-white">
+                  {activeLine.text}
+                </span>
+              )}
+            </div>
+          )
+        })()}
         {lyricsEnabled && parsedLyrics?.kind === 'static' && (
           <div className="pointer-events-none absolute bottom-6 left-6 right-6 max-h-48 overflow-y-auto text-center">
             <p className="inline-block whitespace-pre-wrap rounded bg-black/70 px-3 py-1.5 text-lg font-medium text-white">
@@ -153,7 +156,7 @@ export function FullscreenMediaOverlay({
           <span className="min-w-0 flex-1 truncate text-xs text-white">{playback.track.name}</span>
           <MediaLikeButton path={playback.track.path} name={playback.track.name} className="text-white/70 hover:text-white" />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <MediaTransportBar
             playback={playback}
             dark
