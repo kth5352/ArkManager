@@ -8,6 +8,7 @@ import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolSer
 import { useTranslation } from '../../i18n/useTranslation'
 import { getActiveLyricLine, parseLrc } from '../../lib/lrc'
 import { useMediaLyrics } from '../../components/media/useMediaLyrics'
+import logoUrl from '../../../LOGO.png'
 
 // The entire content of the detached player window (see
 // electron/main/ipc/mediaWindowHandlers.ts, loaded at the #/player-window
@@ -80,10 +81,28 @@ export function PlayerWindowPage() {
         )}
       </div>
       <div className="flex flex-col gap-2 bg-black/80 p-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-white/10">
+            {thumbFailed ? (
+              <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />
+            ) : (
+              <img
+                src={buildMediaThumbnailUrl(playback.track.path)}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover"
+                draggable={false}
+                onError={() => setThumbFailedPath(playback.track.path)}
+              />
+            )}
+          </div>
+          <span className="min-w-0 flex-1 truncate text-xs text-white">{playback.track.name}</span>
+        </div>
         {lyricText && <p className="text-center text-sm font-medium whitespace-pre-wrap text-white">{lyricText}</p>}
         <MediaTransportBar
           playback={playback}
           dark
+          compact
           lyricsEnabled={lyricsEnabled}
           hasLyrics={parsedLyrics !== null}
           onToggleLyrics={() => setLyricsEnabled((enabled) => !enabled)}

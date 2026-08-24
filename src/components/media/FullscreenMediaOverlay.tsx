@@ -118,19 +118,37 @@ export function FullscreenMediaOverlay({
         )}
       </div>
       <div className="flex flex-col gap-2 bg-black/80 p-3">
-        <MediaTransportBar
-          playback={playback}
-          dark
-          lyricsEnabled={lyricsEnabled}
-          hasLyrics={parsedLyrics !== null}
-          onToggleLyrics={onToggleLyrics}
-        />
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-white/10">
+            {thumbFailed ? (
+              <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />
+            ) : (
+              <img
+                src={buildMediaThumbnailUrl(playback.track.path)}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover"
+                draggable={false}
+                onError={() => setThumbFailedPath(playback.track.path)}
+              />
+            )}
+          </div>
+          <span className="min-w-0 flex-1 truncate text-xs text-white">{playback.track.name}</span>
           <MediaLikeButton path={playback.track.path} name={playback.track.name} className="text-white/70 hover:text-white" />
+        </div>
+        <div className="flex items-center gap-3">
+          <MediaTransportBar
+            playback={playback}
+            dark
+            compact
+            lyricsEnabled={lyricsEnabled}
+            hasLyrics={parsedLyrics !== null}
+            onToggleLyrics={onToggleLyrics}
+          />
           <button
             onClick={openQueueTab}
             aria-label={t('media.playlist')}
-            className="text-white/70 hover:text-white"
+            className="shrink-0 text-white/70 hover:text-white"
           >
             <ListMusic className="h-4 w-4" />
           </button>
@@ -138,7 +156,7 @@ export function FullscreenMediaOverlay({
             <button
               onClick={onDetach}
               aria-label={t('media.detachWindow')}
-              className="text-white/70 hover:text-white"
+              className="shrink-0 text-white/70 hover:text-white"
             >
               <PictureInPicture2 className="h-4 w-4" />
             </button>
@@ -147,7 +165,7 @@ export function FullscreenMediaOverlay({
             <button
               onClick={onMinimize}
               aria-label={t('media.minimize')}
-              className="text-white/70 hover:text-white"
+              className="shrink-0 text-white/70 hover:text-white"
             >
               <Minimize2 className="h-4 w-4" />
             </button>
