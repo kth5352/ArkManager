@@ -86,7 +86,7 @@ export function MediaTransportBar({
   }
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
       <Button
         variant="ghost"
         size="icon"
@@ -158,7 +158,7 @@ export function MediaTransportBar({
         </Button>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 grow basis-full flex-col gap-1">
         {!compact && (
           <span className={`truncate text-xs ${dark ? 'text-white' : ''}`}>
             {playback.track.name}
