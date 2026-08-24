@@ -1,13 +1,18 @@
 // src/components/media/FullscreenMediaOverlay.tsx
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { ListMusic, Minimize2, PictureInPicture2 } from 'lucide-react'
 import { MediaTransportBar } from './MediaTransportBar'
 import { MediaLikeButton } from './MediaLikeButton'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { useTranslation } from '../../i18n/useTranslation'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
-import { useSetMediaSidebarOpenMutation } from '../../services/settingsService'
+import {
+  useMediaSidebarOpenQuery,
+  useMediaSidebarWidthQuery,
+  useSetMediaSidebarOpenMutation,
+} from '../../services/settingsService'
+import { MEDIA_SIDEBAR_WIDTH_DEFAULT } from '../../lib/clampMediaSidebarWidth'
 import { cn } from '../../lib/utils'
 import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
@@ -46,8 +51,17 @@ export function FullscreenMediaOverlay({
 }: FullscreenMediaOverlayProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
+  const { data: mediaSidebarOpen = false } = useMediaSidebarOpenQuery()
+  const { data: mediaSidebarWidth = MEDIA_SIDEBAR_WIDTH_DEFAULT } = useMediaSidebarWidthQuery()
+  // MediaSidebar only ever renders on /media (AppLayout.tsx's own render
+  // gate) - matching that condition here (rather than just checking
+  // mediaSidebarOpen alone) avoids reserving space for a sidebar that
+  // isn't actually on screen when a video auto-expands to fullscreen from
+  // some other route (e.g. Explorer).
+  const splitForSidebar = pathname === '/media' && mediaSidebarOpen
   // Tracked by path (not a plain boolean) so switching to a different track
   // - even one whose own thumbnail also happens to fail - doesn't keep
   // showing a stale failure from whatever track played before it, same
@@ -74,7 +88,10 @@ export function FullscreenMediaOverlay({
   }
 
   return (
-    <div className={cn('fixed inset-0 z-50 flex-col bg-black', visible ? 'flex' : 'hidden')}>
+    <div
+      className={cn('fixed top-0 bottom-0 left-0 z-50 flex-col bg-black', visible ? 'flex' : 'hidden')}
+      style={{ right: splitForSidebar ? mediaSidebarWidth : 0 }}
+    >
       <div className="relative flex min-h-0 flex-1 items-center justify-center">
         {playback.isVideo ? (
           <video
