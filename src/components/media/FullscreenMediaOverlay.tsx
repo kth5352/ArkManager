@@ -48,11 +48,6 @@ export function FullscreenMediaOverlay({
   const navigate = useNavigate()
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
-  // No pre-existing auto-hide/hover-tracking mechanism exists on this
-  // control bar to reuse (confirmed by reading this file fresh - the
-  // bottom bar is always visible, not idle-timeout-hidden) - this is a
-  // standalone hover state scoped to just the enlarge treatment.
-  const [controlsHovered, setControlsHovered] = useState(false)
   // Tracked by path (not a plain boolean) so switching to a different track
   // - even one whose own thumbnail also happens to fail - doesn't keep
   // showing a stale failure from whatever track played before it, same
@@ -106,31 +101,23 @@ export function FullscreenMediaOverlay({
           </>
         )}
         {lyricsEnabled && parsedLyrics?.kind === 'synced' && (
-          <div
-            className={cn(
-              'pointer-events-none absolute bottom-6 left-6 right-6 text-center font-medium text-white transition-all duration-200',
-              controlsHovered ? 'text-3xl' : 'text-lg'
+          <div className="pointer-events-none absolute bottom-6 left-6 right-6 text-center">
+            {getActiveLyricLine(parsedLyrics, playback.currentTime)?.text && (
+              <span className="rounded bg-black/70 px-3 py-1.5 text-lg font-medium text-white">
+                {getActiveLyricLine(parsedLyrics, playback.currentTime)?.text}
+              </span>
             )}
-          >
-            {getActiveLyricLine(parsedLyrics, playback.currentTime)?.text}
           </div>
         )}
         {lyricsEnabled && parsedLyrics?.kind === 'static' && (
-          <div
-            className={cn(
-              'pointer-events-none absolute bottom-6 left-6 right-6 max-h-48 overflow-y-auto text-center font-medium whitespace-pre-wrap text-white transition-all duration-200',
-              controlsHovered ? 'text-3xl' : 'text-lg'
-            )}
-          >
-            {parsedLyrics.lines.join('\n')}
+          <div className="pointer-events-none absolute bottom-6 left-6 right-6 max-h-48 overflow-y-auto text-center">
+            <p className="inline-block whitespace-pre-wrap rounded bg-black/70 px-3 py-1.5 text-lg font-medium text-white">
+              {parsedLyrics.lines.join('\n')}
+            </p>
           </div>
         )}
       </div>
-      <div
-        onMouseEnter={() => setControlsHovered(true)}
-        onMouseLeave={() => setControlsHovered(false)}
-        className="flex flex-col gap-2 bg-black/80 p-3"
-      >
+      <div className="flex flex-col gap-2 bg-black/80 p-3">
         <MediaTransportBar
           playback={playback}
           dark
