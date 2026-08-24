@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Music2 } from 'lucide-react'
 import { useMediaPlayerSync } from '../../hooks/useMediaPlayerSync'
 import { useMediaPlayback } from '../../components/media/useMediaPlayback'
 import { MediaTransportBar } from '../../components/media/MediaTransportBar'
@@ -64,9 +63,8 @@ export function PlayerWindowPage() {
           <>
             <audio ref={mediaRef} {...playback.mediaElementProps} />
             {thumbFailed ? (
-              <div className="flex flex-col items-center gap-3 text-white/70">
-                <Music2 className="h-16 w-16" />
-                <p className="text-sm">{playback.track.name}</p>
+              <div className="flex h-32 w-32 items-center justify-center">
+                <img src={logoUrl} alt="" className="h-full w-full object-contain opacity-30" />
               </div>
             ) : (
               <img
