@@ -94,8 +94,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
             DetailSidebar/BulkCrawlProgressBanner, which both live outside
             this row. MediaSidebar's own root still carries `relative
             z-[60]` (see MediaSidebar.tsx) so it keeps painting above
-            FullscreenMediaOverlay's `fixed inset-0 z-50` (rendered elsewhere,
-            inside MediaPlayerHost) whenever both are visible at once - plain
+            FullscreenMediaOverlay's `fixed top-0 bottom-0 left-0 z-50` (rendered
+            elsewhere, inside MediaPlayerHost, with a conditional `right` inset
+            rather than a plain `inset-0` - narrows it to make room for this
+            sidebar on /media) whenever both are visible at once - plain
             flex/block divs like this row and this component's own root don't
             establish an isolating stacking context, so that fixed z-50
             element and this relative z-[60] element still stack against each
