@@ -158,7 +158,7 @@ export function MediaTransportBar({
         </Button>
       )}
 
-      <div className="flex min-w-0 grow basis-full flex-col gap-1">
+      <div className="flex flex-1 flex-col gap-1 min-w-40">
         {!compact && (
           <span className={`truncate text-xs ${dark ? 'text-white' : ''}`}>
             {playback.track.name}
