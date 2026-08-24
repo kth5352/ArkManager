@@ -13,6 +13,7 @@ import { ChevronDown, ChevronRight, GripVertical, Pencil, Play, Plus, Trash2, X 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
+import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import {
   useMediaPlaylists,
   useMediaPlaylistTracks,
@@ -62,8 +63,17 @@ function LikedPlaylistRow() {
             <li className="px-1 py-1 text-xs text-muted-foreground">{t('media.emptyPlaylistTracks')}</li>
           )}
           {tracks.map((track) => (
-            <li key={track.path} className="truncate px-1 py-1 text-xs text-muted-foreground">
-              {track.name}
+            <li key={track.path} className="flex items-center gap-1 px-1 py-1 text-xs text-muted-foreground">
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+                <img
+                  src={buildMediaThumbnailUrl(track.path)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  draggable={false}
+                  onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+                />
+              </div>
+              <span className="min-w-0 flex-1 truncate">{track.name}</span>
             </li>
           ))}
         </ul>
@@ -108,6 +118,15 @@ function PlaylistTrackRow({
       >
         <GripVertical className="h-3 w-3" />
       </button>
+      <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+        <img
+          src={buildMediaThumbnailUrl(track.path)}
+          alt=""
+          className="h-full w-full object-cover"
+          draggable={false}
+          onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+        />
+      </div>
       <span className="min-w-0 flex-1 truncate">{track.name}</span>
       <button
         type="button"
