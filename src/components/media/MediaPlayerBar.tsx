@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import logoUrl from '../../../LOGO.png'
-import { ListMusic, Maximize2, Trash2 } from 'lucide-react'
+import { ListMusic, Maximize2 } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useSetMediaSidebarOpenMutation } from '../../services/settingsService'
 import { MediaTransportBar } from './MediaTransportBar'
@@ -52,7 +52,6 @@ export function MediaPlayerBar({
 }: MediaPlayerBarProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
   // Tracked by path (not a plain boolean) so switching to a different track
@@ -133,21 +132,6 @@ export function MediaPlayerBar({
             </Button>
           </HoverTooltip>
         )}
-        <div className="h-4 w-px shrink-0 bg-border" />
-        <HoverTooltip content={t('media.closePlaylist')}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation()
-              clearPlaylist()
-            }}
-            aria-label={t('media.closePlaylist')}
-            className="shrink-0 transition-colors hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </HoverTooltip>
       </div>
 
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>

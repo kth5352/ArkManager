@@ -8,12 +8,13 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, X } from 'lucide-react'
+import { GripVertical, Trash2, X } from 'lucide-react'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { MediaLikeButton } from './MediaLikeButton'
 import { MarqueeText } from '../ui/marquee-text'
 import { Button } from '../ui/button'
+import { HoverTooltip } from '../ui/hover-tooltip'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
 
@@ -80,6 +81,7 @@ export function CurrentQueueTab() {
   const playlist = useMediaPlayerStore((s) => s.playlist)
   const currentIndex = useMediaPlayerStore((s) => s.currentIndex)
   const reorderPlaylist = useMediaPlayerStore((s) => s.reorderPlaylist)
+  const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const handleDragEnd = (event: DragEndEvent): void => {
@@ -96,14 +98,29 @@ export function CurrentQueueTab() {
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={playlist.map((track) => track.path)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-0.5">
-          {playlist.map((track, index) => (
-            <QueueRow key={track.path} track={track} index={index} isCurrent={index === currentIndex} />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-end">
+        <HoverTooltip content={t('media.closePlaylist')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={clearPlaylist}
+            aria-label={t('media.closePlaylist')}
+            className="h-6 w-6 shrink-0 transition-colors hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </HoverTooltip>
+      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={playlist.map((track) => track.path)} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-0.5">
+            {playlist.map((track, index) => (
+              <QueueRow key={track.path} track={track} index={index} isCurrent={index === currentIndex} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
   )
 }
