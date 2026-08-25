@@ -3,7 +3,7 @@ import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaPlayback } from './useMediaPlayback'
 import { MediaPlayerBar } from './MediaPlayerBar'
 import { FullscreenMediaOverlay } from './FullscreenMediaOverlay'
-import { parseLrc } from '../../lib/lrc'
+import { parseLyrics } from '../../lib/parseLyrics'
 import { useMediaLyrics } from './useMediaLyrics'
 import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsToggleState'
 
@@ -24,7 +24,7 @@ export function MediaPlayerHost() {
   const { mediaRef, playback } = useMediaPlayback({ isHost: !isDetached })
   const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
   const parsedLyrics = useMemo(
-    () => (lyricsQuery.data ? parseLrc(lyricsQuery.data.text) : null),
+    () => (lyricsQuery.data ? parseLyrics(lyricsQuery.data.text, lyricsQuery.data.path) : null),
     [lyricsQuery.data]
   )
   const [lyricsDisabledTrackPaths, setLyricsDisabledTrackPaths] = useState<Set<string>>(new Set())

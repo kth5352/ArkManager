@@ -123,7 +123,7 @@ export function FullscreenMediaOverlay({
           return (
             <div className="pointer-events-none absolute bottom-6 left-6 right-6 text-center">
               {activeLine?.text && (
-                <span className="inline-block rounded bg-black/70 px-3 py-1.5 text-lg font-medium text-white">
+                <span className="inline-block whitespace-pre-wrap rounded bg-black/70 px-3 py-1.5 text-lg font-medium text-white">
                   {activeLine.text}
                 </span>
               )}

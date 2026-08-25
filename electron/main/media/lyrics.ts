@@ -27,6 +27,11 @@ async function readLyricsFile(
   }
 }
 
+// Priority order when multiple formats could all match the same media file
+// (rare in practice) - .lrc first since it was this app's original, most
+// common format.
+const LYRICS_EXTENSIONS = ['.lrc', '.vtt', '.ass']
+
 export async function readAdjacentLyrics(
   filePath: string,
   allowedRoots: string[],
@@ -36,22 +41,28 @@ export async function readAdjacentLyrics(
 
   const dirPath = dirname(filePath)
   const mediaBaseName = basename(filePath, extname(filePath))
-  const lyricsPath = join(dirPath, `${mediaBaseName}.lrc`)
-  const exactMatch = await readLyricsFile(lyricsPath, allowedRoots, fileSystem)
-  if (exactMatch) return exactMatch
+
+  for (const ext of LYRICS_EXTENSIONS) {
+    const exactMatch = await readLyricsFile(
+      join(dirPath, `${mediaBaseName}${ext}`),
+      allowedRoots,
+      fileSystem
+    )
+    if (exactMatch) return exactMatch
+  }
 
   try {
-    const lrcFiles = (await fileSystem.readdir(dirPath)).filter((name) =>
-      name.toLowerCase().endsWith('.lrc')
+    const subtitleFiles = (await fileSystem.readdir(dirPath)).filter((name) =>
+      LYRICS_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext))
     )
-    const caseInsensitiveExact = lrcFiles.find(
-      (name) => name.slice(0, -4).toLowerCase() === mediaBaseName.toLowerCase()
+    const caseInsensitiveExact = subtitleFiles.find(
+      (name) => basename(name, extname(name)).toLowerCase() === mediaBaseName.toLowerCase()
     )
     if (caseInsensitiveExact) {
       return readLyricsFile(join(dirPath, caseInsensitiveExact), allowedRoots, fileSystem)
     }
-    if (lrcFiles.length === 1) {
-      return readLyricsFile(join(dirPath, lrcFiles[0]), allowedRoots, fileSystem)
+    if (subtitleFiles.length === 1) {
+      return readLyricsFile(join(dirPath, subtitleFiles[0]), allowedRoots, fileSystem)
     }
     return null
   } catch {

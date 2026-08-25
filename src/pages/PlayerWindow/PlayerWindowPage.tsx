@@ -5,7 +5,8 @@ import { MediaTransportBar } from '../../components/media/MediaTransportBar'
 import { MediaPlaylistPanel } from '../../components/media/MediaPlaylistPanel'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { useTranslation } from '../../i18n/useTranslation'
-import { getActiveLyricLine, parseLrc } from '../../lib/lrc'
+import { getActiveLyricLine } from '../../lib/lrc'
+import { parseLyrics } from '../../lib/parseLyrics'
 import { useMediaLyrics } from '../../components/media/useMediaLyrics'
 import logoUrl from '../../../LOGO.png'
 
@@ -29,7 +30,7 @@ export function PlayerWindowPage() {
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
   const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
   const parsedLyrics = useMemo(
-    () => (lyricsQuery.data ? parseLrc(lyricsQuery.data.text) : null),
+    () => (lyricsQuery.data ? parseLyrics(lyricsQuery.data.text, lyricsQuery.data.path) : null),
     [lyricsQuery.data]
   )
   const [lyricsEnabled, setLyricsEnabled] = useState(false)

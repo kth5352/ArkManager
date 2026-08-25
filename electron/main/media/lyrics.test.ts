@@ -64,4 +64,53 @@ describe('readAdjacentLyrics', () => {
     expect(realpath).toHaveBeenCalledWith('C:\\Library\\Song.lrc')
     expect(readFile).not.toHaveBeenCalled()
   })
+
+  it('finds a same-basename .vtt file when no .lrc exists', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lyrics-'))
+    tempDirs.push(dir)
+    await writeFile(join(dir, 'Song.mp4'), '')
+    await writeFile(join(dir, 'Song.vtt'), 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nhi\n')
+
+    await expect(readAdjacentLyrics(join(dir, 'Song.mp4'), [dir])).resolves.toEqual({
+      path: join(dir, 'Song.vtt'),
+      text: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nhi\n',
+    })
+  })
+
+  it('finds a same-basename .ass file when no .lrc or .vtt exists', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lyrics-'))
+    tempDirs.push(dir)
+    await writeFile(join(dir, 'Song.mp4'), '')
+    await writeFile(join(dir, 'Song.ass'), '[Events]\n')
+
+    await expect(readAdjacentLyrics(join(dir, 'Song.mp4'), [dir])).resolves.toEqual({
+      path: join(dir, 'Song.ass'),
+      text: '[Events]\n',
+    })
+  })
+
+  it('prefers .lrc over .vtt when both exist with the same basename', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lyrics-'))
+    tempDirs.push(dir)
+    await writeFile(join(dir, 'Song.mp3'), '')
+    await writeFile(join(dir, 'Song.lrc'), '[00:01.00]from lrc')
+    await writeFile(join(dir, 'Song.vtt'), 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nfrom vtt\n')
+
+    await expect(readAdjacentLyrics(join(dir, 'Song.mp3'), [dir])).resolves.toEqual({
+      path: join(dir, 'Song.lrc'),
+      text: '[00:01.00]from lrc',
+    })
+  })
+
+  it('uses the only subtitle file (any of lrc/vtt/ass) in the folder when no exact basename match exists', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lyrics-'))
+    tempDirs.push(dir)
+    await writeFile(join(dir, 'Track 01.mp3'), '')
+    await writeFile(join(dir, 'AlbumSubs.ass'), '[Events]\n')
+
+    await expect(readAdjacentLyrics(join(dir, 'Track 01.mp3'), [dir])).resolves.toEqual({
+      path: join(dir, 'AlbumSubs.ass'),
+      text: '[Events]\n',
+    })
+  })
 })

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '../../lib/utils'
-import { getActiveLyricLine, parseLrc } from '../../lib/lrc'
+import { getActiveLyricLine } from '../../lib/lrc'
+import { parseLyrics } from '../../lib/parseLyrics'
 import { isScrollEventFromAutoScroll } from '../../lib/isScrollEventFromAutoScroll'
 import { useTranslation } from '../../i18n/useTranslation'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
@@ -36,7 +37,7 @@ function findScrollableAncestor(start: HTMLElement): HTMLElement {
 //    effect - see its comment) since those are tied to the live media
 //    element and can't be independently re-derived here.
 //  - parsedLyrics, by contrast, is a pure derivation of useMediaLyrics
-//    (keyed by track path) + parseLrc - it has no dependency on the live
+//    (keyed by track path) + parseLyrics - it has no dependency on the live
 //    element, so this component just calls useMediaLyrics itself for the
 //    current track's path. TanStack Query dedupes this against
 //    MediaPlayerHost's identical query key, so it's not a duplicate fetch.
@@ -57,7 +58,7 @@ export function LyricsLogTab() {
   const currentTrackPath = currentIndex !== null ? (playlist[currentIndex]?.path ?? null) : null
   const lyricsQuery = useMediaLyrics(currentTrackPath)
   const parsedLyrics = useMemo(
-    () => (lyricsQuery.data ? parseLrc(lyricsQuery.data.text) : null),
+    () => (lyricsQuery.data ? parseLyrics(lyricsQuery.data.text, lyricsQuery.data.path) : null),
     [lyricsQuery.data]
   )
 
@@ -154,7 +155,7 @@ export function LyricsLogTab() {
             setFollowEnabled(true)
           }}
           className={cn(
-            'rounded px-2 py-1 text-left text-sm',
+            'whitespace-pre-wrap rounded px-2 py-1 text-left text-sm',
             activeLine?.time === line.time
               ? 'bg-accent font-medium text-foreground'
               : 'text-muted-foreground hover:bg-accent/50'
