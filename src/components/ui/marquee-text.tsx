@@ -20,13 +20,29 @@ interface MarqueeTextProps {
 // actual rendered content, not just container width.
 export function MarqueeText({ text, className, alwaysAnimate = false }: MarqueeTextProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  // Stays mounted (as the `truncate` span) in BOTH the animating and
+  // non-animating branches below - only its `invisible` class toggles when
+  // the two-copy marquee overlay is shown on top of it. This is what makes
+  // it safe to re-measure on a later `text` change even while already
+  // animating: an element that unmounted in the animating branch instead
+  // couldn't be re-measured, leaving `overflowing` stale.
+  const textRef = useRef<HTMLSpanElement>(null)
   const [overflowing, setOverflowing] = useState(false)
   const [hovered, setHovered] = useState(false)
 
   useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    setOverflowing(isTextOverflowing(el))
+    const container = containerRef.current
+    const textEl = textRef.current
+    if (!container || !textEl) return
+    // Compare the raw (unclipped) text's own rendered width against the
+    // container's visible width, NOT containerRef's own scrollWidth - a
+    // `truncate` span is its own scroll container (Tailwind's `truncate`
+    // includes `overflow: hidden`), so its overflow never propagates up to
+    // containerRef, and containerRef.scrollWidth === containerRef.clientWidth
+    // even when the text is genuinely overflowing.
+    setOverflowing(
+      isTextOverflowing({ scrollWidth: textEl.scrollWidth, clientWidth: container.clientWidth } as HTMLElement)
+    )
   }, [text])
 
   const animating = overflowing && (alwaysAnimate || hovered)
@@ -36,17 +52,21 @@ export function MarqueeText({ text, className, alwaysAnimate = false }: MarqueeT
       ref={containerRef}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className={cn('min-w-0 overflow-hidden', className)}
+      className={cn('relative min-w-0 overflow-hidden', className)}
     >
-      {animating ? (
-        <div className="flex w-max animate-[marquee_8s_linear_infinite] gap-8">
-          <span className="whitespace-nowrap">{text}</span>
-          <span className="whitespace-nowrap" aria-hidden="true">
+      <span
+        ref={textRef}
+        className={cn('block truncate', animating && 'invisible')}
+      >
+        {text}
+      </span>
+      {animating && (
+        <div className="absolute left-0 top-0 flex w-max animate-[marquee_8s_linear_infinite]">
+          <span className="mr-8 whitespace-nowrap">{text}</span>
+          <span className="mr-8 whitespace-nowrap" aria-hidden="true">
             {text}
           </span>
         </div>
-      ) : (
-        <span className="block truncate">{text}</span>
       )}
     </div>
   )
