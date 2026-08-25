@@ -68,9 +68,11 @@ export function MediaTransportBar({
   const toggleShuffle = useMediaPlayerStore((s) => s.toggleShuffle)
 
   const mutedText = dark
-    ? 'text-white/70 hover:text-white'
-    : 'text-muted-foreground hover:text-foreground'
-  const mainText = dark ? 'text-white hover:text-white/80' : 'text-foreground hover:text-primary'
+    ? 'text-white/70 transition-colors hover:text-white'
+    : 'text-muted-foreground transition-colors hover:text-foreground'
+  const mainText = dark
+    ? 'text-white transition-colors hover:text-white/80'
+    : 'text-foreground transition-colors hover:text-primary'
 
   // Seeking is async (media:// re-fetches a byte range for the new position,
   // see mediaProtocol.ts) - onTimeUpdate keeps firing with the pre-seek

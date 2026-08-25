@@ -155,7 +155,7 @@ export function LyricsLogTab() {
             setFollowEnabled(true)
           }}
           className={cn(
-            'whitespace-pre-wrap rounded px-2 py-1 text-left text-sm',
+            'whitespace-pre-wrap rounded px-2 py-1 text-left text-sm transition-colors',
             activeLine?.time === line.time
               ? 'bg-accent font-medium text-foreground'
               : 'text-muted-foreground hover:bg-accent/50'

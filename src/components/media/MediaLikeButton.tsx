@@ -38,7 +38,7 @@ export function MediaLikeButton({ path, name, className }: MediaLikeButtonProps)
         toggle.mutate({ path, name })
       }}
       className={cn(
-        'shrink-0',
+        'shrink-0 transition-colors',
         liked ? 'text-destructive' : 'text-muted-foreground hover:text-foreground',
         className
       )}

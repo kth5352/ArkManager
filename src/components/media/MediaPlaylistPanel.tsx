@@ -24,7 +24,7 @@ export function MediaPlaylistPanel({ className, dark }: MediaPlaylistPanelProps)
         <div
           key={track.path}
           className={cn(
-            'flex items-center gap-1 rounded px-2 py-1 text-xs',
+            'flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors',
             i === currentIndex
               ? dark
                 ? 'bg-white/20'
@@ -46,7 +46,7 @@ export function MediaPlaylistPanel({ className, dark }: MediaPlaylistPanelProps)
             onClick={() => removeFromPlaylist(i)}
             aria-label={t('media.removeFromPlaylist')}
             className={cn(
-              'h-7 w-7 shrink-0 hover:text-destructive',
+              'h-7 w-7 shrink-0 transition-colors hover:text-destructive',
               dark ? 'text-white/70' : 'text-muted-foreground'
             )}
           >

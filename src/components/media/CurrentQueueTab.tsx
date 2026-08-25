@@ -27,7 +27,7 @@ function QueueRow({ track, index, isCurrent }: { track: MediaTrack; index: numbe
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'flex items-center gap-2 rounded px-1 py-1.5 text-sm',
+        'flex items-center gap-2 rounded px-1 py-1.5 text-sm transition-colors',
         isCurrent ? 'bg-accent' : 'hover:bg-accent/50'
       )}
     >
@@ -36,7 +36,7 @@ function QueueRow({ track, index, isCurrent }: { track: MediaTrack; index: numbe
         aria-label={t('media.reorderTrack')}
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
@@ -57,7 +57,7 @@ function QueueRow({ track, index, isCurrent }: { track: MediaTrack; index: numbe
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 shrink-0 hover:text-destructive"
+        className="h-6 w-6 shrink-0 transition-colors hover:text-destructive"
         aria-label={t('media.removeFromPlaylist')}
         onClick={() => removeFromPlaylist(index)}
       >

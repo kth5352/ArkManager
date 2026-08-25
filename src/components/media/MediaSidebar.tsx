@@ -103,7 +103,7 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
     >
       <div
         onPointerDown={handleResizePointerDown}
-        className="absolute left-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-primary/40"
+        className="absolute left-0 top-0 z-20 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/40"
       />
       <div className="flex items-center border-b border-border">
         {TABS.map((tab) => (
@@ -115,7 +115,7 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
               'flex-1 px-2 py-2 text-xs font-medium',
               tab === activeTab
                 ? 'border-b-2 border-primary text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-muted-foreground transition-colors hover:text-foreground'
             )}
           >
             {tabLabel(tab)}
@@ -126,7 +126,7 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
           aria-label={t('media.sidebarClose')}
           title={t('media.sidebarClose')}
           onClick={onClose}
-          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" />
         </button>

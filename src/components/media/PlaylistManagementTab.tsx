@@ -41,7 +41,7 @@ function LikedPlaylistRow() {
 
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-1 rounded px-1 py-1.5 text-sm hover:bg-accent">
+      <div className="flex items-center gap-1 rounded px-1 py-1.5 text-sm transition-colors hover:bg-accent">
         <button type="button" onClick={() => setExpanded((v) => !v)} className="shrink-0">
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
@@ -115,7 +115,7 @@ function PlaylistTrackRow({
         aria-label={t('media.reorderTrack')}
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
       >
         <GripVertical className="h-3 w-3" />
       </button>
@@ -135,7 +135,7 @@ function PlaylistTrackRow({
         aria-label={t('media.removeFromPlaylist')}
         onClick={onRemove}
         disabled={disabled}
-        className="shrink-0 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+        className="shrink-0 transition-colors hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
       >
         <X className="h-3 w-3" />
       </button>
@@ -218,7 +218,7 @@ function UserPlaylistRow({
 
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-1 rounded px-1 py-1.5 text-sm hover:bg-accent">
+      <div className="flex items-center gap-1 rounded px-1 py-1.5 text-sm transition-colors hover:bg-accent">
         <button type="button" onClick={() => setExpanded((v) => !v)} className="shrink-0">
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
@@ -257,7 +257,7 @@ function UserPlaylistRow({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 shrink-0 hover:text-destructive"
+          className="h-6 w-6 shrink-0 transition-colors hover:text-destructive"
           aria-label={t('media.deletePlaylist')}
           disabled={deleteMutation.isPending}
           onClick={requestDelete}

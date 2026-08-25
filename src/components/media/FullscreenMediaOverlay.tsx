@@ -155,7 +155,7 @@ export function FullscreenMediaOverlay({
             )}
           </div>
           <span className="min-w-0 flex-1 truncate text-xs text-white">{playback.track.name}</span>
-          <MediaLikeButton path={playback.track.path} name={playback.track.name} className="text-white/70 hover:text-white" />
+          <MediaLikeButton path={playback.track.path} name={playback.track.name} className="text-white/70 transition-colors hover:text-white" />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <MediaTransportBar
@@ -170,7 +170,7 @@ export function FullscreenMediaOverlay({
             <button
               onClick={openQueueTab}
               aria-label={t('media.playlist')}
-              className="shrink-0 text-white/70 hover:text-white"
+              className="shrink-0 text-white/70 transition-colors hover:text-white"
             >
               <ListMusic className="h-4 w-4" />
             </button>
@@ -180,7 +180,7 @@ export function FullscreenMediaOverlay({
               <button
                 onClick={onDetach}
                 aria-label={t('media.detachWindow')}
-                className="shrink-0 text-white/70 hover:text-white"
+                className="shrink-0 text-white/70 transition-colors hover:text-white"
               >
                 <PictureInPicture2 className="h-4 w-4" />
               </button>
@@ -191,7 +191,7 @@ export function FullscreenMediaOverlay({
               <button
                 onClick={onMinimize}
                 aria-label={t('media.minimize')}
-                className="shrink-0 text-white/70 hover:text-white"
+                className="shrink-0 text-white/70 transition-colors hover:text-white"
               >
                 <Minimize2 className="h-4 w-4" />
               </button>

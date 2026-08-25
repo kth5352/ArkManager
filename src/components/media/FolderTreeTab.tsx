@@ -54,7 +54,7 @@ function TreeNodeRow({
     <div>
       <div
         style={{ paddingLeft: depth * 16 }}
-        className={`flex h-8 min-w-0 items-center gap-1 rounded px-1 text-sm hover:bg-accent ${
+        className={`flex h-8 min-w-0 items-center gap-1 rounded px-1 text-sm transition-colors hover:bg-accent ${
           isActive ? 'bg-accent font-medium' : ''
         }`}
       >
