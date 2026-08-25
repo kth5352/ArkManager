@@ -11,6 +11,7 @@ import { useTranslation } from '../../i18n/useTranslation'
 import type { ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
 import { Button } from '../ui/button'
+import { HoverTooltip } from '../ui/hover-tooltip'
 
 interface MediaPlayerBarProps {
   playback: MediaPlaybackState
@@ -106,26 +107,30 @@ export function MediaPlayerBar({
         </button>
         <MediaLikeButton path={playback.track.path} name={playback.track.name} />
         {!isDetached && onExpandVideo && (
+          <HoverTooltip content={t('media.expandVideo')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onExpandVideo}
+              aria-label={t('media.expandVideo')}
+              className="shrink-0"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          </HoverTooltip>
+        )}
+        <div className="h-4 w-px shrink-0 bg-border" />
+        <HoverTooltip content={t('media.closePlaylist')}>
           <Button
             variant="ghost"
             size="icon"
-            onClick={onExpandVideo}
-            aria-label={t('media.expandVideo')}
-            className="shrink-0"
+            onClick={clearPlaylist}
+            aria-label={t('media.closePlaylist')}
+            className="shrink-0 hover:text-destructive"
           >
-            <Maximize2 className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </Button>
-        )}
-        <div className="h-4 w-px shrink-0 bg-border" />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={clearPlaylist}
-          aria-label={t('media.closePlaylist')}
-          className="shrink-0 hover:text-destructive"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        </HoverTooltip>
       </div>
 
       <div className="flex items-center gap-2">
@@ -136,15 +141,17 @@ export function MediaPlayerBar({
           hasLyrics={parsedLyrics !== null}
           onToggleLyrics={onToggleLyrics}
         />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={openQueueTab}
-          aria-label={t('media.playlist')}
-          className="shrink-0"
-        >
-          <ListMusic className="h-4 w-4" />
-        </Button>
+        <HoverTooltip content={t('media.playlist')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={openQueueTab}
+            aria-label={t('media.playlist')}
+            className="shrink-0"
+          >
+            <ListMusic className="h-4 w-4" />
+          </Button>
+        </HoverTooltip>
       </div>
     </div>
   )
