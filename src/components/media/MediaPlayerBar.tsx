@@ -74,8 +74,15 @@ export function MediaPlayerBar({
     navigate({ to: '/media' })
   }
 
+  const handleBarClick = (): void => {
+    if (!isDetached && onExpandVideo) onExpandVideo()
+  }
+
   return (
-    <div className="flex flex-col gap-1 border-t border-border bg-card px-3 py-2">
+    <div
+      onClick={handleBarClick}
+      className="flex flex-col gap-1 border-t border-border bg-card px-3 py-2"
+    >
       {isDetached && (
         <span className="w-fit shrink-0 rounded bg-muted px-2 py-1 text-[10px] text-muted-foreground">
           {t('media.playingInOtherWindow')}
@@ -88,24 +95,30 @@ export function MediaPlayerBar({
           disabled={isDetached || !onExpandVideo}
           onClick={onExpandVideo}
           aria-label={t('media.expand')}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:cursor-default"
+          className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted disabled:cursor-default"
         >
-          <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
-            {thumbFailed ? (
-              <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />
-            ) : (
-              <img
-                src={buildMediaThumbnailUrl(playback.track.path)}
-                alt=""
-                className="h-full w-full object-cover"
-                draggable={false}
-                onError={() => setThumbFailedPath(playback.track.path)}
-              />
-            )}
-          </div>
-          <span className="min-w-0 flex-1 truncate text-xs">{playback.track.name}</span>
+          {thumbFailed ? (
+            <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />
+          ) : (
+            <img
+              src={buildMediaThumbnailUrl(playback.track.path)}
+              alt=""
+              className="h-full w-full object-cover"
+              draggable={false}
+              onError={() => setThumbFailedPath(playback.track.path)}
+            />
+          )}
         </button>
         <MediaLikeButton path={playback.track.path} name={playback.track.name} />
+        <button
+          type="button"
+          disabled={isDetached || !onExpandVideo}
+          onClick={onExpandVideo}
+          aria-label={t('media.expand')}
+          className="min-w-0 flex-1 truncate text-left text-xs disabled:cursor-default"
+        >
+          {playback.track.name}
+        </button>
         {!isDetached && onExpandVideo && (
           <HoverTooltip content={t('media.expandVideo')}>
             <Button
@@ -124,7 +137,10 @@ export function MediaPlayerBar({
           <Button
             variant="ghost"
             size="icon"
-            onClick={clearPlaylist}
+            onClick={(e) => {
+              e.stopPropagation()
+              clearPlaylist()
+            }}
             aria-label={t('media.closePlaylist')}
             className="shrink-0 transition-colors hover:text-destructive"
           >
@@ -133,7 +149,7 @@ export function MediaPlayerBar({
         </HoverTooltip>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
         <MediaTransportBar
           playback={playback}
           compact
@@ -143,13 +159,13 @@ export function MediaPlayerBar({
         />
         <HoverTooltip content={t('media.playlist')}>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="icon"
             onClick={openQueueTab}
             aria-label={t('media.playlist')}
             className="shrink-0"
           >
-            <ListMusic className="h-4 w-4" />
+            <ListMusic className="h-5 w-5" />
           </Button>
         </HoverTooltip>
       </div>
