@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import logoUrl from '../../../LOGO.png'
-import { ListMusic, Maximize2, X } from 'lucide-react'
+import { ListMusic, Maximize2, Trash2 } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useSetMediaSidebarOpenMutation } from '../../services/settingsService'
 import { MediaTransportBar } from './MediaTransportBar'
@@ -145,7 +145,7 @@ export function MediaPlayerBar({
             aria-label={t('media.closePlaylist')}
             className="shrink-0 transition-colors hover:text-destructive"
           >
-            <X className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </HoverTooltip>
       </div>
