@@ -24,6 +24,7 @@ import {
   useLikedTracks,
 } from '../../services/mediaPlaylistService'
 import { useTranslation } from '../../i18n/useTranslation'
+import { MarqueeText } from '../ui/marquee-text'
 import { DeletePlaylistConfirmDialog } from './DeletePlaylistConfirmDialog'
 import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
@@ -74,7 +75,7 @@ function LikedPlaylistRow() {
                   onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
                 />
               </div>
-              <span className="min-w-0 flex-1 truncate">{track.name}</span>
+              <MarqueeText text={track.name} className="flex-1" />
             </li>
           ))}
         </ul>
@@ -129,7 +130,7 @@ function PlaylistTrackRow({
           onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
         />
       </div>
-      <span className="min-w-0 flex-1 truncate">{track.name}</span>
+      <MarqueeText text={track.name} className="flex-1" />
       <button
         type="button"
         aria-label={t('media.removeFromPlaylist')}
@@ -232,7 +233,7 @@ function UserPlaylistRow({
             className="h-6 flex-1 text-sm"
           />
         ) : (
-          <span className="min-w-0 flex-1 truncate">{name}</span>
+          <MarqueeText text={name} className="flex-1" />
         )}
         <Button
           variant="ghost"

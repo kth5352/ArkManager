@@ -12,6 +12,7 @@ import { GripVertical, X } from 'lucide-react'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 import { MediaLikeButton } from './MediaLikeButton'
+import { MarqueeText } from '../ui/marquee-text'
 import { Button } from '../ui/button'
 import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
@@ -50,8 +51,8 @@ function QueueRow({ track, index, isCurrent }: { track: MediaTrack; index: numbe
           onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
         />
       </div>
-      <button type="button" onClick={() => playAt(index)} className="min-w-0 flex-1 truncate text-left">
-        {track.name}
+      <button type="button" onClick={() => playAt(index)} className="min-w-0 flex-1 text-left">
+        <MarqueeText text={track.name} alwaysAnimate={isCurrent} />
       </button>
       <MediaLikeButton path={track.path} name={track.name} />
       <Button

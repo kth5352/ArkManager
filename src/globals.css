@@ -14,6 +14,19 @@
   }
 }
 
+/* Used by MarqueeText for a truncated label that's actually overflowing
+   its container - the text is rendered twice back-to-back and translated
+   by exactly -50% so the loop seams invisibly (the second copy is already
+   in place to continue where the first one's translation ends). */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 :root {
   --background: 0 0% 100%;
   --foreground: 240 10% 4%;

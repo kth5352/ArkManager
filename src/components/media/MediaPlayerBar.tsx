@@ -12,6 +12,7 @@ import type { ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
 import { Button } from '../ui/button'
 import { HoverTooltip } from '../ui/hover-tooltip'
+import { MarqueeText } from '../ui/marquee-text'
 
 interface MediaPlayerBarProps {
   playback: MediaPlaybackState
@@ -115,9 +116,9 @@ export function MediaPlayerBar({
           disabled={isDetached || !onExpandVideo}
           onClick={onExpandVideo}
           aria-label={t('media.expand')}
-          className="min-w-0 flex-1 truncate text-left text-xs disabled:cursor-default"
+          className="min-w-0 flex-1 text-left disabled:cursor-default"
         >
-          {playback.track.name}
+          <MarqueeText text={playback.track.name} className="text-xs" />
         </button>
         {!isDetached && onExpandVideo && (
           <HoverTooltip content={t('media.expandVideo')}>
