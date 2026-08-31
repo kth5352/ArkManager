@@ -24,8 +24,15 @@ export function usePlayAsmrFolder() {
     if (directFiles.length > 0) {
       useMediaPlayerStore.getState().playNow(directFiles[0], directFiles)
     }
-    // MediaPage의 useEffect가 useMediaFolderQuery 변경을 감지해
-    // resetMediaBrowseRoot를 자동 호출하므로, 여기서 라우팅만 하면 된다.
+    // resetMediaBrowseRoot (fired by MediaPage's mount-time sync effect once
+    // useMediaFolderQuery reflects the new folder) is deliberately
+    // selection-agnostic now - it no longer clears a stuck selectedPlaylistId
+    // itself (see its own comment in mediaPlayerStore.ts), since MediaPage
+    // also remounts fresh on every /media navigation, including the one a
+    // sidebar playlist-row click causes. ASMR folder playback SHOULD land on
+    // the folder browser rather than a stale PlaylistDetailView, so clear it
+    // explicitly here instead.
+    useMediaPlayerStore.getState().closePlaylistDetail()
     navigate({ to: '/media' })
   }
 }

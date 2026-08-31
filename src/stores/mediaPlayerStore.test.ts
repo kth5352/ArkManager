@@ -215,7 +215,7 @@ describe('useMediaPlayerStore media browse navigation', () => {
   })
 })
 
-describe('useMediaPlayerStore selectedPlaylistId clearing (C1 regression)', () => {
+describe('useMediaPlayerStore selectedPlaylistId clearing (C1/NEW-1 regression)', () => {
   beforeEach(() => {
     useMediaPlayerStore.setState({
       selectedPlaylistId: 'some-playlist-id',
@@ -230,14 +230,30 @@ describe('useMediaPlayerStore selectedPlaylistId clearing (C1 regression)', () =
     expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe(null)
   })
 
-  it('resetMediaBrowseRoot clears a stuck selectedPlaylistId when the root genuinely changes, so usePlayAsmrFolder can switch the Media tab back to folder-browsing', () => {
+  // NEW-1: resetMediaBrowseRoot must NOT touch selectedPlaylistId at all -
+  // its only caller is MediaPage.tsx's mount-time sync effect, which fires
+  // on EVERY mount of MediaPage, including the one frame a sidebar
+  // playlist-row click produces (navigateToPlaylistDetail then
+  // navigate({to:'/media'}) mounts MediaPage fresh). Round 1 had this clear
+  // selectedPlaylistId on both branches, which closed a just-opened
+  // PlaylistDetailView on its very first render - a regression worse than
+  // the original C1 bug. usePlayAsmrFolder now clears selectedPlaylistId
+  // itself via closePlaylistDetail() when it actually wants folder-browsing.
+  it('resetMediaBrowseRoot does NOT clear selectedPlaylistId when the root genuinely changes (its normal-reset branch)', () => {
     useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\ASMR')
-    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe(null)
+    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe('some-playlist-id')
   })
 
-  it('resetMediaBrowseRoot also clears selectedPlaylistId on its idempotent same-root early-return path', () => {
+  it('resetMediaBrowseRoot does NOT clear selectedPlaylistId on its idempotent same-root early-return path - this is the exact MediaPage remount regression case', () => {
     useMediaPlayerStore.setState({ mediaBrowseHistory: ['C:\\Media\\Work'] })
     useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
-    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe(null)
+    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe('some-playlist-id')
+  })
+
+  it('resetMediaBrowseRoot never closes an open playlist detail, even across repeated mount-effect calls with the same root (simulating MediaPage remounting while a sidebar playlist row is selected)', () => {
+    useMediaPlayerStore.setState({ mediaBrowseHistory: ['C:\\Media\\Work'], mediaBrowsePath: 'C:\\Media\\Work' })
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe('some-playlist-id')
   })
 })

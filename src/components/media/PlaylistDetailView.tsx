@@ -149,6 +149,8 @@ export function PlaylistDetailView() {
   const closePlaylistDetail = useMediaPlayerStore((s) => s.closePlaylistDetail)
   const playNow = useMediaPlayerStore((s) => s.playNow)
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
+  const coverVersions = useMediaPlayerStore((s) => s.coverVersions)
+  const bumpPlaylistCoverVersion = useMediaPlayerStore((s) => s.bumpPlaylistCoverVersion)
 
   const isLiked = selectedPlaylistId === LIKED_PLAYLIST_ID
   const { data: playlists = [] } = useMediaPlaylists()
@@ -173,11 +175,6 @@ export function PlaylistDetailView() {
   const [renaming, setRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
-  // Cache-busting counter for the cover <img>, same pattern as MediaPage.tsx's
-  // per-track refreshToken - buildMediaPlaylistCoverUrl returns a stable URL
-  // keyed only on playlistId, so without this the browser would keep showing
-  // the old cover after a successful set/clear.
-  const [coverVersion, setCoverVersion] = useState(0)
 
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>()
   const widthMode = getPlaylistDetailWidthMode(containerWidth)
@@ -199,7 +196,7 @@ export function PlaylistDetailView() {
     hasCover,
     selectedPlaylistId ?? '',
     tracks.map((track) => track.path),
-    coverVersion
+    coverVersions[selectedPlaylistId ?? ''] ?? 0
   )
 
   const startRename = (): void => {
@@ -248,7 +245,7 @@ export function PlaylistDetailView() {
       if (!sourcePath) return
       setCoverMutation.mutate(
         { playlistId: playlist.id, sourcePath },
-        { onSuccess: () => setCoverVersion((v) => v + 1) }
+        { onSuccess: () => bumpPlaylistCoverVersion(playlist.id) }
       )
     } catch {
       appToast.error(t('media.setPlaylistCoverFailed'))
@@ -257,7 +254,7 @@ export function PlaylistDetailView() {
 
   const handleClearCover = (): void => {
     if (!playlist) return
-    clearCoverMutation.mutate(playlist.id, { onSuccess: () => setCoverVersion((v) => v + 1) })
+    clearCoverMutation.mutate(playlist.id, { onSuccess: () => bumpPlaylistCoverVersion(playlist.id) })
   }
 
   return (

@@ -83,6 +83,21 @@ interface MediaPlayerState {
   selectedPlaylistId: string | null
   navigateToPlaylistDetail: (playlistId: string) => void
   closePlaylistDetail: () => void
+  // Cache-busting counter per playlist id for computePlaylistThumbnailSource's
+  // cover URL (see playlistThumbnailSources.ts) - lives here, not as
+  // component-local useState, for two reasons (I1 re-review gaps): (1)
+  // PlaylistManagementTab.tsx's UserPlaylistRow renders the same playlist's
+  // thumbnail in the sidebar and needs to see the same bumped value
+  // PlaylistDetailView produces, and (2) PlaylistDetailView itself unmounts
+  // whenever the user backs out (closePlaylistDetail) and remounts fresh the
+  // next time the playlist is opened - local state would reset to 0 and
+  // land back on the exact stale cached URL the bump exists to avoid. Keyed
+  // by playlist id (rather than a single counter) so bumping one playlist's
+  // cover doesn't invalidate every other playlist's already-correct <img>.
+  // Absent entries read as 0 via the `?? 0` at each call site, matching
+  // computePlaylistThumbnailSource's own default.
+  coverVersions: Record<string, number>
+  bumpPlaylistCoverVersion: (playlistId: string) => void
   // AppLayout.tsx(MediaSidebar의 새 "폴더" 탭)와 MediaPage.tsx가 서로 다른
   // 트리 위치에서 같은 폴더 탐색 위치/히스토리를 공유해야 하므로, 여기 store에
   // 올린다 - sidebarActiveTab과 같은 이유. mediaBrowseHistory/-Index는
@@ -159,6 +174,11 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   selectedPlaylistId: null,
   navigateToPlaylistDetail: (playlistId) => set({ selectedPlaylistId: playlistId }),
   closePlaylistDetail: () => set({ selectedPlaylistId: null }),
+  coverVersions: {},
+  bumpPlaylistCoverVersion: (playlistId) =>
+    set((state) => ({
+      coverVersions: { ...state.coverVersions, [playlistId]: (state.coverVersions[playlistId] ?? 0) + 1 },
+    })),
   mediaBrowsePath: null,
   mediaBrowseHistory: [],
   mediaBrowseHistoryIndex: 0,
@@ -193,16 +213,24 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
       if (next.entries.length === 0) return {}
       return { mediaBrowsePath: next.entries[next.index], mediaBrowseHistoryIndex: next.index }
     }),
+  // Deliberately does NOT touch selectedPlaylistId (unlike
+  // navigateMediaBrowseTo below) - this is called from MediaPage.tsx's
+  // mount-time sync effect on EVERY mount of MediaPage, including the one
+  // frame a sidebar playlist-row click produces (navigateToPlaylistDetail
+  // then navigate({to:'/media'}) mounts MediaPage fresh). Clearing
+  // selectedPlaylistId here would immediately close a PlaylistDetailView the
+  // user just opened, before it ever got a chance to render. Callers that
+  // actually want the Media tab to fall back to folder-browsing (e.g.
+  // usePlayAsmrFolder) must clear selectedPlaylistId themselves via
+  // closePlaylistDetail().
   resetMediaBrowseRoot: (rootPath) =>
     set((state) => {
-      if (state.mediaBrowseHistory[0] === rootPath) return { selectedPlaylistId: null }
+      if (state.mediaBrowseHistory[0] === rootPath) return {}
       const next = resetBrowseHistory(rootPath)
       return {
         mediaBrowsePath: rootPath,
         mediaBrowseHistory: next.entries,
         mediaBrowseHistoryIndex: next.index,
-        // See navigateMediaBrowseTo's comment - same reasoning applies here.
-        selectedPlaylistId: null,
       }
     }),
   playbackCurrentTime: 0,

@@ -81,10 +81,16 @@ function UserPlaylistRow({ playlist }: { playlist: MediaPlaylistDto }) {
   const { data: tracks = [] } = useMediaPlaylistTracks(playlist.id)
   const playNow = useMediaPlayerStore((s) => s.playNow)
   const navigateToPlaylistDetail = useMediaPlayerStore((s) => s.navigateToPlaylistDetail)
+  // Reads the same store-held coverVersions map PlaylistDetailView bumps
+  // (see mediaPlayerStore.ts's own comment) so editing a cover there is
+  // reflected here too, without needing this row to remount (I1 re-review
+  // gap 1).
+  const coverVersion = useMediaPlayerStore((s) => s.coverVersions[playlist.id] ?? 0)
   const thumbnailSource = computePlaylistThumbnailSource(
     playlist.coverImagePath !== null,
     playlist.id,
-    tracks.map((track) => track.path)
+    tracks.map((track) => track.path),
+    coverVersion
   )
 
   const openDetail = (): void => {
