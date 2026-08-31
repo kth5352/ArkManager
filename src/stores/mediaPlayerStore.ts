@@ -76,6 +76,13 @@ interface MediaPlayerState {
   // open/closed (useMediaSidebarOpenQuery) and its width are.
   sidebarActiveTab: MediaSidebarTab
   setSidebarActiveTab: (tab: MediaSidebarTab) => void
+  // 사이드바에서 재생목록 행을 클릭했을 때 MediaPage.tsx가 폴더 브라우징
+  // 대신 PlaylistDetailView를 렌더링하도록 하는 토글 - mediaBrowsePath(폴더
+  // 탐색)와 완전히 독립적이다. "찾아 들어가는" 개념이 아니라 열림/닫힘
+  // 하나짜리 상태라 히스토리 스택이 없다.
+  selectedPlaylistId: string | null
+  navigateToPlaylistDetail: (playlistId: string) => void
+  closePlaylistDetail: () => void
   // AppLayout.tsx(MediaSidebar의 새 "폴더" 탭)와 MediaPage.tsx가 서로 다른
   // 트리 위치에서 같은 폴더 탐색 위치/히스토리를 공유해야 하므로, 여기 store에
   // 올린다 - sidebarActiveTab과 같은 이유. mediaBrowseHistory/-Index는
@@ -149,6 +156,9 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   handoffTimeSeconds: null,
   sidebarActiveTab: 'playlists',
   setSidebarActiveTab: (tab) => set({ sidebarActiveTab: tab }),
+  selectedPlaylistId: null,
+  navigateToPlaylistDetail: (playlistId) => set({ selectedPlaylistId: playlistId }),
+  closePlaylistDetail: () => set({ selectedPlaylistId: null }),
   mediaBrowsePath: null,
   mediaBrowseHistory: [],
   mediaBrowseHistoryIndex: 0,
