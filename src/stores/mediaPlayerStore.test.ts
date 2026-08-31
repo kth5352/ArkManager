@@ -113,6 +113,51 @@ describe('useMediaPlayerStore appendAndPlay', () => {
   })
 })
 
+describe('useMediaPlayerStore playNext', () => {
+  beforeEach(() => {
+    useMediaPlayerStore.setState({
+      playlist: [
+        { path: 'C:/a.mp3', name: 'a' },
+        { path: 'C:/b.mp3', name: 'b' },
+        { path: 'C:/c.mp3', name: 'c' },
+      ],
+      currentIndex: 0,
+      isPlaying: false,
+    })
+  })
+
+  it('inserts the track right after the currently playing one, without changing playback', () => {
+    useMediaPlayerStore.getState().playNext({ path: 'C:/x.mp3', name: 'x' })
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist.map((t) => t.name)).toEqual(['a', 'x', 'b', 'c'])
+    expect(state.currentIndex).toBe(0)
+    expect(state.isPlaying).toBe(false)
+  })
+
+  it('inserts after the current track even when the current track is not first', () => {
+    useMediaPlayerStore.setState({ currentIndex: 1 })
+    useMediaPlayerStore.getState().playNext({ path: 'C:/x.mp3', name: 'x' })
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist.map((t) => t.name)).toEqual(['a', 'b', 'x', 'c'])
+    expect(state.currentIndex).toBe(1)
+  })
+
+  it('does nothing when the track is already queued', () => {
+    useMediaPlayerStore.getState().playNext({ path: 'C:/c.mp3', name: 'c' })
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist.map((t) => t.name)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('adds and immediately plays the track when the queue is empty', () => {
+    useMediaPlayerStore.setState({ playlist: [], currentIndex: null, isPlaying: false })
+    useMediaPlayerStore.getState().playNext({ path: 'C:/x.mp3', name: 'x' })
+    const state = useMediaPlayerStore.getState()
+    expect(state.playlist).toEqual([{ path: 'C:/x.mp3', name: 'x' }])
+    expect(state.currentIndex).toBe(0)
+    expect(state.isPlaying).toBe(true)
+  })
+})
+
 describe('useMediaPlayerStore sidebarActiveTab', () => {
   it('defaults to "playlists"', () => {
     expect(useMediaPlayerStore.getState().sidebarActiveTab).toBe('playlists')

@@ -70,6 +70,7 @@ export function GameEntryContextMenu({
   const toggleCleared = useToggleCleared()
   const playNow = useMediaPlayerStore((s) => s.playNow)
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
+  const playNext = useMediaPlayerStore((s) => s.playNext)
 
   const capabilities = getExplorerEntryCapabilities(entry)
   const isAsmrMedia = isAsmrPlayableFolder(entry, entry.code ?? null, workType)
@@ -84,6 +85,9 @@ export function GameEntryContextMenu({
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => addToPlaylist([{ path: entry.path, name: entry.name }])}>
             {t('media.addToPlaylist')}
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={() => playNext({ path: entry.path, name: entry.name })}>
+            {t('media.playNext')}
           </ContextMenuItem>
           {onAddToSavedPlaylist && (
             <ContextMenuItem

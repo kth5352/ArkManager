@@ -4,6 +4,7 @@ import {
   ChevronRight,
   ImagePlus,
   ListMusic,
+  ListPlus,
   Play,
   Plus,
   Folder as FolderIcon,
@@ -26,11 +27,19 @@ import { isMediaFile } from '../../../shared/isMediaFile'
 import { pathToBreadcrumbSegments } from '../Explorer/breadcrumb'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu'
 import { useTranslation } from '../../i18n/useTranslation'
 import { setMediaThumbnailWithFeedback } from './mediaThumbnailFeedback'
 import { MediaLikeButton } from '../../components/media/MediaLikeButton'
 import { PlaylistDetailView } from '../../components/media/PlaylistDetailView'
+import { AddToSavedPlaylistDialog } from '../../components/media/AddToSavedPlaylistDialog'
 import type { ScannedEntry } from '../../../shared/types/scanner'
+import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
 // A single track row - thumbnail state (whether the current mediathumb://
 // request 404'd, and a cache-busting counter bumped after the user manually
@@ -42,11 +51,15 @@ import type { ScannedEntry } from '../../../shared/types/scanner'
 function MediaTrackRow({
   track,
   onPlay,
-  onAddToPlaylist,
+  onAddToQueue,
+  onPlayNext,
+  onAddToSavedPlaylist,
 }: {
   track: MediaTrack
   onPlay: () => void
-  onAddToPlaylist: () => void
+  onAddToQueue: () => void
+  onPlayNext: () => void
+  onAddToSavedPlaylist: () => void
 }) {
   const { t } = useTranslation()
   const [thumbFailed, setThumbFailed] = useState(false)
@@ -94,15 +107,25 @@ function MediaTrackRow({
       >
         <ImagePlus className="h-4 w-4" />
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={t('media.addToPlaylist')}
-        className="shrink-0"
-        onClick={onAddToPlaylist}
-      >
-        <Plus className="h-4 w-4" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('media.addToPlaylist')}
+            className="shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={onAddToQueue}>{t('media.addToPlaylist')}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onPlayNext}>{t('media.playNext')}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onAddToSavedPlaylist}>
+            {t('media.addToSavedPlaylist')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </li>
   )
 }
@@ -189,6 +212,10 @@ export function MediaPage() {
   const mediaSidebarOpen = mediaSidebarOpenSetting ?? false
   const appendAndPlay = useMediaPlayerStore((s) => s.appendAndPlay)
   const addToPlaylist = useMediaPlayerStore((s) => s.addToPlaylist)
+  const playNext = useMediaPlayerStore((s) => s.playNext)
+  const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
+    MediaPlaylistTrackDto[] | null
+  >(null)
   const mediaBrowsePath = useMediaPlayerStore((s) => s.mediaBrowsePath)
   const mediaBrowseHistory = useMediaPlayerStore((s) => s.mediaBrowseHistory)
   const mediaBrowseHistoryIndex = useMediaPlayerStore((s) => s.mediaBrowseHistoryIndex)
@@ -273,14 +300,27 @@ export function MediaPage() {
             <ListMusic className="h-4 w-4" />
           </Button>
           {tracks.length > 0 && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="shrink-0"
-              onClick={() => addToPlaylist(tracks)}
-            >
-              {t('media.addFolderToPlaylist')}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('media.addFolderToPlaylist')}
+                  title={t('media.addFolderToPlaylist')}
+                  className="shrink-0"
+                >
+                  <ListPlus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => addToPlaylist(tracks)}>
+                  {t('media.addFolderToPlaylist')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setPendingSavedPlaylistTracks(tracks)}>
+                  {t('media.addFolderToSavedPlaylist')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
         {folder && (
@@ -316,12 +356,18 @@ export function MediaPage() {
                 key={track.path}
                 track={track}
                 onPlay={() => appendAndPlay(track)}
-                onAddToPlaylist={() => addToPlaylist([track])}
+                onAddToQueue={() => addToPlaylist([track])}
+                onPlayNext={() => playNext(track)}
+                onAddToSavedPlaylist={() => setPendingSavedPlaylistTracks([track])}
               />
             ))}
           </ul>
         )}
       </div>
+      <AddToSavedPlaylistDialog
+        tracks={pendingSavedPlaylistTracks ?? []}
+        onClose={() => setPendingSavedPlaylistTracks(null)}
+      />
     </div>
   )
 }

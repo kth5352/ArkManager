@@ -139,6 +139,12 @@ interface MediaPlayerState {
   // 시맨틱이다.
   appendAndPlay: (track: MediaTrack) => void
   addToPlaylist: (tracks: MediaTrack[]) => void
+  // addToPlaylist가 큐 끝에 추가하는 것과 달리, 현재 재생 중인 트랙(currentIndex)
+  // 바로 다음 자리에 삽입한다 - 재생을 전환하지 않고 순서만 예약. 큐가 비어있으면
+  // (currentIndex === null) "다음"이라는 개념 자체가 없으므로 appendAndPlay처럼
+  // 즉시 재생 시작. 이미 큐에 있는 트랙이면 addToPlaylist와 동일하게 아무 것도
+  // 하지 않는다(중복 삽입 방지).
+  playNext: (track: MediaTrack) => void
   playAt: (index: number) => void
   next: () => void
   prev: () => void
@@ -274,6 +280,18 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
       currentIndex: wasEmpty ? 0 : currentIndex,
       isPlaying: wasEmpty ? true : get().isPlaying,
     })
+  },
+
+  playNext: (track) => {
+    const { playlist, currentIndex } = get()
+    if (playlist.some((t) => t.path === track.path)) return
+    if (currentIndex === null) {
+      set({ playlist: [...playlist, track], currentIndex: playlist.length, isPlaying: true })
+      return
+    }
+    const insertAt = currentIndex + 1
+    const nextPlaylist = [...playlist.slice(0, insertAt), track, ...playlist.slice(insertAt)]
+    set({ playlist: nextPlaylist })
   },
 
   playAt: (index) => set({ currentIndex: index, isPlaying: true }),
