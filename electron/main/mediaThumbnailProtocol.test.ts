@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildMediaThumbnailResponse } from './mediaThumbnailProtocol'
+import { buildMediaThumbnailResponse, buildPlaylistCoverResponse } from './mediaThumbnailProtocol'
 
 describe('buildMediaThumbnailResponse', () => {
   let libraryDir: string
@@ -107,6 +107,37 @@ describe('buildMediaThumbnailResponse', () => {
       () => null,
       resolve
     )
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('buildPlaylistCoverResponse', () => {
+  let coverDir: string
+
+  beforeEach(async () => {
+    coverDir = await mkdtemp(join(tmpdir(), 'ark-manager-playlist-cover-'))
+  })
+
+  afterEach(async () => {
+    await rm(coverDir, { recursive: true, force: true })
+  })
+
+  it('returns 404 when no cover path is stored', async () => {
+    const response = await buildPlaylistCoverResponse('pl-1', () => null)
+    expect(response.status).toBe(404)
+  })
+
+  it('serves the stored cover file with the correct content type', async () => {
+    const coverPath = join(coverDir, 'pl-1.webp')
+    await writeFile(coverPath, 'fake-webp-bytes')
+    const response = await buildPlaylistCoverResponse('pl-1', () => coverPath)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('image/webp')
+    expect(await response.text()).toBe('fake-webp-bytes')
+  })
+
+  it('returns 404 when the stored path cannot actually be read', async () => {
+    const response = await buildPlaylistCoverResponse('pl-1', () => join(coverDir, 'missing.webp'))
     expect(response.status).toBe(404)
   })
 })

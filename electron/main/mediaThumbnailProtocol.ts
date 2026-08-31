@@ -6,6 +6,7 @@ import { isPathWithinAnyLibrary } from './thumbnailProtocol'
 import { listLibraries } from './database/librariesRepository'
 import { getSetting } from './database/settingsRepository'
 import { getMediaThumbnailOverride } from './database/mediaThumbnailOverridesRepository'
+import { getPlaylistCoverPath } from './database/mediaPlaylistsRepository'
 import { resolveMediaThumbnail } from './media/resolveMediaThumbnail'
 import type { AppDatabase } from './database/client'
 
@@ -60,6 +61,23 @@ export async function buildMediaThumbnailResponse(
   }
 }
 
+// Decoupled the same way buildMediaThumbnailResponse is - getCoverPath is
+// injected so a test can exercise the 200/404 cases without a real database.
+export async function buildPlaylistCoverResponse(
+  playlistId: string,
+  getCoverPath: (playlistId: string) => string | null
+): Promise<Response> {
+  const coverPath = getCoverPath(playlistId)
+  if (!coverPath) return new Response(null, { status: 404 })
+  try {
+    const buffer = await readFile(coverPath)
+    const mimeType = MIME_TYPES[extname(coverPath).toLowerCase()] ?? 'application/octet-stream'
+    return new Response(buffer, { headers: { 'Content-Type': mimeType } })
+  } catch {
+    return new Response(null, { status: 404 })
+  }
+}
+
 // Must run before app.whenReady() - Electron requires privileged schemes to
 // be registered at module load time.
 export function registerMediaThumbnailProtocolScheme(): void {
@@ -78,6 +96,11 @@ export function registerMediaThumbnailProtocolScheme(): void {
 export function registerMediaThumbnailProtocolHandler(db: AppDatabase): void {
   const cacheDir = mediaThumbnailCacheDir()
   protocol.handle(MEDIA_THUMBNAIL_SCHEME, async (request) => {
+    const url = new URL(request.url)
+    if (url.hostname === 'playlist-cover') {
+      const playlistId = decodeURIComponent(url.pathname.slice(1))
+      return buildPlaylistCoverResponse(playlistId, (id) => getPlaylistCoverPath(db, id))
+    }
     const filePath = decodeFilePath(request.url)
     const libraryPaths = listLibraries(db).map((library) => library.path)
     const mediaFolder = getSetting(db, 'media-folder')

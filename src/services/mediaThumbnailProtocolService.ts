@@ -8,3 +8,11 @@
 export function buildMediaThumbnailUrl(filePath: string): string {
   return `mediathumb://thumbnail/${encodeURIComponent(filePath)}`
 }
+
+// Same hostname-branching contract as electron/main/mediaThumbnailProtocol.ts's
+// registerMediaThumbnailProtocolHandler - 'playlist-cover' resolves via the
+// playlist's own cover_image_path column server-side, not a filesystem path,
+// so no isPathWithinAnyLibrary check applies to this URL shape.
+export function buildMediaPlaylistCoverUrl(playlistId: string): string {
+  return `mediathumb://playlist-cover/${encodeURIComponent(playlistId)}`
+}
