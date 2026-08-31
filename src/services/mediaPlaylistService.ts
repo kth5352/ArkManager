@@ -115,3 +115,26 @@ export function useToggleTrackLike() {
     },
   })
 }
+
+export function usePickPlaylistCoverFile() {
+  return useMutation({
+    mutationFn: (): Promise<string | null> => window.api.mediaPlaylist.pickCoverFile(),
+  })
+}
+
+export function useSetPlaylistCover() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ playlistId, sourcePath }: { playlistId: string; sourcePath: string }) =>
+      window.api.mediaPlaylist.setCover(playlistId, sourcePath),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY }),
+  })
+}
+
+export function useClearPlaylistCover() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (playlistId: string) => window.api.mediaPlaylist.clearCover(playlistId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY }),
+  })
+}

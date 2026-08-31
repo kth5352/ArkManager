@@ -106,6 +106,9 @@ export const IPC_CHANNELS = {
   MEDIA_PLAYLIST_DELETE: 'media-playlist:delete',
   MEDIA_PLAYLIST_GET_TRACKS: 'media-playlist:get-tracks',
   MEDIA_PLAYLIST_SET_TRACKS: 'media-playlist:set-tracks',
+  MEDIA_PLAYLIST_COVER_PICK_FILE: 'media-playlist:cover-pick-file',
+  MEDIA_PLAYLIST_SET_COVER: 'media-playlist:set-cover',
+  MEDIA_PLAYLIST_CLEAR_COVER: 'media-playlist:clear-cover',
   MEDIA_TRACK_LIKE_LIST: 'media-track-like:list',
   MEDIA_TRACK_LIKE_IS_LIKED: 'media-track-like:is-liked',
   MEDIA_TRACK_LIKE_TOGGLE: 'media-track-like:toggle',
@@ -648,6 +651,17 @@ export const SetMediaPlaylistTracksRequestSchema = z.object({
   tracks: z.array(MediaTrackSchema),
 })
 export type SetMediaPlaylistTracksRequest = z.infer<typeof SetMediaPlaylistTracksRequestSchema>
+
+export const SetMediaPlaylistCoverRequestSchema = z.object({
+  playlistId: z.string(),
+  sourcePath: z.string(),
+})
+export type SetMediaPlaylistCoverRequest = z.infer<typeof SetMediaPlaylistCoverRequestSchema>
+
+export const ClearMediaPlaylistCoverRequestSchema = z.object({
+  playlistId: z.string(),
+})
+export type ClearMediaPlaylistCoverRequest = z.infer<typeof ClearMediaPlaylistCoverRequestSchema>
 
 export const IsTrackLikedRequestSchema = z.object({
   path: z.string(),

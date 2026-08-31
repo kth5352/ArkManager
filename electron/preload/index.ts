@@ -392,6 +392,12 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_TRACK_LIKE_IS_LIKED, { path }),
     toggleTrackLike: (path: string, name: string): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_TRACK_LIKE_TOGGLE, { path, name }),
+    pickCoverFile: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_COVER_PICK_FILE),
+    setCover: (playlistId: string, sourcePath: string): Promise<string> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_SET_COVER, { playlistId, sourcePath }),
+    clearCover: (playlistId: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_CLEAR_COVER, { playlistId }),
   },
   mediaLyrics: {
     get: (filePath: string): Promise<{ path: string; text: string } | null> =>
