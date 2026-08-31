@@ -42,4 +42,18 @@ describe('computePlaylistThumbnailSource', () => {
       tileUrls: [null, null, null, null],
     })
   })
+
+  it('omits the ?v= query string when coverVersion is left at its default 0 (I1 regression: no query param means no behavior change)', () => {
+    expect(computePlaylistThumbnailSource(true, 'pl-1', [])).toEqual({
+      kind: 'cover',
+      url: 'mediathumb://playlist-cover/pl-1',
+    })
+  })
+
+  it('appends a cache-busting ?v= query string once coverVersion is bumped past 0 (I1 regression)', () => {
+    expect(computePlaylistThumbnailSource(true, 'pl-1', [], 3)).toEqual({
+      kind: 'cover',
+      url: 'mediathumb://playlist-cover/pl-1?v=3',
+    })
+  })
 })

@@ -214,3 +214,30 @@ describe('useMediaPlayerStore media browse navigation', () => {
     expect(state.mediaBrowseHistoryIndex).toBe(0)
   })
 })
+
+describe('useMediaPlayerStore selectedPlaylistId clearing (C1 regression)', () => {
+  beforeEach(() => {
+    useMediaPlayerStore.setState({
+      selectedPlaylistId: 'some-playlist-id',
+      mediaBrowsePath: null,
+      mediaBrowseHistory: [],
+      mediaBrowseHistoryIndex: 0,
+    })
+  })
+
+  it('navigateMediaBrowseTo clears a stuck selectedPlaylistId, so folder browsing (FolderTreeTab.handleNavigate) is never silently swallowed behind a stale PlaylistDetailView', () => {
+    useMediaPlayerStore.getState().navigateMediaBrowseTo('C:\\Media\\Work')
+    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe(null)
+  })
+
+  it('resetMediaBrowseRoot clears a stuck selectedPlaylistId when the root genuinely changes, so usePlayAsmrFolder can switch the Media tab back to folder-browsing', () => {
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\ASMR')
+    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe(null)
+  })
+
+  it('resetMediaBrowseRoot also clears selectedPlaylistId on its idempotent same-root early-return path', () => {
+    useMediaPlayerStore.setState({ mediaBrowseHistory: ['C:\\Media\\Work'] })
+    useMediaPlayerStore.getState().resetMediaBrowseRoot('C:\\Media\\Work')
+    expect(useMediaPlayerStore.getState().selectedPlaylistId).toBe(null)
+  })
+})

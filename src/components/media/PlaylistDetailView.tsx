@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ImagePlus, Pencil, Plus, Trash2, X, ChevronLeft } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { appToast } from '../../lib/appToast'
 import { useTranslation } from '../../i18n/useTranslation'
 import { useContainerWidth } from '../../hooks/useContainerWidth'
 import { getPlaylistDetailWidthMode } from '../../lib/playlistDetailWidthMode'
@@ -172,6 +173,11 @@ export function PlaylistDetailView() {
   const [renaming, setRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
+  // Cache-busting counter for the cover <img>, same pattern as MediaPage.tsx's
+  // per-track refreshToken - buildMediaPlaylistCoverUrl returns a stable URL
+  // keyed only on playlistId, so without this the browser would keep showing
+  // the old cover after a successful set/clear.
+  const [coverVersion, setCoverVersion] = useState(0)
 
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>()
   const widthMode = getPlaylistDetailWidthMode(containerWidth)
@@ -192,7 +198,8 @@ export function PlaylistDetailView() {
   const thumbnailSource = computePlaylistThumbnailSource(
     hasCover,
     selectedPlaylistId ?? '',
-    tracks.map((track) => track.path)
+    tracks.map((track) => track.path),
+    coverVersion
   )
 
   const startRename = (): void => {
@@ -230,14 +237,27 @@ export function PlaylistDetailView() {
 
   const handleSetCover = async (): Promise<void> => {
     if (!playlist) return
-    const sourcePath = await pickCoverFile.mutateAsync()
-    if (!sourcePath) return
-    setCoverMutation.mutate({ playlistId: playlist.id, sourcePath })
+    // pickCoverFile.mutateAsync() rejects (e.g. a failed trust-token check)
+    // rather than routing through the mutation's own onError - unlike the
+    // fire-and-forget setCoverMutation.mutate() below, this is awaited
+    // directly, so an uncaught rejection here would surface as an unhandled
+    // promise rejection instead of user-facing feedback (mirrors the
+    // pick-then-set try/catch shape in mediaThumbnailFeedback.ts).
+    try {
+      const sourcePath = await pickCoverFile.mutateAsync()
+      if (!sourcePath) return
+      setCoverMutation.mutate(
+        { playlistId: playlist.id, sourcePath },
+        { onSuccess: () => setCoverVersion((v) => v + 1) }
+      )
+    } catch {
+      appToast.error(t('media.setPlaylistCoverFailed'))
+    }
   }
 
   const handleClearCover = (): void => {
     if (!playlist) return
-    clearCoverMutation.mutate(playlist.id)
+    clearCoverMutation.mutate(playlist.id, { onSuccess: () => setCoverVersion((v) => v + 1) })
   }
 
   return (
@@ -274,7 +294,8 @@ export function PlaylistDetailView() {
         <div className={cn('flex flex-col gap-0.5', widthMode === 'wide' ? 'min-w-0 flex-1' : '')}>
           <PlaylistTrackList
             tracks={tracks}
-            disabled={isLiked || setTracksMutation.isPending || tracksQuery.isFetching}
+            disabled={setTracksMutation.isPending || tracksQuery.isFetching}
+            readOnly={isLiked}
             onPlayTrack={handlePlayTrack}
             onReorder={handleReorder}
             onRemove={handleRemoveTrack}

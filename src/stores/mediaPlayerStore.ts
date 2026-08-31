@@ -168,7 +168,18 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
         { entries: state.mediaBrowseHistory, index: state.mediaBrowseHistoryIndex },
         path
       )
-      return { mediaBrowsePath: path, mediaBrowseHistory: next.entries, mediaBrowseHistoryIndex: next.index }
+      return {
+        mediaBrowsePath: path,
+        mediaBrowseHistory: next.entries,
+        mediaBrowseHistoryIndex: next.index,
+        // Switching to folder-browsing means the Media tab should show the
+        // folder browser, not a stale PlaylistDetailView left open from a
+        // previous playlist click (see selectedPlaylistId's own comment) -
+        // without this, FolderTreeTab's handleNavigate and
+        // usePlayAsmrFolder both silently update browse state behind the
+        // still-mounted playlist detail screen.
+        selectedPlaylistId: null,
+      }
     }),
   mediaBrowseGoBack: () =>
     set((state) => {
@@ -184,9 +195,15 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
     }),
   resetMediaBrowseRoot: (rootPath) =>
     set((state) => {
-      if (state.mediaBrowseHistory[0] === rootPath) return {}
+      if (state.mediaBrowseHistory[0] === rootPath) return { selectedPlaylistId: null }
       const next = resetBrowseHistory(rootPath)
-      return { mediaBrowsePath: rootPath, mediaBrowseHistory: next.entries, mediaBrowseHistoryIndex: next.index }
+      return {
+        mediaBrowsePath: rootPath,
+        mediaBrowseHistory: next.entries,
+        mediaBrowseHistoryIndex: next.index,
+        // See navigateMediaBrowseTo's comment - same reasoning applies here.
+        selectedPlaylistId: null,
+      }
     }),
   playbackCurrentTime: 0,
   setPlaybackCurrentTime: (time) => set({ playbackCurrentTime: time }),

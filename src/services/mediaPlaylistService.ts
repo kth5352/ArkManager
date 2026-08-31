@@ -130,17 +130,21 @@ export function usePickPlaylistCoverFile() {
 
 export function useSetPlaylistCover() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: ({ playlistId, sourcePath }: { playlistId: string; sourcePath: string }) =>
       window.api.mediaPlaylist.setCover(playlistId, sourcePath),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY }),
+    onError: () => appToast.error(t('media.setPlaylistCoverFailed')),
   })
 }
 
 export function useClearPlaylistCover() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: (playlistId: string) => window.api.mediaPlaylist.clearCover(playlistId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MEDIA_PLAYLISTS_QUERY_KEY }),
+    onError: () => appToast.error(t('media.removePlaylistCoverFailed')),
   })
 }
