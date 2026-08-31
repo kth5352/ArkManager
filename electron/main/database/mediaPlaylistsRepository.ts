@@ -10,6 +10,7 @@ export function listMediaPlaylists(db: AppDatabase): MediaPlaylistDto[] {
     id: playlist.id,
     name: playlist.name,
     trackCount: allTracks.filter((track) => track.playlistId === playlist.id).length,
+    coverImagePath: playlist.coverImagePath,
     createdAt: playlist.createdAt,
     updatedAt: playlist.updatedAt,
   }))
@@ -65,4 +66,27 @@ export function setMediaPlaylistTracks(
       .where(eq(mediaPlaylists.id, id))
       .run()
   })
+}
+
+export function setPlaylistCover(db: AppDatabase, id: string, coverImagePath: string): void {
+  db.update(mediaPlaylists)
+    .set({ coverImagePath, updatedAt: new Date().toISOString() })
+    .where(eq(mediaPlaylists.id, id))
+    .run()
+}
+
+export function clearPlaylistCover(db: AppDatabase, id: string): void {
+  db.update(mediaPlaylists)
+    .set({ coverImagePath: null, updatedAt: new Date().toISOString() })
+    .where(eq(mediaPlaylists.id, id))
+    .run()
+}
+
+export function getPlaylistCoverPath(db: AppDatabase, id: string): string | null {
+  const row = db
+    .select({ coverImagePath: mediaPlaylists.coverImagePath })
+    .from(mediaPlaylists)
+    .where(eq(mediaPlaylists.id, id))
+    .get()
+  return row?.coverImagePath ?? null
 }

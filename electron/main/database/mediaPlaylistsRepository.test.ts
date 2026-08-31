@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createDbClient, type AppDatabase } from './client'
 import {
   listMediaPlaylists,
@@ -7,6 +7,9 @@ import {
   deleteMediaPlaylist,
   getMediaPlaylistTracks,
   setMediaPlaylistTracks,
+  setPlaylistCover,
+  clearPlaylistCover,
+  getPlaylistCoverPath,
 } from './mediaPlaylistsRepository'
 
 describe('mediaPlaylistsRepository', () => {
@@ -47,5 +50,46 @@ describe('mediaPlaylistsRepository', () => {
     setMediaPlaylistTracks(db, 'p1', [{ path: 'C:/b.mp3', name: 'b.mp3' }])
     expect(getMediaPlaylistTracks(db, 'p1')).toEqual([{ path: 'C:/b.mp3', name: 'b.mp3' }])
     expect(listMediaPlaylists(db)[0].trackCount).toBe(1)
+  })
+})
+
+describe('media playlist cover repository functions', () => {
+  let db: AppDatabase
+
+  afterEach(() => {
+    db.$client.close()
+  })
+
+  it('returns null for a playlist with no cover set', () => {
+    db = createDbClient(':memory:')
+    createMediaPlaylist(db, 'pl-1', 'Test Playlist')
+    expect(getPlaylistCoverPath(db, 'pl-1')).toBeNull()
+  })
+
+  it('setPlaylistCover stores the path and getPlaylistCoverPath returns it', () => {
+    db = createDbClient(':memory:')
+    createMediaPlaylist(db, 'pl-1', 'Test Playlist')
+    setPlaylistCover(db, 'pl-1', 'C:\\cache\\playlist-covers\\pl-1.webp')
+    expect(getPlaylistCoverPath(db, 'pl-1')).toBe('C:\\cache\\playlist-covers\\pl-1.webp')
+  })
+
+  it('clearPlaylistCover resets the path to null', () => {
+    db = createDbClient(':memory:')
+    createMediaPlaylist(db, 'pl-1', 'Test Playlist')
+    setPlaylistCover(db, 'pl-1', 'C:\\cache\\playlist-covers\\pl-1.webp')
+    clearPlaylistCover(db, 'pl-1')
+    expect(getPlaylistCoverPath(db, 'pl-1')).toBeNull()
+  })
+
+  it('listMediaPlaylists includes coverImagePath for each playlist', () => {
+    db = createDbClient(':memory:')
+    createMediaPlaylist(db, 'pl-1', 'Test Playlist')
+    setPlaylistCover(db, 'pl-1', 'C:\\cache\\playlist-covers\\pl-1.webp')
+    createMediaPlaylist(db, 'pl-2', 'No Cover Playlist')
+    const playlists = listMediaPlaylists(db)
+    expect(playlists.find((p) => p.id === 'pl-1')?.coverImagePath).toBe(
+      'C:\\cache\\playlist-covers\\pl-1.webp'
+    )
+    expect(playlists.find((p) => p.id === 'pl-2')?.coverImagePath).toBeNull()
   })
 })

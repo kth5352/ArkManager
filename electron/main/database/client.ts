@@ -186,10 +186,14 @@ export function createDbClient(filePath: string) {
     CREATE TABLE IF NOT EXISTS media_playlists (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      cover_image_path TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
   `)
+  ensureColumns(sqlite, 'media_playlists', [
+    { name: 'cover_image_path', ddl: 'cover_image_path TEXT' },
+  ])
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS media_playlist_tracks (

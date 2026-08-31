@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { createDbClient } from './client'
-import { gameUserData } from './schema'
+import { gameUserData, mediaPlaylists } from './schema'
 
 describe('createDbClient column backfill', () => {
   let dir: string
@@ -65,6 +65,33 @@ describe('createDbClient column backfill', () => {
 
     const second = createDbClient(dbPath)
     second.$client.close()
+  })
+
+  it('backfills cover_image_path missing from a media_playlists table created before it existed', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-db-'))
+    const dbPath = join(dir, 'old-playlists.db')
+
+    const raw = new Database(dbPath)
+    raw.exec(`
+      CREATE TABLE media_playlists (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `)
+    raw
+      .prepare(`INSERT INTO media_playlists (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`)
+      .run('pl-1', 'Old Playlist', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+    raw.close()
+
+    const db = createDbClient(dbPath)
+    try {
+      const row = db.select().from(mediaPlaylists).get()
+      expect(row?.coverImagePath).toBeNull()
+    } finally {
+      db.$client.close()
+    }
   })
 })
 

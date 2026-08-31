@@ -100,6 +100,7 @@ export const excludedEntries = sqliteTable('excluded_entries', {
 export const mediaPlaylists = sqliteTable('media_playlists', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  coverImagePath: text('cover_image_path'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })

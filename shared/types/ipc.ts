@@ -612,6 +612,7 @@ export interface MediaPlaylistDto {
   id: string
   name: string
   trackCount: number
+  coverImagePath: string | null
   createdAt: string
   updatedAt: string
 }
