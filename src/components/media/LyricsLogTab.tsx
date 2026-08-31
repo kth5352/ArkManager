@@ -1,11 +1,46 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { cn } from '../../lib/utils'
-import { getActiveLyricLine } from '../../lib/lrc'
+import { getActiveLyricLine, type SyncedLyricLine } from '../../lib/lrc'
 import { parseLyrics } from '../../lib/parseLyrics'
 import { isScrollEventFromAutoScroll } from '../../lib/isScrollEventFromAutoScroll'
 import { useTranslation } from '../../i18n/useTranslation'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaLyrics } from './useMediaLyrics'
+
+// One line of the synced-lyrics list, memoized so a currentTime tick that
+// re-renders LyricsLogTab (up to the browser's native timeupdate rate, easily
+// 4-30x/sec) only actually re-renders the (at most two) lines whose active
+// state flipped, instead of every line in the file reconciling on every tick
+// - a synced subtitle/lyrics file with a few hundred+ lines made that O(n)
+// per-tick cost visibly janky, compounding with the smooth-scrollIntoView
+// below into a main-thread stall severe enough to stutter/pause actual
+// playback (reported live: opening this tab lagged badly, and seeking via a
+// line click made it worse). `line` itself is a stable reference (the exact
+// object from parsedLyrics.lines, unchanged across re-renders - see
+// getActiveLyricLine's own comment on this), so memo's shallow prop compare
+// bails out correctly as long as `isActive` doesn't change - no onClick prop
+// here on purpose, see the container's own delegated click handler below for
+// why.
+const LyricsLine = memo(function LyricsLine({
+  line,
+  isActive,
+}: {
+  line: SyncedLyricLine
+  isActive: boolean
+}) {
+  return (
+    <button
+      type="button"
+      data-time={line.time}
+      className={cn(
+        'whitespace-pre-wrap rounded px-2 py-1 text-left text-sm transition-colors',
+        isActive ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent/50'
+      )}
+    >
+      {line.text}
+    </button>
+  )
+})
 
 // Walks up from `start` looking for the nearest ancestor whose computed
 // overflow-y is 'auto' or 'scroll' - i.e. the element that actually scrolls
@@ -69,6 +104,24 @@ export function LyricsLogTab() {
 
   const activeLine =
     parsedLyrics?.kind === 'synced' ? getActiveLyricLine(parsedLyrics, currentTime) : null
+
+  // Delegated to the container (rather than an onClick per LyricsLine) so
+  // each line's memoized props never need to include seekPlayback - that
+  // store value is reassigned a fresh closure on every MediaPlayerHost
+  // render (see mediaPlayerStore.ts's own seekPlayback field), which would
+  // otherwise defeat LyricsLine's memoization on every tick regardless of
+  // whether that line's active state actually changed.
+  const handleLineClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>): void => {
+      const target = (event.target as HTMLElement).closest<HTMLElement>('button[data-time]')
+      if (!target?.dataset.time) return
+      const time = Number(target.dataset.time)
+      if (Number.isNaN(time)) return
+      seekPlayback(time)
+      setFollowEnabled(true)
+    },
+    [seekPlayback]
+  )
 
   // Auto-scrolls to the active line whenever it changes, while auto-follow
   // is enabled. A genuine DOM side effect (ref access + the impure
@@ -144,25 +197,13 @@ export function LyricsLogTab() {
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-0.5">
+    <div ref={containerRef} className="flex flex-col gap-0.5" onClick={handleLineClick}>
       {parsedLyrics.lines.map((line) => (
-        <button
+        <LyricsLine
           key={`${line.time}-${line.text}`}
-          type="button"
-          data-time={line.time}
-          onClick={() => {
-            seekPlayback(line.time)
-            setFollowEnabled(true)
-          }}
-          className={cn(
-            'whitespace-pre-wrap rounded px-2 py-1 text-left text-sm transition-colors',
-            activeLine?.time === line.time
-              ? 'bg-accent font-medium text-foreground'
-              : 'text-muted-foreground hover:bg-accent/50'
-          )}
-        >
-          {line.text}
-        </button>
+          line={line}
+          isActive={activeLine?.time === line.time}
+        />
       ))}
     </div>
   )
