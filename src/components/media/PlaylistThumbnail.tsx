@@ -13,7 +13,7 @@ const SIZE_CLASSES: Record<
   PlaylistThumbnailProps['size'],
   { box: string; outerRadius: string; tileRadius: string }
 > = {
-  sm: { box: 'h-8 w-8', outerRadius: 'rounded-md', tileRadius: 'rounded-sm' },
+  sm: { box: 'h-8 w-8', outerRadius: 'rounded-[6px]', tileRadius: 'rounded-[2px]' },
   md: { box: 'h-16 w-16', outerRadius: 'rounded-lg', tileRadius: 'rounded' },
   lg: { box: 'h-50 w-50', outerRadius: 'rounded-xl', tileRadius: 'rounded' },
 }
