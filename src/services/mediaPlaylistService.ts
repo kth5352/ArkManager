@@ -4,6 +4,11 @@ import { appToast } from '../lib/appToast'
 import { useTranslation } from '../i18n/useTranslation'
 
 export const MEDIA_PLAYLISTS_QUERY_KEY = ['media-playlists'] as const
+// "좋아요" 가상 재생목록을 가리키는 합성 ID - media_playlists에 실제 행이
+// 없으므로 진짜 UUID와 절대 충돌하지 않는다. PlaylistManagementTab.tsx가
+// 이 값으로 selectedPlaylistId를 설정하면, PlaylistDetailView가 이를 보고
+// useLikedTracks()로 트랙을 가져오는 읽기 전용 변형을 렌더링한다.
+export const LIKED_PLAYLIST_ID = 'liked'
 export const mediaPlaylistTracksQueryKey = (id: string) => ['media-playlist-tracks', id] as const
 export const LIKED_TRACKS_QUERY_KEY = ['media-track-likes'] as const
 export const isTrackLikedQueryKey = (path: string) => ['media-track-liked', path] as const
