@@ -29,6 +29,7 @@ import { Skeleton } from '../../components/ui/skeleton'
 import { useTranslation } from '../../i18n/useTranslation'
 import { setMediaThumbnailWithFeedback } from './mediaThumbnailFeedback'
 import { MediaLikeButton } from '../../components/media/MediaLikeButton'
+import { PlaylistDetailView } from '../../components/media/PlaylistDetailView'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 // A single track row - thumbnail state (whether the current mediathumb://
@@ -178,6 +179,7 @@ function MediaBreadcrumb({
 // fresh with a new root.
 export function MediaPage() {
   const { t } = useTranslation()
+  const selectedPlaylistId = useMediaPlayerStore((s) => s.selectedPlaylistId)
   const { data: folder = null, isLoading: isFolderLoading } = useMediaFolderQuery()
   const setMediaFolder = useSetMediaFolderMutation()
   const pickFolder = usePickLibraryFolder()
@@ -222,6 +224,10 @@ export function MediaPage() {
 
   const canGoBack = mediaBrowseHistoryIndex > 0
   const canGoForward = mediaBrowseHistoryIndex < mediaBrowseHistory.length - 1
+
+  if (selectedPlaylistId !== null) {
+    return <PlaylistDetailView />
+  }
 
   return (
     <div className="flex h-full flex-col">

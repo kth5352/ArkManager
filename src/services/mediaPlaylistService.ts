@@ -20,10 +20,11 @@ export function useMediaPlaylists() {
   })
 }
 
-export function useMediaPlaylistTracks(id: string) {
+export function useMediaPlaylistTracks(id: string, options?: { enabled?: boolean }) {
   return useQuery<MediaPlaylistTrackDto[]>({
     queryKey: mediaPlaylistTracksQueryKey(id),
     queryFn: () => window.api.mediaPlaylist.getTracks(id),
+    enabled: options?.enabled ?? true,
     // This is locally-stored SQLite data that only ever changes from inside
     // this same app (via useSetMediaPlaylistTracks, which already
     // invalidates this exact query key on success) - nothing external can
