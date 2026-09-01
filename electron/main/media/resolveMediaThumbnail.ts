@@ -72,9 +72,29 @@ export async function resolveMediaThumbnail(
   // always the more relevant thumbnail when available, and a stray folder
   // image next to a video file is far less likely to actually be "this
   // video's cover" than the same is for a music folder (see spec section 1).
+  //
+  // The found image is read and re-saved through saveCustomCoverImage (same
+  // as the extraction tier above) rather than returned as-is - it's an
+  // arbitrary file the user dropped in their media folder, not something
+  // this app generated, so nothing bounds its size. A real folder in this
+  // app's own test data turned out to have a 7.5MB PNG next to it, served
+  // uncached and unresized to every track in that folder on every single
+  // visit (readFile + IPC transfer + Chromium decode, repeated per track,
+  // forever - live-reported as "the whole Media tab feels heavy"). Caching
+  // it under the requesting track's own key means only the FIRST request
+  // per track pays this cost - the top-of-function pathExists(cachePath)
+  // check short-circuits every later request for the same track, same as
+  // the extraction tier.
   if (!isVideo) {
     const directoryImage = await deps.findThumbnailPath(dirname(filePath))
-    if (directoryImage) return directoryImage
+    if (directoryImage) {
+      try {
+        const buffer = await readFile(directoryImage)
+        return await saveCustomCoverImage(cacheDir, filePath, buffer)
+      } catch {
+        return null
+      }
+    }
   }
 
   return null

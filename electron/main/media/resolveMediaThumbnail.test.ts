@@ -103,11 +103,11 @@ describe('resolveMediaThumbnail', () => {
     await expect(access(result!)).resolves.toBeUndefined()
   })
 
-  it('falls back to a directory image when an audio file has no embedded art', async () => {
+  it('falls back to a directory image when an audio file has no embedded art, caching it under the track key', async () => {
     const audioPath = join(dir, 'song.mp3')
     await writeFile(audioPath, '')
     const folderImage = join(dir, 'cover.jpg')
-    await writeFile(folderImage, '')
+    await writeFakeFrame(folderImage)
     const deps = {
       extractVideoFrame: async () => false,
       extractAudioArt: async () => false,
@@ -116,7 +116,38 @@ describe('resolveMediaThumbnail', () => {
 
     const result = await resolveMediaThumbnail(cacheDir, audioPath, false, deps)
 
-    expect(result).toBe(folderImage)
+    // Cached (not the raw source path) - see resolveMediaThumbnail.ts's own
+    // comment on why an arbitrary directory image must never be served
+    // as-is: nothing bounds its size, and it would otherwise be re-read on
+    // every single request forever (this exact real-world case, a 7.5MB
+    // directory image served unresized/uncached on every visit, is what
+    // this test guards against).
+    expect(result).not.toBe(folderImage)
+    expect(result).not.toBeNull()
+    expect(result!.startsWith(cacheDir)).toBe(true)
+    await expect(access(result!)).resolves.toBeUndefined()
+  })
+
+  it('reuses the cached directory-image fallback on a second request instead of re-scanning the folder', async () => {
+    const audioPath = join(dir, 'song.mp3')
+    await writeFile(audioPath, '')
+    const folderImage = join(dir, 'cover.jpg')
+    await writeFakeFrame(folderImage)
+    let findThumbnailCalls = 0
+    const deps = {
+      extractVideoFrame: async () => false,
+      extractAudioArt: async () => false,
+      findThumbnailPath: async (folderPath: string) => {
+        findThumbnailCalls++
+        return folderPath === dir ? folderImage : null
+      },
+    }
+
+    const first = await resolveMediaThumbnail(cacheDir, audioPath, false, deps)
+    const second = await resolveMediaThumbnail(cacheDir, audioPath, false, deps)
+
+    expect(second).toBe(first)
+    expect(findThumbnailCalls).toBe(1)
   })
 
   it('returns null when an audio file has neither embedded art nor a directory image', async () => {

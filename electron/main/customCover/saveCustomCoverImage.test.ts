@@ -38,4 +38,30 @@ describe('saveCustomCoverImage', () => {
     expect(savedPath.startsWith(cacheDir)).toBe(true)
     expect(savedPath).not.toContain('evil')
   })
+
+  it('downscales an oversized source image to at most 512px on its long edge', async () => {
+    const largePng = await sharp({
+      create: { width: 3000, height: 1500, channels: 3, background: { r: 0, g: 255, b: 0 } },
+    })
+      .png()
+      .toBuffer()
+
+    const savedPath = await saveCustomCoverImage(cacheDir, 'oversized-key', largePng)
+    // Reads into a buffer rather than sharp(savedPath) directly - passing
+    // the path keeps a libvips file handle open past this call's own
+    // promise on Windows, which then races afterEach's directory cleanup
+    // (EBUSY: resource busy or locked).
+    const metadata = await sharp(await readFile(savedPath)).metadata()
+
+    expect(metadata.width).toBe(512)
+    expect(metadata.height).toBe(256)
+  })
+
+  it('does not upscale a source image already smaller than the max dimension', async () => {
+    const savedPath = await saveCustomCoverImage(cacheDir, 'tiny-key', png)
+    const metadata = await sharp(await readFile(savedPath)).metadata()
+
+    expect(metadata.width).toBe(4)
+    expect(metadata.height).toBe(4)
+  })
 })
