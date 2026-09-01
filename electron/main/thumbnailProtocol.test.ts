@@ -61,9 +61,7 @@ describe('isPathExactlyTrusted', () => {
   })
 
   it('rejects a path nested inside a trusted path (exact match only, not prefix)', () => {
-    expect(isPathExactlyTrusted('D:\\Music\\Folder\\track.mp3', ['D:\\Music\\Folder'])).toBe(
-      false
-    )
+    expect(isPathExactlyTrusted('D:\\Music\\Folder\\track.mp3', ['D:\\Music\\Folder'])).toBe(false)
   })
 
   it('returns false for an empty trusted-paths list', () => {

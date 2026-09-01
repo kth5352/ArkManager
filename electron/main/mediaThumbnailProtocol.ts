@@ -7,7 +7,10 @@ import { listLibraries } from './database/librariesRepository'
 import { getSetting } from './database/settingsRepository'
 import { listLikedTracks } from './database/mediaTrackLikesRepository'
 import { getMediaThumbnailOverride } from './database/mediaThumbnailOverridesRepository'
-import { getPlaylistCoverPath, listAllPlaylistTrackPaths } from './database/mediaPlaylistsRepository'
+import {
+  getPlaylistCoverPath,
+  listAllPlaylistTrackPaths,
+} from './database/mediaPlaylistsRepository'
 import { resolveMediaThumbnail } from './media/resolveMediaThumbnail'
 import type { AppDatabase } from './database/client'
 
@@ -46,7 +49,10 @@ export async function buildMediaThumbnailResponse(
     isVideo: boolean
   ) => Promise<string | null> = resolveMediaThumbnail
 ): Promise<Response> {
-  if (!isPathWithinAnyLibrary(filePath, allowedRoots) && !isPathExactlyTrusted(filePath, trustedPaths)) {
+  if (
+    !isPathWithinAnyLibrary(filePath, allowedRoots) &&
+    !isPathExactlyTrusted(filePath, trustedPaths)
+  ) {
     return new Response(null, { status: 404 })
   }
 
@@ -94,7 +100,8 @@ export function registerMediaThumbnailProtocolScheme(): void {
 // Must run after app.whenReady(). Same trust boundary as media:// itself
 // (mediaProtocol.ts) - a thumbnail is only ever generated for a file
 // media:// would also be willing to serve in the first place (a registered
-// library, or the one folder picked via the Media page).
+// library, the one folder picked via the Media page, or an exact path
+// already saved into a playlist/liked track).
 export function registerMediaThumbnailProtocolHandler(db: AppDatabase): void {
   const cacheDir = mediaThumbnailCacheDir()
   protocol.handle(MEDIA_THUMBNAIL_SCHEME, async (request) => {

@@ -54,7 +54,10 @@ export async function buildMediaResponse(
   trustedPaths: string[],
   rangeHeader: string | null
 ): Promise<Response> {
-  if (!isPathWithinAnyLibrary(filePath, allowedRoots) && !isPathExactlyTrusted(filePath, trustedPaths)) {
+  if (
+    !isPathWithinAnyLibrary(filePath, allowedRoots) &&
+    !isPathExactlyTrusted(filePath, trustedPaths)
+  ) {
     return new Response(null, { status: 404 })
   }
 
