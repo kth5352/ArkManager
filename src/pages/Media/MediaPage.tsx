@@ -3,6 +3,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ImagePlus,
+  LayoutGrid,
+  List,
   ListMusic,
   ListPlus,
   Play,
@@ -19,6 +21,7 @@ import {
   useMediaViewModeQuery,
   useSetMediaFolderMutation,
   useSetMediaSidebarOpenMutation,
+  useSetMediaViewModeMutation,
 } from '../../services/settingsService'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
@@ -30,6 +33,7 @@ import { isMediaFile } from '../../../shared/isMediaFile'
 import { pathToBreadcrumbSegments } from '../Explorer/breadcrumb'
 import { Button } from '../../components/ui/button'
 import { Skeleton } from '../../components/ui/skeleton'
+import { Slider } from '../../components/ui/slider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -295,11 +299,9 @@ export function MediaPage() {
     MediaPlaylistTrackDto[] | null
   >(null)
   const { data: viewMode = 'list' } = useMediaViewModeQuery()
+  const setViewModeMutation = useSetMediaViewModeMutation()
   // Not persisted (see design spec section 2/3) - resets to 1.0 every
   // session, matching Explorer's own grid-view zoom (FolderView.tsx).
-  // setZoom is unused until the next task wires up the toolbar's zoom
-  // slider (this task only reads zoom, in the grid-view branch below).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [zoom, setZoom] = useState(1)
   const mediaBrowsePath = useMediaPlayerStore((s) => s.mediaBrowsePath)
   const mediaBrowseHistory = useMediaPlayerStore((s) => s.mediaBrowseHistory)
@@ -375,12 +377,21 @@ export function MediaPage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label={t('pageToolbar.toggleViewMode')}
+            onClick={() => setViewModeMutation.mutate(viewMode === 'list' ? 'grid' : 'list')}
+            className="ml-auto shrink-0"
+          >
+            {viewMode === 'list' ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             aria-label={t('media.sidebarToggle')}
             aria-pressed={mediaSidebarOpen}
             title={t('media.sidebarToggle')}
             disabled={mediaSidebarOpenLoading || setMediaSidebarOpenMutation.isPending}
             onClick={() => setMediaSidebarOpenMutation.mutate(!mediaSidebarOpen)}
-            className="ml-auto shrink-0"
+            className="shrink-0"
           >
             <ListMusic className="h-4 w-4" />
           </Button>
@@ -406,6 +417,16 @@ export function MediaPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+          {viewMode === 'grid' && (
+            <Slider
+              className="w-40"
+              value={[zoom]}
+              min={0.6}
+              max={1.8}
+              step={0.05}
+              onValueChange={([value]) => setZoom(value)}
+            />
           )}
         </div>
         {folder && (
