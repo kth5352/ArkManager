@@ -68,7 +68,14 @@ export function MediaTrackCard({
   onAddToSavedPlaylist: () => void
 }) {
   const { t } = useTranslation()
-  const [thumbFailed, setThumbFailed] = useState(false)
+  // Tracks the failure by path rather than a plain boolean so a react-window
+  // grid cell recycled for a different track (positional columnIndex/
+  // rowIndex keying, no columnKey/rowKey - navigating folders or changing
+  // the zoom slider's columnCount remaps which track lands where) doesn't
+  // keep showing a stale failure from whatever track it last rendered.
+  // Mirrors GameThumbnail.tsx's localFailedPath pattern.
+  const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
+  const thumbFailed = thumbFailedPath === track.path
   const [refreshToken, setRefreshToken] = useState(0)
   const pickFile = usePickMediaThumbnailFile()
   const setFromFile = useSetMediaThumbnailFromFile()
@@ -81,7 +88,7 @@ export function MediaTrackCard({
       t
     )
     if (!result) return
-    setThumbFailed(false)
+    setThumbFailedPath(null)
     setRefreshToken((v) => v + 1)
   }
 
@@ -102,12 +109,13 @@ export function MediaTrackCard({
             loading="lazy"
             className="h-full w-full object-cover"
             draggable={false}
-            onError={() => setThumbFailed(true)}
+            onError={() => setThumbFailedPath(track.path)}
           />
         )}
         <div
           className="absolute inset-x-0 top-0 flex items-center justify-end gap-0.5 bg-gradient-to-b from-black/60 to-transparent p-1 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
           {/* text-white (via cn/tailwind-merge, MediaLikeButton.tsx) overrides
               the red/gray liked-state color for legibility against the dark
