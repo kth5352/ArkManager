@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
 import { router } from './router'
 import { PlayerWindowPage } from './pages/PlayerWindow/PlayerWindowPage'
+import { SubtitlePipPage } from './pages/SubtitlePip/SubtitlePipPage'
 import { readPersistedThemeSync, seedThemeQueryData } from './services/settingsService'
 import './globals.css'
 
@@ -34,11 +35,18 @@ if (!rootEl) throw new Error('Root element #root not found')
 // (AppLayout's own) alongside PlayerWindowPage's, both trying to host
 // playback in the same window at once.
 const isPlayerWindow = window.location.hash.startsWith('#/player-window')
+const isSubtitlePipWindow = window.location.hash.startsWith('#/subtitle-pip')
 
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      {isPlayerWindow ? <PlayerWindowPage /> : <RouterProvider router={router} />}
+      {isPlayerWindow ? (
+        <PlayerWindowPage />
+      ) : isSubtitlePipWindow ? (
+        <SubtitlePipPage />
+      ) : (
+        <RouterProvider router={router} />
+      )}
     </QueryClientProvider>
   </StrictMode>
 )
