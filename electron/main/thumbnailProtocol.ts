@@ -74,6 +74,20 @@ export function isPathWithinAnyLibrary(entryPath: string, libraryPaths: string[]
   })
 }
 
+// Playlist/liked-track paths are individual FILES the user has already
+// explicitly saved (the act of adding a track to a playlist or liking it
+// IS the "user explicitly chose this" signal isPathWithinAnyLibrary exists
+// to require) - so this needs an EXACT match, not a prefix match. Trusting
+// a saved track's exact path must not implicitly trust its whole
+// containing folder the way isPathWithinAnyLibrary trusts everything under
+// a library root.
+export function isPathExactlyTrusted(filePath: string, trustedPaths: string[]): boolean {
+  const normalizedEntry = normalizeForComparison(resolve(filePath))
+  return trustedPaths.some(
+    (trustedPath) => normalizedEntry === normalizeForComparison(resolve(trustedPath))
+  )
+}
+
 // Must run before app.whenReady() - Electron requires privileged schemes to
 // be registered at module load time, before the app is ready.
 export function registerThumbnailProtocolScheme(): void {

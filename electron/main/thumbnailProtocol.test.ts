@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPathWithinAnyLibrary } from './thumbnailProtocol'
+import { isPathExactlyTrusted, isPathWithinAnyLibrary } from './thumbnailProtocol'
 
 describe('isPathWithinAnyLibrary', () => {
   it('accepts a path nested under a registered library', () => {
@@ -44,5 +44,29 @@ describe('isPathWithinAnyLibrary', () => {
         'D:\\Games\\LibraryA',
       ])
     ).toBe(true)
+  })
+})
+
+describe('isPathExactlyTrusted', () => {
+  it('accepts a path that exactly matches a trusted path', () => {
+    expect(isPathExactlyTrusted('D:\\Music\\track.mp3', ['D:\\Music\\track.mp3'])).toBe(true)
+  })
+
+  it('is case-insensitive and separator-agnostic, matching normalizeLibraryPath', () => {
+    expect(isPathExactlyTrusted('d:/music/track.mp3', ['D:\\Music\\track.mp3'])).toBe(true)
+  })
+
+  it('rejects a path that is not in the trusted list', () => {
+    expect(isPathExactlyTrusted('D:\\Music\\other.mp3', ['D:\\Music\\track.mp3'])).toBe(false)
+  })
+
+  it('rejects a path nested inside a trusted path (exact match only, not prefix)', () => {
+    expect(isPathExactlyTrusted('D:\\Music\\Folder\\track.mp3', ['D:\\Music\\Folder'])).toBe(
+      false
+    )
+  })
+
+  it('returns false for an empty trusted-paths list', () => {
+    expect(isPathExactlyTrusted('D:\\Music\\track.mp3', [])).toBe(false)
   })
 })
