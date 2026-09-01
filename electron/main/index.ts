@@ -20,6 +20,7 @@ import {
   clearIsMediaPlaying,
 } from './ipc/mediaWindowHandlers'
 import { registerMediaThumbnailHandlers } from './ipc/mediaThumbnailHandlers'
+import { registerSubtitlePipWindowHandlers } from './ipc/subtitlePipWindowHandlers'
 import { registerMediaLyricsHandlers } from './ipc/mediaLyricsHandlers'
 import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
 import { registerMediaPlaylistHandlers } from './ipc/mediaPlaylistHandlers'
@@ -61,6 +62,7 @@ if (!gotSingleInstanceLock) {
   let mainWindow: BrowserWindow | null = null
   let isMainWindowReadyToShow = false
   let closePlayerWindow: (() => void) | null = null
+  let closeSubtitlePipWindow: (() => void) | null = null
   let tray: Tray | null = null
   let quitLifecycle: ReturnType<typeof createQuitLifecycle> | null = null
   let closeController: {
@@ -385,6 +387,7 @@ if (!gotSingleInstanceLock) {
     registerMediaProtocolHandler(db)
     registerMediaThumbnailProtocolHandler(db)
     closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
+    closeSubtitlePipWindow = registerSubtitlePipWindowHandlers(db, () => mainWindow).closeSubtitlePipWindow
     registerMediaThumbnailHandlers(db)
     registerMediaLyricsHandlers(db)
     registerExcludedEntriesHandlers(db)
@@ -398,6 +401,7 @@ if (!gotSingleInstanceLock) {
     // still-running game before the process actually goes away.
     const lifecycle = createQuitLifecycle(() => {
       closePlayerWindow?.()
+      closeSubtitlePipWindow?.()
       const now = Date.now()
       for (const session of getActiveSessions()) {
         recordPlaySession(db, session.key, session.keyType, now - session.startedAt)
