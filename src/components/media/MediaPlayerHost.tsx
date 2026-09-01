@@ -168,6 +168,7 @@ export function MediaPlayerHost() {
           parsedLyrics={parsedLyrics}
           onToggleLyrics={toggleLyrics}
           subtitlePipOpen={subtitlePipOpen}
+          onDetach={handleDetach}
         />
       )}
     </>

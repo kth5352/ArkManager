@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import logoUrl from '../../../LOGO.png'
-import { Captions, ListMusic, Maximize2, X } from 'lucide-react'
+import { Captions, ListMusic, Maximize2, PictureInPicture2, X } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useSetMediaSidebarOpenMutation } from '../../services/settingsService'
 import { MediaTransportBar } from './MediaTransportBar'
@@ -23,6 +23,7 @@ interface MediaPlayerBarProps {
   parsedLyrics?: ParsedLyrics | null
   onToggleLyrics?: () => void
   subtitlePipOpen?: boolean
+  onDetach?: () => void
 }
 
 // The slim, always-docked bar - used whenever the current track (video or
@@ -52,6 +53,7 @@ export function MediaPlayerBar({
   parsedLyrics = null,
   onToggleLyrics,
   subtitlePipOpen = false,
+  onDetach,
 }: MediaPlayerBarProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -139,6 +141,22 @@ export function MediaPlayerBar({
               className="shrink-0"
             >
               <Maximize2 className="h-4 w-4" />
+            </Button>
+          </HoverTooltip>
+        )}
+        {!isDetached && onDetach && (
+          <HoverTooltip content={t('media.detachWindow')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDetach()
+              }}
+              aria-label={t('media.detachWindow')}
+              className="shrink-0"
+            >
+              <PictureInPicture2 className="h-4 w-4" />
             </Button>
           </HoverTooltip>
         )}
