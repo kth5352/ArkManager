@@ -8,6 +8,7 @@ import { useTranslation } from '../../i18n/useTranslation'
 import { getActiveLyricLine } from '../../lib/lrc'
 import { parseLyrics } from '../../lib/parseLyrics'
 import { useMediaLyrics } from '../../components/media/useMediaLyrics'
+import { useBroadcastActiveSubtitleLine } from '../../hooks/useBroadcastActiveSubtitleLine'
 import logoUrl from '../../../LOGO.png'
 
 // The entire content of the detached player window (see
@@ -34,6 +35,7 @@ export function PlayerWindowPage() {
     [lyricsQuery.data]
   )
   const [lyricsEnabled, setLyricsEnabled] = useState(false)
+  useBroadcastActiveSubtitleLine(parsedLyrics, playback?.currentTime ?? 0, playback !== null, true)
 
   if (!playback) {
     return (

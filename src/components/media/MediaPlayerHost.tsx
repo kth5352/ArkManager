@@ -6,6 +6,7 @@ import { FullscreenMediaOverlay } from './FullscreenMediaOverlay'
 import { parseLyrics } from '../../lib/parseLyrics'
 import { useMediaLyrics } from './useMediaLyrics'
 import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsToggleState'
+import { useBroadcastActiveSubtitleLine } from '../../hooks/useBroadcastActiveSubtitleLine'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -27,6 +28,7 @@ export function MediaPlayerHost() {
     () => (lyricsQuery.data ? parseLyrics(lyricsQuery.data.text, lyricsQuery.data.path) : null),
     [lyricsQuery.data]
   )
+  useBroadcastActiveSubtitleLine(parsedLyrics, playback?.currentTime ?? 0, playback !== null, !isDetached)
   const [lyricsDisabledTrackPaths, setLyricsDisabledTrackPaths] = useState<Set<string>>(new Set())
   const lyricsEnabled = isLyricsEnabledForTrack(
     playback?.track.path ?? null,
