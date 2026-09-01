@@ -4,7 +4,9 @@ import { stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { listLibraries } from './database/librariesRepository'
 import { getSetting } from './database/settingsRepository'
-import { isPathWithinAnyLibrary } from './thumbnailProtocol'
+import { listAllPlaylistTrackPaths } from './database/mediaPlaylistsRepository'
+import { listLikedTracks } from './database/mediaTrackLikesRepository'
+import { isPathExactlyTrusted, isPathWithinAnyLibrary } from './thumbnailProtocol'
 import { parseRangeHeader } from './media/parseRangeHeader'
 import { resolveMediaMimeType } from './media/resolveMediaMimeType'
 import type { AppDatabase } from './database/client'
@@ -49,9 +51,10 @@ export function registerMediaProtocolScheme(): void {
 export async function buildMediaResponse(
   filePath: string,
   allowedRoots: string[],
+  trustedPaths: string[],
   rangeHeader: string | null
 ): Promise<Response> {
-  if (!isPathWithinAnyLibrary(filePath, allowedRoots)) {
+  if (!isPathWithinAnyLibrary(filePath, allowedRoots) && !isPathExactlyTrusted(filePath, trustedPaths)) {
     return new Response(null, { status: 404 })
   }
 
@@ -115,13 +118,20 @@ export async function buildMediaResponse(
 // lets a user browse any folder, not just registered libraries (see its own
 // comment), so it needs this second allowed root or every file inside a
 // non-library folder 404s and the player reports every track as
-// unplayable.
+// unplayable. A THIRD trust source, isPathExactlyTrusted against every
+// saved playlist/liked-track path, keeps those tracks playable even after
+// media-folder later changes to point somewhere else - see
+// docs/superpowers/specs/2026-09-02-media-playback-trust-boundary-fix-design.md.
 export function registerMediaProtocolHandler(db: AppDatabase): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const filePath = decodeFilePath(request.url)
     const libraryPaths = listLibraries(db).map((library) => library.path)
     const mediaFolder = getSetting(db, 'media-folder')
     const allowedRoots = mediaFolder ? [...libraryPaths, mediaFolder] : libraryPaths
-    return buildMediaResponse(filePath, allowedRoots, request.headers.get('range'))
+    const trustedPaths = [
+      ...listAllPlaylistTrackPaths(db),
+      ...listLikedTracks(db).map((track) => track.path),
+    ]
+    return buildMediaResponse(filePath, allowedRoots, trustedPaths, request.headers.get('range'))
   })
 }
