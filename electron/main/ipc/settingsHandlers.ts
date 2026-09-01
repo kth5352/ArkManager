@@ -76,6 +76,13 @@ function parseStoredMediaSidebarWidth(raw: string | undefined): string | null {
   return Number.isFinite(Number(raw)) ? raw : null
 }
 
+// Same self-healing principle as parseStoredTheme, for the Media tab's
+// list/grid view mode.
+function parseStoredMediaViewMode(raw: string | undefined): 'list' | 'grid' | null {
+  if (raw === undefined) return null
+  return raw === 'list' || raw === 'grid' ? raw : null
+}
+
 function parseStoredWindowCloseBehavior(raw: string | undefined): 'ask' | 'quit' | 'tray' | null {
   if (raw === undefined) return null
   const result = WindowCloseBehaviorSchema.safeParse(raw)
@@ -98,6 +105,7 @@ export function registerSettingsHandlers(db: AppDatabase): void {
     }
     if (key === 'media-sidebar-open') return parseStoredMediaSidebarOpen(getSetting(db, key))
     if (key === 'media-sidebar-width') return parseStoredMediaSidebarWidth(getSetting(db, key))
+    if (key === 'media-view-mode') return parseStoredMediaViewMode(getSetting(db, key))
     return getSetting(db, key) ?? null
   })
 

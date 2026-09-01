@@ -320,3 +320,27 @@ export function useSetMediaSidebarWidthMutation() {
     },
   })
 }
+
+export const MEDIA_VIEW_MODE_QUERY_KEY = ['settings', 'media-view-mode'] as const
+
+// Defaults to 'list' when nothing is persisted yet - matches the existing
+// list-only behavior for every install that predates this feature.
+export function useMediaViewModeQuery() {
+  return useQuery({
+    queryKey: MEDIA_VIEW_MODE_QUERY_KEY,
+    queryFn: async (): Promise<'list' | 'grid'> => {
+      const value = await window.api.settings.getMediaViewMode()
+      return value ?? 'list'
+    },
+  })
+}
+
+export function useSetMediaViewModeMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (mode: 'list' | 'grid') => window.api.settings.setMediaViewMode(mode),
+    onSuccess: (_data, mode) => {
+      queryClient.setQueryData(MEDIA_VIEW_MODE_QUERY_KEY, mode)
+    },
+  })
+}

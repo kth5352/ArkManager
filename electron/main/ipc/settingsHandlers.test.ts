@@ -48,4 +48,10 @@ describe('SETTINGS_GET', () => {
 
     expect(getSettingHandler()({}, { key: 'window-close-behavior' })).toBeNull()
   })
+
+  it('returns null for an invalid media view mode value', () => {
+    setSetting(db, 'media-view-mode', 'card')
+
+    expect(getSettingHandler()({}, { key: 'media-view-mode' })).toBeNull()
+  })
 })

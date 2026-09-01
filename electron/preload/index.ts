@@ -93,6 +93,10 @@ const api = {
         key: 'media-sidebar-width',
         value: String(width),
       }),
+    getMediaViewMode: (): Promise<'list' | 'grid' | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-view-mode' }),
+    setMediaViewMode: (mode: 'list' | 'grid'): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-view-mode', value: mode }),
     getLocale: (): Promise<Locale | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale' }),
     setLocale: (value: Locale): Promise<void> =>

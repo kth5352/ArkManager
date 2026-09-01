@@ -137,6 +137,7 @@ export const SettingKeySchema = z.enum([
   'window-close-behavior',
   'media-sidebar-open',
   'media-sidebar-width',
+  'media-view-mode',
 ])
 export type SettingKey = z.infer<typeof SettingKeySchema>
 
