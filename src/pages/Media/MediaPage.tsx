@@ -9,11 +9,14 @@ import {
   Plus,
   Folder as FolderIcon,
 } from 'lucide-react'
+import { Grid, type CellComponentProps } from 'react-window'
+import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { usePickLibraryFolder } from '../../services/librariesService'
 import { useFolderScan } from '../../services/scannerService'
 import {
   useMediaFolderQuery,
   useMediaSidebarOpenQuery,
+  useMediaViewModeQuery,
   useSetMediaFolderMutation,
   useSetMediaSidebarOpenMutation,
 } from '../../services/settingsService'
@@ -38,6 +41,7 @@ import { setMediaThumbnailWithFeedback } from './mediaThumbnailFeedback'
 import { MediaLikeButton } from '../../components/media/MediaLikeButton'
 import { PlaylistDetailView } from '../../components/media/PlaylistDetailView'
 import { AddToSavedPlaylistDialog } from '../../components/media/AddToSavedPlaylistDialog'
+import { MediaFolderCard, MediaTrackCard } from '../../components/media/MediaEntryCard'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 import type { MediaPlaylistTrackDto } from '../../../shared/types/ipc'
 
@@ -190,6 +194,80 @@ function MediaBreadcrumb({
   )
 }
 
+const MEDIA_CARD_WIDTH = 140
+const MEDIA_GRID_GAP = 16
+const MEDIA_SCROLLBAR_GUTTER = 17
+// p-2 top/bottom (8+8) + one line of text-xs (16px line-height) - shallower
+// than Explorer's own CARD_TEXT_BLOCK_HEIGHT since a Media grid card shows
+// one truncated line of filename, not a 2-line clamp + code line.
+const MEDIA_CARD_TEXT_BLOCK_HEIGHT = 8 + 16 + 8
+
+function computeMediaCardHeight(cardWidth: number): number {
+  return cardWidth + MEDIA_CARD_TEXT_BLOCK_HEIGHT
+}
+
+interface MediaGridCellProps {
+  folders: ScannedEntry[]
+  tracks: MediaTrack[]
+  columnCount: number
+  gap: number
+  cardWidth: number
+  onOpenFolder: (path: string) => void
+  onPlay: (track: MediaTrack) => void
+  onAddToQueue: (track: MediaTrack) => void
+  onPlayNext: (track: MediaTrack) => void
+  onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
+}
+
+// Folders come first, then tracks - same combined order the list view
+// already renders (folders.map(...) then tracks.map(...) in MediaPage's
+// return below), just addressed by a single flat index across both arrays
+// instead of two separate <ul> sections, since react-window's Grid needs
+// one flat rowCount/columnCount space to virtualize over.
+function MediaEntryCell({
+  columnIndex,
+  rowIndex,
+  style,
+  folders,
+  tracks,
+  columnCount,
+  gap,
+  cardWidth,
+  onOpenFolder,
+  onPlay,
+  onAddToQueue,
+  onPlayNext,
+  onAddToSavedPlaylist,
+}: CellComponentProps<MediaGridCellProps>) {
+  const index = rowIndex * columnCount + columnIndex
+  const cellStyle = { ...style, padding: gap / 2, display: 'flex', justifyContent: 'center' }
+
+  if (index < folders.length) {
+    const entry = folders[index]
+    if (!entry) return null
+    return (
+      <div style={cellStyle}>
+        <MediaFolderCard entry={entry} cardWidth={cardWidth} onOpen={() => onOpenFolder(entry.path)} />
+      </div>
+    )
+  }
+
+  const track = tracks[index - folders.length]
+  if (!track) return null
+  return (
+    <div style={cellStyle}>
+      <MediaTrackCard
+        track={track}
+        cardWidth={cardWidth}
+        onPlay={() => onPlay(track)}
+        onAddToQueue={() => onAddToQueue(track)}
+        onPlayNext={() => onPlayNext(track)}
+        onAddToSavedPlaylist={() => onAddToSavedPlaylist([track])}
+      />
+    </div>
+  )
+}
+
 // A dedicated browse-and-queue page, separate from Explorer's per-folder
 // "click to play" entry point (see FolderView.tsx) - lets the user pick any
 // folder (not necessarily a registered library) and navigate its subfolder
@@ -216,6 +294,13 @@ export function MediaPage() {
   const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
     MediaPlaylistTrackDto[] | null
   >(null)
+  const { data: viewMode = 'list' } = useMediaViewModeQuery()
+  // Not persisted (see design spec section 2/3) - resets to 1.0 every
+  // session, matching Explorer's own grid-view zoom (FolderView.tsx).
+  // setZoom is unused until the next task wires up the toolbar's zoom
+  // slider (this task only reads zoom, in the grid-view branch below).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [zoom, setZoom] = useState(1)
   const mediaBrowsePath = useMediaPlayerStore((s) => s.mediaBrowsePath)
   const mediaBrowseHistory = useMediaPlayerStore((s) => s.mediaBrowseHistory)
   const mediaBrowseHistoryIndex = useMediaPlayerStore((s) => s.mediaBrowseHistoryIndex)
@@ -341,6 +426,49 @@ export function MediaPage() {
         ) : tracks.length === 0 && folders.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {t('media.noMediaFound')}
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="h-full w-full p-4">
+            <AutoSizer
+              style={{ height: '100%', width: '100%' }}
+              renderProp={({ height, width }) => {
+                if (height === undefined || width === undefined) return null
+                const cardWidth = MEDIA_CARD_WIDTH * zoom
+                const cardHeight = computeMediaCardHeight(cardWidth)
+                const gap = MEDIA_GRID_GAP * zoom
+                const availableWidth = Math.max(0, width - MEDIA_SCROLLBAR_GUTTER)
+                const columnCount = Math.max(1, Math.floor(availableWidth / (cardWidth + gap)))
+                const totalCount = folders.length + tracks.length
+                const rowCount = Math.ceil(totalCount / columnCount)
+                const usedWidth = columnCount * (cardWidth + gap)
+                const extraPerColumn =
+                  columnCount > 0 ? (availableWidth - usedWidth) / columnCount : 0
+                const effectiveColumnWidth = cardWidth + gap + extraPerColumn
+
+                return (
+                  <Grid
+                    cellComponent={MediaEntryCell}
+                    cellProps={{
+                      folders,
+                      tracks,
+                      columnCount,
+                      gap,
+                      cardWidth,
+                      onOpenFolder: navigateMediaBrowseTo,
+                      onPlay: appendAndPlay,
+                      onAddToQueue: (track) => addToPlaylist([track]),
+                      onPlayNext: playNext,
+                      onAddToSavedPlaylist: setPendingSavedPlaylistTracks,
+                    }}
+                    columnCount={columnCount}
+                    columnWidth={effectiveColumnWidth}
+                    rowCount={rowCount}
+                    rowHeight={cardHeight + gap}
+                    style={{ height, width, overflowX: 'hidden' }}
+                  />
+                )
+              }}
+            />
           </div>
         ) : (
           <ul className="divide-y divide-border">
