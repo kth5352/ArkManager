@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import logoUrl from '../../../LOGO.png'
-import { ListMusic, Maximize2, X } from 'lucide-react'
+import { Captions, ListMusic, Maximize2, X } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useSetMediaSidebarOpenMutation } from '../../services/settingsService'
 import { MediaTransportBar } from './MediaTransportBar'
@@ -12,6 +12,7 @@ import type { ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
 import { Button } from '../ui/button'
 import { HoverTooltip } from '../ui/hover-tooltip'
+import { cn } from '../../lib/utils'
 import { MarqueeText } from '../ui/marquee-text'
 
 interface MediaPlayerBarProps {
@@ -21,6 +22,7 @@ interface MediaPlayerBarProps {
   lyricsEnabled?: boolean
   parsedLyrics?: ParsedLyrics | null
   onToggleLyrics?: () => void
+  subtitlePipOpen?: boolean
 }
 
 // The slim, always-docked bar - used whenever the current track (video or
@@ -49,11 +51,18 @@ export function MediaPlayerBar({
   lyricsEnabled = false,
   parsedLyrics = null,
   onToggleLyrics,
+  subtitlePipOpen = false,
 }: MediaPlayerBarProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
+  const hasSyncedLyrics = parsedLyrics?.kind === 'synced'
+  const handleToggleSubtitlePip = (e: MouseEvent): void => {
+    e.stopPropagation()
+    if (subtitlePipOpen) window.api.media.closeSubtitlePipWindow()
+    else window.api.media.openSubtitlePipWindow()
+  }
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
   // Tracked by path (not a plain boolean) so switching to a different track
   // - even one whose own thumbnail also happens to fail - doesn't keep
@@ -133,6 +142,19 @@ export function MediaPlayerBar({
             </Button>
           </HoverTooltip>
         )}
+        <HoverTooltip content={t('media.subtitlePipToggle')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!hasSyncedLyrics}
+            onClick={handleToggleSubtitlePip}
+            aria-label={t('media.subtitlePipToggle')}
+            aria-pressed={subtitlePipOpen}
+            className={cn('shrink-0', subtitlePipOpen && 'text-foreground')}
+          >
+            <Captions className="h-4 w-4" />
+          </Button>
+        </HoverTooltip>
         <div className="h-4 w-px shrink-0 bg-border" />
         <HoverTooltip content={t('media.closePlaylist')}>
           <Button

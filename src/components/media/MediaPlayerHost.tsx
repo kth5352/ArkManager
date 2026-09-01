@@ -20,6 +20,8 @@ import { useBroadcastActiveSubtitleLine } from '../../hooks/useBroadcastActiveSu
 export function MediaPlayerHost() {
   const isDetached = useMediaPlayerStore((s) => s.isDetached)
   const setDetached = useMediaPlayerStore((s) => s.setDetached)
+  const setSubtitlePipOpen = useMediaPlayerStore((s) => s.setSubtitlePipOpen)
+  const subtitlePipOpen = useMediaPlayerStore((s) => s.subtitlePipOpen)
   const setPlaybackCurrentTime = useMediaPlayerStore((s) => s.setPlaybackCurrentTime)
   const setSeekPlayback = useMediaPlayerStore((s) => s.setSeekPlayback)
   const { mediaRef, playback } = useMediaPlayback({ isHost: !isDetached })
@@ -71,6 +73,17 @@ export function MediaPlayerHost() {
       setDetached(false, seconds)
     })
   }, [setDetached])
+
+  // PIP 창의 열림/닫힘은 메인 프로세스가 진실 공급원(subtitlePipWindowHandlers.ts)
+  // - 이 창(메인 창)에서 그 상태를 구독해 스토어에 반영하면, 도킹바/자막 로그
+  // 탭 두 토글 버튼이 별도 IPC 리스너 없이 스토어 값만 읽어 항상 동기화된다.
+  useEffect(() => {
+    return window.api.media.onSubtitlePipOpened(() => setSubtitlePipOpen(true))
+  }, [setSubtitlePipOpen])
+
+  useEffect(() => {
+    return window.api.media.onSubtitlePipClosed(() => setSubtitlePipOpen(false))
+  }, [setSubtitlePipOpen])
 
   // Bridges playback.currentTime/handleSeek (tied to the live <video>/
   // <audio> element this component alone mounts via useMediaPlayback) into
@@ -154,6 +167,7 @@ export function MediaPlayerHost() {
           lyricsEnabled={lyricsEnabled}
           parsedLyrics={parsedLyrics}
           onToggleLyrics={toggleLyrics}
+          subtitlePipOpen={subtitlePipOpen}
         />
       )}
     </>

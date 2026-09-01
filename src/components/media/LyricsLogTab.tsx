@@ -1,5 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { cn } from '../../lib/utils'
+import { Captions } from 'lucide-react'
+import { Button } from '../ui/button'
+import { HoverTooltip } from '../ui/hover-tooltip'
 import { getActiveLyricLine, type SyncedLyricLine } from '../../lib/lrc'
 import { parseLyrics } from '../../lib/parseLyrics'
 import { isScrollEventFromAutoScroll } from '../../lib/isScrollEventFromAutoScroll'
@@ -89,6 +92,7 @@ export function LyricsLogTab() {
   const currentIndex = useMediaPlayerStore((s) => s.currentIndex)
   const currentTime = useMediaPlayerStore((s) => s.playbackCurrentTime)
   const seekPlayback = useMediaPlayerStore((s) => s.seekPlayback)
+  const subtitlePipOpen = useMediaPlayerStore((s) => s.subtitlePipOpen)
 
   const currentTrackPath = currentIndex !== null ? (playlist[currentIndex]?.path ?? null) : null
   const lyricsQuery = useMediaLyrics(currentTrackPath)
@@ -122,6 +126,11 @@ export function LyricsLogTab() {
     },
     [seekPlayback]
   )
+
+  const handleToggleSubtitlePip = (): void => {
+    if (subtitlePipOpen) window.api.media.closeSubtitlePipWindow()
+    else window.api.media.openSubtitlePipWindow()
+  }
 
   // Auto-scrolls to the active line whenever it changes, while auto-follow
   // is enabled. A genuine DOM side effect (ref access + the impure
@@ -184,27 +193,56 @@ export function LyricsLogTab() {
     return () => scrollTarget.removeEventListener('scroll', handleScroll)
   }, [parsedLyrics?.kind])
 
+  const subtitlePipToggle = (
+    <div className="flex justify-end">
+      <HoverTooltip content={t('media.subtitlePipToggle')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={parsedLyrics?.kind !== 'synced'}
+          onClick={handleToggleSubtitlePip}
+          aria-label={t('media.subtitlePipToggle')}
+          aria-pressed={subtitlePipOpen}
+          className={cn('h-6 w-6 shrink-0 transition-colors', subtitlePipOpen && 'text-foreground')}
+        >
+          <Captions className="h-3.5 w-3.5" />
+        </Button>
+      </HoverTooltip>
+    </div>
+  )
+
   if (parsedLyrics === null) {
-    return <p className="px-1 py-2 text-xs text-muted-foreground">{t('media.noSyncedLyrics')}</p>
+    return (
+      <div className="flex flex-col gap-1">
+        {subtitlePipToggle}
+        <p className="px-1 py-2 text-xs text-muted-foreground">{t('media.noSyncedLyrics')}</p>
+      </div>
+    )
   }
 
   if (parsedLyrics.kind === 'static') {
     return (
-      <p className="whitespace-pre-wrap px-2 py-1 text-sm text-muted-foreground">
-        {parsedLyrics.lines.join('\n')}
-      </p>
+      <div className="flex flex-col gap-1">
+        {subtitlePipToggle}
+        <p className="whitespace-pre-wrap px-2 py-1 text-sm text-muted-foreground">
+          {parsedLyrics.lines.join('\n')}
+        </p>
+      </div>
     )
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-0.5" onClick={handleLineClick}>
-      {parsedLyrics.lines.map((line) => (
-        <LyricsLine
-          key={`${line.time}-${line.text}`}
-          line={line}
-          isActive={activeLine?.time === line.time}
-        />
-      ))}
+    <div className="flex flex-col gap-1">
+      {subtitlePipToggle}
+      <div ref={containerRef} className="flex flex-col gap-0.5" onClick={handleLineClick}>
+        {parsedLyrics.lines.map((line) => (
+          <LyricsLine
+            key={`${line.time}-${line.text}`}
+            line={line}
+            isActive={activeLine?.time === line.time}
+          />
+        ))}
+      </div>
     </div>
   )
 }

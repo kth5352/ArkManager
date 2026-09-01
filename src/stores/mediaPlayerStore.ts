@@ -55,6 +55,12 @@ interface MediaPlayerState {
   // transport buttons keep working as remote controls for the detached
   // window's player.
   isDetached: boolean
+  // PIP 자막 창이 지금 떠 있는지 - 메인 프로세스가 진실 공급원(항상 최대 1개만
+  // 존재 가능, MediaPlayerHost.tsx가 subtitle-pip:opened/closed 알림을 구독해
+  // 이 필드에 반영한다)이므로, 도킹바와 자막 로그 탭 두 토글 버튼이 항상 같은
+  // 상태를 보여줄 수 있다.
+  subtitlePipOpen: boolean
+  setSubtitlePipOpen: (open: boolean) => void
   // One-shot seek position handed off across a detach/reattach transition -
   // set by whichever window WAS hosting playback right before the switch,
   // consumed (read once, then cleared back to null via consumeHandoffTime)
@@ -174,6 +180,8 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   volume: 1,
   previousVolume: 1,
   isDetached: false,
+  subtitlePipOpen: false,
+  setSubtitlePipOpen: (open) => set({ subtitlePipOpen: open }),
   handoffTimeSeconds: null,
   sidebarActiveTab: 'playlists',
   setSidebarActiveTab: (tab) => set({ sidebarActiveTab: tab }),
