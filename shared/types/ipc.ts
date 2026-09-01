@@ -81,6 +81,11 @@ export const IPC_CHANNELS = {
   MEDIA_REQUEST_STATE_SYNC: 'media:request-state-sync',
   MEDIA_STATE_SYNC_REQUESTED: 'media:state-sync-requested',
   MEDIA_REPORT_TIME: 'media:report-time',
+  SUBTITLE_PIP_OPEN: 'subtitle-pip:open',
+  SUBTITLE_PIP_CLOSE: 'subtitle-pip:close',
+  SUBTITLE_PIP_OPENED: 'subtitle-pip:opened',
+  SUBTITLE_PIP_CLOSED: 'subtitle-pip:closed',
+  SUBTITLE_PIP_LINE_UPDATE: 'subtitle-pip:line-update',
   MEDIA_GET_LYRICS: 'media:get-lyrics',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
@@ -138,6 +143,10 @@ export const SettingKeySchema = z.enum([
   'media-sidebar-open',
   'media-sidebar-width',
   'media-view-mode',
+  'subtitle-pip-x',
+  'subtitle-pip-y',
+  'subtitle-pip-width',
+  'subtitle-pip-height',
 ])
 export type SettingKey = z.infer<typeof SettingKeySchema>
 
@@ -577,6 +586,21 @@ export const MediaGetLyricsRequestSchema = z.object({
   filePath: z.string(),
 })
 export type MediaGetLyricsRequest = z.infer<typeof MediaGetLyricsRequestSchema>
+
+// PIP 창(subtitle-pip:line-update)이 표시할 상태 - 호스팅 중인 창이 계산해
+// 메인 프로세스로 보내면(렌더러→메인이 신뢰 경계이므로 메인 프로세스의 핸들러가
+// 이 스키마로 검증한다) 그대로 PIP 창에 릴레이된다. 'line' 외 세 값은 PIP가
+// 무엇을 보여줄지 스스로 판단하지 않고 항상 호스팅 중인 창이 명시적으로
+// 알려주기 위함 - 'no-active-line'은 동기화된 자막은 있지만 지금 이 순간
+// 표시할 줄이 없는 경우(첫 줄 이전 등), PIP는 이 값을 받으면 마지막 'line'
+// 값을 화면에 그대로 유지한다(일시정지 요구사항과 동일 처리).
+export const SubtitleLinePayloadSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('line'), text: z.string() }),
+  z.object({ kind: z.literal('no-active-line') }),
+  z.object({ kind: z.literal('no-lyrics') }),
+  z.object({ kind: z.literal('no-track') }),
+])
+export type SubtitleLinePayload = z.infer<typeof SubtitleLinePayloadSchema>
 
 export const SetMediaThumbnailFromFileRequestSchema = z.object({
   filePath: z.string(),

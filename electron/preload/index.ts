@@ -14,6 +14,7 @@ import {
   type MediaPlaylistDto,
   type MediaPlaylistTrackDto,
   type MediaSyncState,
+  type SubtitleLinePayload,
   type MetadataSearchResultDto,
   type MetadataSearchSource,
   type MetadataFailureDto,
@@ -377,6 +378,27 @@ const api = {
     },
     reportTime: (seconds: number): void =>
       ipcRenderer.send(IPC_CHANNELS.MEDIA_REPORT_TIME, seconds),
+    openSubtitlePipWindow: (): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_OPEN),
+    closeSubtitlePipWindow: (): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_CLOSE),
+    onSubtitlePipOpened: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on(IPC_CHANNELS.SUBTITLE_PIP_OPENED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.SUBTITLE_PIP_OPENED, listener)
+    },
+    onSubtitlePipClosed: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on(IPC_CHANNELS.SUBTITLE_PIP_CLOSED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.SUBTITLE_PIP_CLOSED, listener)
+    },
+    broadcastSubtitleLine: (payload: SubtitleLinePayload): void =>
+      ipcRenderer.send(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, payload),
+    onSubtitlePipLineUpdate: (callback: (payload: SubtitleLinePayload) => void): (() => void) => {
+      const listener = (_event: unknown, payload: SubtitleLinePayload): void => callback(payload)
+      ipcRenderer.on(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, listener)
+    },
   },
   mediaPlaylist: {
     list: (): Promise<MediaPlaylistDto[]> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_LIST),
