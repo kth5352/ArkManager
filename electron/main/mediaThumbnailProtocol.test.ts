@@ -24,6 +24,7 @@ describe('buildMediaThumbnailResponse', () => {
     const response = await buildMediaThumbnailResponse(
       filePath,
       ['D:\\SomeOtherLibrary'],
+      [],
       cacheDir,
       () => null
     )
@@ -42,6 +43,7 @@ describe('buildMediaThumbnailResponse', () => {
     const response = await buildMediaThumbnailResponse(
       filePath,
       [libraryDir],
+      [],
       cacheDir,
       () => overrideImage,
       resolve
@@ -61,6 +63,7 @@ describe('buildMediaThumbnailResponse', () => {
     const response = await buildMediaThumbnailResponse(
       filePath,
       [libraryDir],
+      [],
       cacheDir,
       () => null,
       resolve
@@ -78,6 +81,7 @@ describe('buildMediaThumbnailResponse', () => {
     const response = await buildMediaThumbnailResponse(
       filePath,
       [libraryDir],
+      [],
       cacheDir,
       () => null,
       resolve
@@ -91,6 +95,7 @@ describe('buildMediaThumbnailResponse', () => {
     const response = await buildMediaThumbnailResponse(
       filePath,
       [libraryDir],
+      [],
       cacheDir,
       () => null,
       resolve
@@ -103,9 +108,44 @@ describe('buildMediaThumbnailResponse', () => {
     const response = await buildMediaThumbnailResponse(
       filePath,
       [libraryDir],
+      [],
       cacheDir,
       () => null,
       resolve
+    )
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 200 for a path outside allowedRoots but present in trustedPaths', async () => {
+    const outsideDir = await mkdtemp(join(tmpdir(), 'ark-manager-mediathumb-outside-'))
+    const outsideFile = join(outsideDir, 'clip.mp4')
+    await writeFile(outsideFile, '')
+    const resolvedImage = join(libraryDir, 'frame.webp')
+    await writeFile(resolvedImage, 'fake-frame-bytes')
+    const resolve = async () => resolvedImage
+    try {
+      const response = await buildMediaThumbnailResponse(
+        outsideFile,
+        [libraryDir],
+        [outsideFile],
+        cacheDir,
+        () => null,
+        resolve
+      )
+      expect(response.status).toBe(200)
+      expect(await response.text()).toBe('fake-frame-bytes')
+    } finally {
+      await rm(outsideDir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns 404 for a path outside both allowedRoots and trustedPaths', async () => {
+    const response = await buildMediaThumbnailResponse(
+      filePath,
+      ['D:\\SomeOtherLibrary'],
+      ['D:\\SomeOther\\unrelated-track.mp3'],
+      cacheDir,
+      () => null
     )
     expect(response.status).toBe(404)
   })

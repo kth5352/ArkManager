@@ -2,11 +2,12 @@ import { readFile } from 'node:fs/promises'
 import { app, protocol } from 'electron'
 import { extname, join } from 'node:path'
 import { isVideoFile } from '../../shared/isMediaFile'
-import { isPathWithinAnyLibrary } from './thumbnailProtocol'
+import { isPathExactlyTrusted, isPathWithinAnyLibrary } from './thumbnailProtocol'
 import { listLibraries } from './database/librariesRepository'
 import { getSetting } from './database/settingsRepository'
+import { listLikedTracks } from './database/mediaTrackLikesRepository'
 import { getMediaThumbnailOverride } from './database/mediaThumbnailOverridesRepository'
-import { getPlaylistCoverPath } from './database/mediaPlaylistsRepository'
+import { getPlaylistCoverPath, listAllPlaylistTrackPaths } from './database/mediaPlaylistsRepository'
 import { resolveMediaThumbnail } from './media/resolveMediaThumbnail'
 import type { AppDatabase } from './database/client'
 
@@ -36,6 +37,7 @@ export function mediaThumbnailCacheDir(): string {
 export async function buildMediaThumbnailResponse(
   filePath: string,
   allowedRoots: string[],
+  trustedPaths: string[],
   cacheDir: string,
   getOverride: (filePath: string) => string | null,
   resolve: (
@@ -44,7 +46,7 @@ export async function buildMediaThumbnailResponse(
     isVideo: boolean
   ) => Promise<string | null> = resolveMediaThumbnail
 ): Promise<Response> {
-  if (!isPathWithinAnyLibrary(filePath, allowedRoots)) {
+  if (!isPathWithinAnyLibrary(filePath, allowedRoots) && !isPathExactlyTrusted(filePath, trustedPaths)) {
     return new Response(null, { status: 404 })
   }
 
@@ -105,7 +107,11 @@ export function registerMediaThumbnailProtocolHandler(db: AppDatabase): void {
     const libraryPaths = listLibraries(db).map((library) => library.path)
     const mediaFolder = getSetting(db, 'media-folder')
     const allowedRoots = mediaFolder ? [...libraryPaths, mediaFolder] : libraryPaths
-    return buildMediaThumbnailResponse(filePath, allowedRoots, cacheDir, (path) =>
+    const trustedPaths = [
+      ...listAllPlaylistTrackPaths(db),
+      ...listLikedTracks(db).map((track) => track.path),
+    ]
+    return buildMediaThumbnailResponse(filePath, allowedRoots, trustedPaths, cacheDir, (path) =>
       getMediaThumbnailOverride(db, path)
     )
   })
