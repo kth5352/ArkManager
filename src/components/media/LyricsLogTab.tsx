@@ -199,7 +199,7 @@ export function LyricsLogTab() {
         <Button
           variant="ghost"
           size="icon"
-          disabled={parsedLyrics?.kind !== 'synced'}
+          disabled={parsedLyrics?.kind !== 'synced' && !subtitlePipOpen}
           onClick={handleToggleSubtitlePip}
           aria-label={t('media.subtitlePipToggle')}
           aria-pressed={subtitlePipOpen}

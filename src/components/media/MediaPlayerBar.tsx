@@ -146,7 +146,7 @@ export function MediaPlayerBar({
           <Button
             variant="ghost"
             size="icon"
-            disabled={!hasSyncedLyrics}
+            disabled={!hasSyncedLyrics && !subtitlePipOpen}
             onClick={handleToggleSubtitlePip}
             aria-label={t('media.subtitlePipToggle')}
             aria-pressed={subtitlePipOpen}

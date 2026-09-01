@@ -21,6 +21,16 @@ export function SubtitlePipPage() {
     })
   }, [])
 
+  // globals.css는 이 창을 포함해 모든 창에 무조건 로드된다(main.tsx 참고) -
+  // body에 불투명 --background색이 깔려 있어, BrowserWindow의
+  // transparent:true만으로는 실제로 투명해지지 않는다(창은 투명을 허용할 뿐,
+  // 페이지 자신이 그 위에 불투명 배경을 계속 그린다). globals.css 자체나
+  // import 여부는 건드리지 않고, 이 창에만 국한되도록 마운트 시 한 번
+  // document.body에 직접 덮어쓴다.
+  useEffect(() => {
+    document.body.style.backgroundColor = 'transparent'
+  }, [])
+
   const displayText =
     payload.kind === 'line'
       ? payload.text
@@ -32,16 +42,16 @@ export function SubtitlePipPage() {
             ? t('media.subtitlePipNoTrack')
             : null
 
-  if (!displayText) return null
+  if (displayText === null) return null
 
   return (
     <div
-      style={{ WebkitAppRegion: 'drag', userSelect: 'none' } as CSSProperties}
+      style={{ userSelect: 'none' } as CSSProperties}
       className="flex h-screen w-screen items-center justify-center p-2"
     >
       <div
         className="max-w-full rounded-lg px-4 py-2 text-center text-base font-semibold text-white"
-        style={{ backgroundColor: 'rgba(0,0,0,0.72)' }}
+        style={{ WebkitAppRegion: 'drag', backgroundColor: 'rgba(0,0,0,0.72)' } as CSSProperties}
       >
         {displayText}
       </div>

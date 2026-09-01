@@ -1,6 +1,10 @@
 import { BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'node:path'
-import { IPC_CHANNELS, SubtitleLinePayloadSchema } from '../../../shared/types/ipc'
+import {
+  IPC_CHANNELS,
+  SubtitleLinePayloadSchema,
+  type SubtitleLinePayload,
+} from '../../../shared/types/ipc'
 import { getSetting, setSetting } from '../database/settingsRepository'
 import { clampSubtitlePipBounds, type WindowBounds } from '../subtitlePipBounds'
 import type { AppDatabase } from '../database/client'
@@ -40,6 +44,14 @@ function saveBounds(db: AppDatabase, bounds: WindowBounds): void {
 // 항상 최대 1개(분리 재생 창과 동일한 싱글턴 패턴 - mediaWindowHandlers.ts 참고).
 let pipWindow: BrowserWindow | null = null
 
+// 마지막으로 릴레이한 값을 캐싱해뒀다가, 새로 열리는 PIP 창에 did-finish-load
+// 시점에 한 번 밀어준다(mediaWindowHandlers.ts의 MEDIA_OPEN_PLAYER_WINDOW가
+// MEDIA_STATE_SYNC로 하는 것과 동일한 패턴) - 이게 없으면 재생 중 PIP를 열었을
+// 때 SUBTITLE_PIP_LINE_UPDATE는 값이 실제로 바뀔 때만 재전송되므로, 다음
+// 활성 줄 변경 전까지(일시정지 중이라면 영영) 기본값('재생 중인 트랙이
+// 없습니다')이 그대로 표시된다.
+let lastPayload: SubtitleLinePayload | null = null
+
 export function registerSubtitlePipWindowHandlers(
   db: AppDatabase,
   // Not read yet - open/close notifications go to every window via
@@ -60,6 +72,7 @@ export function registerSubtitlePipWindowHandlers(
   ipcMain.handle(IPC_CHANNELS.SUBTITLE_PIP_OPEN, () => {
     if (pipWindow) {
       pipWindow.focus()
+      broadcastOpenState('SUBTITLE_PIP_OPENED')
       return
     }
 
@@ -96,6 +109,13 @@ export function registerSubtitlePipWindowHandlers(
     win.on('move', scheduleSave)
     win.on('resize', scheduleSave)
 
+    // 새 창의 렌더러는 처음엔 no-track 기본값으로 시작한다 - 이미 재생 중이면
+    // (혹은 일시정지 중이라 다음 변경 이벤트가 영영 안 올 수도 있으면) 로드가
+    // 끝나는 즉시 마지막으로 알려진 값을 한 번 밀어준다.
+    win.webContents.once('did-finish-load', () => {
+      if (lastPayload) win.webContents.send(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, lastPayload)
+    })
+
     if (process.env['ELECTRON_RENDERER_URL']) {
       win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/subtitle-pip`)
     } else {
@@ -120,6 +140,7 @@ export function registerSubtitlePipWindowHandlers(
   // 릴레이한다 - MEDIA_STATE_BROADCAST가 이미 확립한 것과 동일한 패턴.
   ipcMain.on(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, (_event, payload: unknown) => {
     const parsed = SubtitleLinePayloadSchema.parse(payload)
+    lastPayload = parsed
     pipWindow?.webContents.send(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, parsed)
   })
 
