@@ -45,6 +45,22 @@ export function getMediaPlaylistTracks(db: AppDatabase, id: string): MediaPlayli
     .map((track) => ({ path: track.path, name: track.name }))
 }
 
+// Every path saved into ANY playlist, deduplicated, regardless of which
+// playlist it's in - used by the media/mediathumb protocol handlers as a
+// trust list so a playlist track stays playable/thumbnail-able even after
+// the Media tab's active browse folder (app_settings.media-folder) moves on
+// to a different folder. See
+// docs/superpowers/specs/2026-09-02-media-playback-trust-boundary-fix-design.md.
+// Deliberately unindexed and uncached - queried fresh on every media:// /
+// mediathumb:// request; see that spec's performance section for why.
+export function listAllPlaylistTrackPaths(db: AppDatabase): string[] {
+  return db
+    .selectDistinct({ path: mediaPlaylistTracks.path })
+    .from(mediaPlaylistTracks)
+    .all()
+    .map((row) => row.path)
+}
+
 // Full replace, not an upsert - mirrors saveExplorerTabs's delete-all-then-
 // reinsert pattern (explorerTabsRepository.ts), since the caller always
 // sends its complete, current track order (including reorders/removals)

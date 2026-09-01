@@ -10,6 +10,7 @@ import {
   setPlaylistCover,
   clearPlaylistCover,
   getPlaylistCoverPath,
+  listAllPlaylistTrackPaths,
 } from './mediaPlaylistsRepository'
 
 describe('mediaPlaylistsRepository', () => {
@@ -91,5 +92,37 @@ describe('media playlist cover repository functions', () => {
       'C:\\cache\\playlist-covers\\pl-1.webp'
     )
     expect(playlists.find((p) => p.id === 'pl-2')?.coverImagePath).toBeNull()
+  })
+})
+
+describe('listAllPlaylistTrackPaths', () => {
+  let db: AppDatabase
+
+  beforeEach(() => {
+    db = createDbClient(':memory:')
+  })
+
+  it('returns an empty array when there are no playlists', () => {
+    expect(listAllPlaylistTrackPaths(db)).toEqual([])
+  })
+
+  it('returns every track path from a single playlist', () => {
+    createMediaPlaylist(db, 'p1', 'My Playlist')
+    setMediaPlaylistTracks(db, 'p1', [
+      { path: 'C:/a.mp3', name: 'a.mp3' },
+      { path: 'C:/b.mp3', name: 'b.mp3' },
+    ])
+    expect(listAllPlaylistTrackPaths(db).sort()).toEqual(['C:/a.mp3', 'C:/b.mp3'])
+  })
+
+  it('deduplicates a path saved in more than one playlist', () => {
+    createMediaPlaylist(db, 'p1', 'Playlist One')
+    createMediaPlaylist(db, 'p2', 'Playlist Two')
+    setMediaPlaylistTracks(db, 'p1', [{ path: 'C:/shared.mp3', name: 'shared.mp3' }])
+    setMediaPlaylistTracks(db, 'p2', [
+      { path: 'C:/shared.mp3', name: 'shared.mp3' },
+      { path: 'C:/only-in-two.mp3', name: 'only-in-two.mp3' },
+    ])
+    expect(listAllPlaylistTrackPaths(db).sort()).toEqual(['C:/only-in-two.mp3', 'C:/shared.mp3'])
   })
 })
