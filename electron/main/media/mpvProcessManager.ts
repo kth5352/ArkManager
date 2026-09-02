@@ -7,6 +7,15 @@ import { join } from 'node:path'
 // proof this architecture is built on).
 let child: UtilityProcess | null = null
 let currentHostWindow: BrowserWindow | null = null
+// Whether the CURRENT child process has already had `{type: 'init'}` sent to
+// it. `init` does a fresh LoadLibraryA/mpv_create/mpv_render_context_create
+// (no re-entrancy guard in the native addon - see mpv_addon.cc's Init()) and
+// starts a new render-loop setInterval without clearing any existing one, so
+// it must only ever be sent once per child; subsequent loads must use the
+// lighter-weight `{type: 'load'}` message instead. Reset to false whenever a
+// NEW child is spawned - a freshly-spawned process's native addon has no
+// state, so it genuinely needs a fresh init, not a load.
+let hasInitializedCurrentChild = false
 // Kept as a list rather than attached once to a single child: the child is
 // respawned after an unexpected exit (that's the whole point of the crash
 // isolation), and a listener attached only to the dead process would leave
@@ -16,11 +25,15 @@ const workerMessageListeners: Array<(msg: unknown) => void> = []
 function ensureChild(): UtilityProcess {
   if (child) return child
   const proc = utilityProcess.fork(join(__dirname, 'mpvWorker.js'), [], { stdio: 'pipe' })
+  hasInitializedCurrentChild = false
   proc.stdout?.on('data', (d: Buffer) => process.stdout.write(`[mpv-worker] ${d}`))
   proc.stderr?.on('data', (d: Buffer) => process.stderr.write(`[mpv-worker] ${d}`))
   proc.on('exit', (code) => {
     console.error(`[mpvProcessManager] utility process exited unexpectedly, code=${code}`)
-    if (child === proc) child = null
+    if (child === proc) {
+      child = null
+      hasInitializedCurrentChild = false
+    }
   })
   for (const listener of workerMessageListeners) proc.on('message', listener)
   child = proc
@@ -43,13 +56,17 @@ export function getCurrentHostWindow(): BrowserWindow | null {
   return currentHostWindow
 }
 
+// Decides between `init` (first call for the current child) and the
+// lighter-weight `load` (every call after that) - see
+// `hasInitializedCurrentChild` above for why this distinction matters.
 export function loadFile(filePath: string, width: number, height: number): void {
   const proc = ensureChild()
+  if (hasInitializedCurrentChild) {
+    proc.postMessage({ type: 'load', filePath })
+    return
+  }
   proc.postMessage({ type: 'init', filePath, width, height })
-}
-
-export function loadNewFile(filePath: string): void {
-  child?.postMessage({ type: 'load', filePath })
+  hasInitializedCurrentChild = true
 }
 
 export function play(): void {
