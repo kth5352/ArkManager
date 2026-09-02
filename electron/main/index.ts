@@ -22,6 +22,7 @@ import {
 import { registerMediaThumbnailHandlers } from './ipc/mediaThumbnailHandlers'
 import { registerSubtitlePipWindowHandlers } from './ipc/subtitlePipWindowHandlers'
 import { registerMediaLyricsHandlers } from './ipc/mediaLyricsHandlers'
+import { registerMediaRemuxHandlers } from './ipc/mediaRemuxHandlers'
 import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
 import { registerMediaPlaylistHandlers } from './ipc/mediaPlaylistHandlers'
 import { registerMediaPlaylistCoverHandlers } from './ipc/mediaPlaylistCoverHandlers'
@@ -390,6 +391,7 @@ if (!gotSingleInstanceLock) {
     closeSubtitlePipWindow = registerSubtitlePipWindowHandlers(db, () => mainWindow).closeSubtitlePipWindow
     registerMediaThumbnailHandlers(db)
     registerMediaLyricsHandlers(db)
+    registerMediaRemuxHandlers()
     registerExcludedEntriesHandlers(db)
     registerMediaPlaylistHandlers(db)
     registerMediaPlaylistCoverHandlers(db)

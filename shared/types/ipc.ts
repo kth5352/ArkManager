@@ -87,6 +87,7 @@ export const IPC_CHANNELS = {
   SUBTITLE_PIP_CLOSED: 'subtitle-pip:closed',
   SUBTITLE_PIP_LINE_UPDATE: 'subtitle-pip:line-update',
   MEDIA_GET_LYRICS: 'media:get-lyrics',
+  MEDIA_CHECK_NEEDS_REMUX: 'media:check-needs-remux',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',
@@ -587,6 +588,11 @@ export const MediaGetLyricsRequestSchema = z.object({
   filePath: z.string(),
 })
 export type MediaGetLyricsRequest = z.infer<typeof MediaGetLyricsRequestSchema>
+
+export const MediaCheckNeedsRemuxRequestSchema = z.object({
+  filePath: z.string(),
+})
+export type MediaCheckNeedsRemuxRequest = z.infer<typeof MediaCheckNeedsRemuxRequestSchema>
 
 // PIP 창(subtitle-pip:line-update)이 표시할 상태 - 호스팅 중인 창이 계산해
 // 메인 프로세스로 보내면(렌더러→메인이 신뢰 경계이므로 메인 프로세스의 핸들러가
