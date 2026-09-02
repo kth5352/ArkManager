@@ -1,11 +1,13 @@
-import { protocol } from 'electron'
+import { app, protocol } from 'electron'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
+import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { computeMediaAllowedRoots, computeMediaTrustedPaths } from './media/mediaTrustBoundary'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from './thumbnailProtocol'
 import { parseRangeHeader } from './media/parseRangeHeader'
 import { resolveMediaMimeType } from './media/resolveMediaMimeType'
+import { resolvePlayableMediaPath } from './media/resolvePlayableMediaPath'
 import type { AppDatabase } from './database/client'
 
 // Video/audio playback (see src/stores/mediaPlayerStore.ts) needs actual
@@ -23,6 +25,10 @@ const MEDIA_SCHEME = 'media'
 
 function decodeFilePath(url: string): string {
   return decodeURIComponent(new URL(url).pathname.slice(1))
+}
+
+export function mediaRemuxCacheDir(): string {
+  return join(app.getPath('userData'), 'cache', 'media-remux')
 }
 
 // Must run before app.whenReady() - Electron requires privileged schemes to
@@ -49,7 +55,12 @@ export async function buildMediaResponse(
   filePath: string,
   allowedRoots: string[],
   trustedPaths: string[],
-  rangeHeader: string | null
+  cacheDir: string,
+  rangeHeader: string | null,
+  resolvePlayablePath: (
+    cacheDir: string,
+    filePath: string
+  ) => Promise<string> = resolvePlayableMediaPath
 ): Promise<Response> {
   if (
     !isPathWithinAnyLibrary(filePath, allowedRoots) &&
@@ -58,9 +69,11 @@ export async function buildMediaResponse(
     return new Response(null, { status: 404 })
   }
 
+  const playablePath = await resolvePlayablePath(cacheDir, filePath)
+
   let stats: Awaited<ReturnType<typeof stat>>
   try {
-    stats = await stat(filePath)
+    stats = await stat(playablePath)
   } catch {
     return new Response(null, { status: 404 })
   }
@@ -76,7 +89,7 @@ export async function buildMediaResponse(
   const mimeType = resolveMediaMimeType(filePath)
 
   if (!rangeHeader) {
-    const body = Readable.toWeb(createReadStream(filePath)) as ReadableStream
+    const body = Readable.toWeb(createReadStream(playablePath)) as ReadableStream
     return new Response(body, {
       status: 200,
       headers: {
@@ -96,7 +109,7 @@ export async function buildMediaResponse(
   }
 
   const body = Readable.toWeb(
-    createReadStream(filePath, { start: range.start, end: range.end })
+    createReadStream(playablePath, { start: range.start, end: range.end })
   ) as ReadableStream
   return new Response(body, {
     status: 206,
@@ -123,10 +136,11 @@ export async function buildMediaResponse(
 // media-folder later changes to point somewhere else - see
 // docs/superpowers/specs/2026-09-02-media-playback-trust-boundary-fix-design.md.
 export function registerMediaProtocolHandler(db: AppDatabase): void {
+  const cacheDir = mediaRemuxCacheDir()
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const filePath = decodeFilePath(request.url)
     const allowedRoots = computeMediaAllowedRoots(db)
     const trustedPaths = computeMediaTrustedPaths(db)
-    return buildMediaResponse(filePath, allowedRoots, trustedPaths, request.headers.get('range'))
+    return buildMediaResponse(filePath, allowedRoots, trustedPaths, cacheDir, request.headers.get('range'))
   })
 }

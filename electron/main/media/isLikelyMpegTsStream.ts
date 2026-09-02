@@ -26,6 +26,12 @@ export async function isLikelyMpegTsStream(filePath: string): Promise<boolean> {
       if (buffer[i * TS_PACKET_SIZE] !== 0x47) return false
     }
     return true
+  } catch {
+    // A directory opens successfully but throws EISDIR on read - callers
+    // (resolvePlayableMediaPath, via buildMediaResponse) rely on this
+    // function never throwing for an unreadable path, the same way it
+    // already treats a missing file as "not MPEG-TS" rather than an error.
+    return false
   } finally {
     await handle.close()
   }

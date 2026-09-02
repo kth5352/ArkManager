@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isLikelyMpegTsStream } from './isLikelyMpegTsStream'
@@ -67,5 +67,12 @@ describe('isLikelyMpegTsStream', () => {
 
   it('returns false for a file that does not exist, instead of throwing', async () => {
     await expect(isLikelyMpegTsStream(join(dir, 'missing.mp4'))).resolves.toBe(false)
+  })
+
+  it('returns false for a directory path, instead of throwing EISDIR', async () => {
+    const subDir = join(dir, 'subfolder')
+    await mkdir(subDir)
+
+    await expect(isLikelyMpegTsStream(subDir)).resolves.toBe(false)
   })
 })
