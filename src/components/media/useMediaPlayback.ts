@@ -10,6 +10,7 @@ export interface MediaPlaybackState {
   duration: number
   isPlaying: boolean
   error: string | null
+  isConverting: boolean
   handleSeek: (value: number) => void
   mediaElementProps: {
     src: string
@@ -110,6 +111,7 @@ export function useMediaPlayback({
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [resetForPath, setResetForPath] = useState<string | null>(null)
+  const [isConverting, setIsConverting] = useState(false)
 
   const track = currentIndex !== null ? (playlist[currentIndex] ?? null) : null
 
@@ -124,6 +126,37 @@ export function useMediaPlayback({
     setDuration(0)
     setError(null)
   }
+
+  // Clears isConverting once there's no track to show it for - render-time
+  // sync (same pattern as the resetForPath block above), not a useEffect,
+  // so this doesn't trip the set-state-in-effect lint rule the way a plain
+  // useEffect calling setIsConverting(false) would. Not user-visible either
+  // way (MediaTransportBar, the only reader of isConverting, is never
+  // rendered while playback/track is null), but keeps the state honest for
+  // whenever a track reappears.
+  if (!track && isConverting) setIsConverting(false)
+
+  // Drives the "변환 중" loading state - a cheap pre-check (reads a few
+  // hundred bytes, see mediaRemuxHandlers.ts) run whenever the current
+  // track changes, purely to decide whether to show this state before
+  // playback starts. The actual remux (if any) happens transparently
+  // inside the real media:// request this same track change triggers via
+  // mediaElementProps.src below - this effect does not duplicate that
+  // work, it only decides what the UI shows while it's in flight. Guarded
+  // by `cancelled` so a rapid track change (e.g. double-clicking next())
+  // can't have an earlier, now-stale check's result overwrite a later
+  // one's.
+  useEffect(() => {
+    if (!track) return
+    let cancelled = false
+    window.api.media.checkNeedsRemux(track.path).then((needsRemux) => {
+      if (!cancelled) setIsConverting(needsRemux)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed to track.path, not track's object identity, so a playlist re-render that yields a new track object for the same path doesn't restart this check.
+  }, [track?.path])
 
   // Play/pause intent lives in the store (so Explorer, the Media page, and
   // the other window's remote transport controls can all trigger it
@@ -246,12 +279,16 @@ export function useMediaPlayback({
       duration,
       isPlaying,
       error,
+      isConverting,
       handleSeek,
       mediaElementProps: {
         src: buildMediaUrl(track.path),
         playsInline: true,
         onTimeUpdate: () => elRef.current && setCurrentTime(elRef.current.currentTime),
-        onLoadedMetadata: () => elRef.current && setDuration(elRef.current.duration),
+        onLoadedMetadata: () => {
+          if (elRef.current) setDuration(elRef.current.duration)
+          setIsConverting(false)
+        },
         // media:// serves through Electron's net.fetch (see mediaProtocol.ts)
         // rather than a plain file:// load - the element's `duration` is
         // often still Infinity/NaN at loadedmetadata time (the real length
@@ -276,7 +313,10 @@ export function useMediaPlayback({
           }
           next()
         },
-        onPlay: () => setPlaying(true),
+        onPlay: () => {
+          setPlaying(true)
+          setIsConverting(false)
+        },
         onPause: () => setPlaying(false),
         onError: () => setError('media-error'),
       },

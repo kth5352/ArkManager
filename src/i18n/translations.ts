@@ -363,6 +363,7 @@ const ko = {
   'media.detachWindow': '새 창으로 분리',
   'media.playingInOtherWindow': '다른 창에서 재생 중',
   'media.playbackError': '재생할 수 없습니다.',
+  'media.convertingFile': '변환 중...',
   'media.noTrackPlaying': '재생 중인 항목이 없습니다.',
 
   'detailList.duplicateTooltip': '같은 코드의 다른 사본 {count}개:\n{paths}',
@@ -731,6 +732,7 @@ const ja: Record<keyof typeof ko, string> = {
   'media.detachWindow': '新しいウィンドウに分離',
   'media.playingInOtherWindow': '別のウィンドウで再生中',
   'media.playbackError': '再生できません。',
+  'media.convertingFile': '変換中...',
   'media.noTrackPlaying': '再生中の項目がありません。',
 
   'detailList.duplicateTooltip': '同じコードの他のコピー{count}個:\n{paths}',
@@ -1099,6 +1101,7 @@ const en: Record<keyof typeof ko, string> = {
   'media.detachWindow': 'Detach to new window',
   'media.playingInOtherWindow': 'Playing in another window',
   'media.playbackError': "Can't play this file.",
+  'media.convertingFile': 'Converting...',
   'media.noTrackPlaying': 'Nothing is playing.',
 
   'detailList.duplicateTooltip': '{count} other copies with the same code:\n{paths}',
