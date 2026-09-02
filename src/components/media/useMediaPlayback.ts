@@ -127,14 +127,17 @@ export function useMediaPlayback({
     setError(null)
   }
 
-  // Clears isConverting once there's no track to show it for - render-time
-  // sync (same pattern as the resetForPath block above), not a useEffect,
-  // so this doesn't trip the set-state-in-effect lint rule the way a plain
-  // useEffect calling setIsConverting(false) would. Not user-visible either
-  // way (MediaTransportBar, the only reader of isConverting, is never
-  // rendered while playback/track is null), but keeps the state honest for
-  // whenever a track reappears.
-  if (!track && isConverting) setIsConverting(false)
+  // Clears isConverting once there's no track to show it for, or once this
+  // window is no longer the host - render-time sync (same pattern as the
+  // resetForPath block above), not a useEffect, so this doesn't trip the
+  // set-state-in-effect lint rule the way a plain useEffect calling
+  // setIsConverting(false) would. The !isHost case matters because the
+  // detached window's own docked bar still renders playback.isConverting
+  // even though no media element is mounted there while !isHost - without
+  // this, onLoadedMetadata/onPlay (the only things that otherwise clear it)
+  // could never fire in that window once the check effect below set it
+  // true, leaving "변환 중" stuck forever.
+  if ((!track || !isHost) && isConverting) setIsConverting(false)
 
   // Drives the "변환 중" loading state - a cheap pre-check (reads a few
   // hundred bytes, see mediaRemuxHandlers.ts) run whenever the current
@@ -142,12 +145,14 @@ export function useMediaPlayback({
   // playback starts. The actual remux (if any) happens transparently
   // inside the real media:// request this same track change triggers via
   // mediaElementProps.src below - this effect does not duplicate that
-  // work, it only decides what the UI shows while it's in flight. Guarded
-  // by `cancelled` so a rapid track change (e.g. double-clicking next())
-  // can't have an earlier, now-stale check's result overwrite a later
-  // one's.
+  // work, it only decides what the UI shows while it's in flight. Only
+  // meaningful for the actual host - the non-host window never mounts a
+  // media element, so it has no onLoadedMetadata/onPlay to ever clear this
+  // again (see the render-time reset above). Guarded by `cancelled` so a
+  // rapid track change (e.g. double-clicking next()) can't have an
+  // earlier, now-stale check's result overwrite a later one's.
   useEffect(() => {
-    if (!track) return
+    if (!track || !isHost) return
     let cancelled = false
     window.api.media.checkNeedsRemux(track.path).then((needsRemux) => {
       if (!cancelled) setIsConverting(needsRemux)
@@ -155,8 +160,8 @@ export function useMediaPlayback({
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed to track.path, not track's object identity, so a playlist re-render that yields a new track object for the same path doesn't restart this check.
-  }, [track?.path])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed to track.path (not track's object identity) plus isHost, so a playlist re-render that yields a new track object for the same path doesn't restart this check.
+  }, [track?.path, isHost])
 
   // Play/pause intent lives in the store (so Explorer, the Media page, and
   // the other window's remote transport controls can all trigger it
@@ -313,12 +318,22 @@ export function useMediaPlayback({
           }
           next()
         },
-        onPlay: () => {
-          setPlaying(true)
+        // Deliberately does NOT clear isConverting - onPlay fires as soon
+        // as the element's `paused` flag flips to false, which per the
+        // HTML spec can happen immediately on el.play() being called, well
+        // before any real bytes have loaded during an actual multi-minute
+        // remux. Clearing isConverting here let a user clicking play/pause
+        // during a long conversion (a plausible thing to do when the
+        // player looks frozen) permanently dismiss "변환 중" even though the
+        // file still isn't ready - onLoadedMetadata's own setIsConverting(false)
+        // below is the only place this should clear, since loadedmetadata
+        // can't fire before real bytes (i.e. the finished remux) exist.
+        onPlay: () => setPlaying(true),
+        onPause: () => setPlaying(false),
+        onError: () => {
+          setError('media-error')
           setIsConverting(false)
         },
-        onPause: () => setPlaying(false),
-        onError: () => setError('media-error'),
       },
     },
   }

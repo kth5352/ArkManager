@@ -27,8 +27,27 @@ export async function remuxMpegTsToMp4(filePath: string, outputPath: string): Pr
   try {
     await execFileAsync(
       ffmpegPath,
-      ['-y', '-i', filePath, '-c', 'copy', '-movflags', '+faststart', outputPath],
-      { timeout: REMUX_TIMEOUT_MS }
+      [
+        '-y',
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-nostats',
+        '-i',
+        filePath,
+        '-c',
+        'copy',
+        '-movflags',
+        '+faststart',
+        outputPath,
+      ],
+      // Node's execFile defaults to a 1 MiB combined stdout+stderr buffer,
+      // which a real-world multi-hour capture can exceed via ffmpeg's own
+      // stderr warnings (e.g. "Non-monotonous DTS") even with -loglevel
+      // error trimming most of them - exceeding it kills the process
+      // (caught by the catch below) after minutes of wasted work, so this
+      // is uncapped rather than raised to some other finite number.
+      { timeout: REMUX_TIMEOUT_MS, maxBuffer: Infinity }
     )
     return true
   } catch {

@@ -32,6 +32,16 @@ describe('clearCache', () => {
     expect(existsSync(join(dir, 'cache', 'media-thumbnails'))).toBe(false)
   })
 
+  it('deletes cached media remux output', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-clearcache-'))
+    await mkdir(join(dir, 'cache', 'media-remux'), { recursive: true })
+    await writeFile(join(dir, 'cache', 'media-remux', 'abc123.mp4'), 'video-bytes')
+
+    await clearCache(dir, { deleteSaveBackups: false })
+
+    expect(existsSync(join(dir, 'cache', 'media-remux'))).toBe(false)
+  })
+
   it('leaves manual media-thumbnail overrides alone', async () => {
     dir = await mkdtemp(join(tmpdir(), 'ark-manager-clearcache-'))
     await mkdir(join(dir, 'cache', 'media-thumbnail-overrides'), { recursive: true })

@@ -24,6 +24,12 @@ export async function clearCache(userDataPath: string, options: ClearCacheOption
   // cache", the same precedent that already keeps cache/custom-covers (game
   // covers) untouched here.
   await rm(join(userDataPath, 'cache', 'media-thumbnails'), { recursive: true, force: true })
+  // cache/media-remux holds full-size remuxed (not re-encoded) copies of
+  // mislabeled MPEG-TS video files (see resolvePlayableMediaPath.ts) - a
+  // regenerable, machine-derived cache exactly analogous to cache/covers
+  // and cache/media-thumbnails, so it's deleted unconditionally the same
+  // way.
+  await rm(join(userDataPath, 'cache', 'media-remux'), { recursive: true, force: true })
 
   if (options.deleteSaveBackups) {
     await rm(join(userDataPath, 'saves'), { recursive: true, force: true })

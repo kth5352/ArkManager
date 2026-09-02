@@ -391,7 +391,7 @@ if (!gotSingleInstanceLock) {
     closeSubtitlePipWindow = registerSubtitlePipWindowHandlers(db, () => mainWindow).closeSubtitlePipWindow
     registerMediaThumbnailHandlers(db)
     registerMediaLyricsHandlers(db)
-    registerMediaRemuxHandlers()
+    registerMediaRemuxHandlers(db)
     registerExcludedEntriesHandlers(db)
     registerMediaPlaylistHandlers(db)
     registerMediaPlaylistCoverHandlers(db)

@@ -46,7 +46,7 @@ function decodeEntryPath(url: string): string {
 // (a registered library path always uses the OS-native separator, but a
 // requested entryPath could in principle use either). Converting both sides
 // to forward slashes here makes the prefix check separator-agnostic.
-function normalizeForComparison(path: string): string {
+export function normalizeForComparison(path: string): string {
   return normalizeLibraryPath(path).replace(/\\/g, '/')
 }
 
