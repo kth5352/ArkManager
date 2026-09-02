@@ -57,6 +57,7 @@ export function FullscreenMediaOverlay({
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
+  const sidebarActiveTab = useMediaPlayerStore((s) => s.sidebarActiveTab)
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
   const { data: mediaSidebarOpen = false } = useMediaSidebarOpenQuery()
   const { data: mediaSidebarWidth = MEDIA_SIDEBAR_WIDTH_DEFAULT } = useMediaSidebarWidthQuery()
@@ -82,7 +83,7 @@ export function FullscreenMediaOverlay({
 
   // Opens the sidebar's "current queue" tab instead of this overlay's own
   // (now removed) showPlaylist/MediaPlaylistPanel popover - mirrors
-  // MediaPlayerBar.tsx's openQueueTab exactly (same three calls, all
+  // MediaPlayerBar.tsx's openQueueTab exactly (same toggle logic, all
   // globally accessible so no prop threading through MediaPlayerHost is
   // needed). The sidebar's z-[60] sits deliberately above this overlay's
   // z-50 (see MediaSidebar.tsx's own comment) specifically so it stays
@@ -92,7 +93,15 @@ export function FullscreenMediaOverlay({
   // overlay - like the docked bar - can be visible from any route, so the
   // navigate() call is what actually makes the sidebar it just opened
   // show up anywhere.
+  //
+  // A real toggle - closes if the sidebar is already open and already
+  // showing the queue tab, otherwise opens/switches it to queue - mirrors
+  // MediaPage.tsx's own sidebar-toggle button.
   const openQueueTab = (): void => {
+    if (mediaSidebarOpen && sidebarActiveTab === 'queue') {
+      setSidebarOpen.mutate(false)
+      return
+    }
     setSidebarOpen.mutate(true)
     setSidebarActiveTab('queue')
     navigate({ to: '/media' })
@@ -182,7 +191,11 @@ export function FullscreenMediaOverlay({
               size="icon"
               onClick={openQueueTab}
               aria-label={t('media.playlist')}
-              className="shrink-0 text-white/70 hover:text-white"
+              aria-pressed={mediaSidebarOpen && sidebarActiveTab === 'queue'}
+              className={cn(
+                'shrink-0 text-white/70 hover:text-white',
+                mediaSidebarOpen && sidebarActiveTab === 'queue' && 'text-white'
+              )}
             >
               <ListMusic className="h-4 w-4" />
             </Button>

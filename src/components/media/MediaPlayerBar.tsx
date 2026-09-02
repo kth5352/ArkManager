@@ -3,7 +3,10 @@ import { useNavigate } from '@tanstack/react-router'
 import logoUrl from '../../../LOGO.png'
 import { Captions, ListMusic, Maximize2, PictureInPicture2, X } from 'lucide-react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
-import { useSetMediaSidebarOpenMutation } from '../../services/settingsService'
+import {
+  useMediaSidebarOpenQuery,
+  useSetMediaSidebarOpenMutation,
+} from '../../services/settingsService'
 import { MediaTransportBar } from './MediaTransportBar'
 import { MediaLikeButton } from './MediaLikeButton'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
@@ -59,6 +62,8 @@ export function MediaPlayerBar({
   const navigate = useNavigate()
   const clearPlaylist = useMediaPlayerStore((s) => s.clearPlaylist)
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
+  const sidebarActiveTab = useMediaPlayerStore((s) => s.sidebarActiveTab)
+  const { data: mediaSidebarOpen = false } = useMediaSidebarOpenQuery()
   const hasSyncedLyrics = parsedLyrics?.kind === 'synced'
   const handleToggleSubtitlePip = (e: MouseEvent): void => {
     e.stopPropagation()
@@ -80,7 +85,18 @@ export function MediaPlayerBar({
   // rendering it. Navigating to /media makes the click do something the
   // user can see, same pattern as FolderTreeTab.tsx/usePlayAsmrFolder.ts's
   // own navigate({ to: '/media' }) calls from off-route.
+  //
+  // A real toggle - closes if the sidebar is already open and already
+  // showing the queue tab, otherwise opens it (or switches it) to queue -
+  // mirrors MediaPage.tsx's own sidebar-toggle button
+  // (`mutate(!mediaSidebarOpen)`), which this button used to NOT match:
+  // it always forced the sidebar open and never closed it back on a
+  // second click, unlike every other toggle in this app.
   const openQueueTab = (): void => {
+    if (mediaSidebarOpen && sidebarActiveTab === 'queue') {
+      setSidebarOpen.mutate(false)
+      return
+    }
     setSidebarOpen.mutate(true)
     setSidebarActiveTab('queue')
     navigate({ to: '/media' })
@@ -204,6 +220,7 @@ export function MediaPlayerBar({
             size="icon"
             onClick={openQueueTab}
             aria-label={t('media.playlist')}
+            aria-pressed={mediaSidebarOpen && sidebarActiveTab === 'queue'}
             className="shrink-0"
           >
             <ListMusic className="h-5 w-5" />
