@@ -5,8 +5,9 @@ export interface ClearCacheOptions {
   deleteSaveBackups: boolean
 }
 
-// Only deletes userData/cache/covers and userData/cache/media-thumbnails,
-// never the whole userData/cache/ directory - on Windows, that folder is the
+// Only deletes userData/cache/covers, userData/cache/media-thumbnails, and
+// userData/cache/media-remux, never the whole userData/cache/ directory -
+// on Windows, that folder is the
 // same physical directory as Chromium's own "Cache" (case-insensitive
 // filesystem, see migrateUserDataFolder.ts's own note on this), which the
 // running app still has open. userData/saves (see saveHandlers.ts - one

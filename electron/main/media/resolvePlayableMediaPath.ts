@@ -51,10 +51,12 @@ export async function isAlreadyRemuxed(cacheDir: string, filePath: string): Prom
 // Concurrent requests for the same not-yet-cached file (e.g. an initial
 // Range request and a seek arriving moments later) share one in-flight
 // remux instead of each independently spawning a full ffmpeg pass over a
-// potentially multi-GB source. Keyed by the raw filePath (not the cache
-// path) so lookups don't need to re-normalize first. Cleared once the
-// promise settles (success OR failure) so a later, non-concurrent call
-// still gets a fresh attempt.
+// potentially multi-GB source. Keyed by cacheKeyFor's normalized key, not
+// the raw filePath - otherwise two differently-cased/separated spellings of
+// the same file (which the cache itself already treats as equivalent, see
+// cacheKeyFor's own comment) would each miss this map and still race their
+// own full remux. Cleared once the promise settles (success OR failure) so
+// a later, non-concurrent call still gets a fresh attempt.
 const inFlightRemuxes = new Map<string, Promise<string>>()
 
 // Returns the path mediaProtocol.ts should actually stream bytes from for
@@ -74,7 +76,8 @@ export async function resolvePlayableMediaPath(
   const cachePath = cachePathFor(cacheDir, filePath)
   if (await isAlreadyRemuxed(cacheDir, filePath)) return cachePath
 
-  const existing = inFlightRemuxes.get(filePath)
+  const inFlightKey = cacheKeyFor(filePath)
+  const existing = inFlightRemuxes.get(inFlightKey)
   if (existing) return existing
 
   const attempt = (async (): Promise<string> => {
@@ -100,10 +103,10 @@ export async function resolvePlayableMediaPath(
     }
   })()
 
-  inFlightRemuxes.set(filePath, attempt)
+  inFlightRemuxes.set(inFlightKey, attempt)
   try {
     return await attempt
   } finally {
-    inFlightRemuxes.delete(filePath)
+    inFlightRemuxes.delete(inFlightKey)
   }
 }
