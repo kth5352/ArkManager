@@ -18,6 +18,7 @@ import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import type { MediaPlaybackState } from './useMediaPlayback'
 import logoUrl from '../../../LOGO.png'
 import { HoverTooltip } from '../ui/hover-tooltip'
+import { Button } from '../ui/button'
 
 interface FullscreenMediaOverlayProps {
   mediaRef: (el: HTMLVideoElement | HTMLAudioElement | null) => void
@@ -157,7 +158,7 @@ export function FullscreenMediaOverlay({
           <span className="min-w-0 flex-1 truncate text-xs text-white">{playback.track.name}</span>
           <MediaLikeButton path={playback.track.path} name={playback.track.name} className="text-white/70 transition-colors hover:text-white" />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <MediaTransportBar
             playback={playback}
             dark
@@ -167,34 +168,40 @@ export function FullscreenMediaOverlay({
             onToggleLyrics={onToggleLyrics}
           />
           <HoverTooltip content={t('media.playlist')}>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={openQueueTab}
               aria-label={t('media.playlist')}
-              className="shrink-0 text-white/70 transition-colors hover:text-white"
+              className="shrink-0 text-white/70 hover:text-white"
             >
               <ListMusic className="h-4 w-4" />
-            </button>
+            </Button>
           </HoverTooltip>
           {onDetach && (
             <HoverTooltip content={t('media.detachWindow')}>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onDetach}
                 aria-label={t('media.detachWindow')}
-                className="shrink-0 text-white/70 transition-colors hover:text-white"
+                className="shrink-0 text-white/70 hover:text-white"
               >
                 <PictureInPicture2 className="h-4 w-4" />
-              </button>
+              </Button>
             </HoverTooltip>
           )}
           {onMinimize && (
             <HoverTooltip content={t('media.minimize')}>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onMinimize}
                 aria-label={t('media.minimize')}
-                className="shrink-0 text-white/70 transition-colors hover:text-white"
+                className="shrink-0 text-white/70 hover:text-white"
               >
                 <Minimize2 className="h-4 w-4" />
-              </button>
+              </Button>
             </HoverTooltip>
           )}
         </div>
