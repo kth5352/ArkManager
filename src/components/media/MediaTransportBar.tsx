@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Pause,
-  Captions,
+  MessageSquareText,
   Play,
   Repeat,
   Repeat1,
@@ -171,7 +171,7 @@ export function MediaTransportBar({
               lyricsEnabled && hasLyrics ? (dark ? 'text-white' : 'text-primary') : mutedText
             )}
           >
-            <Captions className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+            <MessageSquareText className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
           </Button>
         </HoverTooltip>
       )}
