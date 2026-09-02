@@ -2,10 +2,7 @@ import { protocol } from 'electron'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
-import { listLibraries } from './database/librariesRepository'
-import { getSetting } from './database/settingsRepository'
-import { listAllPlaylistTrackPaths } from './database/mediaPlaylistsRepository'
-import { listLikedTracks } from './database/mediaTrackLikesRepository'
+import { computeMediaAllowedRoots, computeMediaTrustedPaths } from './media/mediaTrustBoundary'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from './thumbnailProtocol'
 import { parseRangeHeader } from './media/parseRangeHeader'
 import { resolveMediaMimeType } from './media/resolveMediaMimeType'
@@ -128,13 +125,8 @@ export async function buildMediaResponse(
 export function registerMediaProtocolHandler(db: AppDatabase): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const filePath = decodeFilePath(request.url)
-    const libraryPaths = listLibraries(db).map((library) => library.path)
-    const mediaFolder = getSetting(db, 'media-folder')
-    const allowedRoots = mediaFolder ? [...libraryPaths, mediaFolder] : libraryPaths
-    const trustedPaths = [
-      ...listAllPlaylistTrackPaths(db),
-      ...listLikedTracks(db).map((track) => track.path),
-    ]
+    const allowedRoots = computeMediaAllowedRoots(db)
+    const trustedPaths = computeMediaTrustedPaths(db)
     return buildMediaResponse(filePath, allowedRoots, trustedPaths, request.headers.get('range'))
   })
 }

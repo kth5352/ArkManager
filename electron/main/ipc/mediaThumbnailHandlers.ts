@@ -5,15 +5,14 @@ import { IPC_CHANNELS, SetMediaThumbnailFromFileRequestSchema } from '../../../s
 import { isAudioFile } from '../../../shared/isMediaFile'
 import { MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE } from '../../../shared/mediaThumbnailErrors'
 import { setMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
-import { listLibraries } from '../database/librariesRepository'
-import { getSetting } from '../database/settingsRepository'
+import { computeMediaAllowedRoots, computeMediaTrustedPaths } from '../media/mediaTrustBoundary'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
 import {
   AudioCoverRestoreError,
   getAudioCoverWriteSupport,
   writeAudioCoverWithBackup,
 } from '../media/audioCover'
-import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
+import { isPathExactlyTrusted, isPathWithinAnyLibrary } from '../thumbnailProtocol'
 import type { AppDatabase } from '../database/client'
 
 function mediaThumbnailOverrideCacheDir(): string {
@@ -51,10 +50,12 @@ export function registerMediaThumbnailHandlers(db: AppDatabase): void {
       throw new Error('선택된 파일이 아닙니다.')
     }
     lastPickedThumbnailPath = null
-    const libraryPaths = listLibraries(db).map((library) => library.path)
-    const mediaFolder = getSetting(db, 'media-folder')
-    const allowedRoots = mediaFolder ? [...libraryPaths, mediaFolder] : libraryPaths
-    if (!isPathWithinAnyLibrary(filePath, allowedRoots)) {
+    const allowedRoots = computeMediaAllowedRoots(db)
+    const trustedPaths = computeMediaTrustedPaths(db)
+    if (
+      !isPathWithinAnyLibrary(filePath, allowedRoots) &&
+      !isPathExactlyTrusted(filePath, trustedPaths)
+    ) {
       throw new Error('Media thumbnail target is outside authorized roots.')
     }
     const buffer = await readFile(sourcePath)

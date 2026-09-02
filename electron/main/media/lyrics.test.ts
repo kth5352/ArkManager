@@ -49,12 +49,31 @@ describe('readAdjacentLyrics', () => {
     await expect(readAdjacentLyrics('C:\\Other\\Song.mp3', ['D:\\Library'])).resolves.toBeNull()
   })
 
+  it('finds lyrics for a track trusted only via an exact trustedPaths match', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lyrics-'))
+    tempDirs.push(dir)
+    const songPath = join(dir, 'Song.mp3')
+    await writeFile(songPath, '')
+    await writeFile(join(dir, 'Song.lrc'), '[00:01.00]hello')
+
+    await expect(readAdjacentLyrics(songPath, [], [songPath])).resolves.toEqual({
+      path: join(dir, 'Song.lrc'),
+      text: '[00:01.00]hello',
+    })
+  })
+
+  it('still rejects a path in neither allowedRoots nor trustedPaths', async () => {
+    await expect(
+      readAdjacentLyrics('C:\\Other\\Song.mp3', ['D:\\Library'], ['D:\\Library\\Other.mp3'])
+    ).resolves.toBeNull()
+  })
+
   it('rejects an adjacent lyric symlink whose resolved target is outside allowed roots', async () => {
     const readFile = vi.fn(async () => 'secret lyrics')
     const realpath = vi.fn(async () => 'C:\\Outside\\secret.lrc')
 
     await expect(
-      readAdjacentLyrics('C:\\Library\\Song.mp3', ['C:\\Library'], {
+      readAdjacentLyrics('C:\\Library\\Song.mp3', ['C:\\Library'], [], {
         realpath,
         readFile,
         readdir: vi.fn(async () => []),

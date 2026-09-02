@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { IPC_CHANNELS } from '../../../shared/types/ipc'
 import { createDbClient, type AppDatabase } from '../database/client'
 import { addLibrary } from '../database/librariesRepository'
+import { createMediaPlaylist, setMediaPlaylistTracks } from '../database/mediaPlaylistsRepository'
+import { toggleTrackLike } from '../database/mediaTrackLikesRepository'
 import { getMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
 import { AudioCoverRestoreError } from '../media/audioCover'
 import { registerMediaThumbnailHandlers } from './mediaThumbnailHandlers'
@@ -80,6 +82,54 @@ describe('MEDIA_THUMBNAIL_SET_FROM_FILE', () => {
     ).rejects.toThrow(/authorized/i)
     expect(audioCoverMocks.writeAudioCoverWithBackup).not.toHaveBeenCalled()
     expect(customCoverMocks.saveCustomCoverImage).not.toHaveBeenCalled()
+  })
+
+  it('accepts a destination outside every library that is saved in a playlist', async () => {
+    createMediaPlaylist(db, 'p1', 'My Playlist')
+    setMediaPlaylistTracks(db, 'p1', [{ path: 'C:\\Users\\external\\clip.mp4', name: 'clip.mp4' }])
+    const directory = await mkdtemp(join(tmpdir(), 'ark-manager-thumbnail-'))
+    const sourcePath = join(directory, 'cover.jpg')
+    try {
+      await writeFile(sourcePath, Buffer.from('image'))
+      electronMocks.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [sourcePath] })
+      customCoverMocks.saveCustomCoverImage.mockResolvedValue(
+        'C:\\ArkManagerTest\\cache\\clip.webp'
+      )
+
+      await registeredHandler(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE)({})
+      const result = await registeredHandler(IPC_CHANNELS.MEDIA_THUMBNAIL_SET_FROM_FILE)(
+        {},
+        { filePath: 'C:\\Users\\external\\clip.mp4', sourcePath }
+      )
+
+      expect(result).toEqual({ mode: 'override', warning: undefined })
+      expect(audioCoverMocks.writeAudioCoverWithBackup).not.toHaveBeenCalled()
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('accepts a destination outside every library that is liked', async () => {
+    toggleTrackLike(db, 'C:\\Users\\external\\liked.mp4', 'liked.mp4')
+    const directory = await mkdtemp(join(tmpdir(), 'ark-manager-thumbnail-'))
+    const sourcePath = join(directory, 'cover.jpg')
+    try {
+      await writeFile(sourcePath, Buffer.from('image'))
+      electronMocks.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [sourcePath] })
+      customCoverMocks.saveCustomCoverImage.mockResolvedValue(
+        'C:\\ArkManagerTest\\cache\\liked.webp'
+      )
+
+      await registeredHandler(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE)({})
+      const result = await registeredHandler(IPC_CHANNELS.MEDIA_THUMBNAIL_SET_FROM_FILE)(
+        {},
+        { filePath: 'C:\\Users\\external\\liked.mp4', sourcePath }
+      )
+
+      expect(result).toEqual({ mode: 'override', warning: undefined })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
   })
 
   it('stores a WAV cover as an app-local override without attempting embedding', async () => {

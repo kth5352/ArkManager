@@ -1,6 +1,6 @@
 import { readFile, realpath, readdir } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
-import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
+import { isPathExactlyTrusted, isPathWithinAnyLibrary } from '../thumbnailProtocol'
 
 export interface AdjacentLyrics {
   path: string
@@ -35,17 +35,30 @@ const LYRICS_EXTENSIONS = ['.lrc', '.vtt', '.ass']
 export async function readAdjacentLyrics(
   filePath: string,
   allowedRoots: string[],
+  trustedPaths: string[] = [],
   fileSystem: LyricsFileSystem = { realpath, readFile, readdir }
 ): Promise<AdjacentLyrics | null> {
-  if (!isPathWithinAnyLibrary(filePath, allowedRoots)) return null
+  const isTrusted =
+    isPathWithinAnyLibrary(filePath, allowedRoots) || isPathExactlyTrusted(filePath, trustedPaths)
+  if (!isTrusted) return null
 
   const dirPath = dirname(filePath)
+  // Once filePath itself is trusted - whether via allowedRoots or an exact
+  // saved playlist/liked match - its own containing folder becomes an
+  // ad-hoc trusted root for sibling lyrics-file lookups too. Otherwise a
+  // track trusted only by exact match (its folder isn't a registered
+  // library or the current media-folder) would pass the check above but
+  // then have every sibling lookup below rejected anyway. Mirrors the same
+  // reasoning resolveMediaThumbnail's directory-image fallback already
+  // relies on for its own thumbnail lookup - see isPathExactlyTrusted's
+  // doc comment in thumbnailProtocol.ts.
+  const siblingAllowedRoots = [...allowedRoots, dirPath]
   const mediaBaseName = basename(filePath, extname(filePath))
 
   for (const ext of LYRICS_EXTENSIONS) {
     const exactMatch = await readLyricsFile(
       join(dirPath, `${mediaBaseName}${ext}`),
-      allowedRoots,
+      siblingAllowedRoots,
       fileSystem
     )
     if (exactMatch) return exactMatch
@@ -59,10 +72,10 @@ export async function readAdjacentLyrics(
       (name) => basename(name, extname(name)).toLowerCase() === mediaBaseName.toLowerCase()
     )
     if (caseInsensitiveExact) {
-      return readLyricsFile(join(dirPath, caseInsensitiveExact), allowedRoots, fileSystem)
+      return readLyricsFile(join(dirPath, caseInsensitiveExact), siblingAllowedRoots, fileSystem)
     }
     if (subtitleFiles.length === 1) {
-      return readLyricsFile(join(dirPath, subtitleFiles[0]), allowedRoots, fileSystem)
+      return readLyricsFile(join(dirPath, subtitleFiles[0]), siblingAllowedRoots, fileSystem)
     }
     return null
   } catch {

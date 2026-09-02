@@ -3,14 +3,9 @@ import { app, protocol } from 'electron'
 import { extname, join } from 'node:path'
 import { isVideoFile } from '../../shared/isMediaFile'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from './thumbnailProtocol'
-import { listLibraries } from './database/librariesRepository'
-import { getSetting } from './database/settingsRepository'
-import { listLikedTracks } from './database/mediaTrackLikesRepository'
+import { computeMediaAllowedRoots, computeMediaTrustedPaths } from './media/mediaTrustBoundary'
 import { getMediaThumbnailOverride } from './database/mediaThumbnailOverridesRepository'
-import {
-  getPlaylistCoverPath,
-  listAllPlaylistTrackPaths,
-} from './database/mediaPlaylistsRepository'
+import { getPlaylistCoverPath } from './database/mediaPlaylistsRepository'
 import { resolveMediaThumbnail } from './media/resolveMediaThumbnail'
 import type { AppDatabase } from './database/client'
 
@@ -111,13 +106,8 @@ export function registerMediaThumbnailProtocolHandler(db: AppDatabase): void {
       return buildPlaylistCoverResponse(playlistId, (id) => getPlaylistCoverPath(db, id))
     }
     const filePath = decodeFilePath(request.url)
-    const libraryPaths = listLibraries(db).map((library) => library.path)
-    const mediaFolder = getSetting(db, 'media-folder')
-    const allowedRoots = mediaFolder ? [...libraryPaths, mediaFolder] : libraryPaths
-    const trustedPaths = [
-      ...listAllPlaylistTrackPaths(db),
-      ...listLikedTracks(db).map((track) => track.path),
-    ]
+    const allowedRoots = computeMediaAllowedRoots(db)
+    const trustedPaths = computeMediaTrustedPaths(db)
     return buildMediaThumbnailResponse(filePath, allowedRoots, trustedPaths, cacheDir, (path) =>
       getMediaThumbnailOverride(db, path)
     )
