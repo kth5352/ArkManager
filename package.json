@@ -14,7 +14,9 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "postinstall": "electron-rebuild -f -w better-sqlite3"
+    "build:mpv-addon": "cd electron/native/mpv-addon && node-gyp rebuild",
+    "rebuild:mpv-addon": "electron-rebuild -f -w mpv_addon --module-dir electron/native/mpv-addon",
+    "postinstall": "electron-rebuild -f -w better-sqlite3 && npm run build:mpv-addon && npm run rebuild:mpv-addon"
   },
   "build": {
     "appId": "com.arkmanager.app",
@@ -70,6 +72,7 @@
     "framer-motion": "^12.42.2",
     "iconv-lite": "^0.6.3",
     "lucide-react": "^1.26.0",
+    "node-addon-api": "^8.9.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.82.0",
