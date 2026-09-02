@@ -344,3 +344,28 @@ export function useSetMediaViewModeMutation() {
     },
   })
 }
+
+export const MEDIA_VOLUME_QUERY_KEY = ['settings', 'media-volume'] as const
+
+// Defaults to 1 (max) when nothing is persisted yet - matches the media
+// player store's own initial volume, so a fresh install's first playback
+// isn't silently quieter than before this setting existed.
+export function useMediaVolumeQuery() {
+  return useQuery({
+    queryKey: MEDIA_VOLUME_QUERY_KEY,
+    queryFn: async (): Promise<number> => {
+      const value = await window.api.settings.getMediaVolume()
+      return value === null ? 1 : Math.min(1, Math.max(0, value))
+    },
+  })
+}
+
+export function useSetMediaVolumeMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (volume: number) => window.api.settings.setMediaVolume(volume),
+    onSuccess: (_data, volume) => {
+      queryClient.setQueryData(MEDIA_VOLUME_QUERY_KEY, volume)
+    },
+  })
+}

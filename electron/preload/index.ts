@@ -98,6 +98,12 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-view-mode' }),
     setMediaViewMode: (mode: 'list' | 'grid'): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-view-mode', value: mode }),
+    getMediaVolume: (): Promise<number | null> =>
+      ipcRenderer
+        .invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-volume' })
+        .then((value: string | null) => (value === null ? null : Number(value))),
+    setMediaVolume: (volume: number): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-volume', value: String(volume) }),
     getLocale: (): Promise<Locale | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale' }),
     setLocale: (value: Locale): Promise<void> =>
@@ -378,8 +384,7 @@ const api = {
     },
     reportTime: (seconds: number): void =>
       ipcRenderer.send(IPC_CHANNELS.MEDIA_REPORT_TIME, seconds),
-    openSubtitlePipWindow: (): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_OPEN),
+    openSubtitlePipWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_OPEN),
     closeSubtitlePipWindow: (): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_CLOSE),
     onSubtitlePipOpened: (callback: () => void): (() => void) => {

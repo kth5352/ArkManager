@@ -54,4 +54,22 @@ describe('SETTINGS_GET', () => {
 
     expect(getSettingHandler()({}, { key: 'media-view-mode' })).toBeNull()
   })
+
+  it('returns null for a non-numeric media volume value', () => {
+    setSetting(db, 'media-volume', 'not-a-number')
+
+    expect(getSettingHandler()({}, { key: 'media-volume' })).toBeNull()
+  })
+
+  it('returns null for a media volume value outside 0-1', () => {
+    setSetting(db, 'media-volume', '1.5')
+
+    expect(getSettingHandler()({}, { key: 'media-volume' })).toBeNull()
+  })
+
+  it('returns a valid media volume value as-is', () => {
+    setSetting(db, 'media-volume', '0.5')
+
+    expect(getSettingHandler()({}, { key: 'media-volume' })).toBe('0.5')
+  })
 })

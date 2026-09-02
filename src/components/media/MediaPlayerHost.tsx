@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useMediaPlayback } from './useMediaPlayback'
 import { MediaPlayerBar } from './MediaPlayerBar'
@@ -7,6 +7,7 @@ import { parseLyrics } from '../../lib/parseLyrics'
 import { useMediaLyrics } from './useMediaLyrics'
 import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsToggleState'
 import { useBroadcastActiveSubtitleLine } from '../../hooks/useBroadcastActiveSubtitleLine'
+import { useMediaVolumeQuery, useSetMediaVolumeMutation } from '../../services/settingsService'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -24,13 +25,20 @@ export function MediaPlayerHost() {
   const subtitlePipOpen = useMediaPlayerStore((s) => s.subtitlePipOpen)
   const setPlaybackCurrentTime = useMediaPlayerStore((s) => s.setPlaybackCurrentTime)
   const setSeekPlayback = useMediaPlayerStore((s) => s.setSeekPlayback)
+  const volume = useMediaPlayerStore((s) => s.volume)
+  const setVolume = useMediaPlayerStore((s) => s.setVolume)
   const { mediaRef, playback } = useMediaPlayback({ isHost: !isDetached })
   const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
   const parsedLyrics = useMemo(
     () => (lyricsQuery.data ? parseLyrics(lyricsQuery.data.text, lyricsQuery.data.path) : null),
     [lyricsQuery.data]
   )
-  useBroadcastActiveSubtitleLine(parsedLyrics, playback?.currentTime ?? 0, playback !== null, !isDetached)
+  useBroadcastActiveSubtitleLine(
+    parsedLyrics,
+    playback?.currentTime ?? 0,
+    playback !== null,
+    !isDetached
+  )
   const [lyricsDisabledTrackPaths, setLyricsDisabledTrackPaths] = useState<Set<string>>(new Set())
   const lyricsEnabled = isLyricsEnabledForTrack(
     playback?.track.path ?? null,
@@ -84,6 +92,36 @@ export function MediaPlayerHost() {
   useEffect(() => {
     return window.api.media.onSubtitlePipClosed(() => setSubtitlePipOpen(false))
   }, [setSubtitlePipOpen])
+
+  // Persists volume across app restarts/reloads - without this, the store's
+  // hardcoded initial `volume: 1` (see mediaPlayerStore.ts) is all a fresh
+  // launch ever sees, so playback always starts at max regardless of
+  // whatever the user last set it to. Applied exactly once, guarded by
+  // volumeLoadedRef: useMediaVolumeQuery's `data` is undefined only while
+  // the initial fetch is in flight (it resolves to a real number - 1 by
+  // default - the moment it settles, even with nothing persisted yet), so
+  // this fires on the first definite value and never again, leaving later
+  // user-driven volume changes alone.
+  const { data: persistedVolume } = useMediaVolumeQuery()
+  const setVolumeMutation = useSetMediaVolumeMutation()
+  const volumeLoadedRef = useRef(false)
+  useEffect(() => {
+    if (volumeLoadedRef.current || persistedVolume === undefined) return
+    volumeLoadedRef.current = true
+    setVolume(persistedVolume)
+  }, [persistedVolume, setVolume])
+
+  // Saves every volume change back - fires once redundantly right after the
+  // load effect above applies the persisted value (harmless, see its own
+  // comment), and again for every real change after that (mute/unmute,
+  // slider drag, ArrowUp/ArrowDown - all of them just call setVolume, so
+  // watching the store's volume field here covers every source without
+  // duplicating a save call at each one).
+  useEffect(() => {
+    if (!volumeLoadedRef.current) return
+    setVolumeMutation.mutate(volume)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setVolumeMutation is a fresh object every render (useMutation); including it would fire this on every render, not just on a real volume change.
+  }, [volume])
 
   // Bridges playback.currentTime/handleSeek (tied to the live <video>/
   // <audio> element this component alone mounts via useMediaPlayback) into

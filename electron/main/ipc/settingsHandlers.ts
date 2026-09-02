@@ -89,6 +89,16 @@ function parseStoredWindowCloseBehavior(raw: string | undefined): 'ask' | 'quit'
   return result.success ? result.data : null
 }
 
+// Same self-healing principle as parseStoredSidebarWidth, for the media
+// player's own persisted volume - a corrupted/out-of-range value falls back
+// to null (treated as "no persisted value") rather than reaching the
+// renderer as if it were a valid 0-1 volume.
+function parseStoredMediaVolume(raw: string | undefined): string | null {
+  if (raw === undefined) return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? raw : null
+}
+
 export function registerSettingsHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
     const { key } = GetSettingRequestSchema.parse(payload)
@@ -106,6 +116,7 @@ export function registerSettingsHandlers(db: AppDatabase): void {
     if (key === 'media-sidebar-open') return parseStoredMediaSidebarOpen(getSetting(db, key))
     if (key === 'media-sidebar-width') return parseStoredMediaSidebarWidth(getSetting(db, key))
     if (key === 'media-view-mode') return parseStoredMediaViewMode(getSetting(db, key))
+    if (key === 'media-volume') return parseStoredMediaVolume(getSetting(db, key))
     return getSetting(db, key) ?? null
   })
 

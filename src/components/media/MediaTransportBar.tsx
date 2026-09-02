@@ -149,7 +149,10 @@ export function MediaTransportBar({
           size="icon"
           onClick={toggleShuffle}
           aria-label={t('media.shuffleMode')}
-          className={cn('shrink-0', shuffleMode ? (dark ? 'text-white' : 'text-primary') : mutedText)}
+          className={cn(
+            'shrink-0',
+            shuffleMode ? (dark ? 'text-white' : 'text-primary') : mutedText
+          )}
         >
           <Shuffle className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </Button>
@@ -234,7 +237,7 @@ export function MediaTransportBar({
           step={0.05}
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
-          className={compact ? 'w-12' : 'w-16'}
+          className={compact ? 'w-20' : 'w-28'}
         />
       </div>
     </div>

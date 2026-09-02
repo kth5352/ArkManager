@@ -147,6 +147,7 @@ export const SettingKeySchema = z.enum([
   'subtitle-pip-y',
   'subtitle-pip-width',
   'subtitle-pip-height',
+  'media-volume',
 ])
 export type SettingKey = z.infer<typeof SettingKeySchema>
 
