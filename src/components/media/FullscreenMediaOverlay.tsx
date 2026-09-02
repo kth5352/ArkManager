@@ -1,7 +1,7 @@
 // src/components/media/FullscreenMediaOverlay.tsx
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { ListMusic, Minimize2, PictureInPicture2 } from 'lucide-react'
+import { Captions, ListMusic, Minimize2, PictureInPicture2 } from 'lucide-react'
 import { MediaTransportBar } from './MediaTransportBar'
 import { MediaLikeButton } from './MediaLikeButton'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
@@ -29,6 +29,7 @@ interface FullscreenMediaOverlayProps {
   lyricsEnabled?: boolean
   parsedLyrics?: ParsedLyrics | null
   onToggleLyrics?: () => void
+  subtitlePipOpen?: boolean
 }
 
 // Always mounted whenever this window is hosting playback and isn't
@@ -50,6 +51,7 @@ export function FullscreenMediaOverlay({
   lyricsEnabled = false,
   parsedLyrics = null,
   onToggleLyrics,
+  subtitlePipOpen = false,
 }: FullscreenMediaOverlayProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -70,6 +72,13 @@ export function FullscreenMediaOverlay({
   // reasoning as GameThumbnail.tsx's own localFailedPath.
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
   const thumbFailed = thumbFailedPath === playback.track.path
+
+  const hasSyncedLyrics = parsedLyrics?.kind === 'synced'
+  const handleToggleSubtitlePip = (e: MouseEvent): void => {
+    e.stopPropagation()
+    if (subtitlePipOpen) window.api.media.closeSubtitlePipWindow()
+    else window.api.media.openSubtitlePipWindow()
+  }
 
   // Opens the sidebar's "current queue" tab instead of this overlay's own
   // (now removed) showPlaylist/MediaPlaylistPanel popover - mirrors
@@ -191,6 +200,22 @@ export function FullscreenMediaOverlay({
               </Button>
             </HoverTooltip>
           )}
+          <HoverTooltip content={t('media.subtitlePipToggle')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={!hasSyncedLyrics && !subtitlePipOpen}
+              onClick={handleToggleSubtitlePip}
+              aria-label={t('media.subtitlePipToggle')}
+              aria-pressed={subtitlePipOpen}
+              className={cn(
+                'shrink-0 text-white/70 hover:text-white',
+                subtitlePipOpen && 'text-white'
+              )}
+            >
+              <Captions className="h-4 w-4" />
+            </Button>
+          </HoverTooltip>
           {onMinimize && (
             <HoverTooltip content={t('media.minimize')}>
               <Button

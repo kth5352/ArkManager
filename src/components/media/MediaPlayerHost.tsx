@@ -195,6 +195,7 @@ export function MediaPlayerHost() {
           lyricsEnabled={lyricsEnabled}
           parsedLyrics={parsedLyrics}
           onToggleLyrics={toggleLyrics}
+          subtitlePipOpen={subtitlePipOpen}
         />
       )}
       {(isDetached || !mediaExpanded) && (
