@@ -2,6 +2,7 @@ node_modules/
 out/
 dist/
 electron/native/mpv-addon/build/
+electron/native/mpv-addon/bin/
 *.log
 .env
 *.db
