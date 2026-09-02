@@ -5,7 +5,14 @@ export default defineConfig({
   main: {
     build: {
       lib: {
-        entry: 'electron/main/index.ts',
+        // Two entries, not one: mpvWorker.ts is never imported by the main
+        // process - mpvProcessManager forks it by path
+        // (`join(__dirname, 'mpvWorker.js')`, i.e. out/main/mpvWorker.js), so
+        // nothing pulls it into index.js's module graph and a single-entry
+        // build silently emits no worker at all. utilityProcess.fork() on a
+        // missing script fails at runtime, not build time, so this has to be
+        // an explicit second entry.
+        entry: ['electron/main/index.ts', 'electron/main/media/mpvWorker.ts'],
       },
     },
     plugins: [externalizeDepsPlugin()],
