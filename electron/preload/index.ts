@@ -19,6 +19,7 @@ import {
   type MetadataSearchSource,
   type MetadataFailureDto,
   type MoveResultDto,
+  type MpvStateUpdate,
   type PersistedExplorerTab,
   type RenameResultDto,
   type SaveDiffEntryDto,
@@ -435,6 +436,29 @@ const api = {
   mediaLyrics: {
     get: (filePath: string): Promise<{ path: string; text: string } | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_GET_LYRICS, { filePath }),
+  },
+  mpv: {
+    load: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPV_LOAD, { filePath }),
+    play: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.MPV_PLAY),
+    pause: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.MPV_PAUSE),
+    seek: (seconds: number): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPV_SEEK, { seconds }),
+    setVolume: (volume: number): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPV_SET_VOLUME, { volume }),
+    onStateUpdate: (callback: (state: MpvStateUpdate) => void): (() => void) => {
+      const listener = (_event: unknown, state: MpvStateUpdate): void => callback(state)
+      ipcRenderer.on(IPC_CHANNELS.MPV_STATE_UPDATE, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MPV_STATE_UPDATE, listener)
+    },
+    // The frame-delivery MessagePort arrives via postMessage (not a normal
+    // ipcRenderer.on channel) - see mpvProcessManager.ts's setHostWindow,
+    // which calls webContents.postMessage('mpv-frame-port', {}, [port2]).
+    onFramePort: (callback: (port: MessagePort) => void): void => {
+      ipcRenderer.on('mpv-frame-port', (event) => {
+        if (event.ports[0]) callback(event.ports[0])
+      })
+    },
   },
   mediaThumbnail: {
     pickFile: (): Promise<string | null> =>
