@@ -88,6 +88,13 @@ export const IPC_CHANNELS = {
   SUBTITLE_PIP_LINE_UPDATE: 'subtitle-pip:line-update',
   MEDIA_GET_LYRICS: 'media:get-lyrics',
   MEDIA_CHECK_NEEDS_REMUX: 'media:check-needs-remux',
+  MPV_LOAD: 'mpv:load',
+  MPV_PLAY: 'mpv:play',
+  MPV_PAUSE: 'mpv:pause',
+  MPV_SEEK: 'mpv:seek',
+  MPV_SET_VOLUME: 'mpv:set-volume',
+  MPV_REQUEST_FRAME_PORT: 'mpv:request-frame-port',
+  MPV_STATE_UPDATE: 'mpv:state-update',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',
@@ -593,6 +600,33 @@ export const MediaCheckNeedsRemuxRequestSchema = z.object({
   filePath: z.string(),
 })
 export type MediaCheckNeedsRemuxRequest = z.infer<typeof MediaCheckNeedsRemuxRequestSchema>
+
+export const MpvLoadRequestSchema = z.object({
+  filePath: z.string(),
+})
+export type MpvLoadRequest = z.infer<typeof MpvLoadRequestSchema>
+
+export const MpvSeekRequestSchema = z.object({
+  seconds: z.number(),
+})
+export type MpvSeekRequest = z.infer<typeof MpvSeekRequestSchema>
+
+export const MpvSetVolumeRequestSchema = z.object({
+  volume: z.number().min(0).max(1),
+})
+export type MpvSetVolumeRequest = z.infer<typeof MpvSetVolumeRequestSchema>
+
+// Pushed from main to whichever window(s) need to know playback state
+// without hosting the video themselves (e.g. the sidebar's lyrics tab, the
+// subtitle PIP window) - NOT re-validated on the way out, per this
+// project's established convention (main process is trusted).
+export const MpvStateUpdateSchema = z.object({
+  isPlaying: z.boolean(),
+  currentTime: z.number(),
+  duration: z.number().nullable(),
+  error: z.string().nullable(),
+})
+export type MpvStateUpdate = z.infer<typeof MpvStateUpdateSchema>
 
 // PIP 창(subtitle-pip:line-update)이 표시할 상태 - 호스팅 중인 창이 계산해
 // 메인 프로세스로 보내면(렌더러→메인이 신뢰 경계이므로 메인 프로세스의 핸들러가
