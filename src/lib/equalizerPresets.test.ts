@@ -35,4 +35,14 @@ describe('equalizerPresets', () => {
     const custom = findEqualizerPresetMatchingGains([1, 2, 3, 4, 5])
     expect(custom).toBeNull()
   })
+
+  it('findEqualizerPresetMatchingGains returns null for gains longer than a preset', () => {
+    // Without an explicit length check this matched 'flat': .every() only
+    // walks the preset's own 5 gains and never sees the extra entry.
+    expect(findEqualizerPresetMatchingGains([0, 0, 0, 0, 0, 7])).toBeNull()
+  })
+
+  it('findEqualizerPresetMatchingGains returns null for gains shorter than a preset', () => {
+    expect(findEqualizerPresetMatchingGains([0, 0, 0])).toBeNull()
+  })
 })

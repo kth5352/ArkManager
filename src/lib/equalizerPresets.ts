@@ -26,7 +26,14 @@ export const EQUALIZER_PRESETS: readonly EqualizerPreset[] = [
 export function findEqualizerPresetMatchingGains(
   gains: readonly number[]
 ): EqualizerPreset | null {
+  // The length check is not redundant with .every(): .every() only walks the
+  // PRESET's own gains, so a longer input (e.g. [0,0,0,0,0,7]) would match
+  // 'flat' on its first five entries and silently report a preset for gains
+  // that aren't that preset at all.
   return (
-    EQUALIZER_PRESETS.find((preset) => preset.gains.every((g, i) => g === gains[i])) ?? null
+    EQUALIZER_PRESETS.find(
+      (preset) =>
+        gains.length === preset.gains.length && preset.gains.every((g, i) => g === gains[i])
+    ) ?? null
   )
 }
