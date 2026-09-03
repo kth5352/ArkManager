@@ -17,6 +17,7 @@ import { FavoritesPage } from './pages/Favorites/FavoritesPage'
 import { RecentlyPlayedPage } from './pages/RecentlyPlayed/RecentlyPlayedPage'
 import { MediaPage } from './pages/Media/MediaPage'
 import { SavesPage } from './pages/Saves/SavesPage'
+import { MpvDebugPage } from './pages/MpvDebug/MpvDebugPage'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -81,6 +82,15 @@ const savesRoute = createRoute({
   path: '/saves',
   component: SavesPage,
 })
+// Temporary debug-only route (Task 6 of the libmpv native player plan) -
+// proves the addon -> utilityProcess -> IPC -> canvas pipeline works end to
+// end. Not linked from any nav UI. Stays until Plan B's real UI ships and
+// is verified, then gets deleted along with MpvDebugPage.tsx.
+const mpvDebugRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mpv-debug',
+  component: MpvDebugPage,
+})
 
 const routeTree = rootRoute.addChildren([
   galleryRoute,
@@ -94,6 +104,7 @@ const routeTree = rootRoute.addChildren([
   mediaRoute,
   savesRoute,
   settingsRoute,
+  mpvDebugRoute,
 ])
 
 export const router = createRouter({ routeTree, history: createHashHistory() })

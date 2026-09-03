@@ -1,4 +1,4 @@
-import { BrowserWindow, MessageChannelMain, utilityProcess, type UtilityProcess } from 'electron'
+import { app, BrowserWindow, MessageChannelMain, utilityProcess, type UtilityProcess } from 'electron'
 import { join } from 'node:path'
 
 // Owns the single mpv-hosting utility process for the whole app - spawned
@@ -22,9 +22,30 @@ let hasInitializedCurrentChild = false
 // the app permanently deaf to state updates from its replacement.
 const workerMessageListeners: Array<(msg: unknown) => void> = []
 
+// Resolves the native addon's directory for the CURRENT run mode. This has
+// to happen here, not in mpvWorker.ts - that file runs inside a
+// utilityProcess, where Electron's `app` module (and app.isPackaged /
+// process.resourcesPath) isn't available. In dev, __dirname is the compiled
+// output directory electron-vite bundles this file into (out/main, same as
+// mpvWorker.js sitting right next to it), so '../../electron/native/mpv-addon'
+// from there resolves to the project root's electron/native/mpv-addon - this
+// mirrors mpvWorker.ts's own pre-existing (and proven-working in dev) path
+// math, just computed on this side now. In a packaged build, the addon's
+// build output and DLL are copied via electron-builder's `extraResources`
+// (see package.json) into resources/mpv-addon/, which process.resourcesPath
+// points at directly.
+function resolveAddonDir(): string {
+  if (app.isPackaged) return join(process.resourcesPath, 'mpv-addon')
+  return join(__dirname, '../../electron/native/mpv-addon')
+}
+
 function ensureChild(): UtilityProcess {
   if (child) return child
-  const proc = utilityProcess.fork(join(__dirname, 'mpvWorker.js'), [], { stdio: 'pipe' })
+  const addonDir = resolveAddonDir()
+  const proc = utilityProcess.fork(join(__dirname, 'mpvWorker.js'), [], {
+    stdio: 'pipe',
+    env: { ...process.env, MPV_ADDON_DIR: addonDir },
+  })
   hasInitializedCurrentChild = false
   proc.stdout?.on('data', (d: Buffer) => process.stdout.write(`[mpv-worker] ${d}`))
   proc.stderr?.on('data', (d: Buffer) => process.stderr.write(`[mpv-worker] ${d}`))

@@ -29,7 +29,19 @@
       {
         "from": "LOGO.png",
         "to": "LOGO.png"
+      },
+      {
+        "from": "electron/native/mpv-addon/build/Release/mpv_addon.node",
+        "to": "mpv-addon/build/Release/mpv_addon.node"
+      },
+      {
+        "from": "electron/native/mpv-addon/libmpv-2.dll",
+        "to": "mpv-addon/libmpv-2.dll"
       }
+    ],
+    "asarUnpack": [
+      "**/mpv_addon.node",
+      "**/libmpv-2.dll"
     ],
     "win": {
       "target": "nsis"

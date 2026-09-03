@@ -9,14 +9,22 @@ import { join } from 'node:path'
 // so Windows resolves it through the standard search order - which does NOT
 // include the directory of the .node that called LoadLibrary, only the
 // executable's own directory (electron.exe's) and PATH. The DLL lives next
-// to the addon sources at electron/native/mpv-addon/, so that directory has
-// to be on PATH *before* the require() below runs or init() fails with
-// "ERROR LoadLibraryA failed err=126" (proven in Task 2's testing).
+// to the addon's .node build output, so that directory has to be on PATH
+// *before* the require() below runs or init() fails with "ERROR
+// LoadLibraryA failed err=126" (proven in Task 2's testing).
 //
-// __dirname here is the *build output* directory (out/main), not this
-// source file's directory - electron-vite compiles this entry to
-// out/main/mpvWorker.js - hence '../../electron/native/mpv-addon'.
-const addonDir = join(__dirname, '../../electron/native/mpv-addon')
+// This worker runs inside a utilityProcess, where Electron's `app` module
+// (and therefore `app.isPackaged`/`process.resourcesPath`) is NOT available
+// - so dev-vs-packaged addon directory resolution can't happen here. It's
+// resolved once in the MAIN process instead (mpvProcessManager.ts's
+// ensureChild(), which CAN call app.isPackaged) and handed to this process
+// via an env var on utilityProcess.fork's `env` option.
+const addonDir = process.env.MPV_ADDON_DIR
+if (!addonDir) {
+  throw new Error(
+    'MPV_ADDON_DIR is not set - mpvProcessManager.ts must always pass it when forking this worker'
+  )
+}
 process.env.PATH = `${addonDir};${process.env.PATH ?? ''}`
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- native addon, not a TS-importable module
