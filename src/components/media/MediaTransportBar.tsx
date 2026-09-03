@@ -212,9 +212,6 @@ export function MediaTransportBar({
         {playback.error && (
           <p className="text-[10px] text-destructive">{t('media.playbackError')}</p>
         )}
-        {playback.isConverting && (
-          <p className="text-[10px] text-muted-foreground">{t('media.convertingFile')}</p>
-        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">

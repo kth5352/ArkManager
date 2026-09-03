@@ -27,7 +27,7 @@ export function MediaPlayerHost() {
   const setSeekPlayback = useMediaPlayerStore((s) => s.setSeekPlayback)
   const volume = useMediaPlayerStore((s) => s.volume)
   const setVolume = useMediaPlayerStore((s) => s.setVolume)
-  const { mediaRef, playback } = useMediaPlayback({ isHost: !isDetached })
+  const { canvasRef, playback } = useMediaPlayback({ isHost: !isDetached })
   const lyricsQuery = useMediaLyrics(playback?.track.path ?? null)
   const parsedLyrics = useMemo(
     () => (lyricsQuery.data ? parseLyrics(lyricsQuery.data.text, lyricsQuery.data.path) : null),
@@ -77,8 +77,8 @@ export function MediaPlayerHost() {
   // close button included, see mediaWindowHandlers.ts) - hands playback
   // back to this window at wherever the other window last reported being.
   useEffect(() => {
-    return window.api.media.onPlayerWindowClosed((seconds) => {
-      setDetached(false, seconds)
+    return window.api.media.onPlayerWindowClosed(() => {
+      setDetached(false)
     })
   }, [setDetached])
 
@@ -160,8 +160,7 @@ export function MediaPlayerHost() {
   }
 
   const handleDetach = (): void => {
-    const seconds = playback.currentTime
-    setDetached(true, seconds)
+    setDetached(true)
     // Reads the store fresh (not the stale closure this render captured)
     // since setDetached above just changed it - the new player window's
     // own store starts empty otherwise (a separate renderer process, no
@@ -179,7 +178,6 @@ export function MediaPlayerHost() {
       shuffleOrder: state.shuffleOrder,
       shufflePosition: state.shufflePosition,
       isDetached: true,
-      handoffTimeSeconds: seconds,
     })
   }
 
@@ -187,7 +185,7 @@ export function MediaPlayerHost() {
     <>
       {!isDetached && (
         <FullscreenMediaOverlay
-          mediaRef={mediaRef}
+          canvasRef={canvasRef}
           playback={playback}
           visible={mediaExpanded}
           onMinimize={() => setMediaExpanded(false)}
