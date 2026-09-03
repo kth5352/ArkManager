@@ -71,6 +71,30 @@ let stateTickCount = 0
 // fire "ended" once on the false->true edge instead of on every tick that
 // follows it (keep-open=yes leaves the property true indefinitely at EOF).
 let lastEofReached = false
+// Set true the instant checkEofReached() detects a track finishing, cleared
+// by whichever message next actually restarts real playback ('init', 'load',
+// or 'play' - repeat-one resumes the SAME loop via 'play' without ever going
+// through 'load', see that handler). While true, the periodic loop's own
+// state-update push (unconditional every tick for audio, every 15th tick for
+// video - see restartRenderLoop) is skipped instead of firing.
+//
+// Exists because the renderer's reaction to 'ended' (auto-advance's next(),
+// or repeat-one's seek+play) is itself async - it round-trips through at
+// least one IPC hop before the NEXT track's 'load' (or repeat-one's 'play')
+// reaches this worker and pushes the real, settled state. Left unguarded,
+// this loop keeps ticking on the OLD track's now-meaningless state in that
+// gap and would push one or more further isPlaying:false updates that are
+// stale by the time they arrive - interleaving unpredictably with the next
+// track's own immediate `pushStateUpdate(true)` in the renderer and
+// flickering the play/pause button several times before settling (confirmed
+// by tracing the exact message order - see mpvWorker.ts's git history / the
+// bug report this fix addresses). Nothing downstream actually needs that
+// stale push: the auto-advance and repeat-one paths never observe isPlaying
+// turn false at all (the store already believes it's still true, correctly,
+// throughout the gap), and the one path where it genuinely SHOULD go false
+// (repeat-off, last track) sets it directly in the renderer's own store
+// (mediaPlayerStore.ts's `next()`), independent of any push from here.
+let suppressPeriodicStateUpdates = false
 // Whether the currently-loaded track has a video stream. Decided by the
 // renderer (which already knows the track's media type) and handed down
 // through `init`/`load`; gates whether the loop below renders frames at all.
@@ -141,6 +165,10 @@ function checkEofReached(): void {
   const eof = addon.getEofReached()
   if (eof && !lastEofReached && isPlayingState) {
     isPlayingState = false
+    // Deliberately does NOT push a state-update here too (unlike every other
+    // isPlayingState transition in this file) - see suppressPeriodicStateUpdates'
+    // own comment for why no consumer actually needs one at this exact instant.
+    suppressPeriodicStateUpdates = true
     process.parentPort.postMessage({ type: 'ended' })
   }
   lastEofReached = eof
@@ -202,7 +230,10 @@ function restartRenderLoop(): void {
       // (null until mpv's async loadfile resolves - see Task 2's own
       // findings) ever gets re-checked after the first, likely-null push.
       stateTickCount++
-      if (stateTickCount % 15 === 0) pushStateUpdate(isPlayingState)
+      // See suppressPeriodicStateUpdates' own comment: skipped while true so
+      // this doesn't re-assert the old track's now-stale isPlaying state into
+      // the gap between 'ended' and the next real transition.
+      if (stateTickCount % 15 === 0 && !suppressPeriodicStateUpdates) pushStateUpdate(isPlayingState)
     }, 16)
     return
   }
@@ -214,7 +245,13 @@ function restartRenderLoop(): void {
   renderInterval = setInterval(() => {
     pollAndForwardEvents()
     checkEofReached()
-    pushStateUpdate(isPlayingState)
+    // See suppressPeriodicStateUpdates' own comment. This branch's push is
+    // unconditional (every tick, not gated on a tick count like the video
+    // branch above), which without this guard made the flicker bug 100%
+    // reproducible for audio-only tracks: this line would otherwise fire
+    // isPlaying:false on the SAME tick checkEofReached just detected EOF on,
+    // then again every 250ms after, until the next track's 'load' arrives.
+    if (!suppressPeriodicStateUpdates) pushStateUpdate(isPlayingState)
   }, 250)
 }
 
@@ -242,6 +279,7 @@ process.parentPort.on('message', (e) => {
     }
     isPlayingState = true
     lastEofReached = false
+    suppressPeriodicStateUpdates = false
     restartRenderLoop()
     process.parentPort.postMessage({ type: 'init-ok' })
     pushStateUpdate(true)
@@ -260,6 +298,12 @@ process.parentPort.on('message', (e) => {
         renderInterval = null
       }
       isPlayingState = false
+      // Belt-and-suspenders, not load-bearing: renderInterval is already
+      // null'd above, so nothing would consult this flag until some future
+      // init/load/play recreates the loop and clears it again anyway. Reset
+      // here purely so this flag never carries a stale `true` value across
+      // an unrelated later run for someone reading/debugging worker state.
+      suppressPeriodicStateUpdates = false
       process.parentPort.postMessage({
         type: 'state-update',
         isPlaying: false,
@@ -279,6 +323,11 @@ process.parentPort.on('message', (e) => {
     // replaying a track that already reached the end would leave the edge
     // detector stuck true and never report a second natural finish.
     lastEofReached = false
+    // The new track's own loop (started by restartRenderLoop below) is about
+    // to push its real, settled isPlaying:true state - un-suppress so it
+    // actually gets through if the periodic push fires before this line's
+    // own explicit pushStateUpdate(true) does.
+    suppressPeriodicStateUpdates = false
     // Re-gates the loop: switching a video track for an audio one (or back)
     // has to start/stop frame rendering accordingly.
     restartRenderLoop()
@@ -303,6 +352,12 @@ process.parentPort.on('message', (e) => {
     if (addon.getEofReached()) addon.seek(0)
     addon.setPause(false)
     isPlayingState = true
+    // Repeat-one's resume-in-place is the one case that reaches here WITHOUT
+    // ever going through 'load' (same track, no re-init) - this is the only
+    // place that transition's own suppression (set by checkEofReached when
+    // the track first ended) ever gets cleared, letting the still-running
+    // loop's periodic pushes resume reporting this track's real state.
+    suppressPeriodicStateUpdates = false
     pushStateUpdate(true)
     return
   }
