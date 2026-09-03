@@ -5,6 +5,25 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        // 'Pretendard Variable'가 없으면(예: 폰트 로드 실패) 각 OS의 기본 시스템
+        // UI 폰트로, 그마저 없으면 일본어/한국어 시스템 폰트로 순서대로 폴백.
+        // 일본어(ja) 로케일: Pretendard는 일본어 글리프를 포함하지 않으므로
+        // 자동으로 다음 폰트(시스템 UI 폰트)로 폴백된다 - 별도 분기 불필요.
+        sans: [
+          'Pretendard Variable',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'system-ui',
+          'Roboto',
+          'Helvetica Neue',
+          'Segoe UI',
+          'Apple SD Gothic Neo',
+          'Noto Sans KR',
+          'Malgun Gothic',
+          'sans-serif',
+        ],
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

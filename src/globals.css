@@ -2,6 +2,17 @@
 @import 'tw-animate-css';
 @config '../tailwind.config.ts';
 
+/* Pretendard 가변 폰트 - 로컬 번들(오프라인 100% 동작 보장, 네트워크 요청 없음).
+   font-weight 범위(45-920)는 Pretendard 공식 가변 폰트가 지원하는 범위 그대로 -
+   font-weight: 400/500/600/700 등 어떤 값을 써도 이 하나의 파일 안에서 보간된다. */
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url('./assets/fonts/PretendardVariable.woff2') format('woff2-variations');
+}
+
 /* Used by IndeterminateProgressBar for operations with no known total (a
    recursive filesystem scan, a network crawl) - a sliding bar rather than a
    filled percentage, since there's no honest percentage to show. */
