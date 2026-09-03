@@ -138,7 +138,19 @@ function restartRenderLoop(): void {
       currentWidth = pendingWidth
       currentHeight = pendingHeight
       if (buf && renderPort) {
-        const copy = Buffer.from(buf).buffer
+        // ArrayBuffer.prototype.slice() always allocates a fresh buffer of
+        // EXACTLY the requested length - required here, not just tidy: small
+        // Buffers (the size this addon returns once a resize clamps render
+        // dimensions down, e.g. while the canvas is hidden/minimized) are
+        // frequently views into Node's shared buffer pool, so `buf.buffer`
+        // alone can be the pool's full backing ArrayBuffer, not a
+        // byteLength-sized one - transferring that whole oversized buffer
+        // made the renderer's `new ImageData(bytes, width, height)` throw
+        // "input data length is not equal to 4*width*height" (confirmed via
+        // live testing: reproduced consistently on minimize/re-expand,
+        // where the ResizeObserver's hidden-container 0x0 reading clamps
+        // the render request down to computeMpvRenderSize's 2x2 floor).
+        const copy = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
         renderPort.postMessage({
           frame: copy,
           byteLength: buf.length,
