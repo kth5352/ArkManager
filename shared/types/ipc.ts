@@ -80,7 +80,6 @@ export const IPC_CHANNELS = {
   // fire-and-forget, no request/response schema.
   MEDIA_REQUEST_STATE_SYNC: 'media:request-state-sync',
   MEDIA_STATE_SYNC_REQUESTED: 'media:state-sync-requested',
-  MEDIA_REPORT_TIME: 'media:report-time',
   SUBTITLE_PIP_OPEN: 'subtitle-pip:open',
   SUBTITLE_PIP_CLOSE: 'subtitle-pip:close',
   SUBTITLE_PIP_OPENED: 'subtitle-pip:opened',
@@ -587,11 +586,8 @@ export const MediaSyncStateSchema = z.object({
   shuffleOrder: z.array(z.number()),
   shufflePosition: z.number(),
   isDetached: z.boolean(),
-  handoffTimeSeconds: z.number().nullable(),
 })
 export type MediaSyncState = z.infer<typeof MediaSyncStateSchema>
-
-export const MediaReportTimeRequestSchema = z.number()
 
 export const MediaGetLyricsRequestSchema = z.object({
   filePath: z.string(),

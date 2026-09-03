@@ -1,10 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
-import {
-  IPC_CHANNELS,
-  MediaReportTimeRequestSchema,
-  MediaSyncStateSchema,
-} from '../../../shared/types/ipc'
+import { IPC_CHANNELS, MediaSyncStateSchema } from '../../../shared/types/ipc'
 import { installZoomInShortcut } from '../zoomShortcuts'
 
 // Detached video playback lives in its own BrowserWindow (see
@@ -12,14 +8,6 @@ import { installZoomInShortcut } from '../zoomShortcuts'
 // second detach request just focuses the existing one instead of opening a
 // duplicate.
 let playerWindow: BrowserWindow | null = null
-
-// Only the currently-hosting window reports this (see MEDIA_REPORT_TIME
-// below), a few times a second at most - kept as a plain variable here
-// rather than broadcast to every window, so a detach/reattach handoff has a
-// recent-enough seek position without flooding every window with
-// continuous currentTime updates the way a full MediaSyncState broadcast
-// would.
-let lastKnownTimeSeconds = 0
 
 // Updated on every MEDIA_STATE_BROADCAST (which fires unconditionally on
 // every store change in whichever window is currently active, not only
@@ -81,10 +69,7 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
 
     win.on('closed', () => {
       playerWindow = null
-      getMainWindow()?.webContents.send(
-        IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED,
-        lastKnownTimeSeconds
-      )
+      getMainWindow()?.webContents.send(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED)
     })
 
     playerWindow = win
@@ -116,10 +101,6 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
         win.webContents.send(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED)
       }
     }
-  })
-
-  ipcMain.on(IPC_CHANNELS.MEDIA_REPORT_TIME, (_event, payload: unknown) => {
-    lastKnownTimeSeconds = MediaReportTimeRequestSchema.parse(payload)
   })
 
   return {

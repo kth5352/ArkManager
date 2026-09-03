@@ -378,13 +378,11 @@ const api = {
       ipcRenderer.on(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED, listener)
     },
-    onPlayerWindowClosed: (callback: (lastKnownTimeSeconds: number) => void): (() => void) => {
-      const listener = (_event: unknown, seconds: number): void => callback(seconds)
+    onPlayerWindowClosed: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
       ipcRenderer.on(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED, listener)
     },
-    reportTime: (seconds: number): void =>
-      ipcRenderer.send(IPC_CHANNELS.MEDIA_REPORT_TIME, seconds),
     openSubtitlePipWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_OPEN),
     closeSubtitlePipWindow: (): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_CLOSE),

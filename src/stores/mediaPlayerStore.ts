@@ -61,15 +61,6 @@ interface MediaPlayerState {
   // 상태를 보여줄 수 있다.
   subtitlePipOpen: boolean
   setSubtitlePipOpen: (open: boolean) => void
-  // One-shot seek position handed off across a detach/reattach transition -
-  // set by whichever window WAS hosting playback right before the switch,
-  // consumed (read once, then cleared back to null via consumeHandoffTime)
-  // by whichever window becomes the new host, once its own media element
-  // has loaded. Not kept continuously in sync like the fields above -
-  // currentTime/duration otherwise live as local component state in
-  // MediaPlayerCore, not in this store, since they change too often
-  // (~4x/sec) to broadcast across windows.
-  handoffTimeSeconds: number | null
   // Which MediaSidebar tab is active. Defaults to 'playlists' (changed from
   // the original Task 3 brief's queue-first default) - now that the sidebar
   // can genuinely open with nothing playing (AppLayout.tsx no longer gates
@@ -161,8 +152,7 @@ interface MediaPlayerState {
   clearPlaylist: () => void
   setVolume: (volume: number) => void
   toggleMute: () => void
-  setDetached: (isDetached: boolean, handoffTimeSeconds?: number) => void
-  consumeHandoffTime: () => number | null
+  setDetached: (isDetached: boolean) => void
   cycleRepeatMode: () => void
   toggleShuffle: () => void
 }
@@ -182,7 +172,6 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   isDetached: false,
   subtitlePipOpen: false,
   setSubtitlePipOpen: (open) => set({ subtitlePipOpen: open }),
-  handoffTimeSeconds: null,
   sidebarActiveTab: 'playlists',
   setSidebarActiveTab: (tab) => set({ sidebarActiveTab: tab }),
   selectedPlaylistId: null,
@@ -446,14 +435,7 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
     else set({ volume: previousVolume > 0 ? previousVolume : 1 })
   },
 
-  setDetached: (isDetached, handoffTimeSeconds) =>
-    set({ isDetached, handoffTimeSeconds: handoffTimeSeconds ?? null }),
-
-  consumeHandoffTime: () => {
-    const { handoffTimeSeconds } = get()
-    if (handoffTimeSeconds !== null) set({ handoffTimeSeconds: null })
-    return handoffTimeSeconds
-  },
+  setDetached: (isDetached) => set({ isDetached }),
 
   cycleRepeatMode: () =>
     set((state) => ({

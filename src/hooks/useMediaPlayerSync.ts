@@ -14,7 +14,6 @@ function toSyncState(state: MediaSyncState): MediaSyncState {
     shuffleOrder: state.shuffleOrder,
     shufflePosition: state.shufflePosition,
     isDetached: state.isDetached,
-    handoffTimeSeconds: state.handoffTimeSeconds,
   }
 }
 
