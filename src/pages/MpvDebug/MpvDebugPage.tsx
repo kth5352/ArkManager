@@ -50,8 +50,14 @@ export function MpvDebugPage() {
         placeholder="D:\path\to\file.mp4"
       />
       <div className="flex gap-2">
-        <button className="border px-3 py-1" onClick={() => window.api.mpv.load(filePath)}>
-          Load
+        {/* isVideo is hardcoded per-button rather than sniffed - this is a
+            throwaway harness, and two buttons is the cheapest way to exercise
+            both sides of the worker's isVideo gate by hand. */}
+        <button className="border px-3 py-1" onClick={() => window.api.mpv.load(filePath, true)}>
+          Load (video)
+        </button>
+        <button className="border px-3 py-1" onClick={() => window.api.mpv.load(filePath, false)}>
+          Load (audio-only)
         </button>
         <button className="border px-3 py-1" onClick={() => window.api.mpv.play()}>
           Play

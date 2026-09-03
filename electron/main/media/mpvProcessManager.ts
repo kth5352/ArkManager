@@ -80,13 +80,13 @@ export function getCurrentHostWindow(): BrowserWindow | null {
 // Decides between `init` (first call for the current child) and the
 // lighter-weight `load` (every call after that) - see
 // `hasInitializedCurrentChild` above for why this distinction matters.
-export function loadFile(filePath: string, width: number, height: number): void {
+export function loadFile(filePath: string, width: number, height: number, isVideo: boolean): void {
   const proc = ensureChild()
   if (hasInitializedCurrentChild) {
-    proc.postMessage({ type: 'load', filePath })
+    proc.postMessage({ type: 'load', filePath, isVideo })
     return
   }
-  proc.postMessage({ type: 'init', filePath, width, height })
+  proc.postMessage({ type: 'init', filePath, width, height, isVideo })
   hasInitializedCurrentChild = true
 }
 

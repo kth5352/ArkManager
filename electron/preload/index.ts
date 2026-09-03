@@ -438,8 +438,15 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_GET_LYRICS, { filePath }),
   },
   mpv: {
-    load: (filePath: string): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.MPV_LOAD, { filePath }),
+    load: (filePath: string, isVideo: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPV_LOAD, { filePath, isVideo }),
+    // Re-points frame delivery at this window without restarting playback.
+    becomeHost: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.MPV_BECOME_HOST),
+    // Fire-and-forget (send, not invoke): fires on every debounced resize
+    // tick and nothing waits on the result - same shape as seek/setVolume's
+    // treatment of high-frequency calls.
+    resize: (width: number, height: number): void =>
+      ipcRenderer.send(IPC_CHANNELS.MPV_RESIZE, { width, height }),
     play: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.MPV_PLAY),
     pause: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.MPV_PAUSE),
     seek: (seconds: number): Promise<void> =>

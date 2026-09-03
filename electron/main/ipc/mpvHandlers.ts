@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import {
   IPC_CHANNELS,
   MpvLoadRequestSchema,
+  MpvResizeRequestSchema,
   MpvSeekRequestSchema,
   MpvSetVolumeRequestSchema,
 } from '../../../shared/types/ipc'
@@ -9,11 +10,30 @@ import * as mpv from '../media/mpvProcessManager'
 
 export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC_CHANNELS.MPV_LOAD, (event, payload: unknown) => {
-    const { filePath } = MpvLoadRequestSchema.parse(payload)
+    const { filePath, isVideo } = MpvLoadRequestSchema.parse(payload)
     const win = BrowserWindow.fromWebContents(event.sender) ?? getMainWindow()
     if (!win) return
     mpv.setHostWindow(win)
-    mpv.loadFile(filePath, 640, 360)
+    // 1280x720 is only the initial render size, used for the handful of
+    // frames produced before the renderer's ResizeObserver reports the real
+    // surface size (one debounce cycle after mount) via MPV_RESIZE.
+    mpv.loadFile(filePath, 1280, 720, isVideo)
+  })
+
+  // Re-points frame delivery at the calling window without touching playback
+  // - what a detach/reattach host switch needs (the video keeps playing in
+  // the utility process throughout; only the MessagePort recipient changes).
+  ipcMain.handle(IPC_CHANNELS.MPV_BECOME_HOST, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? getMainWindow()
+    if (!win) return
+    mpv.setHostWindow(win)
+  })
+
+  // ipcMain.on, not .handle - the preload side fires this with
+  // ipcRenderer.send on every debounced resize tick and never awaits it.
+  ipcMain.on(IPC_CHANNELS.MPV_RESIZE, (_event, payload: unknown) => {
+    const { width, height } = MpvResizeRequestSchema.parse(payload)
+    mpv.resize(width, height)
   })
 
   ipcMain.handle(IPC_CHANNELS.MPV_PLAY, () => mpv.play())

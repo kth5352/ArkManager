@@ -93,6 +93,8 @@ export const IPC_CHANNELS = {
   MPV_PAUSE: 'mpv:pause',
   MPV_SEEK: 'mpv:seek',
   MPV_SET_VOLUME: 'mpv:set-volume',
+  MPV_BECOME_HOST: 'mpv:become-host',
+  MPV_RESIZE: 'mpv:resize',
   MPV_REQUEST_FRAME_PORT: 'mpv:request-frame-port',
   MPV_STATE_UPDATE: 'mpv:state-update',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
@@ -601,10 +603,23 @@ export const MediaCheckNeedsRemuxRequestSchema = z.object({
 })
 export type MediaCheckNeedsRemuxRequest = z.infer<typeof MediaCheckNeedsRemuxRequestSchema>
 
+// `isVideo` gates the utility process's per-frame render loop: an audio-only
+// track must not pay the ~16ms renderFrame/postMessage cost, so the worker
+// falls back to a much cheaper 250ms event-poll + state-push interval when
+// this is false. The renderer decides it (it already knows the track's media
+// type) rather than the worker probing mpv for a video stream, which would
+// only be answerable asynchronously after loadfile resolves.
 export const MpvLoadRequestSchema = z.object({
   filePath: z.string(),
+  isVideo: z.boolean(),
 })
 export type MpvLoadRequest = z.infer<typeof MpvLoadRequestSchema>
+
+export const MpvResizeRequestSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+})
+export type MpvResizeRequest = z.infer<typeof MpvResizeRequestSchema>
 
 export const MpvSeekRequestSchema = z.object({
   seconds: z.number(),

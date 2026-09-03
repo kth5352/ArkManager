@@ -44,8 +44,8 @@ const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as {
 
 type WorkerMessage =
   | { type: 'port' }
-  | { type: 'init'; filePath: string; width: number; height: number }
-  | { type: 'load'; filePath: string }
+  | { type: 'init'; filePath: string; width: number; height: number; isVideo: boolean }
+  | { type: 'load'; filePath: string; isVideo: boolean }
   | { type: 'play' }
   | { type: 'pause' }
   | { type: 'seek'; seconds: number }
@@ -64,6 +64,10 @@ let currentHeight = 0
 // worker's own last-commanded play/pause intent.
 let isPlayingState = false
 let stateTickCount = 0
+// Whether the currently-loaded track has a video stream. Decided by the
+// renderer (which already knows the track's media type) and handed down
+// through `init`/`load`; gates whether the loop below renders frames at all.
+let currentIsVideo = false
 
 function log(msg: string): void {
   process.parentPort.postMessage({ type: 'log', msg })
@@ -98,28 +102,14 @@ function pollAndForwardEvents(): void {
   }
 }
 
-process.parentPort.on('message', (e) => {
-  const msg = e.data as WorkerMessage
-
-  if (msg.type === 'port' && e.ports && e.ports[0]) {
-    renderPort = e.ports[0]
-    renderPort.start()
-    log('render port received and started')
-    return
-  }
-
-  if (msg.type === 'init') {
-    currentWidth = msg.width
-    currentHeight = msg.height
-    pendingWidth = msg.width
-    pendingHeight = msg.height
-    const result = addon.init(msg.filePath, currentWidth, currentHeight)
-    log(`init result: ${result}`)
-    if (result !== 'OK') {
-      process.parentPort.postMessage({ type: 'init-failed', result })
-      return
-    }
-    isPlayingState = true
+// (Re)starts the playback-time loop for the track that was just loaded,
+// clearing any loop left over from a previous track first - `init` and
+// `load` both need exactly this, and switching between a video track and an
+// audio track (in either direction) has to swap which of the two loops runs.
+function restartRenderLoop(): void {
+  if (renderInterval) clearInterval(renderInterval)
+  stateTickCount = 0
+  if (currentIsVideo) {
     renderInterval = setInterval(() => {
       pollAndForwardEvents()
       const buf = addon.renderFrame(pendingWidth, pendingHeight)
@@ -145,15 +135,59 @@ process.parentPort.on('message', (e) => {
       stateTickCount++
       if (stateTickCount % 15 === 0) pushStateUpdate(isPlayingState)
     }, 16)
+    return
+  }
+  // Audio-only: still poll mpv's event queue (so end-file/file-loaded keep
+  // being observed) and still push state, but skip the frame render/post
+  // entirely - that's the whole point of the isVideo gate. 250ms is the same
+  // ~4x/sec state cadence as the video branch's every-15th-tick push, so no
+  // separate tick counter is needed here.
+  renderInterval = setInterval(() => {
+    pollAndForwardEvents()
+    pushStateUpdate(isPlayingState)
+  }, 250)
+}
+
+process.parentPort.on('message', (e) => {
+  const msg = e.data as WorkerMessage
+
+  if (msg.type === 'port' && e.ports && e.ports[0]) {
+    renderPort = e.ports[0]
+    renderPort.start()
+    log('render port received and started')
+    return
+  }
+
+  if (msg.type === 'init') {
+    currentWidth = msg.width
+    currentHeight = msg.height
+    pendingWidth = msg.width
+    pendingHeight = msg.height
+    currentIsVideo = msg.isVideo
+    const result = addon.init(msg.filePath, currentWidth, currentHeight)
+    log(`init result: ${result}`)
+    if (result !== 'OK') {
+      process.parentPort.postMessage({ type: 'init-failed', result })
+      return
+    }
+    isPlayingState = true
+    restartRenderLoop()
     process.parentPort.postMessage({ type: 'init-ok' })
     pushStateUpdate(true)
     return
   }
 
   if (msg.type === 'load') {
+    currentIsVideo = msg.isVideo
     const result = addon.loadFile(msg.filePath)
     log(`loadFile result: ${result}`)
     if (result !== 'OK') {
+      // Stop the previous track's loop too - it would otherwise keep
+      // rendering/reporting the file that just got replaced.
+      if (renderInterval) {
+        clearInterval(renderInterval)
+        renderInterval = null
+      }
       isPlayingState = false
       process.parentPort.postMessage({
         type: 'state-update',
@@ -165,6 +199,9 @@ process.parentPort.on('message', (e) => {
       return
     }
     isPlayingState = true
+    // Re-gates the loop: switching a video track for an audio one (or back)
+    // has to start/stop frame rendering accordingly.
+    restartRenderLoop()
     pushStateUpdate(true)
     return
   }
