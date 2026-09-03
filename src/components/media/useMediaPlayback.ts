@@ -143,8 +143,35 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
 
   // Applies play/pause intent - mirrors the old DOM-element-driven effect,
   // just calling mpv's play/pause IPC instead of el.play()/el.pause().
+  //
+  // Also covers tearing playback down (playlist cleared, or the last track
+  // removed) - `track` goes to null in both cases, but that alone used to
+  // be a no-op here (this effect just early-returned on `!track`), so mpv -
+  // a separate utility process with no DOM element to naturally stop
+  // itself - kept audibly playing whatever was last loaded, orphaned from
+  // the now-empty UI. mpv's native addon has no "unload"/"stop" export
+  // (see mpv_addon.cc's InitModule: only setPause, seek, setVolume, etc.),
+  // so explicitly pausing is what actually silences it.
+  //
+  // wasTrackLoadedRef tracks track PRESENCE (not "was host"), independent
+  // of isHost, so it survives a host handoff correctly - it's set/cleared
+  // on every render regardless of isHost, and only the resulting pause()
+  // IPC call itself is gated on isHost. This guards against firing pause()
+  // on every render while already empty (dependencies wouldn't change
+  // again anyway once track stays null, but the ref keeps this correct
+  // even so) and, more importantly, means a normal track-to-track change
+  // or a plain isPlaying toggle (both of which also change this effect's
+  // dependencies) never hits this branch at all - only a real track -> null
+  // transition does, exactly once.
+  const wasTrackLoadedRef = useRef(false)
   useEffect(() => {
-    if (!isHost || !track) return
+    if (!track) {
+      if (isHost && wasTrackLoadedRef.current) window.api.mpv.pause()
+      wasTrackLoadedRef.current = false
+      return
+    }
+    wasTrackLoadedRef.current = true
+    if (!isHost) return
     if (isPlaying) window.api.mpv.play()
     else window.api.mpv.pause()
   }, [isHost, track, isPlaying])
