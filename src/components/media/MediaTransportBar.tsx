@@ -17,6 +17,7 @@ import { cn } from '../../lib/utils'
 import type { MediaPlaybackState } from './useMediaPlayback'
 import { Button } from '../ui/button'
 import { HoverTooltip } from '../ui/hover-tooltip'
+import { EqualizerPopover } from './EqualizerPopover'
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -175,6 +176,7 @@ export function MediaTransportBar({
           </Button>
         </HoverTooltip>
       )}
+      <EqualizerPopover dark={dark} />
 
       <div className="flex flex-1 flex-col gap-1 min-w-40">
         {!compact && (
