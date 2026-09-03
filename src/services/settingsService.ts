@@ -4,6 +4,7 @@ import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../lib/clampSidebarWid
 import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../lib/clampExplorerTreeWidth'
 import { clampMediaSidebarWidth, MEDIA_SIDEBAR_WIDTH_DEFAULT } from '../lib/clampMediaSidebarWidth'
 import { DEFAULT_LOCALE } from '../i18n/translations'
+import { EQ_BAND_COUNT } from '../lib/equalizerPresets'
 
 export const THEME_QUERY_KEY = ['settings', 'theme'] as const
 
@@ -366,6 +367,43 @@ export function useSetMediaVolumeMutation() {
     mutationFn: (volume: number) => window.api.settings.setMediaVolume(volume),
     onSuccess: (_data, volume) => {
       queryClient.setQueryData(MEDIA_VOLUME_QUERY_KEY, volume)
+    },
+  })
+}
+
+export const MEDIA_EQUALIZER_QUERY_KEY = ['settings', 'media-equalizer-bands'] as const
+
+const FLAT_EQ_BANDS: number[] = new Array(EQ_BAND_COUNT).fill(0)
+
+// Defaults to all-flat (matches the native addon's own Init() default) when
+// nothing is persisted yet, or if the stored JSON is malformed/wrong-length
+// for any reason (e.g. EQ_BAND_COUNT ever changes) - never lets a corrupt
+// setting crash the query or silently apply a partial/misaligned EQ.
+export function useMediaEqualizerQuery() {
+  return useQuery({
+    queryKey: MEDIA_EQUALIZER_QUERY_KEY,
+    queryFn: async (): Promise<number[]> => {
+      const raw = await window.api.settings.getMediaEqualizerBands()
+      if (raw === null) return FLAT_EQ_BANDS
+      try {
+        const parsed: unknown = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length === EQ_BAND_COUNT && parsed.every((g) => typeof g === 'number')) {
+          return parsed as number[]
+        }
+      } catch {
+        // fall through to the flat default below
+      }
+      return FLAT_EQ_BANDS
+    },
+  })
+}
+
+export function useSetMediaEqualizerMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (gains: number[]) => window.api.settings.setMediaEqualizerBands(JSON.stringify(gains)),
+    onSuccess: (_data, gains) => {
+      queryClient.setQueryData(MEDIA_EQUALIZER_QUERY_KEY, gains)
     },
   })
 }

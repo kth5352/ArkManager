@@ -105,6 +105,10 @@ const api = {
         .then((value: string | null) => (value === null ? null : Number(value))),
     setMediaVolume: (volume: number): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-volume', value: String(volume) }),
+    getMediaEqualizerBands: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-equalizer-bands' }),
+    setMediaEqualizerBands: (bandsJson: string): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-equalizer-bands', value: bandsJson }),
     getLocale: (): Promise<Locale | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale' }),
     setLocale: (value: Locale): Promise<void> =>
