@@ -37,6 +37,7 @@ const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as {
   setVolume: (volume: number) => string
   getTimePos: () => number | null
   getDuration: () => number | null
+  getEofReached: () => boolean
   getHwdecCurrent: () => string
   pollEvent: () => { name: string } | null
   shutdown: () => string
@@ -64,6 +65,10 @@ let currentHeight = 0
 // worker's own last-commanded play/pause intent.
 let isPlayingState = false
 let stateTickCount = 0
+// Last sampled value of mpv's `eof-reached` property, so the poll below can
+// fire "ended" once on the false->true edge instead of on every tick that
+// follows it (keep-open=yes leaves the property true indefinitely at EOF).
+let lastEofReached = false
 // Whether the currently-loaded track has a video stream. Decided by the
 // renderer (which already knows the track's media type) and handed down
 // through `init`/`load`; gates whether the loop below renders frames at all.
@@ -91,34 +96,31 @@ function pollAndForwardEvents(): void {
   for (;;) {
     const ev = addon.pollEvent()
     if (!ev) return
-    if (ev.name === 'unpause') {
-      isPlayingState = true
-    } else if (ev.name === 'pause') {
-      // mpv was initialized with keep-open=yes (see mpv_addon.cc's Init()),
-      // so reaching a file's natural end makes mpv pause ITSELF rather than
-      // close the file - which surfaces here as an ordinary 'pause' event,
-      // indistinguishable by name from a user-requested pause. The state
-      // flag disambiguates it: a JS-initiated pause (the worker's own
-      // 'pause' message handler below) always sets isPlayingState = false
-      // SYNCHRONOUSLY, before any later tick can poll the resulting event -
-      // so it's already false by the time we see it. Still true here means
-      // nothing on the JS side ever commanded this pause, i.e. keep-open
-      // kicked in at end-of-file. Treat that as the track finishing.
-      const wasPlayingBeforeThisEvent = isPlayingState
-      isPlayingState = false
-      if (wasPlayingBeforeThisEvent) {
-        process.parentPort.postMessage({ type: 'ended' })
-      }
-    }
-    if (
-      ev.name === 'end-file' ||
-      ev.name === 'file-loaded' ||
-      ev.name === 'pause' ||
-      ev.name === 'unpause'
-    ) {
+    // Only 'end-file'/'file-loaded' are logged: they're real, current
+    // libmpv events. Deliberately NOT keyed on for end-of-track detection -
+    // keep-open=yes means a file reaching its natural end is never unloaded,
+    // so 'end-file' only fires for player-initiated unloads (e.g. loadfile
+    // replacing the current track, reason 'stop'). See checkEofReached().
+    if (ev.name === 'end-file' || ev.name === 'file-loaded') {
       log(`mpv event: ${ev.name}`)
     }
   }
+}
+
+// Detects a track finishing on its own, which is what drives auto-advance and
+// repeat-one in the renderer. There is no event for this: libmpv 0.33+ removed
+// the deprecated pause/unpause events (the bundled client.h is API 2.3 and has
+// no such enum members), keep-open=yes suppresses end-file at a natural EOF,
+// and the addon never calls mpv_observe_property - so the `eof-reached`
+// property has to be polled. It latches true at EOF and stays true, hence the
+// false->true edge check rather than a bare `if (eof)`.
+function checkEofReached(): void {
+  const eof = addon.getEofReached()
+  if (eof && !lastEofReached && isPlayingState) {
+    isPlayingState = false
+    process.parentPort.postMessage({ type: 'ended' })
+  }
+  lastEofReached = eof
 }
 
 // (Re)starts the playback-time loop for the track that was just loaded,
@@ -131,6 +133,7 @@ function restartRenderLoop(): void {
   if (currentIsVideo) {
     renderInterval = setInterval(() => {
       pollAndForwardEvents()
+      checkEofReached()
       const buf = addon.renderFrame(pendingWidth, pendingHeight)
       currentWidth = pendingWidth
       currentHeight = pendingHeight
@@ -163,6 +166,7 @@ function restartRenderLoop(): void {
   // separate tick counter is needed here.
   renderInterval = setInterval(() => {
     pollAndForwardEvents()
+    checkEofReached()
     pushStateUpdate(isPlayingState)
   }, 250)
 }
@@ -190,6 +194,7 @@ process.parentPort.on('message', (e) => {
       return
     }
     isPlayingState = true
+    lastEofReached = false
     restartRenderLoop()
     process.parentPort.postMessage({ type: 'init-ok' })
     pushStateUpdate(true)
@@ -217,7 +222,16 @@ process.parentPort.on('message', (e) => {
       })
       return
     }
+    // mpv's `pause` property is global, not per-file, and loadfile does not
+    // reset it - so a track that ran to its end (leaving mpv paused at EOF
+    // thanks to keep-open=yes) would hand its paused state to the next track,
+    // which would then sit silently while the JS side believed it was playing.
+    addon.setPause(false)
     isPlayingState = true
+    // A fresh file starts before its own EOF, so clear the latch - otherwise
+    // replaying a track that already reached the end would leave the edge
+    // detector stuck true and never report a second natural finish.
+    lastEofReached = false
     // Re-gates the loop: switching a video track for an audio one (or back)
     // has to start/stop frame rendering accordingly.
     restartRenderLoop()

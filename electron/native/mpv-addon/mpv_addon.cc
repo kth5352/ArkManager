@@ -257,6 +257,22 @@ Napi::Value GetDuration(const Napi::CallbackInfo &info) {
   return Napi::Number::New(env, duration);
 }
 
+// mpv is initialized with keep-open=yes (see Init() above), so reaching a
+// file's natural end does NOT unload it and does NOT emit MPV_EVENT_END_FILE
+// - and the deprecated MPV_EVENT_PAUSE/MPV_EVENT_UNPAUSE events were removed
+// from libmpv in 0.33 (the bundled client.h is API 2.3 and has no such enum
+// members). The only way to observe end-of-file with this setup is to poll
+// the `eof-reached` property, which keep-open holds true until another file
+// is loaded or the player seeks away from the end.
+Napi::Value GetEofReached(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  if (!g_ctx) return Napi::Boolean::New(env, false);
+  int eofReached = 0;
+  int rc = g_p_get_property(g_ctx, "eof-reached", MPV_FORMAT_FLAG, &eofReached);
+  if (rc < 0) return Napi::Boolean::New(env, false);
+  return Napi::Boolean::New(env, eofReached != 0);
+}
+
 Napi::Value GetHwdecCurrent(const Napi::CallbackInfo &info) {
   Napi::Env env = info.Env();
   if (!g_ctx) return env.Null();
@@ -305,6 +321,7 @@ Napi::Object InitModule(Napi::Env env, Napi::Object exports) {
   exports.Set("setVolume", Napi::Function::New(env, SetVolume));
   exports.Set("getTimePos", Napi::Function::New(env, GetTimePos));
   exports.Set("getDuration", Napi::Function::New(env, GetDuration));
+  exports.Set("getEofReached", Napi::Function::New(env, GetEofReached));
   exports.Set("getHwdecCurrent", Napi::Function::New(env, GetHwdecCurrent));
   exports.Set("pollEvent", Napi::Function::New(env, PollEvent));
   exports.Set("shutdown", Napi::Function::New(env, Shutdown));
