@@ -454,11 +454,28 @@ const api = {
     // The frame-delivery MessagePort arrives via postMessage (not a normal
     // ipcRenderer.on channel) - see mpvProcessManager.ts's setHostWindow,
     // which calls webContents.postMessage('mpv-frame-port', {}, [port2]).
-    onFramePort: (callback: (port: MessagePort) => void): void => {
-      ipcRenderer.on('mpv-frame-port', (event) => {
-        if (event.ports[0]) callback(event.ports[0])
-      })
-    },
+    //
+    // There is deliberately NO onFramePort method here. A raw MessagePort
+    // cannot cross the contextBridge isolation boundary at all - not as a
+    // plain function argument, and not indirectly by having preload itself
+    // listen for the relayed window 'message' event and hand the resulting
+    // port to a main-world callback (confirmed empirically: BOTH shapes
+    // silently produce a dead, non-functional port - the callback fires,
+    // but every message posted from the other end is lost with no error).
+    // Electron's own docs (electronjs.org/docs/latest/tutorial/message-ports)
+    // document the actual fix: preload only relays the port from its
+    // isolated world into the main world via native window.postMessage
+    // (below); the MAIN-WORLD consumer (a React effect, not this file) must
+    // set up its own `window.addEventListener('message', ...)` directly -
+    // window.postMessage/addEventListener are plain DOM APIs, available to
+    // main-world code with no contextBridge involvement needed for this
+    // piece specifically. See useMediaPlayback.ts (or MpvDebugPage.tsx) for
+    // the consumer-side listener this relay is paired with; it must filter
+    // on `event.data === 'mpv-frame-port-relay'` to match the string below.
+    //
+    // (moved to module scope below the `api` object/contextBridge.exposeInMainWorld
+    // call, so it registers unconditionally as soon as this preload script
+    // loads, once per window - not re-registered per component mount)
   },
   mediaThumbnail: {
     pickFile: (): Promise<string | null> =>
@@ -484,5 +501,26 @@ const api = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
+
+// Relays the mpv frame-delivery MessagePort from this preload script's
+// isolated world into the main world - see the long comment on `mpv` above
+// for why this can't be a contextBridge-exposed function. Registered once,
+// unconditionally, at preload load time (not per component mount), so a
+// main-world consumer just needs its own
+// `window.addEventListener('message', (e) => { if (e.data ===
+// 'mpv-frame-port-relay' && e.ports[0]) { ... } })` - no unsubscribe/re-
+// registration concern here since this only ever runs once per window.
+//
+// `window` genuinely exists at runtime in a preload script (Electron gives
+// preload access to the renderer's real window object) but this project's
+// tsconfig.node.json (which covers electron/preload) intentionally has no
+// "dom" lib - adding one repo-wide would pull in DOM globals across
+// electron/main too, a pure-Node context where they don't actually exist.
+// This local ambient declaration covers exactly what this one relay call
+// needs, nothing more.
+declare const window: { postMessage: (message: unknown, targetOrigin: string, transfer?: MessagePort[]) => void }
+ipcRenderer.on('mpv-frame-port', (event) => {
+  if (event.ports[0]) window.postMessage('mpv-frame-port-relay', '*', event.ports)
+})
 
 export type Api = typeof api

@@ -10,7 +10,14 @@ export function MpvDebugPage() {
   })
 
   useEffect(() => {
-    window.api.mpv.onFramePort((port) => {
+    // The mpv frame-delivery MessagePort cannot be handed across
+    // contextBridge (see electron/preload/index.ts's long comment on the
+    // `mpv` namespace) - preload only relays it via window.postMessage, so
+    // this main-world code must listen for that relay directly with a
+    // plain DOM API, not through window.api.
+    const handleMessage = (event: MessageEvent): void => {
+      if (event.source !== window || event.data !== 'mpv-frame-port-relay' || !event.ports[0]) return
+      const port = event.ports[0]
       port.onmessage = (e: MessageEvent) => {
         const { frame, width, height } = e.data as { frame: ArrayBuffer; width: number; height: number }
         const canvas = canvasRef.current
@@ -24,8 +31,13 @@ export function MpvDebugPage() {
         const imageData = new ImageData(new Uint8ClampedArray(frame), width, height)
         ctx.putImageData(imageData, 0, 0)
       }
-    })
-    return window.api.mpv.onStateUpdate(setState)
+    }
+    window.addEventListener('message', handleMessage)
+    const unsubscribeStateUpdate = window.api.mpv.onStateUpdate(setState)
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      unsubscribeStateUpdate()
+    }
   }, [])
 
   return (
