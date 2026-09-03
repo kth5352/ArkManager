@@ -38,6 +38,21 @@
   }
 }
 
+/* 타이포그래피 스케일 (4단계) - 새 화면/컴포넌트를 만들 때 이 조합을 그대로
+   재사용한다. 전용 컴포넌트로 감싸지 않고 Tailwind 클래스 조합을 직접 쓰는
+   이 프로젝트의 기존 관례를 그대로 따름 (예: SettingsPage.tsx의 h1이 이미
+   "페이지 제목" 단계를 쓰고 있고, 반복되는 h2들이 이미 "섹션 헤딩" 단계를
+   쓰고 있음 - 새로 발명한 값이 아니라 기존에 흩어져 있던 값을 확정한 것).
+
+   - 페이지 제목:   text-lg font-semibold
+   - 섹션 헤딩:     text-sm font-semibold text-muted-foreground
+                     (기존엔 text-muted-foreground 없이 본문과 굵기만 다르게
+                     구분했으나, 색 대비를 더해 위계를 분명히 함)
+   - 본문:          text-sm
+   - 캡션/보조텍스트: text-xs text-muted-foreground
+
+   화면별 실제 적용(각 페이지의 <h1>/<h2> 등에 반영)은 다음 서브프로젝트
+   (화면별 UI/UX 적용) 몫 - 이번 단계는 스케일 확정까지만. */
 :root {
   --background: 0 0% 100%;
   --foreground: 240 10% 4%;
