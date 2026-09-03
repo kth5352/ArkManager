@@ -147,19 +147,6 @@ export function MediaPlayerBar({
         >
           <MarqueeText text={playback.track.name} className="text-xs" />
         </button>
-        {!isDetached && onExpandVideo && (
-          <HoverTooltip content={t('media.expandVideo')}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onExpandVideo}
-              aria-label={t('media.expandVideo')}
-              className="shrink-0"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-          </HoverTooltip>
-        )}
         {!isDetached && onDetach && (
           <HoverTooltip content={t('media.detachWindow')}>
             <Button
@@ -226,6 +213,23 @@ export function MediaPlayerBar({
             <ListMusic className="h-5 w-5" />
           </Button>
         </HoverTooltip>
+        {/* Bottom-right corner, last in reading order - matches the
+            fullscreen-toggle affordance's natural position in most media
+            players (the transport row's own trailing edge), rather than
+            competing with the top row's track-metadata icon cluster. */}
+        {!isDetached && onExpandVideo && (
+          <HoverTooltip content={t('media.expandVideo')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onExpandVideo}
+              aria-label={t('media.expandVideo')}
+              className="shrink-0"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          </HoverTooltip>
+        )}
       </div>
     </div>
   )
