@@ -32,7 +32,7 @@ describe('clearCache', () => {
     expect(existsSync(join(dir, 'cache', 'media-thumbnails'))).toBe(false)
   })
 
-  it('deletes cached media remux output', async () => {
+  it('deletes leftover media-remux cache from the pre-libmpv MPEG-TS remux feature (now removed)', async () => {
     dir = await mkdtemp(join(tmpdir(), 'ark-manager-clearcache-'))
     await mkdir(join(dir, 'cache', 'media-remux'), { recursive: true })
     await writeFile(join(dir, 'cache', 'media-remux', 'abc123.mp4'), 'video-bytes')

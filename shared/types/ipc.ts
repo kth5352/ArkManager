@@ -86,7 +86,6 @@ export const IPC_CHANNELS = {
   SUBTITLE_PIP_CLOSED: 'subtitle-pip:closed',
   SUBTITLE_PIP_LINE_UPDATE: 'subtitle-pip:line-update',
   MEDIA_GET_LYRICS: 'media:get-lyrics',
-  MEDIA_CHECK_NEEDS_REMUX: 'media:check-needs-remux',
   MPV_LOAD: 'mpv:load',
   MPV_PLAY: 'mpv:play',
   MPV_PAUSE: 'mpv:pause',
@@ -600,11 +599,6 @@ export const MediaGetLyricsRequestSchema = z.object({
   filePath: z.string(),
 })
 export type MediaGetLyricsRequest = z.infer<typeof MediaGetLyricsRequestSchema>
-
-export const MediaCheckNeedsRemuxRequestSchema = z.object({
-  filePath: z.string(),
-})
-export type MediaCheckNeedsRemuxRequest = z.infer<typeof MediaCheckNeedsRemuxRequestSchema>
 
 // `isVideo` gates the utility process's per-frame render loop: an audio-only
 // track must not pay the ~16ms renderFrame/postMessage cost, so the worker

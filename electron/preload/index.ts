@@ -407,8 +407,6 @@ const api = {
       ipcRenderer.on(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, listener)
     },
-    checkNeedsRemux: (filePath: string): Promise<boolean> =>
-      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_CHECK_NEEDS_REMUX, { filePath }),
   },
   mediaPlaylist: {
     list: (): Promise<MediaPlaylistDto[]> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_PLAYLIST_LIST),

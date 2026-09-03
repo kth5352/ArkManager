@@ -28,10 +28,9 @@ export function mediaThumbnailCacheDir(): string {
   return join(app.getPath('userData'), 'cache', 'media-thumbnails')
 }
 
-// Decoupled from Electron's protocol/Request machinery (same reasoning as
-// mediaProtocol.ts's buildMediaResponse) - getOverride/resolve are injected
-// so a test can exercise the priority order (override wins, then
-// auto-extraction, then 404) without a real database or a real ffmpeg call.
+// Decoupled from Electron's protocol/Request machinery so a test can
+// exercise the priority order (override wins, then auto-extraction, then
+// 404) without a real database or a real ffmpeg call.
 export async function buildMediaThumbnailResponse(
   filePath: string,
   allowedRoots: string[],

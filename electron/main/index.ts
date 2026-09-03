@@ -22,7 +22,6 @@ import {
 import { registerMediaThumbnailHandlers } from './ipc/mediaThumbnailHandlers'
 import { registerSubtitlePipWindowHandlers } from './ipc/subtitlePipWindowHandlers'
 import { registerMediaLyricsHandlers } from './ipc/mediaLyricsHandlers'
-import { registerMediaRemuxHandlers } from './ipc/mediaRemuxHandlers'
 import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
 import { registerMediaPlaylistHandlers } from './ipc/mediaPlaylistHandlers'
 import { registerMediaPlaylistCoverHandlers } from './ipc/mediaPlaylistCoverHandlers'
@@ -37,7 +36,6 @@ import {
   registerThumbnailProtocolHandler,
   registerThumbnailProtocolScheme,
 } from './thumbnailProtocol'
-import { registerMediaProtocolHandler, registerMediaProtocolScheme } from './mediaProtocol'
 import {
   registerMediaThumbnailProtocolHandler,
   registerMediaThumbnailProtocolScheme,
@@ -85,7 +83,6 @@ if (!gotSingleInstanceLock) {
   // Must happen before app.whenReady() - Electron requires privileged scheme
   // registration at module load time.
   registerThumbnailProtocolScheme()
-  registerMediaProtocolScheme()
   registerMediaThumbnailProtocolScheme()
 
   // Without this, the running window/taskbar icon falls back to Electron's
@@ -386,13 +383,11 @@ if (!gotSingleInstanceLock) {
     registerSaveHandlers(db)
     registerCacheHandlers(db)
     registerThumbnailProtocolHandler(db)
-    registerMediaProtocolHandler(db)
     registerMediaThumbnailProtocolHandler(db)
     closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
     closeSubtitlePipWindow = registerSubtitlePipWindowHandlers(db, () => mainWindow).closeSubtitlePipWindow
     registerMediaThumbnailHandlers(db)
     registerMediaLyricsHandlers(db)
-    registerMediaRemuxHandlers(db)
     registerExcludedEntriesHandlers(db)
     registerMediaPlaylistHandlers(db)
     registerMediaPlaylistCoverHandlers(db)
