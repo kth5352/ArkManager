@@ -55,6 +55,7 @@ export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): 
       isPlaying?: boolean
       currentTime?: number
       duration?: number | null
+      error?: string | null
     }
     if (m.type === 'state-update') {
       const win = mpv.getCurrentHostWindow()
@@ -66,8 +67,20 @@ export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): 
         isPlaying: m.isPlaying,
         currentTime: m.currentTime,
         duration: m.duration ?? null,
-        error: null,
+        // Forwarded, not hardcoded null: the worker's 'load' handler posts a
+        // state-update with `error: result` when loadFile fails, and that's
+        // the only way the renderer ever learns a track failed to open.
+        error: m.error ?? null,
       })
+      return
+    }
+    // The current track hit its natural end (see mpvWorker.ts's
+    // pollAndForwardEvents) - the renderer decides what that means
+    // (auto-advance vs repeat-one), so this just relays the bare signal.
+    if (m.type === 'ended') {
+      const win = mpv.getCurrentHostWindow()
+      if (!win || win.isDestroyed()) return
+      win.webContents.send(IPC_CHANNELS.MPV_ENDED)
     }
   })
 }

@@ -96,6 +96,11 @@ export const IPC_CHANNELS = {
   MPV_RESIZE: 'mpv:resize',
   MPV_REQUEST_FRAME_PORT: 'mpv:request-frame-port',
   MPV_STATE_UPDATE: 'mpv:state-update',
+  // Push-only, main -> renderer, no payload: the current track reached its
+  // natural end (detected in mpvWorker.ts from mpv's own keep-open pause -
+  // see pollAndForwardEvents there). Drives auto-advance / repeat-one in
+  // useMediaPlayback.ts.
+  MPV_ENDED: 'mpv:ended',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',

@@ -456,6 +456,13 @@ const api = {
       ipcRenderer.on(IPC_CHANNELS.MPV_STATE_UPDATE, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MPV_STATE_UPDATE, listener)
     },
+    // Fires when the current track reaches its natural end (payload-less) -
+    // the renderer turns this into auto-advance or repeat-one.
+    onEnded: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on(IPC_CHANNELS.MPV_ENDED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MPV_ENDED, listener)
+    },
     // The frame-delivery MessagePort arrives via postMessage (not a normal
     // ipcRenderer.on channel) - see mpvProcessManager.ts's setHostWindow,
     // which calls webContents.postMessage('mpv-frame-port', {}, [port2]).

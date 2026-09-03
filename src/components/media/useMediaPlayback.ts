@@ -42,6 +42,8 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   const setPlaying = useMediaPlayerStore((s) => s.setPlaying)
   const togglePlay = useMediaPlayerStore((s) => s.togglePlay)
   const setVolume = useMediaPlayerStore((s) => s.setVolume)
+  const repeatMode = useMediaPlayerStore((s) => s.repeatMode)
+  const next = useMediaPlayerStore((s) => s.next)
 
   const canvasElRef = useRef<HTMLCanvasElement | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
@@ -169,6 +171,25 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     })
   }, [isHost, setPlaying])
 
+  // Track finished naturally (mpv's keep-open pause, surfaced by mpvWorker.ts
+  // as an 'ended' message) - this is the mpv-IPC replacement for the old DOM
+  // element's `onEnded` handler, and the only place repeatMode === 'one' is
+  // ever acted on (next()/prev() deliberately ignore it, see
+  // mediaPlayerStore.ts). Repeat-one loops in place by seeking back to 0 and
+  // resuming, exactly as the old handler did with currentTime = 0 + play().
+  useEffect(() => {
+    if (!isHost) return
+    return window.api.mpv.onEnded(() => {
+      if (repeatMode === 'one') {
+        window.api.mpv.seek(0)
+        setCurrentTime(0)
+        window.api.mpv.play()
+        return
+      }
+      next()
+    })
+  }, [isHost, repeatMode, next])
+
   // Debounced, DPR-aware resize - observes the canvas element's own CSS box
   // (which fills its flex container via className, see FullscreenMediaOverlay/
   // PlayerWindowPage) and requests mpv render at that size. Only meaningful
@@ -236,7 +257,12 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
         setCurrentTime(value)
       } else if (event.key === 'ArrowRight' && isHost) {
         event.preventDefault()
-        const max = Number.isFinite(duration) ? duration : Infinity
+        // `duration` is 0 both before mpv's async loadfile resolves a real
+        // duration and for a file mpv never reports one for - and 0 is a
+        // finite number, so a Number.isFinite check would clamp every
+        // forward seek to 0 (i.e. rewind to the start). Treat 0 as
+        // "unknown" and let the seek through unclamped.
+        const max = duration > 0 ? duration : Infinity
         const value = Math.min(max, currentTime + 5)
         window.api.mpv.seek(value)
         setCurrentTime(value)

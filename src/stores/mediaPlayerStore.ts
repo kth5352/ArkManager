@@ -33,11 +33,12 @@ interface MediaPlayerState {
   // it.
   previousVolume: number
   // Cycles off -> all -> one -> off. 'one' is handled by the caller
-  // (useMediaPlayback's onEnded, not next()/prev() - a skip button press
-  // should always move to the adjacent track regardless of this mode,
-  // matching every other media player's convention; only a track ending
-  // naturally loops it). 'off' vs 'all' is this store's own concern: `next`
-  // stops instead of wrapping past the last track when off.
+  // (useMediaPlayback's window.api.mpv.onEnded subscription, which loops the
+  // track in place with seek(0) + play() - not next()/prev(), since a skip
+  // button press should always move to the adjacent track regardless of this
+  // mode, matching every other media player's convention; only a track
+  // ending naturally loops it). 'off' vs 'all' is this store's own concern:
+  // `next` stops instead of wrapping past the last track when off.
   repeatMode: RepeatMode
   // See shuffleOrder.ts for how these two are generated. shufflePosition is
   // a pointer into shuffleOrder, not a separate history - next/prev just

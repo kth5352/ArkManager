@@ -91,6 +91,25 @@ function pollAndForwardEvents(): void {
   for (;;) {
     const ev = addon.pollEvent()
     if (!ev) return
+    if (ev.name === 'unpause') {
+      isPlayingState = true
+    } else if (ev.name === 'pause') {
+      // mpv was initialized with keep-open=yes (see mpv_addon.cc's Init()),
+      // so reaching a file's natural end makes mpv pause ITSELF rather than
+      // close the file - which surfaces here as an ordinary 'pause' event,
+      // indistinguishable by name from a user-requested pause. The state
+      // flag disambiguates it: a JS-initiated pause (the worker's own
+      // 'pause' message handler below) always sets isPlayingState = false
+      // SYNCHRONOUSLY, before any later tick can poll the resulting event -
+      // so it's already false by the time we see it. Still true here means
+      // nothing on the JS side ever commanded this pause, i.e. keep-open
+      // kicked in at end-of-file. Treat that as the track finishing.
+      const wasPlayingBeforeThisEvent = isPlayingState
+      isPlayingState = false
+      if (wasPlayingBeforeThisEvent) {
+        process.parentPort.postMessage({ type: 'ended' })
+      }
+    }
     if (
       ev.name === 'end-file' ||
       ev.name === 'file-loaded' ||
