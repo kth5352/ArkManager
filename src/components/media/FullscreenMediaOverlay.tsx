@@ -21,7 +21,7 @@ import { HoverTooltip } from '../ui/hover-tooltip'
 import { Button } from '../ui/button'
 
 interface FullscreenMediaOverlayProps {
-  mediaRef: (el: HTMLVideoElement | HTMLAudioElement | null) => void
+  canvasRef: (el: HTMLCanvasElement | null) => void
   playback: MediaPlaybackState
   visible: boolean
   onMinimize?: () => void
@@ -35,15 +35,17 @@ interface FullscreenMediaOverlayProps {
 // Always mounted whenever this window is hosting playback and isn't
 // detached (see MediaPlayerHost) - covers both video and audio (see
 // docs/superpowers/specs/2026-08-03-media-thumbnails-design.md section 6):
-// video always fills this with a real <video>; audio renders a hidden
-// <audio> (driving actual playback, non-visually) alongside its resolved
-// thumbnail shown large, or a generic icon once that request 404s. `visible`
-// only toggles CSS display, never whether the element itself is mounted, so
-// minimizing back to the docked bar doesn't tear down and rebuffer anything
-// - playback continues off-screen either way (display:none does not stop a
-// <video>/<audio>'s decoding per the HTML spec).
+// video always fills this with a <canvas> that mpv's utility process
+// pushes decoded frames onto; audio has no on-screen playback element at
+// all (mpv plays audio in the utility process regardless of what's on
+// screen) and just shows the resolved thumbnail large, or a generic icon
+// once that request 404s. `visible` only toggles CSS display, never
+// whether the canvas itself is mounted, so minimizing back to the docked
+// bar doesn't tear down and rebuffer anything - playback continues
+// off-screen either way (mpv keeps decoding/playing in its own process
+// independent of this window's own visibility).
 export function FullscreenMediaOverlay({
-  mediaRef,
+  canvasRef,
   playback,
   visible,
   onMinimize,
@@ -114,28 +116,19 @@ export function FullscreenMediaOverlay({
     >
       <div className="relative flex min-h-0 flex-1 items-center justify-center">
         {playback.isVideo ? (
-          <video
-            ref={mediaRef}
-            {...playback.mediaElementProps}
-            className="h-full w-full object-contain"
-          />
+          <canvas ref={canvasRef} className="h-full w-full object-contain" />
+        ) : thumbFailed ? (
+          <div className="flex h-32 w-32 items-center justify-center">
+            <img src={logoUrl} alt="" className="h-full w-full object-contain opacity-30" />
+          </div>
         ) : (
-          <>
-            <audio ref={mediaRef} {...playback.mediaElementProps} />
-            {thumbFailed ? (
-              <div className="flex h-32 w-32 items-center justify-center">
-                <img src={logoUrl} alt="" className="h-full w-full object-contain opacity-30" />
-              </div>
-            ) : (
-              <img
-                src={buildMediaThumbnailUrl(playback.track.path)}
-                alt=""
-                className="max-h-full max-w-full object-contain"
-                draggable={false}
-                onError={() => setThumbFailedPath(playback.track.path)}
-              />
-            )}
-          </>
+          <img
+            src={buildMediaThumbnailUrl(playback.track.path)}
+            alt=""
+            className="max-h-full max-w-full object-contain"
+            draggable={false}
+            onError={() => setThumbFailedPath(playback.track.path)}
+          />
         )}
         {lyricsEnabled && parsedLyrics?.kind === 'synced' && (() => {
           const activeLine = getActiveLyricLine(parsedLyrics, playback.currentTime)
