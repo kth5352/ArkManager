@@ -108,6 +108,15 @@ Napi::String Init(const Napi::CallbackInfo &info) {
   g_p_set_option_string(g_ctx, "vo", "libmpv");
   g_p_set_option_string(g_ctx, "keep-open", "yes");
   g_p_set_option_string(g_ctx, "hwdec", hwdecMode.c_str());
+  // libmpv's defaults (sub-auto=exact, sid=auto) would auto-load sidecar
+  // subtitle files and auto-select embedded subtitle tracks, burning them into
+  // the frames this addon renders. The app draws its own subtitle/lyric
+  // overlay from the very same adjacent .ass/.vtt/.lrc files
+  // (readAdjacentLyrics), so leaving mpv's defaults on shows every line twice.
+  // The old Chromium <video> element rendered neither for a bare `src`, so
+  // turning both off is what actually preserves the previous behavior.
+  g_p_set_option_string(g_ctx, "sub-auto", "no");
+  g_p_set_option_string(g_ctx, "sid", "no");
 
   int rc = g_p_initialize(g_ctx);
   if (rc < 0) {

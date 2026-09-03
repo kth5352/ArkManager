@@ -134,29 +134,39 @@ function restartRenderLoop(): void {
     renderInterval = setInterval(() => {
       pollAndForwardEvents()
       checkEofReached()
-      const buf = addon.renderFrame(pendingWidth, pendingHeight)
-      currentWidth = pendingWidth
-      currentHeight = pendingHeight
-      if (buf && renderPort) {
-        // ArrayBuffer.prototype.slice() always allocates a fresh buffer of
-        // EXACTLY the requested length - required here, not just tidy: small
-        // Buffers (the size this addon returns once a resize clamps render
-        // dimensions down, e.g. while the canvas is hidden/minimized) are
-        // frequently views into Node's shared buffer pool, so `buf.buffer`
-        // alone can be the pool's full backing ArrayBuffer, not a
-        // byteLength-sized one - transferring that whole oversized buffer
-        // made the renderer's `new ImageData(bytes, width, height)` throw
-        // "input data length is not equal to 4*width*height" (confirmed via
-        // live testing: reproduced consistently on minimize/re-expand,
-        // where the ResizeObserver's hidden-container 0x0 reading clamps
-        // the render request down to computeMpvRenderSize's 2x2 floor).
-        const copy = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
-        renderPort.postMessage({
-          frame: copy,
-          byteLength: buf.length,
-          width: currentWidth,
-          height: currentHeight,
-        })
+      // Render/post only while actually playing. A paused track (or one parked
+      // at EOF) produces byte-identical frames, so rendering + copying +
+      // transferring them ~60x/sec is pure wasted CPU/GPU that would otherwise
+      // continue until the app quits. The interval itself keeps running rather
+      // than being cleared, so rendering resumes on the very next tick once
+      // 'play'/'load' flips isPlayingState back to true - and the two polls
+      // above stay unconditional (they're cheap, and checkEofReached still
+      // needs to observe a genuine end-of-file after a resume).
+      if (isPlayingState) {
+        const buf = addon.renderFrame(pendingWidth, pendingHeight)
+        currentWidth = pendingWidth
+        currentHeight = pendingHeight
+        if (buf && renderPort) {
+          // ArrayBuffer.prototype.slice() always allocates a fresh buffer of
+          // EXACTLY the requested length - required here, not just tidy: small
+          // Buffers (the size this addon returns once a resize clamps render
+          // dimensions down, e.g. while the canvas is hidden/minimized) are
+          // frequently views into Node's shared buffer pool, so `buf.buffer`
+          // alone can be the pool's full backing ArrayBuffer, not a
+          // byteLength-sized one - transferring that whole oversized buffer
+          // made the renderer's `new ImageData(bytes, width, height)` throw
+          // "input data length is not equal to 4*width*height" (confirmed via
+          // live testing: reproduced consistently on minimize/re-expand,
+          // where the ResizeObserver's hidden-container 0x0 reading clamps
+          // the render request down to computeMpvRenderSize's 2x2 floor).
+          const copy = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+          renderPort.postMessage({
+            frame: copy,
+            byteLength: buf.length,
+            width: currentWidth,
+            height: currentHeight,
+          })
+        }
       }
       // Pushes a fresh currentTime/duration snapshot roughly 4x/sec (every
       // 15th tick at 16ms) - mirrors the cadence the old DOM <video>'s
@@ -252,6 +262,20 @@ process.parentPort.on('message', (e) => {
   }
 
   if (msg.type === 'play') {
+    // Pressing play on a track parked at its own end: keep-open=yes leaves
+    // mpv sitting AT eof with nothing left to decode, so a bare setPause(false)
+    // would report playing forever while producing no audio and no new frames.
+    // Seeking back to 0 first mirrors both the old DOM <video>'s spec'd
+    // behavior (.play() on an ended element restarts from the beginning) and
+    // the repeat-one loop-in-place path in useMediaPlayback.ts's onEnded.
+    // Deliberately does NOT clear lastEofReached here (unlike the 'load'
+    // handler): mpv's seek is asynchronous, so eof-reached can still sample
+    // true on the next tick or two, and re-arming the edge detector now would
+    // make checkEofReached fire a spurious 'ended' for a track that just
+    // restarted. Leaving the latch set costs nothing - it falls to false on
+    // its own as soon as the seek lands, which re-arms detection in time for
+    // this playthrough's real ending.
+    if (addon.getEofReached()) addon.seek(0)
     addon.setPause(false)
     isPlayingState = true
     pushStateUpdate(true)

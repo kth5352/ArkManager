@@ -56,6 +56,7 @@ export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): 
       currentTime?: number
       duration?: number | null
       error?: string | null
+      result?: string
     }
     if (m.type === 'state-update') {
       const win = mpv.getCurrentHostWindow()
@@ -71,6 +72,24 @@ export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): 
         // state-update with `error: result` when loadFile fails, and that's
         // the only way the renderer ever learns a track failed to open.
         error: m.error ?? null,
+      })
+      return
+    }
+    // addon.init() failed - the failure path for the FIRST track of a session
+    // (e.g. libmpv-2.dll or mpv_addon.node not loadable). The worker posts its
+    // own message type for this rather than a state-update, so it has to be
+    // translated here or the renderer would sit on a frozen isPlaying:true
+    // with no frames and no error. Forwarded over the same MPV_STATE_UPDATE
+    // channel the load-failure path uses, so the renderer's existing error
+    // handling covers it unchanged.
+    if (m.type === 'init-failed') {
+      const win = mpv.getCurrentHostWindow()
+      if (!win || win.isDestroyed()) return
+      win.webContents.send(IPC_CHANNELS.MPV_STATE_UPDATE, {
+        isPlaying: false,
+        currentTime: 0,
+        duration: null,
+        error: m.result ?? 'mpv init failed',
       })
       return
     }

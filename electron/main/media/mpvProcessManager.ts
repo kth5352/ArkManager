@@ -16,6 +16,15 @@ let currentHostWindow: BrowserWindow | null = null
 // NEW child is spawned - a freshly-spawned process's native addon has no
 // state, so it genuinely needs a fresh init, not a load.
 let hasInitializedCurrentChild = false
+// The file path the CURRENT child process actually has loaded right now. This
+// is the app's single source of truth for that - mpv's loaded file is global,
+// cross-process state, so no individual renderer can know it (a freshly
+// spawned renderer - e.g. a just-detached player window - starts with an empty
+// local ref and would otherwise re-request a load of the very file already
+// playing). Same reset lifecycle as hasInitializedCurrentChild above: cleared
+// on a fresh spawn and on the child's exit, because a new process's native
+// addon has nothing loaded.
+let currentLoadedPath: string | null = null
 // Kept as a list rather than attached once to a single child: the child is
 // respawned after an unexpected exit (that's the whole point of the crash
 // isolation), and a listener attached only to the dead process would leave
@@ -47,6 +56,7 @@ function ensureChild(): UtilityProcess {
     env: { ...process.env, MPV_ADDON_DIR: addonDir },
   })
   hasInitializedCurrentChild = false
+  currentLoadedPath = null
   proc.stdout?.on('data', (d: Buffer) => process.stdout.write(`[mpv-worker] ${d}`))
   proc.stderr?.on('data', (d: Buffer) => process.stderr.write(`[mpv-worker] ${d}`))
   proc.on('exit', (code) => {
@@ -54,6 +64,7 @@ function ensureChild(): UtilityProcess {
     if (child === proc) {
       child = null
       hasInitializedCurrentChild = false
+      currentLoadedPath = null
     }
   })
   for (const listener of workerMessageListeners) proc.on('message', listener)
@@ -82,6 +93,19 @@ export function getCurrentHostWindow(): BrowserWindow | null {
 // `hasInitializedCurrentChild` above for why this distinction matters.
 export function loadFile(filePath: string, width: number, height: number, isVideo: boolean): void {
   const proc = ensureChild()
+  if (filePath === currentLoadedPath) {
+    // Same file is already loaded in this mpv session - a caller can still
+    // reach this point even when nothing needs to change (e.g. a fresh
+    // renderer process - like a just-detached PlayerWindowPage - has no way
+    // to know this session already has the file loaded, since that state
+    // lives here in the main process, not in any one renderer's local ref).
+    // Reloading would restart playback from 0, defeating the whole point of
+    // keeping one continuous mpv session across a detach/reattach handoff -
+    // the caller's own setHostWindow() call (already done before loadFile is
+    // reached) is all that's actually needed here.
+    return
+  }
+  currentLoadedPath = filePath
   if (hasInitializedCurrentChild) {
     proc.postMessage({ type: 'load', filePath, isVideo })
     return
