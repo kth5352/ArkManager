@@ -116,11 +116,22 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
             type="button"
             onClick={() => onActiveTabChange(tab)}
             className={cn(
-              'flex-1 px-2 py-2 text-xs font-medium',
+              // min-w-0 lets a flex-1 item shrink below its content's
+              // intrinsic width (flex items default to min-width: auto,
+              // which refuses to) - required for truncate to actually
+              // truncate instead of forcing the row to overflow/wrap.
+              // Pretendard renders Korean text wider than the previous
+              // system-default font, and the longest label ('재생목록 관리')
+              // no longer reliably fits its ~1/4 share of the sidebar's
+              // default 320px width - without this it wrapped onto a
+              // second line, pushing the whole tab row (and everything
+              // below it) down instead of staying a single fixed-height row.
+              'min-w-0 flex-1 truncate px-2 py-2 text-xs font-medium',
               tab === activeTab
                 ? 'border-b-2 border-primary text-foreground'
                 : 'text-muted-foreground transition-colors hover:text-foreground'
             )}
+            title={tabLabel(tab)}
           >
             {tabLabel(tab)}
           </button>
