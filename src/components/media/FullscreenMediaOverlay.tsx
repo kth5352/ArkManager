@@ -110,11 +110,11 @@ export function FullscreenMediaOverlay({
   }
 
   return (
-    <div
-      className={cn('fixed top-0 bottom-0 left-0 z-50 flex-col bg-black', visible ? 'flex' : 'hidden')}
-      style={{ right: splitForSidebar ? mediaSidebarWidth : 0 }}
-    >
-      <div className="relative flex min-h-0 flex-1 items-center justify-center">
+    <div className={cn('fixed inset-0 z-50 flex-col bg-black', visible ? 'flex' : 'hidden')}>
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center"
+        style={{ marginRight: splitForSidebar ? mediaSidebarWidth : 0 }}
+      >
         {playback.isVideo ? (
           <canvas ref={canvasRef} className="h-full w-full object-contain" />
         ) : thumbFailed ? (
