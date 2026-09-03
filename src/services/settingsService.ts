@@ -373,7 +373,11 @@ export function useSetMediaVolumeMutation() {
 
 export const MEDIA_EQUALIZER_QUERY_KEY = ['settings', 'media-equalizer-bands'] as const
 
-const FLAT_EQ_BANDS: number[] = new Array(EQ_BAND_COUNT).fill(0)
+// Frozen, and handed out only as a fresh copy below: this one module-level
+// array is the fallback for every consumer of the query, so an accidental
+// in-place mutation by any one of them (`gains[0] = 6`) would otherwise
+// corrupt the "flat" default process-wide for all the others.
+const FLAT_EQ_BANDS: readonly number[] = Object.freeze(new Array<number>(EQ_BAND_COUNT).fill(0))
 
 // Defaults to all-flat (matches the native addon's own Init() default) when
 // nothing is persisted yet, or if the stored JSON is malformed/wrong-length
@@ -384,7 +388,7 @@ export function useMediaEqualizerQuery() {
     queryKey: MEDIA_EQUALIZER_QUERY_KEY,
     queryFn: async (): Promise<number[]> => {
       const raw = await window.api.settings.getMediaEqualizerBands()
-      if (raw === null) return FLAT_EQ_BANDS
+      if (raw === null) return [...FLAT_EQ_BANDS]
       try {
         const parsed: unknown = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length === EQ_BAND_COUNT && parsed.every((g) => typeof g === 'number')) {
@@ -393,8 +397,18 @@ export function useMediaEqualizerQuery() {
       } catch {
         // fall through to the flat default below
       }
-      return FLAT_EQ_BANDS
+      return [...FLAT_EQ_BANDS]
     },
+    // Set explicitly (it is already TanStack's global default - main.tsx
+    // constructs a bare `new QueryClient()` - but this one is load-bearing,
+    // not incidental) as the mitigation for cross-window EQ staleness: the
+    // detached player window is a separate renderer process with its own
+    // cache, and nothing broadcasts an EQ change between the two. Refetching
+    // on focus means the window the user is about to touch has re-read the
+    // persisted value first, so a stale window can't write stale gains back.
+    // A mitigation, NOT a full fix - a visible-but-unfocused window still
+    // displays stale gains until it is focused. See EqualizerPopover.tsx.
+    refetchOnWindowFocus: true,
   })
 }
 

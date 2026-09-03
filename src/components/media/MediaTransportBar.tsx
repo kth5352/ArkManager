@@ -176,7 +176,7 @@ export function MediaTransportBar({
           </Button>
         </HoverTooltip>
       )}
-      <EqualizerPopover dark={dark} />
+      <EqualizerPopover dark={dark} compact={compact} />
 
       <div className="flex flex-1 flex-col gap-1 min-w-40">
         {!compact && (

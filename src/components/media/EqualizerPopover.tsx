@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { SlidersHorizontal } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
@@ -18,37 +19,86 @@ function formatBandFrequency(hz: number): string {
 
 interface EqualizerPopoverProps {
   dark?: boolean
+  // Shrinks the trigger icon to match the repeat/shuffle/lyrics/volume
+  // cluster it sits in - see MediaTransportBar's own `compact` prop.
+  compact?: boolean
 }
 
 // Shared by the docked bar, fullscreen overlay, and detached window via
-// MediaTransportBar - EQ is a global mpv-session setting (not per-window),
-// so rendering this in all three places is correct and requires no extra
-// cross-window sync: every instance reads/writes the exact same persisted
-// setting and drives the exact same mpv session.
-export function EqualizerPopover({ dark = false }: EqualizerPopoverProps) {
+// MediaTransportBar. The two things the EQ actually drives - the persisted
+// `media-equalizer-bands` setting and the single mpv session - are genuinely
+// global, so every instance writes to the same place and the audible result
+// is always consistent across windows.
+//
+// What is NOT shared is the in-memory TanStack Query cache: the detached
+// player window is a separate renderer process with its own QueryClient, so a
+// change made in one window does not push into the other's cache. The
+// mitigation (not a full fix) is refetchOnWindowFocus on
+// useMediaEqualizerQuery - see settingsService.ts - which re-reads the
+// persisted value whenever a window regains focus, so the stale window
+// self-corrects the moment the user actually goes to interact with it. The
+// residual window is a window that is visible but unfocused, or one focused
+// while its refetch is still in flight; a real fix would need a main-process
+// broadcast of EQ changes to every renderer.
+export function EqualizerPopover({ dark = false, compact = false }: EqualizerPopoverProps) {
   const { t } = useTranslation()
   const { data: gains } = useMediaEqualizerQuery()
   const setEqualizer = useSetMediaEqualizerMutation()
 
-  const currentGains = gains ?? EQUALIZER_PRESETS[0].gains
-  const activePreset = findEqualizerPresetMatchingGains(currentGains)
+  // Same pattern as MediaTransportBar's seek-bar `dragValue`: the sliders are
+  // controlled by query-cache data that only advances after the persistence
+  // mutation's IPC round-trip resolves, so without a local drag value every
+  // onChange tick would re-render showing the still-stale committed gain and
+  // fight the drag. Only one slider is ever dragged at a time, so a single
+  // {bandIndex, value} covers all five. Cleared in the mutation's onSettled
+  // (not immediately on release) so the displayed value stays pinned to what
+  // the user dragged to until the cache actually holds it - releasing on the
+  // spot would flash the old value for the duration of the round-trip.
+  const [dragState, setDragState] = useState<{ bandIndex: number; value: number } | null>(null)
 
-  const applyGains = (newGains: number[]): void => {
-    setEqualizer.mutate(newGains)
-    newGains.forEach((gainDb, bandIndex) => {
-      window.api.mpv.setEqualizerBandGain(bandIndex, gainDb)
-    })
-  }
+  const currentGains = gains ?? EQUALIZER_PRESETS[0].gains
+  // What the sliders and the preset Select both read from: the committed
+  // gains with the in-progress drag applied on top. Deriving activePreset
+  // from THIS (not from currentGains) is what keeps "a manual adjustment
+  // clears the preset selection to custom" true during the drag itself,
+  // rather than only after release.
+  const displayGains = dragState
+    ? currentGains.map((g, i) => (i === dragState.bandIndex ? dragState.value : g))
+    : currentGains
+  const activePreset = findEqualizerPresetMatchingGains(displayGains)
 
   const handlePresetSelect = (presetId: string): void => {
     const preset = EQUALIZER_PRESETS.find((p) => p.id === presetId)
-    if (preset) applyGains([...preset.gains])
+    if (!preset) return
+    const newGains = [...preset.gains]
+    // A preset genuinely changes all five bands, so all five live calls are
+    // real work here - unlike a single-band drag (see handleBandChange).
+    newGains.forEach((gainDb, bandIndex) => {
+      window.api.mpv.setEqualizerBandGain(bandIndex, gainDb)
+    })
+    setDragState(null)
+    setEqualizer.mutate(newGains)
   }
 
+  // Fires on every slider tick. The live mpv call stays here and stays
+  // unbuffered (it's fire-and-forget and already glitch-free under rapid
+  // calls - that responsiveness is the point), but it now sends ONLY the band
+  // that actually changed instead of re-sending all five. The persistence
+  // write is deferred to commitDrag below.
   const handleBandChange = (bandIndex: number, value: number): void => {
+    setDragState({ bandIndex, value })
+    window.api.mpv.setEqualizerBandGain(bandIndex, value)
+  }
+
+  // Mirrors the seek bar's commitDrag: the real (persisted) commit happens on
+  // release, so a drag produces exactly one settings mutation instead of one
+  // per tick - which also removes the out-of-order-onSuccess race that
+  // concurrent per-tick mutations could otherwise lose a value to.
+  const commitDrag = (): void => {
+    if (!dragState) return
     const newGains = [...currentGains]
-    newGains[bandIndex] = value
-    applyGains(newGains)
+    newGains[dragState.bandIndex] = dragState.value
+    setEqualizer.mutate(newGains, { onSettled: () => setDragState(null) })
   }
 
   const iconClass = dark
@@ -60,7 +110,7 @@ export function EqualizerPopover({ dark = false }: EqualizerPopoverProps) {
       <HoverTooltip content={t('media.equalizer')}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" aria-label={t('media.equalizer')} className={cn('shrink-0', iconClass)}>
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
           </Button>
         </PopoverTrigger>
       </HoverTooltip>
@@ -108,8 +158,10 @@ export function EqualizerPopover({ dark = false }: EqualizerPopoverProps) {
                   min={-12}
                   max={12}
                   step={1}
-                  value={currentGains[bandIndex] ?? 0}
+                  value={displayGains[bandIndex] ?? 0}
                   onChange={(e) => handleBandChange(bandIndex, Number(e.target.value))}
+                  onPointerUp={commitDrag}
+                  onKeyUp={commitDrag}
                   className="h-32 w-4"
                   style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
                 />
