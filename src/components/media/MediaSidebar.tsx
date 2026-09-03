@@ -93,12 +93,16 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
       // FullscreenMediaOverlay's z-50 - keeps this sidebar usable (browsing
       // the queue/lyrics) even while a video is fullscreen. Now a normal
       // flex child (not `fixed`, see AppLayout.tsx), but FullscreenMediaOverlay
-      // is still `fixed top-0 bottom-0 left-0 z-50` (plus a conditional `right`
-      // inset, not a plain `inset-0`) elsewhere in the tree - since no
-      // ancestor here establishes an isolating stacking context (no
-      // transform/opacity/will-change/isolate on the plain flex/block divs in
-      // between), this element's z-[60] still stacks correctly against that
-      // fixed z-50 sibling per normal CSS stacking rules.
+      // is still `fixed inset-0 z-50` elsewhere in the tree (only its inner
+      // video-area div gets a conditional `marginRight` for this sidebar,
+      // not the outer box) - since no ancestor here establishes an isolating
+      // stacking context (no transform/opacity/will-change/isolate on the
+      // plain flex/block divs in between), this element's z-[60] still
+      // stacks correctly against that fixed z-50 sibling per normal CSS
+      // stacking rules. This element's own real HEIGHT (not stacking) is
+      // what actually keeps it from extending past the fullscreen bar's row
+      // - see AppLayout.tsx's placeholder div, right after this row, for
+      // that mechanism.
       className="relative z-[60] flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-card"
     >
       <div
