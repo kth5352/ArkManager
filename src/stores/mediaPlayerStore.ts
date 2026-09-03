@@ -56,6 +56,25 @@ interface MediaPlayerState {
   // transport buttons keep working as remote controls for the detached
   // window's player.
   isDetached: boolean
+  // Whether this window is currently showing FullscreenMediaOverlay (not
+  // synced cross-window via useMediaPlayerSync's toSyncState - each window's
+  // own fullscreen/minimized state is independent, this is purely local
+  // per-window UI state that just needs to be readable outside
+  // MediaPlayerHost.tsx, which owns the actual expand/minimize logic).
+  // AppLayout.tsx reads this (together with mediaFullscreenBarHeight below)
+  // to reserve real flow space for the fullscreen transport bar - without
+  // it, MediaSidebar's h-full would expand to the full app height while
+  // fullscreen is showing (FullscreenMediaOverlay is `fixed`, so
+  // MediaPlayerHost contributes zero flow height then) and visually extend
+  // down past where the bar actually is.
+  mediaExpanded: boolean
+  setMediaExpanded: (expanded: boolean) => void
+  // Real measured height (px) of FullscreenMediaOverlay's bottom transport
+  // bar, reported via a ResizeObserver in that component - not a hardcoded
+  // guess, so a future content/padding change there can't silently desync
+  // from whatever AppLayout.tsx reserves space for. 0 until first measured.
+  mediaFullscreenBarHeight: number
+  setMediaFullscreenBarHeight: (height: number) => void
   // PIP 자막 창이 지금 떠 있는지 - 메인 프로세스가 진실 공급원(항상 최대 1개만
   // 존재 가능, MediaPlayerHost.tsx가 subtitle-pip:opened/closed 알림을 구독해
   // 이 필드에 반영한다)이므로, 도킹바와 자막 로그 탭 두 토글 버튼이 항상 같은
@@ -171,6 +190,10 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   volume: 1,
   previousVolume: 1,
   isDetached: false,
+  mediaExpanded: false,
+  setMediaExpanded: (expanded) => set({ mediaExpanded: expanded }),
+  mediaFullscreenBarHeight: 0,
+  setMediaFullscreenBarHeight: (height) => set({ mediaFullscreenBarHeight: height }),
   subtitlePipOpen: false,
   setSubtitlePipOpen: (open) => set({ subtitlePipOpen: open }),
   sidebarActiveTab: 'playlists',

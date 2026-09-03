@@ -1,5 +1,5 @@
 // src/components/media/FullscreenMediaOverlay.tsx
-import { useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { Captions, ListMusic, Minimize2, PictureInPicture2 } from 'lucide-react'
 import { MediaTransportBar } from './MediaTransportBar'
@@ -60,6 +60,7 @@ export function FullscreenMediaOverlay({
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
   const sidebarActiveTab = useMediaPlayerStore((s) => s.sidebarActiveTab)
+  const setMediaFullscreenBarHeight = useMediaPlayerStore((s) => s.setMediaFullscreenBarHeight)
   const setSidebarOpen = useSetMediaSidebarOpenMutation()
   const { data: mediaSidebarOpen = false } = useMediaSidebarOpenQuery()
   const { data: mediaSidebarWidth = MEDIA_SIDEBAR_WIDTH_DEFAULT } = useMediaSidebarWidthQuery()
@@ -75,6 +76,27 @@ export function FullscreenMediaOverlay({
   // reasoning as GameThumbnail.tsx's own localFailedPath.
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
   const thumbFailed = thumbFailedPath === playback.track.path
+
+  // Reports this bar's real rendered height to the store so AppLayout.tsx
+  // can reserve exactly that much flow space below the sidebar row - without
+  // this, MediaSidebar's h-full inherits that row's flex-1 height, which
+  // expands to fill the ENTIRE app height while fullscreen is showing
+  // (MediaPlayerHost contributes zero flow height then - FullscreenMediaOverlay
+  // is `fixed`, taken out of flow entirely), so the sidebar would extend down
+  // behind/past this bar instead of stopping above it like it does in docked
+  // mode. Measured (not hardcoded) so a future content/padding change here
+  // can't silently desync from a guessed pixel value in AppLayout.tsx.
+  const barRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) setMediaFullscreenBarHeight(entry.contentRect.height)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [setMediaFullscreenBarHeight])
 
   const hasSyncedLyrics = parsedLyrics?.kind === 'synced'
   const handleToggleSubtitlePip = (e: MouseEvent): void => {
@@ -150,7 +172,7 @@ export function FullscreenMediaOverlay({
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-2 bg-black/80 p-3">
+      <div ref={barRef} className="flex flex-col gap-2 bg-black/80 p-3">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-white/10">
             {thumbFailed ? (

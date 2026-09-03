@@ -57,7 +57,14 @@ export function MediaPlayerHost() {
   // FullscreenMediaOverlay covered audio too) would show fullscreen for an
   // audio track's very first play, before the effect below - which only
   // ever fires for isVideo tracks - gets any chance to run.
-  const [mediaExpanded, setMediaExpanded] = useState(false)
+  //
+  // Lives in mediaPlayerStore (not local useState) so AppLayout.tsx can
+  // read it too, to reserve real flow space below the sidebar row while
+  // fullscreen is showing - see mediaPlayerStore.ts's own comment on this
+  // field for why. Not cross-window synced (this window's fullscreen state
+  // has nothing to do with any other window's).
+  const mediaExpanded = useMediaPlayerStore((s) => s.mediaExpanded)
+  const setMediaExpanded = useMediaPlayerStore((s) => s.setMediaExpanded)
   const [expandedForPath, setExpandedForPath] = useState<string | null>(null)
 
   // Auto-expands to fullscreen whenever a NEW video track becomes current -

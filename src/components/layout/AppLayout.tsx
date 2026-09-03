@@ -25,6 +25,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const sidebarActiveTab = useMediaPlayerStore((s) => s.sidebarActiveTab)
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
+  const mediaExpanded = useMediaPlayerStore((s) => s.mediaExpanded)
+  const mediaFullscreenBarHeight = useMediaPlayerStore((s) => s.mediaFullscreenBarHeight)
+  const isDetached = useMediaPlayerStore((s) => s.isDetached)
   const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
     useMediaSidebarOpenQuery()
   const setMediaSidebarOpenMutation = useSetMediaSidebarOpenMutation()
@@ -93,15 +96,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
             push `<main>`'s width instead of floating on top of
             DetailSidebar/BulkCrawlProgressBanner, which both live outside
             this row. MediaSidebar's own root still carries `relative
-            z-[60]` (see MediaSidebar.tsx) so it keeps painting above
-            FullscreenMediaOverlay's `fixed top-0 bottom-0 left-0 z-50` (rendered
-            elsewhere, inside MediaPlayerHost, with a conditional `right` inset
-            rather than a plain `inset-0` - narrows it to make room for this
-            sidebar on /media) whenever both are visible at once - plain
-            flex/block divs like this row and this component's own root don't
-            establish an isolating stacking context, so that fixed z-50
-            element and this relative z-[60] element still stack against each
-            other by z-index alone, regardless of DOM position. */}
+            z-[60]` (see MediaSidebar.tsx) and `h-full`, inheriting THIS
+            row's height - which is why the placeholder right after this row
+            (below) exists: without it, this row's flex-1 would expand to
+            fill the entire app height while FullscreenMediaOverlay is
+            showing (that component is `fixed`, so MediaPlayerHost
+            contributes zero flow height then), and MediaSidebar would
+            extend down past the fullscreen transport bar instead of
+            stopping above it the way it does in docked mode. */}
         {/* No longer gated on whether a track is queued (currentIndex !==
             null) - the sidebar's playlist-management tab is a persistent
             feature (create/rename/delete/play saved playlists, reachable
@@ -121,6 +123,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
           />
         )}
       </div>
+      {/* Reserves real flow height for FullscreenMediaOverlay's bottom
+          transport bar while it's showing - see the comment on the row
+          above for why this is needed. Height is the bar's own actual
+          measured height (mediaPlayerStore.ts's mediaFullscreenBarHeight,
+          reported by a ResizeObserver in FullscreenMediaOverlay.tsx), not a
+          guessed constant, so it can never desync from the real thing.
+          Gated on !isDetached too - when detached, FullscreenMediaOverlay
+          never renders in this window (MediaPlayerHost's own gate), so
+          there's nothing here to reserve space for regardless of
+          mediaExpanded's stale value. */}
+      {mediaExpanded && !isDetached && (
+        <div style={{ height: mediaFullscreenBarHeight }} className="shrink-0" />
+      )}
       <MediaPlayerHost />
       <BulkCrawlProgressBanner progress={bulkCrawlProgress} />
       <ExcludedEntriesDialog />
