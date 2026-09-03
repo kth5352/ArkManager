@@ -117,6 +117,20 @@ Napi::String Init(const Napi::CallbackInfo &info) {
   // turning both off is what actually preserves the previous behavior.
   g_p_set_option_string(g_ctx, "sub-auto", "no");
   g_p_set_option_string(g_ctx, "sid", "no");
+  // 5-band EQ (60/230/910/3000/14000 Hz), every band flat (0dB gain) at
+  // session start. setEqualizerBandGain() below tweaks one band's gain in
+  // place via af-command without ever touching this af string again -
+  // confirmed empirically (.superpowers/spikes/eq-af-command/, gitignored
+  // scratch) that doing so produces ZERO audio-reconfig/reinit events,
+  // unlike resetting the whole af property, which does. af is a per-session
+  // (not per-file) mpv setting, so this chain survives every loadFile call
+  // automatically - no re-application needed on track change.
+  g_p_set_option_string(g_ctx, "af",
+      "@eq0:lavfi=[equalizer=f=60:width_type=h:width=50:g=0],"
+      "@eq1:lavfi=[equalizer=f=230:width_type=h:width=100:g=0],"
+      "@eq2:lavfi=[equalizer=f=910:width_type=h:width=400:g=0],"
+      "@eq3:lavfi=[equalizer=f=3000:width_type=h:width=1000:g=0],"
+      "@eq4:lavfi=[equalizer=f=14000:width_type=h:width=4000:g=0]");
 
   int rc = g_p_initialize(g_ctx);
   if (rc < 0) {
@@ -248,6 +262,32 @@ Napi::String SetVolume(const Napi::CallbackInfo &info) {
   return Napi::String::New(env, "OK");
 }
 
+Napi::String SetEqualizerBandGain(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  if (!g_ctx) return Napi::String::New(env, "ERROR not initialized");
+  if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber()) {
+    return Napi::String::New(env, "ERROR expected bandIndex, gainDb (numbers)");
+  }
+  int bandIndex = info[0].As<Napi::Number>().Int32Value();
+  if (bandIndex < 0 || bandIndex > 4) {
+    return Napi::String::New(env, "ERROR bandIndex must be 0-4");
+  }
+  double gainDb = info[1].As<Napi::Number>().DoubleValue();
+  std::string label = "eq" + std::to_string(bandIndex);
+  std::string gainStr = std::to_string(gainDb);
+  // The trailing "equalizer" argument is mpv's own "target" parameter -
+  // required to route the command into the specific ffmpeg filter instance
+  // inside this label's lavfi graph. Omitting it produces a generic,
+  // undiagnosable error (confirmed empirically during today's spike) - this
+  // exact 5-argument shape must not be "simplified" by a future reader.
+  const char *cmd[] = {"af-command", label.c_str(), "gain", gainStr.c_str(), "equalizer", NULL};
+  int rc = g_p_command(g_ctx, cmd);
+  if (rc < 0) {
+    return Napi::String::New(env, std::string("ERROR af-command failed: ") + g_p_error_string(rc));
+  }
+  return Napi::String::New(env, "OK");
+}
+
 Napi::Value GetTimePos(const Napi::CallbackInfo &info) {
   Napi::Env env = info.Env();
   if (!g_ctx) return env.Null();
@@ -328,6 +368,7 @@ Napi::Object InitModule(Napi::Env env, Napi::Object exports) {
   exports.Set("setPause", Napi::Function::New(env, SetPause));
   exports.Set("seek", Napi::Function::New(env, Seek));
   exports.Set("setVolume", Napi::Function::New(env, SetVolume));
+  exports.Set("setEqualizerBandGain", Napi::Function::New(env, SetEqualizerBandGain));
   exports.Set("getTimePos", Napi::Function::New(env, GetTimePos));
   exports.Set("getDuration", Napi::Function::New(env, GetDuration));
   exports.Set("getEofReached", Napi::Function::New(env, GetEofReached));
