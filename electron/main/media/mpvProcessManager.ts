@@ -130,6 +130,10 @@ export function setVolume(volume: number): void {
   child?.postMessage({ type: 'set-volume', volume })
 }
 
+export function setEqualizerBandGain(bandIndex: number, gainDb: number): void {
+  child?.postMessage({ type: 'set-eq-band', bandIndex, gainDb })
+}
+
 export function resize(width: number, height: number): void {
   child?.postMessage({ type: 'resize', width, height })
 }

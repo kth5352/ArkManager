@@ -4,6 +4,7 @@ import {
   MpvLoadRequestSchema,
   MpvResizeRequestSchema,
   MpvSeekRequestSchema,
+  MpvSetEqBandRequestSchema,
   MpvSetVolumeRequestSchema,
 } from '../../../shared/types/ipc'
 import * as mpv from '../media/mpvProcessManager'
@@ -47,6 +48,13 @@ export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): 
   ipcMain.handle(IPC_CHANNELS.MPV_SET_VOLUME, (_event, payload: unknown) => {
     const { volume } = MpvSetVolumeRequestSchema.parse(payload)
     mpv.setVolume(volume)
+  })
+
+  // ipcMain.on, not .handle - fires on every slider-drag tick from the
+  // preload side via ipcRenderer.send, same fire-and-forget shape as resize.
+  ipcMain.on(IPC_CHANNELS.MPV_SET_EQ_BAND, (_event, payload: unknown) => {
+    const { bandIndex, gainDb } = MpvSetEqBandRequestSchema.parse(payload)
+    mpv.setEqualizerBandGain(bandIndex, gainDb)
   })
 
   mpv.onWorkerMessage((msg) => {

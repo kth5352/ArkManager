@@ -451,6 +451,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.MPV_SEEK, { seconds }),
     setVolume: (volume: number): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.MPV_SET_VOLUME, { volume }),
+    // Fire-and-forget (send, not invoke): fires on every slider-drag tick,
+    // same shape as resize/seek's treatment of high-frequency calls.
+    setEqualizerBandGain: (bandIndex: number, gainDb: number): void =>
+      ipcRenderer.send(IPC_CHANNELS.MPV_SET_EQ_BAND, { bandIndex, gainDb }),
     onStateUpdate: (callback: (state: MpvStateUpdate) => void): (() => void) => {
       const listener = (_event: unknown, state: MpvStateUpdate): void => callback(state)
       ipcRenderer.on(IPC_CHANNELS.MPV_STATE_UPDATE, listener)

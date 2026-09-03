@@ -92,6 +92,7 @@ export const IPC_CHANNELS = {
   MPV_PAUSE: 'mpv:pause',
   MPV_SEEK: 'mpv:seek',
   MPV_SET_VOLUME: 'mpv:set-volume',
+  MPV_SET_EQ_BAND: 'mpv:set-eq-band',
   MPV_BECOME_HOST: 'mpv:become-host',
   MPV_RESIZE: 'mpv:resize',
   MPV_REQUEST_FRAME_PORT: 'mpv:request-frame-port',
@@ -631,6 +632,12 @@ export const MpvSetVolumeRequestSchema = z.object({
   volume: z.number().min(0).max(1),
 })
 export type MpvSetVolumeRequest = z.infer<typeof MpvSetVolumeRequestSchema>
+
+export const MpvSetEqBandRequestSchema = z.object({
+  bandIndex: z.number().int().min(0).max(4),
+  gainDb: z.number().min(-12).max(12),
+})
+export type MpvSetEqBandRequest = z.infer<typeof MpvSetEqBandRequestSchema>
 
 // Pushed from main to whichever window(s) need to know playback state
 // without hosting the video themselves (e.g. the sidebar's lyrics tab, the

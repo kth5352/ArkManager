@@ -35,6 +35,7 @@ const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as {
   setPause: (paused: boolean) => string
   seek: (seconds: number) => string
   setVolume: (volume: number) => string
+  setEqualizerBandGain: (bandIndex: number, gainDb: number) => string
   getTimePos: () => number | null
   getDuration: () => number | null
   getEofReached: () => boolean
@@ -51,6 +52,7 @@ type WorkerMessage =
   | { type: 'pause' }
   | { type: 'seek'; seconds: number }
   | { type: 'set-volume'; volume: number }
+  | { type: 'set-eq-band'; bandIndex: number; gainDb: number }
   | { type: 'resize'; width: number; height: number }
   | { type: 'shutdown' }
 
@@ -327,6 +329,11 @@ process.parentPort.on('message', (e) => {
 
   if (msg.type === 'set-volume') {
     addon.setVolume(msg.volume)
+    return
+  }
+
+  if (msg.type === 'set-eq-band') {
+    addon.setEqualizerBandGain(msg.bandIndex, msg.gainDb)
     return
   }
 
