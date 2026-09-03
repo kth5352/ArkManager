@@ -72,4 +72,34 @@ describe('SETTINGS_GET', () => {
 
     expect(getSettingHandler()({}, { key: 'media-volume' })).toBe('0.5')
   })
+
+  it('returns null for non-JSON equalizer bands', () => {
+    setSetting(db, 'media-equalizer-bands', 'not-json')
+
+    expect(getSettingHandler()({}, { key: 'media-equalizer-bands' })).toBeNull()
+  })
+
+  it('returns null for equalizer bands of the wrong length', () => {
+    setSetting(db, 'media-equalizer-bands', '[0,0,0]')
+
+    expect(getSettingHandler()({}, { key: 'media-equalizer-bands' })).toBeNull()
+  })
+
+  it('returns null for equalizer bands containing a non-number', () => {
+    setSetting(db, 'media-equalizer-bands', '[0,0,"3",0,0]')
+
+    expect(getSettingHandler()({}, { key: 'media-equalizer-bands' })).toBeNull()
+  })
+
+  it('returns null for equalizer bands outside the -12..12 dB range', () => {
+    setSetting(db, 'media-equalizer-bands', '[0,0,50,0,0]')
+
+    expect(getSettingHandler()({}, { key: 'media-equalizer-bands' })).toBeNull()
+  })
+
+  it('returns valid equalizer bands re-serialized canonically', () => {
+    setSetting(db, 'media-equalizer-bands', '[6, 4, 0, 0, -2]')
+
+    expect(getSettingHandler()({}, { key: 'media-equalizer-bands' })).toBe('[6,4,0,0,-2]')
+  })
 })

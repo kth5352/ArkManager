@@ -7,11 +7,7 @@ import { parseLyrics } from '../../lib/parseLyrics'
 import { useMediaLyrics } from './useMediaLyrics'
 import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsToggleState'
 import { useBroadcastActiveSubtitleLine } from '../../hooks/useBroadcastActiveSubtitleLine'
-import {
-  useMediaEqualizerQuery,
-  useMediaVolumeQuery,
-  useSetMediaVolumeMutation,
-} from '../../services/settingsService'
+import { useMediaVolumeQuery, useSetMediaVolumeMutation } from '../../services/settingsService'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -115,23 +111,12 @@ export function MediaPlayerHost() {
     setVolume(persistedVolume)
   }, [persistedVolume, setVolume])
 
-  // Restores the persisted EQ (or leaves the addon's own flat default in
-  // place if nothing was ever saved) exactly once per session - the native
-  // addon's Init() always starts every band at 0dB, so a non-flat saved
-  // setting only takes effect if something re-applies it. Guarded the same
-  // way volume restoration is: useMediaEqualizerQuery's `data` is undefined
-  // only while the initial fetch is in flight, so this fires on the first
-  // definite value (even an all-flat one, which is a harmless no-op against
-  // the addon's own default) and never again.
-  const { data: persistedEqBands } = useMediaEqualizerQuery()
-  const eqLoadedRef = useRef(false)
-  useEffect(() => {
-    if (eqLoadedRef.current || persistedEqBands === undefined || isDetached) return
-    eqLoadedRef.current = true
-    persistedEqBands.forEach((gainDb, bandIndex) => {
-      window.api.mpv.setEqualizerBandGain(bandIndex, gainDb)
-    })
-  }, [persistedEqBands, isDetached])
+  // NOTE: EQ restoration deliberately does NOT live here. It's keyed to the
+  // real mpv init lifecycle in the MAIN process instead (mpvHandlers.ts's
+  // 'init-ok' branch) - a renderer effect fired far too early (before mpv's
+  // native context existed, so every call silently no-op'd), latched once so
+  // it never retried, and covered neither a crash-respawned mpv child nor the
+  // detached player window's own renderer.
 
   // Saves every volume change back - fires once redundantly right after the
   // load effect above applies the persisted value (harmless, see its own

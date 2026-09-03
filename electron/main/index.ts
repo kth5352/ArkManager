@@ -396,7 +396,7 @@ if (!gotSingleInstanceLock) {
     registerExcludedEntriesHandlers(db)
     registerMediaPlaylistHandlers(db)
     registerMediaPlaylistCoverHandlers(db)
-    registerMpvHandlers(() => mainWindow)
+    registerMpvHandlers(db, () => mainWindow)
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a

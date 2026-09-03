@@ -8,8 +8,14 @@ import {
   MpvSetVolumeRequestSchema,
 } from '../../../shared/types/ipc'
 import * as mpv from '../media/mpvProcessManager'
+import { getSetting } from '../database/settingsRepository'
+import { parseStoredMediaEqualizerBands } from './settingsHandlers'
+import type { AppDatabase } from '../database/client'
 
-export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): void {
+export function registerMpvHandlers(
+  db: AppDatabase,
+  getMainWindow: () => BrowserWindow | null
+): void {
   ipcMain.handle(IPC_CHANNELS.MPV_LOAD, (event, payload: unknown) => {
     const { filePath, isVideo } = MpvLoadRequestSchema.parse(payload)
     const win = BrowserWindow.fromWebContents(event.sender) ?? getMainWindow()
@@ -53,8 +59,14 @@ export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): 
   // ipcMain.on, not .handle - fires on every slider-drag tick from the
   // preload side via ipcRenderer.send, same fire-and-forget shape as resize.
   ipcMain.on(IPC_CHANNELS.MPV_SET_EQ_BAND, (_event, payload: unknown) => {
-    const { bandIndex, gainDb } = MpvSetEqBandRequestSchema.parse(payload)
-    mpv.setEqualizerBandGain(bandIndex, gainDb)
+    // safeParse, not parse: this is an ipcMain.on listener, so a throw here
+    // is an uncaught main-process exception (there's no invoke promise to
+    // reject into). A malformed payload just gets dropped instead - the EQ
+    // is fire-and-forget, so silently ignoring a bad send is the graceful
+    // failure mode.
+    const result = MpvSetEqBandRequestSchema.safeParse(payload)
+    if (!result.success) return
+    mpv.setEqualizerBandGain(result.data.bandIndex, result.data.gainDb)
   })
 
   mpv.onWorkerMessage((msg) => {
@@ -98,6 +110,33 @@ export function registerMpvHandlers(getMainWindow: () => BrowserWindow | null): 
         currentTime: 0,
         duration: null,
         error: m.result ?? 'mpv init failed',
+      })
+      return
+    }
+    // A brand-new native mpv session just finished addon.init() (see
+    // mpvWorker.ts's 'init' handler). This is the ONLY correct moment to
+    // re-apply the persisted equalizer: Init() installs the 5-band `af`
+    // chain with every band at 0dB, and setEqualizerBandGain is a no-op
+    // until the native context exists (mpv_addon.cc returns "ERROR not
+    // initialized" with no context, and the worker discards that result).
+    // Doing it here rather than from a renderer effect is what makes
+    // restoration correct in all three cases the old renderer-side version
+    // got wrong: a cold start (the renderer's query resolved long before
+    // mpv had ever been initialized, so its one-shot latch fired against a
+    // null context), a crash-respawn (a fresh child always goes back
+    // through 'init' - see mpvProcessManager's hasInitializedCurrentChild
+    // reset - and gets restoration again here for free), and the detached
+    // player window (its own renderer never ran that effect at all).
+    if (m.type === 'init-ok') {
+      const bands = parseStoredMediaEqualizerBands(getSetting(db, 'media-equalizer-bands'))
+      // null = nothing persisted, or a corrupted row: the addon's own flat
+      // default is already the right answer, so leave it alone.
+      if (!bands) return
+      bands.forEach((gainDb, bandIndex) => {
+        // 0dB bands are skipped, not sent: init-ok means a freshly created
+        // native context whose bands are all at 0dB already, so those calls
+        // would be pure no-ops.
+        if (gainDb !== 0) mpv.setEqualizerBandGain(bandIndex, gainDb)
       })
       return
     }
