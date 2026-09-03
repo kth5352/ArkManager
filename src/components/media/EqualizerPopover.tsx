@@ -94,11 +94,23 @@ export function EqualizerPopover({ dark = false, compact = false }: EqualizerPop
   // release, so a drag produces exactly one settings mutation instead of one
   // per tick - which also removes the out-of-order-onSuccess race that
   // concurrent per-tick mutations could otherwise lose a value to.
+  //
+  // onSettled clears dragState only if it's STILL this same drag - releasing
+  // band 0 and immediately starting a drag on band 1 before band 0's mutation
+  // settles would otherwise null out band 1's in-progress dragState from
+  // band 0's callback, snapping band 1's slider back to its stale committed
+  // value mid-drag and silently dropping its eventual commitDrag (it reads a
+  // by-then-null dragState). The IPC+sqlite round-trip this closes is single-
+  // digit milliseconds, so the window is a sub-5ms release-then-redrag - not
+  // reachable with a mouse or keyboard, but free to guard against.
   const commitDrag = (): void => {
     if (!dragState) return
+    const committed = dragState
     const newGains = [...currentGains]
-    newGains[dragState.bandIndex] = dragState.value
-    setEqualizer.mutate(newGains, { onSettled: () => setDragState(null) })
+    newGains[committed.bandIndex] = committed.value
+    setEqualizer.mutate(newGains, {
+      onSettled: () => setDragState((s) => (s === committed ? null : s)),
+    })
   }
 
   const iconClass = dark
