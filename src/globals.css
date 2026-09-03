@@ -92,3 +92,32 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
+
+/* 커스텀 스크롤바 - OS 기본 스크롤바(다크모드에서도 흰 배경)를 대체.
+   --border/--muted-foreground는 이미 :root와 .dark에서 각각 다른 값으로
+   정의되어 있으므로 별도 다크모드 분기 없이 자동으로 따라간다. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+  /* 투명 테두리 + background-clip: padding-box로 트랙과 thumb 사이에
+     여백처럼 보이는 틈을 만듦 - 얇고 둥둥 떠있는 느낌의 모던한 스크롤바. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.4);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
