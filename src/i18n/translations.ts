@@ -365,10 +365,10 @@ const ko = {
   'media.playbackError': '재생할 수 없습니다.',
   'media.convertingFile': '변환 중...',
   'media.noTrackPlaying': '재생 중인 항목이 없습니다.',
-  'media.equalizerPresetFlat': 'Flat',
-  'media.equalizerPresetBassBoost': 'Bass Boost',
-  'media.equalizerPresetVocalBoost': 'Vocal Boost',
-  'media.equalizerPresetTrebleBoost': 'Treble Boost',
+  'media.equalizerPresetFlat': '평탄',
+  'media.equalizerPresetBassBoost': '베이스 부스트',
+  'media.equalizerPresetVocalBoost': '보컬 부스트',
+  'media.equalizerPresetTrebleBoost': '트레블 부스트',
 
   'detailList.duplicateTooltip': '같은 코드의 다른 사본 {count}개:\n{paths}',
   'detailList.none': '없음',
@@ -739,7 +739,7 @@ const ja: Record<keyof typeof ko, string> = {
   'media.convertingFile': '変換中...',
   'media.noTrackPlaying': '再生中の項目がありません。',
   'media.equalizerPresetFlat': 'フラット',
-  'media.equalizerPresetBassBoost': 'バスブースト',
+  'media.equalizerPresetBassBoost': 'ベースブースト',
   'media.equalizerPresetVocalBoost': 'ボーカルブースト',
   'media.equalizerPresetTrebleBoost': 'トレブルブースト',
 
