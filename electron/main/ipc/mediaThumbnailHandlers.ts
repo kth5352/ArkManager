@@ -1,5 +1,5 @@
 import { app, dialog, ipcMain } from 'electron'
-import { readFile } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS, SetMediaThumbnailFromFileRequestSchema } from '../../../shared/types/ipc'
 import { isAudioFile } from '../../../shared/isMediaFile'
@@ -13,6 +13,8 @@ import {
   writeAudioCoverWithBackup,
 } from '../media/audioCover'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from '../thumbnailProtocol'
+import { mediaThumbnailCacheDir } from '../mediaThumbnailProtocol'
+import { keyToSafeDirName } from '../save/keyToSafeDirName'
 import type { AppDatabase } from '../database/client'
 
 function mediaThumbnailOverrideCacheDir(): string {
@@ -23,6 +25,21 @@ function toRendererSafeAudioCoverError(error: unknown): unknown {
   return error instanceof AudioCoverRestoreError
     ? new Error(MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE)
     : error
+}
+
+// resolveMediaThumbnail.ts's auto-extraction cache is keyed purely by
+// filePath (existence on disk IS the cache - see its own comment), with
+// nothing anywhere that ever invalidates one entry. Embedding a new cover
+// directly into the audio file (below) doesn't touch that cache at all, so
+// a track that already had ANY cached thumbnail - e.g. from the directory-
+// image tier, which populates every track in a folder containing a
+// cover.jpg even before any of them are individually edited - kept showing
+// the stale image forever after an embed, recoverable only via Settings'
+// "clear cache". force: true makes this a harmless no-op when nothing was
+// cached yet for this file.
+async function invalidateMediaThumbnailCache(filePath: string): Promise<void> {
+  const cachePath = join(mediaThumbnailCacheDir(), `${keyToSafeDirName(filePath)}.webp`)
+  await rm(cachePath, { force: true })
 }
 
 export function registerMediaThumbnailHandlers(db: AppDatabase): void {
@@ -67,7 +84,10 @@ export function registerMediaThumbnailHandlers(db: AppDatabase): void {
       } catch (error) {
         throw toRendererSafeAudioCoverError(error)
       }
-      if (result.ok) return { mode: 'embedded' as const, warning: result.warning }
+      if (result.ok) {
+        await invalidateMediaThumbnailCache(filePath)
+        return { mode: 'embedded' as const, warning: result.warning }
+      }
       warning = result.warning
     }
     const savedPath = await saveCustomCoverImage(mediaThumbnailOverrideCacheDir(), filePath, buffer)
