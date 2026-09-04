@@ -157,6 +157,15 @@ export function registerMetadataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.METADATA_CRAWL_MISSING, (event, payload: unknown) => {
     const { codes } = CrawlMissingMetadataRequestSchema.parse(payload)
     bulkCrawlQueue.enqueue(codes, (progress) => {
+      // Bulk crawling can run for minutes; the window that started it may
+      // already be closed by the time a later progress tick fires. Sending
+      // to a destroyed webContents throws - bulkCrawlQueue.ts's own
+      // try/catch around this callback now keeps the queue alive either
+      // way, but skipping the send here avoids the throw (and its console
+      // noise) in the first place, matching the win.isDestroyed() guard
+      // every other webContents.send in this app already uses (see
+      // mpvHandlers.ts's onWorkerMessage).
+      if (event.sender.isDestroyed()) return
       event.sender.send(IPC_CHANNELS.METADATA_BULK_CRAWL_PROGRESS, progress)
     })
   })

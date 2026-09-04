@@ -61,7 +61,23 @@ export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCra
     }
 
     completed += 1
-    reportProgress?.({ completed, total })
+    // reportProgress is the caller's event.sender.send(...) - it throws if
+    // the window that originally called enqueue() has since been closed
+    // (e.g. the user closed the app or navigated away mid-crawl). That throw
+    // used to happen OUTSIDE this try/catch, so it propagated out of this
+    // async function as an unhandled rejection and the setTimeout below was
+    // never reached - `processing` then stayed true forever (only reset at
+    // the empty-queue branch above, which this code path never got back to),
+    // silently killing bulk crawling for the rest of the session: every
+    // later enqueue() would see processing === true and never restart the
+    // worker. Reporting progress is best-effort, same as the crawl attempt
+    // itself just above - a failure to notify a closed window must not stop
+    // the remaining queue from being processed.
+    try {
+      reportProgress?.({ completed, total })
+    } catch {
+      // Best-effort - see comment above.
+    }
     setTimeout(processNext, CRAWL_INTERVAL_MS)
   }
 
@@ -76,7 +92,13 @@ export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCra
 
       pending.push(...newCodes)
       total += newCodes.length
-      reportProgress({ completed, total })
+      // Best-effort - see processNext's own comment on why a throw here
+      // (the calling window already closed) must not propagate.
+      try {
+        reportProgress({ completed, total })
+      } catch {
+        // Best-effort - see above.
+      }
 
       if (!processing) {
         processing = true

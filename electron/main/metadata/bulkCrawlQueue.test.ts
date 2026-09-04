@@ -113,6 +113,41 @@ describe('createBulkCrawlQueue', () => {
     expect(getGameMetadata(db, 'RJ02222222')?.title).toBe('Title RJ02222222')
   })
 
+  it('continues the queue after onProgress throws (e.g. the window that started it was closed)', async () => {
+    crawlGameMetadataMock.mockImplementation(async (c) => metadataFor(c.value))
+    const queue = createBulkCrawlQueue(db, '/cache/covers')
+    // Simulates event.sender.send(...) throwing because the calling
+    // window's webContents was destroyed mid-crawl.
+    const onProgress = vi.fn(() => {
+      throw new Error('Object has been destroyed')
+    })
+
+    queue.enqueue([code('RJ01111111'), code('RJ02222222')], onProgress)
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(1000)
+
+    // Both codes still get crawled and saved despite every progress report
+    // throwing - a throw here must not leave the queue permanently stuck.
+    expect(crawlGameMetadataMock).toHaveBeenCalledTimes(2)
+    expect(getGameMetadata(db, 'RJ01111111')?.title).toBe('Title RJ01111111')
+    expect(getGameMetadata(db, 'RJ02222222')?.title).toBe('Title RJ02222222')
+
+    // One more tick for the empty-queue branch (which resets `processing`
+    // to false) to actually run - it's scheduled a further CRAWL_INTERVAL_MS
+    // after the second code finishes, so it lands just past the 1000ms
+    // window already advanced above.
+    await vi.advanceTimersByTimeAsync(1000)
+
+    // The queue is genuinely idle now (processing reset to false), not just
+    // coincidentally caught up - a later enqueue must still actually start
+    // a new worker rather than silently no-op forever because `processing`
+    // was left stuck true by the earlier throws.
+    crawlGameMetadataMock.mockClear()
+    queue.enqueue([code('RJ03333333')], vi.fn())
+    await vi.advanceTimersByTimeAsync(0)
+    expect(crawlGameMetadataMock).toHaveBeenCalledTimes(1)
+  })
+
   it('merges a second enqueue call into the already-running queue instead of starting a second worker', async () => {
     crawlGameMetadataMock.mockImplementation(async (c) => metadataFor(c.value))
     const queue = createBulkCrawlQueue(db, '/cache/covers')
