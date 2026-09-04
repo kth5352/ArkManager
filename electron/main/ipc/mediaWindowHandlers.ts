@@ -80,7 +80,15 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
   // whichever window changes the shared control-plane state broadcasts it,
   // this just forwards to every OTHER currently open window.
   ipcMain.on(IPC_CHANNELS.MEDIA_STATE_BROADCAST, (event, payload: unknown) => {
-    const state = MediaSyncStateSchema.parse(payload)
+    // safeParse, not parse: this is an ipcMain.on listener, so a throw here
+    // is an uncaught main-process exception (there's no invoke promise to
+    // reject into, unlike MEDIA_OPEN_PLAYER_WINDOW's ipcMain.handle above,
+    // where .parse() is fine as-is). A malformed broadcast just gets
+    // dropped instead - matches MPV_SET_EQ_BAND's own established pattern
+    // for this exact class of handler (see mpvHandlers.ts).
+    const result = MediaSyncStateSchema.safeParse(payload)
+    if (!result.success) return
+    const state = result.data
     isMediaPlaying = state.isPlaying
     for (const win of BrowserWindow.getAllWindows()) {
       if (win.webContents.id !== event.sender.id) {

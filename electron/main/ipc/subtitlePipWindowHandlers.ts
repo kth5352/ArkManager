@@ -139,7 +139,13 @@ export function registerSubtitlePipWindowHandlers(
   // 렌더러(호스팅 중인 창)→메인이 신뢰 경계이므로 여기서 검증한 뒤 PIP 창에만
   // 릴레이한다 - MEDIA_STATE_BROADCAST가 이미 확립한 것과 동일한 패턴.
   ipcMain.on(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, (_event, payload: unknown) => {
-    const parsed = SubtitleLinePayloadSchema.parse(payload)
+    // safeParse, not parse: an ipcMain.on listener has no invoke promise to
+    // reject into, so a throw here is an uncaught main-process exception -
+    // matches MPV_SET_EQ_BAND's/MEDIA_STATE_BROADCAST's own established
+    // pattern for this exact class of handler.
+    const result = SubtitleLinePayloadSchema.safeParse(payload)
+    if (!result.success) return
+    const parsed = result.data
     lastPayload = parsed
     pipWindow?.webContents.send(IPC_CHANNELS.SUBTITLE_PIP_LINE_UPDATE, parsed)
   })
