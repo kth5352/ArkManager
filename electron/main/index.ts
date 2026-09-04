@@ -26,6 +26,7 @@ import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
 import { registerMediaPlaylistHandlers } from './ipc/mediaPlaylistHandlers'
 import { registerMediaPlaylistCoverHandlers } from './ipc/mediaPlaylistCoverHandlers'
 import { registerMpvHandlers } from './ipc/mpvHandlers'
+import * as mpv from './media/mpvProcessManager'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
@@ -401,6 +402,13 @@ if (!gotSingleInstanceLock) {
     const lifecycle = createQuitLifecycle(() => {
       closePlayerWindow?.()
       closeSubtitlePipWindow?.()
+      // Releases the native mpv session (mpv_render_context_free /
+      // mpv_terminate_destroy / FreeLibrary - see mpv_addon.cc's
+      // Shutdown()) deterministically instead of relying on Electron
+      // hard-killing the utility process on quit. Nothing called this
+      // before - the export and its worker-message handler existed but had
+      // no caller anywhere in the app.
+      mpv.shutdown()
       const now = Date.now()
       for (const session of getActiveSessions()) {
         recordPlaySession(db, session.key, session.keyType, now - session.startedAt)
@@ -422,6 +430,23 @@ if (!gotSingleInstanceLock) {
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) showMainWindow()
     })
+  }).catch((error: unknown) => {
+    // Nothing above this point creates a window, tray icon, or any other
+    // visible surface - a throw anywhere in the chain (a locked/corrupt db,
+    // a failed userData migration, a permission error) previously left the
+    // process resident with absolutely no way for the user to know the app
+    // "launched" and silently did nothing. showErrorBox works with no
+    // parent window (unlike showMessageBox above, which needs one), so it's
+    // the one dialog API that can report a failure this early. app.exit(1)
+    // (not app.quit(), which fires window-all-closed/before-quit and can be
+    // intercepted by a close-behavior prompt that was never registered)
+    // ends the process immediately - there is nothing left to clean up.
+    console.error('Fatal error during startup:', error)
+    dialog.showErrorBox(
+      'Ark Manager failed to start',
+      error instanceof Error ? error.message : String(error)
+    )
+    app.exit(1)
   })
 
   app.on('window-all-closed', () => {
