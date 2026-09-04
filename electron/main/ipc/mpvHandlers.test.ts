@@ -8,7 +8,7 @@ import { registerMpvHandlers } from './mpvHandlers'
 const electronMocks = vi.hoisted(() => ({
   handle: vi.fn(),
   on: vi.fn(),
-  fromWebContents: vi.fn(() => ({ webContents: {} })),
+  fromWebContents: vi.fn((): { webContents: object } | null => ({ webContents: {} })),
 }))
 
 const mpvProcessManagerMocks = vi.hoisted(() => ({
@@ -98,5 +98,58 @@ describe('MPV_LOAD', () => {
       720,
       true
     )
+  })
+
+  it('rejects instead of silently no-oping when no window can host playback', () => {
+    // registerMpvHandlers was given `() => null` as getMainWindow (see the
+    // top-level beforeEach) - combined with fromWebContents returning
+    // nothing here, there is genuinely no window to fall back to, the exact
+    // rare mid-close race this handler used to swallow silently (resolving
+    // the renderer's invoke() with undefined - indistinguishable from a
+    // real success, leaving the caller waiting forever for frames that
+    // could now never arrive). Throws synchronously (no await before the
+    // check), same reason the "rejects a path outside..." test above uses
+    // a sync throw assertion rather than .rejects.
+    electronMocks.fromWebContents.mockReturnValueOnce(null)
+
+    expect(() =>
+      registeredHandler(IPC_CHANNELS.MPV_LOAD)(
+        { sender: {} },
+        { filePath: 'D:\\Music\\song.mp3', isVideo: false }
+      )
+    ).toThrow(/no window available/i)
+    expect(mpvProcessManagerMocks.setHostWindow).not.toHaveBeenCalled()
+    expect(mpvProcessManagerMocks.loadFile).not.toHaveBeenCalled()
+  })
+})
+
+describe('MPV_BECOME_HOST', () => {
+  let db: AppDatabase
+
+  beforeEach(() => {
+    electronMocks.handle.mockClear()
+    electronMocks.on.mockClear()
+    electronMocks.fromWebContents.mockClear()
+    mpvProcessManagerMocks.setHostWindow.mockClear()
+    db = createDbClient(':memory:')
+    registerMpvHandlers(db, () => null)
+  })
+
+  afterEach(() => {
+    db.$client.close()
+  })
+
+  it('re-points frame delivery to the calling window', async () => {
+    await registeredHandler(IPC_CHANNELS.MPV_BECOME_HOST)({ sender: {} })
+    expect(mpvProcessManagerMocks.setHostWindow).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects instead of silently no-oping when no window can host playback', () => {
+    electronMocks.fromWebContents.mockReturnValueOnce(null)
+
+    expect(() => registeredHandler(IPC_CHANNELS.MPV_BECOME_HOST)({ sender: {} })).toThrow(
+      /no window available/i
+    )
+    expect(mpvProcessManagerMocks.setHostWindow).not.toHaveBeenCalled()
   })
 })

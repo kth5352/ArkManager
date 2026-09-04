@@ -35,8 +35,16 @@ export function registerMpvHandlers(
     ) {
       throw new Error('MPV_LOAD: path is not within any registered library or trusted path')
     }
+    // A silent `return` here used to resolve the renderer's invoke()
+    // promise with undefined - indistinguishable from a real success. The
+    // caller (useMediaPlayback.ts) doesn't await/check this call either
+    // way, so it would sit believing playback started, waiting forever for
+    // frames/state updates that can now never arrive. Narrow, rare window
+    // (the calling window's webContents already gone AND no main window to
+    // fall back to - a mid-close race), but a throw at least surfaces it
+    // instead of hanging silently.
     const win = BrowserWindow.fromWebContents(event.sender) ?? getMainWindow()
-    if (!win) return
+    if (!win) throw new Error('MPV_LOAD: no window available to host playback')
     mpv.setHostWindow(win)
     // 1280x720 is only the initial render size, used for the handful of
     // frames produced before the renderer's ResizeObserver reports the real
@@ -48,8 +56,9 @@ export function registerMpvHandlers(
   // - what a detach/reattach host switch needs (the video keeps playing in
   // the utility process throughout; only the MessagePort recipient changes).
   ipcMain.handle(IPC_CHANNELS.MPV_BECOME_HOST, (event) => {
+    // Same reasoning as MPV_LOAD's own throw above - see its comment.
     const win = BrowserWindow.fromWebContents(event.sender) ?? getMainWindow()
-    if (!win) return
+    if (!win) throw new Error('MPV_BECOME_HOST: no window available to host playback')
     mpv.setHostWindow(win)
   })
 
