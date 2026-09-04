@@ -12,6 +12,7 @@ import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { Skeleton } from '../../components/ui/skeleton'
 import { filterFavorites } from '../../lib/filterFavorites'
 import { useTranslation } from '../../i18n/useTranslation'
+import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 // Favorites is a curated view onto entries already fully manageable from
@@ -29,7 +30,14 @@ function FavoriteCard({ game }: { game: ScannedEntry }) {
   const toggleFavorite = useToggleFavorite()
 
   const handleOpen = (): void => {
-    setPendingKey(game.code?.value ?? game.path)
+    // GalleryPage matches a code-less entry via
+    // normalizeLibraryPath(g.path) === pendingOpenKey (lowercased, no
+    // trailing slash) - a raw game.path here (mixed case, possibly a
+    // trailing separator) would never compare equal, so the deep-link
+    // silently does nothing. RecentlyPlayedPage doesn't need this because
+    // its entryKey already comes straight from gameUserData.key, which is
+    // stored normalized.
+    setPendingKey(game.code?.value ?? normalizeLibraryPath(game.path))
     if (game.code) setPendingSearchQuery(game.code.value)
     navigate({ to: '/' })
   }
