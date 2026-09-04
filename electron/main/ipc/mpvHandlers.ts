@@ -10,6 +10,8 @@ import {
 import * as mpv from '../media/mpvProcessManager'
 import { getSetting } from '../database/settingsRepository'
 import { parseStoredMediaEqualizerBands } from './settingsHandlers'
+import { computeMediaAllowedRoots, computeMediaTrustedPaths } from '../media/mediaTrustBoundary'
+import { isPathExactlyTrusted, isPathWithinAnyLibrary } from '../thumbnailProtocol'
 import type { AppDatabase } from '../database/client'
 
 export function registerMpvHandlers(
@@ -18,6 +20,21 @@ export function registerMpvHandlers(
 ): void {
   ipcMain.handle(IPC_CHANNELS.MPV_LOAD, (event, payload: unknown) => {
     const { filePath, isVideo } = MpvLoadRequestSchema.parse(payload)
+    // Every other media-reading IPC handler in this app (lyrics, thumbnails)
+    // checks the requested path against the library/trust boundary before
+    // touching it - this one didn't, despite handing filePath straight to
+    // mpv's native loadfile command (which doesn't distinguish a local path
+    // from a URL/ffmpeg-protocol string). Throwing here rejects the
+    // renderer's invoke() promise, matching how MpvLoadRequestSchema.parse
+    // above already fails this same handler on a malformed payload.
+    const allowedRoots = computeMediaAllowedRoots(db)
+    const trustedPaths = computeMediaTrustedPaths(db)
+    if (
+      !isPathWithinAnyLibrary(filePath, allowedRoots) &&
+      !isPathExactlyTrusted(filePath, trustedPaths)
+    ) {
+      throw new Error('MPV_LOAD: path is not within any registered library or trusted path')
+    }
     const win = BrowserWindow.fromWebContents(event.sender) ?? getMainWindow()
     if (!win) return
     mpv.setHostWindow(win)
