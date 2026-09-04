@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { useTranslation } from '../../i18n/useTranslation'
+import { appToast } from '../../lib/appToast'
 import {
   useCreateSaveSnapshot,
   useRestoreSaveSnapshot,
@@ -163,7 +164,16 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
     if (!entry || pending?.type !== 'restore') return
     restoreSnapshot.mutate(
       { entry, timestamp: pending.timestamp },
-      { onSuccess: () => setPending(null) }
+      {
+        onSuccess: () => setPending(null),
+        // Without this, a restore failure (e.g. restoreSnapshot.ts's own
+        // "a previous restore left leftover data" guard, or a locked save
+        // folder) showed the user nothing at all - the dialog just sat
+        // there with `pending` still set, no different from a slow
+        // success. This is real save data; a silent failure here is worse
+        // than most.
+        onError: () => appToast.error(t('saveManager.restoreFailed')),
+      }
     )
   }
 
