@@ -438,9 +438,13 @@ if (!gotSingleInstanceLock) {
     // "launched" and silently did nothing. showErrorBox works with no
     // parent window (unlike showMessageBox above, which needs one), so it's
     // the one dialog API that can report a failure this early. app.exit(1)
-    // (not app.quit(), which fires window-all-closed/before-quit and can be
-    // intercepted by a close-behavior prompt that was never registered)
-    // ends the process immediately - there is nothing left to clean up.
+    // (not app.quit()) exits synchronously/immediately with a real non-zero
+    // code any external tooling (the installer, a crash monitor) can see -
+    // app.quit() only requests a quit and depends on further event-loop
+    // ticks succeeding while the process may already be in a broken state.
+    // Nothing is registered yet at this point in the chain (no window, no
+    // close-behavior prompt, no before-quit handler) for either call to
+    // interact with either way.
     console.error('Fatal error during startup:', error)
     dialog.showErrorBox(
       'Ark Manager failed to start',
