@@ -94,7 +94,6 @@ export const IPC_CHANNELS = {
   MPV_SET_EQ_BAND: 'mpv:set-eq-band',
   MPV_BECOME_HOST: 'mpv:become-host',
   MPV_RESIZE: 'mpv:resize',
-  MPV_REQUEST_FRAME_PORT: 'mpv:request-frame-port',
   MPV_STATE_UPDATE: 'mpv:state-update',
   // Push-only, main -> renderer, no payload: the current track reached its
   // natural end (detected in mpvWorker.ts from mpv's own keep-open pause -
