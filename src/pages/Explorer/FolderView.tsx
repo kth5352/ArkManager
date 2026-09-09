@@ -596,7 +596,10 @@ export function FolderView({
           and a deeply nested path could produce more segments than the tab's
           width without this, silently overflowing past the row instead of
           scrolling. */}
-      <div className="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border px-4 py-2 text-sm text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        title={path}
+        className="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border px-4 py-2 text-sm text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {breadcrumbs.map((segment, index) => (
           <span key={segment.path} className="flex shrink-0 items-center gap-1">
             {index > 0 && <span>/</span>}

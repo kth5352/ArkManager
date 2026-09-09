@@ -19,6 +19,7 @@ import { useShowItemInFolder } from '../../services/shellService'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ExplorerDragData } from './dragTypes'
 import { Button } from '../../components/ui/button'
+import { UI_MOTION } from '../../lib/motion'
 
 function SortableTab({ tab }: { tab: ExplorerTab }) {
   const { t } = useTranslation()
@@ -74,12 +75,24 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
           onAuxClick={(e) => {
             if (e.button === 1) closeTab(tab.id) // 마우스 휠클릭(가운데 버튼)으로 탭 닫기
           }}
-          className={`group flex shrink-0 items-center gap-1 rounded-t-md border-b-2 px-3 py-2 text-sm transition-colors ${
-            tab.id === activeTabId
-              ? 'border-primary bg-card font-medium'
-              : 'border-transparent hover:bg-accent'
+          className={`group relative flex shrink-0 items-center gap-1 rounded-t-md px-3 py-2 text-sm transition-colors ${
+            tab.id === activeTabId ? 'bg-card font-medium' : 'hover:bg-accent'
           } ${isFileDropTarget ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
         >
+          {/* Was a static border-b-2 that snapped between tabs - now a
+              motion.span with a shared layoutId so it slides to whichever
+              tab becomes active, scoped to its own name (not app-sidebar-
+              selection - see Sidebar.tsx) so the two never animate together.
+              A separate child of the draggable div, not applied to the div
+              itself, so it never fights dnd-kit's own transform/transition
+              style on the same node during a drag. */}
+          {tab.id === activeTabId && (
+            <motion.span
+              layoutId="explorer-tab-selection"
+              className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
+              transition={{ duration: UI_MOTION.selection, ease: UI_MOTION.ease }}
+            />
+          )}
           {/* max-w + truncate: Pretendard renders Korean/Japanese folder
               names wider than the previous system font - an unbounded
               label could grow a single tab wide enough to push the
@@ -87,7 +100,7 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
               to reach them (see the row's own overflow-x-auto below, which
               handles the case where even truncated tabs still don't all
               fit). */}
-          <span className="max-w-40 truncate" title={tab.label}>
+          <span className="relative z-10 max-w-40 truncate" title={tab.label}>
             {tab.label}
           </span>
           <Button

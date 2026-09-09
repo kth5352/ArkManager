@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Heart } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
@@ -11,6 +10,8 @@ import { usePendingGalleryOpenStore } from '../../stores/pendingGalleryOpenStore
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { Skeleton } from '../../components/ui/skeleton'
 import { filterFavorites } from '../../lib/filterFavorites'
+import { useConfirmedPulse } from '../../hooks/useConfirmedPulse'
+import { appToast } from '../../lib/appToast'
 import { useTranslation } from '../../i18n/useTranslation'
 import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 import type { ScannedEntry } from '../../../shared/types/scanner'
@@ -28,6 +29,7 @@ function FavoriteCard({ game }: { game: ScannedEntry }) {
   const setPendingSearchQuery = usePendingGalleryOpenStore((s) => s.setPendingSearchQuery)
   const { data: userData } = useGameUserData(game)
   const toggleFavorite = useToggleFavorite()
+  const favoritePulse = useConfirmedPulse(userData?.isFavorite ?? false, userData !== undefined)
 
   const handleOpen = (): void => {
     // GalleryPage matches a code-less entry via
@@ -43,30 +45,40 @@ function FavoriteCard({ game }: { game: ScannedEntry }) {
   }
 
   return (
-    <motion.div
+    <div
       onClick={handleOpen}
-      whileHover={{ scale: 1.05 }}
-      transition={{ duration: 0.15 }}
-      className="relative flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-md border border-border bg-card"
+      className="group relative flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-md border border-border bg-card"
     >
       <button
         aria-label={t('game.toggleFavorite')}
         onClick={(e) => {
           e.stopPropagation()
-          toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
+          const isFavorite = !(userData?.isFavorite ?? false)
+          toggleFavorite.mutate(
+            { entry: game, isFavorite },
+            { onError: () => appToast.error(t('game.toggleFavoriteFailed')) }
+          )
         }}
-        className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+        className={`absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground transition-[color,transform] duration-120 hover:text-foreground active:scale-[0.9] motion-reduce:transform-none ${
+          favoritePulse ? '[animation:icon-pulse_180ms_ease-in-out] motion-reduce:animate-none' : ''
+        }`}
       >
         <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
       </button>
+      {/* Only the cover scales on hover, not the whole card - matches
+          RecentlyPlayedRow's thumbnail-only scale convention (and Gallery's
+          card, fixed the same way in U4) rather than this card's own
+          previous whole-card whileHover. */}
       <div className="flex-1 overflow-hidden bg-muted">
-        <GameThumbnail entry={game} />
+        <div className="h-full w-full transition-transform duration-160 group-hover:scale-[1.02] motion-reduce:transform-none">
+          <GameThumbnail entry={game} />
+        </div>
       </div>
-      <div className="shrink-0 p-2">
+      <div className="shrink-0 p-3">
         <p className="line-clamp-2 break-words text-sm font-medium">{game.name}</p>
         {game.code && <p className="truncate text-xs text-muted-foreground">{game.code.value}</p>}
       </div>
-    </motion.div>
+    </div>
   )
 }
 

@@ -93,7 +93,7 @@ function TreeNode({
       <div
         ref={setNodeRef}
         style={{ paddingLeft: depth * 16 }}
-        className={`flex h-8 min-w-0 items-center gap-1 rounded px-1 text-sm hover:bg-accent ${
+        className={`flex h-8 min-w-0 items-center gap-1 rounded px-1 text-sm transition-colors duration-120 hover:bg-accent ${
           isActive ? 'bg-accent font-medium' : ''
         } ${isOver ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
       >
