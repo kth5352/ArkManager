@@ -5,6 +5,17 @@ import type { ScannedEntry } from '../../../shared/types/scanner'
 import { isArchiveFile } from '../../../shared/isArchiveFile'
 import { normalizeLibraryPath } from '../database/librariesRepository'
 import { extractCode } from './codeRecognition'
+import { createConcurrencyLimiter } from './concurrencyLimiter'
+
+// Module-level (not per-call) so the cap applies across the whole process,
+// not per-folder or per-library - a synthetic benchmark measured
+// scanNonImageChildren's own Promise.all firing 10,000 concurrent stat()
+// calls for one flat 10,000-entry folder, and 20,000 when scannerHandlers.ts
+// scans 2 libraries in parallel (each folder/library's own unbounded
+// Promise.all stacking on top of the others). 32 is the plan's own starting
+// point; real-disk-latency tuning (8/16/32/64) needs the actual running app,
+// which this synthetic benchmark can't provide.
+const statLimiter = createConcurrencyLimiter(32)
 
 // Prefers the filename-derived code; falls back to a manually-linked
 // path_code_overrides entry (the "코드 연동" feature) for code-less
@@ -36,7 +47,7 @@ async function toScannedEntry(
 ): Promise<ScannedEntry | null> {
   const path = join(parentPath, name)
   try {
-    const stats = await stat(path)
+    const stats = await statLimiter(() => stat(path))
     return {
       name,
       path,

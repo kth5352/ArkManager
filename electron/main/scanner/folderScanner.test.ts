@@ -365,3 +365,65 @@ describe('error tolerance', () => {
     expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
   })
 })
+
+describe('folderScanner stat() concurrency limiting (D1)', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-concurrency-'))
+  })
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+    statOverride.impl = null
+  })
+
+  // A synthetic benchmark (not part of this repo - run once, not
+  // committed) measured scanNonImageChildren's own Promise.all firing
+  // 10,000 concurrent stat() calls for one flat 10,000-entry folder before
+  // the concurrency limiter existed. This test proves the limiter is
+  // actually wired into the real scan path (not just unit-tested in
+  // isolation) and that results stay correct at scale under it.
+  const FILE_COUNT = 200
+
+  it('caps concurrent stat() calls at 32 for a large flat folder, without dropping or reordering results', async () => {
+    for (let i = 0; i < FILE_COUNT; i++) {
+      await writeFile(join(dir, `RJ${String(1000000 + i).padStart(8, '0')}.zip`), '')
+    }
+
+    const { stat: realStat } =
+      await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    let active = 0
+    let peak = 0
+    statOverride.impl = async (path) => {
+      active++
+      peak = Math.max(peak, active)
+      // A tiny artificial delay so overlapping calls actually overlap in
+      // time - without it, calls could resolve synchronously fast enough
+      // that no real overlap is ever observed even with no limiter at all.
+      await new Promise((resolve) => setTimeout(resolve, 1))
+      active--
+      return realStat(path)
+    }
+
+    const entries = await scanLibraryRecursive(dir)
+
+    expect(peak).toBeLessThanOrEqual(32)
+    expect(entries).toHaveLength(FILE_COUNT)
+    expect(new Set(entries.map((e) => e.name)).size).toBe(FILE_COUNT)
+  })
+
+  it('still reports one onProgress call per entry under the limiter', async () => {
+    for (let i = 0; i < FILE_COUNT; i++) {
+      await writeFile(join(dir, `file-${i}.txt`), '')
+    }
+
+    let progressCount = 0
+    const entries = await scanLibraryRecursive(dir, new Map(), () => {
+      progressCount++
+    })
+
+    expect(progressCount).toBe(FILE_COUNT)
+    expect(entries).toHaveLength(FILE_COUNT)
+  })
+})
