@@ -478,7 +478,11 @@ export function FolderView({
   // Root is wherever the user is currently browsing within this tab (the
   // breadcrumb position), not the tab's original opening path - matches the
   // "search from here down" expectation.
-  const { data: shallowEntries = [], isError } = useFolderScan(path)
+  const {
+    data: shallowEntries = [],
+    isLoading: isFolderLoading,
+    isError,
+  } = useFolderScan(path)
   const {
     data: recursiveEntries = [],
     isLoading: isSearchLoading,
@@ -586,9 +590,15 @@ export function FolderView({
 
   return (
     <div className="flex h-full flex-col" data-tab-id={tabId}>
-      <div className="flex items-center gap-1 border-b border-border px-4 py-2 text-sm text-muted-foreground">
+      {/* min-w-0 + overflow-x-auto (scrollbar hidden), each segment shrink-0:
+          same pattern as MediaPage.tsx's MediaBreadcrumb - Pretendard renders
+          Korean/Japanese segment names wider than the previous system font,
+          and a deeply nested path could produce more segments than the tab's
+          width without this, silently overflowing past the row instead of
+          scrolling. */}
+      <div className="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border px-4 py-2 text-sm text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {breadcrumbs.map((segment, index) => (
-          <span key={segment.path} className="flex items-center gap-1">
+          <span key={segment.path} className="flex shrink-0 items-center gap-1">
             {index > 0 && <span>/</span>}
             <BreadcrumbSegmentButton segment={segment} onNavigate={onNavigate} />
           </span>
@@ -664,9 +674,23 @@ export function FolderView({
                 )}
               </ul>
             )
+          ) : isFolderLoading ? (
+            // Was previously destructured but never read, so a slow scan
+            // (a large or network-mounted folder) showed a blank pane with
+            // no feedback - same skeleton treatment as the search branch
+            // above.
+            <div className="flex flex-col gap-1 overflow-auto p-4">
+              {Array.from({ length: 10 }, (_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
           ) : isError ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               {t('explorer.cannotAccessFolder')}
+            </div>
+          ) : sortedShallowEntries.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              {t('common.noItemsToShow')}
             </div>
           ) : viewMode === 'grid' ? (
             <div className="min-h-0 flex-1 p-4">
