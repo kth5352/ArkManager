@@ -55,6 +55,13 @@ export function registerScannerHandlers(db: AppDatabase): void {
     // not silently show zero matches. Deriving this from path count alone
     // would make a user with exactly one registered library indistinguishable
     // from an Explorer request.
+    //
+    // allowPartial: false assumes exactly one path (useFolderScanRecursive's
+    // only current contract) - a future caller sending allowPartial: false
+    // with zero or 2+ paths would hit libraryPaths[0] being undefined, or
+    // silently scan only the first path and drop the rest. Both callers
+    // today (grepped across src/electron/shared) satisfy this invariant; a
+    // new caller must too, or pass allowPartial: true instead.
     if (!allowPartial) {
       const result = await scanLibraryRecursive(libraryPaths[0], overrides, onProgress)
       event.sender.send(IPC_CHANNELS.SCANNER_SCAN_PROGRESS, { scanned })
