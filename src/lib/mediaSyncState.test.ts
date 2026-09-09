@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sameMediaSyncState, toMediaSyncState } from './mediaSyncState'
-import type { MediaSyncState } from '../../shared/types/ipc'
+import { MediaSyncStateSchema, type MediaSyncState } from '../../shared/types/ipc'
 
 function baseState(): MediaSyncState {
   return {
@@ -64,6 +64,20 @@ describe('sameMediaSyncState', () => {
     ['shufflePosition', 1],
     ['isDetached', true],
   ]
+
+  // Guards against schema drift: sameMediaSyncState's field-by-field
+  // comparison (unlike toMediaSyncState's return type) isn't caught by
+  // TypeScript if a new MediaSyncState field is added but forgotten there -
+  // reading properties that were never listed compiles fine. Deriving the
+  // expected field set from the real zod schema means adding a field to
+  // MediaSyncStateSchema without adding it to the table above fails HERE
+  // immediately, rather than silently making sameMediaSyncState under-count
+  // changes to that field.
+  it('the fieldChanges table above covers every MediaSyncState field the real schema defines', () => {
+    const schemaFields = Object.keys(MediaSyncStateSchema.shape).sort()
+    const testedFields = fieldChanges.map(([field]) => field).sort()
+    expect(testedFields).toEqual(schemaFields)
+  })
 
   it.each(fieldChanges)('detects a change in %s as not equal', (field, newValue) => {
     const a = baseState()

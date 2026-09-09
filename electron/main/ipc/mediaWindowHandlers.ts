@@ -9,11 +9,13 @@ import { installZoomInShortcut } from '../zoomShortcuts'
 // duplicate.
 let playerWindow: BrowserWindow | null = null
 
-// Updated on every MEDIA_STATE_BROADCAST (which fires unconditionally on
-// every store change in whichever window is currently active, not only
-// when a detached window exists - see useMediaPlayerSync.ts) - lets the
-// main process's Reload menu handler (electron/main/index.ts) know whether
-// to warn before reloading, without a dedicated IPC round-trip.
+// Updated on every MEDIA_STATE_BROADCAST (which fires whenever the sync DTO
+// actually changes in whichever window is currently active, not only when a
+// detached window exists - see useMediaPlayerSync.ts/sameMediaSyncState) -
+// isPlaying is itself a DTO field, so this stays correct even though P3
+// stopped broadcasting on every store change. Lets the main process's
+// Reload menu handler (electron/main/index.ts) know whether to warn before
+// reloading, without a dedicated IPC round-trip.
 let isMediaPlaying = false
 
 export function getIsMediaPlaying(): boolean {

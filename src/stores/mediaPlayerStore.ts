@@ -58,10 +58,12 @@ interface MediaPlayerState {
   // window's player.
   isDetached: boolean
   // Whether this window is currently showing FullscreenMediaOverlay (not
-  // synced cross-window via useMediaPlayerSync's toSyncState - each window's
-  // own fullscreen/minimized state is independent, this is purely local
-  // per-window UI state that just needs to be readable outside
-  // MediaPlayerHost.tsx, which owns the actual expand/minimize logic).
+  // synced cross-window - src/lib/mediaSyncState.ts's toMediaSyncState
+  // doesn't project this field at all, so useMediaPlayerSync never
+  // broadcasts it - each window's own fullscreen/minimized state is
+  // independent, this is purely local per-window UI state that just needs
+  // to be readable outside MediaPlayerHost.tsx, which owns the actual
+  // expand/minimize logic).
   // AppLayout.tsx reads this (together with mediaFullscreenBarHeight below)
   // to reserve real flow space for the fullscreen transport bar - without
   // it, MediaSidebar's h-full would expand to the full app height while
