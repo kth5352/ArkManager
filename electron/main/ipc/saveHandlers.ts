@@ -48,6 +48,19 @@ function backupRootDir(key: string): string {
 }
 
 export function registerSaveHandlers(db: AppDatabase): void {
+  // SAVE_RESTORE_SNAPSHOT below writes snapshot content INTO whatever this
+  // entry's savePath is, and SAVE_CREATE_SNAPSHOT/SAVE_DIFF read arbitrary
+  // content FROM it - trusting savePath enough for arbitrary file
+  // read/write, same class of risk GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE
+  // has for a cover image. Without pinning it to whatever the native folder
+  // picker most recently actually returned, a compromised or buggy renderer
+  // could set an arbitrary local path (e.g. a system folder) as a "save
+  // path" and get it overwritten by the next restore. Same one-shot pattern
+  // as gameUserDataHandlers.ts's lastPickedCustomCoverPath - the renderer's
+  // own flow is always pick-then-immediately-set for exactly one entry (see
+  // SaveDataSection.tsx/LaunchConfigDialog.tsx's handlePickSaveFolder).
+  let lastPickedSaveFolderPath: string | null = null
+
   ipcMain.handle(IPC_CHANNELS.SAVE_PICK_FOLDER, async (_event, payload: unknown) => {
     const { startPath } = PickSaveFolderRequestSchema.parse(payload)
     // If startPath is a file (an unextracted archive), the native dialog
@@ -58,11 +71,16 @@ export function registerSaveHandlers(db: AppDatabase): void {
       ...(startPath ? { defaultPath: startPath } : {}),
     })
     if (result.canceled || result.filePaths.length === 0) return null
-    return result.filePaths[0]
+    lastPickedSaveFolderPath = result.filePaths[0]
+    return lastPickedSaveFolderPath
   })
 
   ipcMain.handle(IPC_CHANNELS.SAVE_SET_PATH, (_event, payload: unknown) => {
     const { identifier, savePath } = SetSavePathRequestSchema.parse(payload)
+    if (savePath !== lastPickedSaveFolderPath) {
+      throw new Error('선택된 폴더가 아닙니다.')
+    }
+    lastPickedSaveFolderPath = null
     const { key, keyType } = resolveGameEntryKey(identifier)
     setSavePath(db, key, keyType, savePath)
   })
