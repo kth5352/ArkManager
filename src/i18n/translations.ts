@@ -40,6 +40,9 @@ const ko = {
   'settings.noLibraries': '등록된 라이브러리가 없습니다.',
   'settings.pathNotFound':
     '경로를 찾을 수 없습니다. 폴더가 삭제되었거나 드라이브가 연결되어 있지 않은 것 같습니다.',
+  'settings.removeLibraryConfirmTitle': '라이브러리 삭제',
+  'settings.removeLibraryConfirmBody':
+    '"{name}" 라이브러리를 목록에서 삭제하시겠습니까? 실제 파일은 삭제되지 않습니다.',
   'settings.cacheManagement': '캐시 관리',
   'settings.cacheManagementDesc': '크롤링한 DLsite 정보와 캐시된 표지 이미지를 삭제합니다.',
   'settings.clearCache': '캐시 삭제',
@@ -417,6 +420,9 @@ const ja: Record<keyof typeof ko, string> = {
   'settings.noLibraries': '登録されたライブラリがありません。',
   'settings.pathNotFound':
     'パスが見つかりません。フォルダが削除されたか、ドライブが接続されていないようです。',
+  'settings.removeLibraryConfirmTitle': 'ライブラリを削除',
+  'settings.removeLibraryConfirmBody':
+    '「{name}」ライブラリを一覧から削除しますか？実際のファイルは削除されません。',
   'settings.cacheManagement': 'キャッシュ管理',
   'settings.cacheManagementDesc': 'クロールしたDLsite情報とキャッシュされた表紙画像を削除します。',
   'settings.clearCache': 'キャッシュ削除',
@@ -792,6 +798,9 @@ const en: Record<keyof typeof ko, string> = {
   'settings.noLibraries': 'No libraries registered.',
   'settings.pathNotFound':
     'Path not found. The folder may have been deleted or the drive may be disconnected.',
+  'settings.removeLibraryConfirmTitle': 'Remove Library',
+  'settings.removeLibraryConfirmBody':
+    'Remove the library "{name}" from the list? The actual files will not be deleted.',
   'settings.cacheManagement': 'Cache Management',
   'settings.cacheManagementDesc': 'Delete crawled DLsite info and cached cover images.',
   'settings.clearCache': 'Clear Cache',

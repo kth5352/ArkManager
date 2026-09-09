@@ -216,6 +216,47 @@ function ClearCacheDialog() {
   )
 }
 
+// Unlike ClearCacheDialog (which only deletes derived/regenerable cache
+// data), removing a library here drops its registration outright with no
+// way to undo it from the UI - matches the confirm-before-destructive-action
+// pattern already established by DeletePlaylistConfirmDialog.tsx.
+function RemoveLibraryConfirmDialog({
+  library,
+  onClose,
+}: {
+  library: { id: string; name: string } | null
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const removeLibrary = useRemoveLibrary()
+
+  const handleConfirm = (): void => {
+    if (!library) return
+    removeLibrary.mutate(library.id, { onSuccess: onClose })
+  }
+
+  return (
+    <Dialog open={library !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('settings.removeLibraryConfirmTitle')}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {library && t('settings.removeLibraryConfirmBody', { name: library.name })}
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose} disabled={removeLibrary.isPending}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="destructive" onClick={handleConfirm} disabled={removeLibrary.isPending}>
+            {removeLibrary.isPending ? t('common.deleting') : t('common.delete')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function LocaleEmulatorSection() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -541,7 +582,9 @@ function ExternalMetadataProviderSection() {
 export function SettingsPage() {
   const { t } = useTranslation()
   const { data: libraries, isLoading } = useLibraries()
-  const removeLibrary = useRemoveLibrary()
+  const [removingLibrary, setRemovingLibrary] = useState<{ id: string; name: string } | null>(
+    null
+  )
   const { data: version } = useAppVersion()
 
   return (
@@ -568,13 +611,21 @@ export function SettingsPage() {
                   <p className="text-xs text-destructive">{t('settings.pathNotFound')}</p>
                 )}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => removeLibrary.mutate(lib.id)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRemovingLibrary({ id: lib.id, name: lib.name })}
+              >
                 {t('common.delete')}
               </Button>
             </li>
           ))}
         </ul>
       )}
+      <RemoveLibraryConfirmDialog
+        library={removingLibrary}
+        onClose={() => setRemovingLibrary(null)}
+      />
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
         <div>
