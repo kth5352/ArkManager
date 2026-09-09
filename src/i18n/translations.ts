@@ -147,6 +147,9 @@ const ko = {
   'ratingMemo.memoPlaceholder': '메모',
   'ratingMemo.saving': '저장 중...',
   'ratingMemo.saved': '저장됨',
+  'ratingMemo.loadFailed': '불러오지 못했습니다.',
+  'ratingMemo.saveFailed': '저장하지 못했습니다.',
+  'ratingMemo.retry': '다시 시도',
   'ratingMemo.dialogTitle': '평점 / 메모',
 
   'launchConfig.title': '실행 설정',
@@ -527,6 +530,9 @@ const ja: Record<keyof typeof ko, string> = {
   'ratingMemo.memoPlaceholder': 'メモ',
   'ratingMemo.saving': '保存中...',
   'ratingMemo.saved': '保存済み',
+  'ratingMemo.loadFailed': '読み込めませんでした。',
+  'ratingMemo.saveFailed': '保存できませんでした。',
+  'ratingMemo.retry': '再試行',
   'ratingMemo.dialogTitle': '評価 / メモ',
 
   'launchConfig.title': '実行設定',
@@ -906,6 +912,9 @@ const en: Record<keyof typeof ko, string> = {
   'ratingMemo.memoPlaceholder': 'Memo',
   'ratingMemo.saving': 'Saving...',
   'ratingMemo.saved': 'Saved',
+  'ratingMemo.loadFailed': 'Failed to load.',
+  'ratingMemo.saveFailed': 'Failed to save.',
+  'ratingMemo.retry': 'Retry',
   'ratingMemo.dialogTitle': 'Rating / Memo',
 
   'launchConfig.title': 'Launch Settings',

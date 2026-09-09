@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Star } from 'lucide-react'
 import { useGameUserData, useSetRatingAndMemo } from '../../services/gameUserDataService'
 import { useTranslation } from '../../i18n/useTranslation'
+import { appToast } from '../../lib/appToast'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
 interface RatingMemoSectionProps {
@@ -15,7 +16,7 @@ interface RatingMemoSectionProps {
 // whichever field didn't just change alongside the one that did.
 export function RatingMemoSection({ game }: RatingMemoSectionProps) {
   const { t } = useTranslation()
-  const { data: userData } = useGameUserData(game)
+  const { data: userData, isError, refetch } = useGameUserData(game)
   const setRatingAndMemo = useSetRatingAndMemo()
 
   const [rating, setRating] = useState<number | null>(userData?.rating ?? null)
@@ -38,6 +39,17 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
   const [hydrated, setHydrated] = useState(userData !== undefined)
   const [justSaved, setJustSaved] = useState(false)
 
+  // canEdit gates every read/write against the one window where using local
+  // state would be unsafe: before the initial GET resolves (or if it fails
+  // outright). Before that, `rating`/`memo` are still their un-hydrated
+  // defaults (null/'') - a save triggered from that state sends the OTHER,
+  // not-yet-loaded field's default alongside whichever one the user just
+  // touched, silently overwriting a real saved value with null. This is the
+  // exact data-loss path a real user could hit: click a star, then blur out
+  // of an untouched memo textarea, before the GET for an existing memo has
+  // resolved.
+  const canEdit = userData !== undefined && !isError
+
   if (!hydrated && userData !== undefined) {
     setHydrated(true)
     setRating(userData?.rating ?? null)
@@ -51,25 +63,36 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
   }, [justSaved])
 
   const handleRatingClick = (value: number): void => {
+    if (!canEdit) return
     const nextRating = value === rating ? null : value
     setRating(nextRating)
     setHydrated(true)
+    setJustSaved(false)
     setRatingAndMemo.mutate(
       { entry: game, rating: nextRating, memo: memo.trim() === '' ? null : memo },
-      { onSuccess: () => setJustSaved(true) }
+      {
+        onSuccess: () => setJustSaved(true),
+        onError: () => appToast.error(t('ratingMemo.saveFailed')),
+      }
     )
   }
 
   const handleMemoChange = (value: string): void => {
+    if (!canEdit) return
     setMemo(value)
     setHydrated(true)
   }
 
   const handleMemoBlur = (): void => {
+    if (!canEdit) return
     if (memo === (userData?.memo ?? '')) return // 변경 없으면 저장 생략
+    setJustSaved(false)
     setRatingAndMemo.mutate(
       { entry: game, rating, memo: memo.trim() === '' ? null : memo },
-      { onSuccess: () => setJustSaved(true) }
+      {
+        onSuccess: () => setJustSaved(true),
+        onError: () => appToast.error(t('ratingMemo.saveFailed')),
+      }
     )
   }
 
@@ -78,7 +101,12 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
       <p className="text-xs font-medium text-muted-foreground">{t('ratingMemo.rating')}</p>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((value) => (
-          <button key={value} onClick={() => handleRatingClick(value)}>
+          <button
+            key={value}
+            onClick={() => handleRatingClick(value)}
+            disabled={!canEdit}
+            className="disabled:cursor-not-allowed disabled:opacity-50"
+          >
             <Star
               className="h-5 w-5 text-yellow-500"
               fill={rating !== null && value <= rating ? 'currentColor' : 'none'}
@@ -91,8 +119,9 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
         value={memo}
         onChange={(e) => handleMemoChange(e.target.value)}
         onBlur={handleMemoBlur}
+        disabled={!canEdit}
         placeholder={t('ratingMemo.memoPlaceholder')}
-        className="min-h-20 w-full rounded-md border border-border bg-background p-2 text-sm"
+        className="min-h-20 w-full rounded-md border border-border bg-background p-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
       />
       <p className="h-4 text-xs text-muted-foreground">
         {setRatingAndMemo.isPending
@@ -101,6 +130,18 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
             ? t('ratingMemo.saved')
             : ''}
       </p>
+      {isError && (
+        <p className="flex items-center gap-2 text-xs text-destructive">
+          <span>{t('ratingMemo.loadFailed')}</span>
+          <button
+            data-testid="rating-memo-retry"
+            onClick={() => refetch()}
+            className="underline hover:no-underline"
+          >
+            {t('ratingMemo.retry')}
+          </button>
+        </p>
+      )}
     </div>
   )
 }
