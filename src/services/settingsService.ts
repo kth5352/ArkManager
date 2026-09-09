@@ -4,7 +4,7 @@ import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from '../lib/clampSidebarWid
 import { clampExplorerTreeWidth, EXPLORER_TREE_WIDTH_DEFAULT } from '../lib/clampExplorerTreeWidth'
 import { clampMediaSidebarWidth, MEDIA_SIDEBAR_WIDTH_DEFAULT } from '../lib/clampMediaSidebarWidth'
 import { DEFAULT_LOCALE } from '../i18n/translations'
-import { EQ_BAND_COUNT } from '../lib/equalizerPresets'
+import { EQ_BAND_COUNT, EQ_MAX_GAIN_DB } from '../lib/equalizerPresets'
 
 export const THEME_QUERY_KEY = ['settings', 'theme'] as const
 
@@ -391,7 +391,17 @@ export function useMediaEqualizerQuery() {
       if (raw === null) return [...FLAT_EQ_BANDS]
       try {
         const parsed: unknown = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length === EQ_BAND_COUNT && parsed.every((g) => typeof g === 'number')) {
+        // typeof g === 'number' alone accepts NaN/Infinity (both pass
+        // typeof) and any magnitude - a hand-edited or corrupted
+        // app_settings row could otherwise pass a non-finite or wildly
+        // out-of-range value straight through to the native mpv EQ addon.
+        if (
+          Array.isArray(parsed) &&
+          parsed.length === EQ_BAND_COUNT &&
+          parsed.every(
+            (g) => typeof g === 'number' && Number.isFinite(g) && Math.abs(g) <= EQ_MAX_GAIN_DB
+          )
+        ) {
           return parsed as number[]
         }
       } catch {

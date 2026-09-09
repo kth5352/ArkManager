@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WindowCloseBehavior } from '../../shared/types/ipc'
 import {
+  useMediaEqualizerQuery,
   useSetWindowCloseBehaviorMutation,
   useWindowCloseBehaviorQuery,
   WINDOW_CLOSE_BEHAVIOR_QUERY_KEY,
@@ -64,5 +65,48 @@ describe('window close behavior settings', () => {
 
     expect(setWindowCloseBehavior).toHaveBeenCalledWith('tray')
     expect(setQueryData).toHaveBeenCalledWith(WINDOW_CLOSE_BEHAVIOR_QUERY_KEY, 'tray')
+  })
+})
+
+type EqualizerQueryOptions = {
+  queryFn: () => Promise<number[]>
+}
+
+describe('media equalizer settings', () => {
+  const getMediaEqualizerBands = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: { api: { settings: { getMediaEqualizerBands } } },
+    })
+  })
+
+  function useEqualizerQueryFn(): () => Promise<number[]> {
+    useMediaEqualizerQuery()
+    const query = reactQueryMocks.useQuery.mock.calls[0][0] as EqualizerQueryOptions
+    return query.queryFn
+  }
+
+  it('accepts a well-formed persisted array', async () => {
+    getMediaEqualizerBands.mockResolvedValue(JSON.stringify([1, 2, 3, 4, 5]))
+    await expect(useEqualizerQueryFn()()).resolves.toEqual([1, 2, 3, 4, 5])
+  })
+
+  // Number.isFinite is the actual regression being guarded: `typeof g ===
+  // 'number'` alone is true for Infinity, which would otherwise reach the
+  // native mpv EQ addon unfiltered. JSON has no literal for NaN/Infinity,
+  // but a numeric literal that overflows a JS double (e.g. 1e400) parses to
+  // Infinity via JSON.parse - a raw string, not JSON.stringify, since
+  // stringify itself can't produce this input.
+  it('falls back to flat when a gain overflows to Infinity', async () => {
+    getMediaEqualizerBands.mockResolvedValue('[0, 1e400, 0, 0, 0]')
+    await expect(useEqualizerQueryFn()()).resolves.toEqual([0, 0, 0, 0, 0])
+  })
+
+  it('falls back to flat when a gain is outside the +-12dB range', async () => {
+    getMediaEqualizerBands.mockResolvedValue(JSON.stringify([0, 0, 0, 0, 13]))
+    await expect(useEqualizerQueryFn()()).resolves.toEqual([0, 0, 0, 0, 0])
   })
 })

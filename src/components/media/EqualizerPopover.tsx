@@ -8,6 +8,7 @@ import { useTranslation } from '../../i18n/useTranslation'
 import { cn } from '../../lib/utils'
 import {
   EQ_BAND_FREQUENCIES_HZ,
+  EQ_MAX_GAIN_DB,
   EQUALIZER_PRESETS,
   findEqualizerPresetMatchingGains,
 } from '../../lib/equalizerPresets'
@@ -167,8 +168,8 @@ export function EqualizerPopover({ dark = false, compact = false }: EqualizerPop
                     bottom-to-top in the wrong direction for a gain slider). */}
                 <input
                   type="range"
-                  min={-12}
-                  max={12}
+                  min={-EQ_MAX_GAIN_DB}
+                  max={EQ_MAX_GAIN_DB}
                   step={1}
                   value={displayGains[bandIndex] ?? 0}
                   onChange={(e) => handleBandChange(bandIndex, Number(e.target.value))}

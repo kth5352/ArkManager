@@ -7,6 +7,11 @@ export const EQ_BAND_COUNT = 5
 
 export const EQ_BAND_FREQUENCIES_HZ: readonly number[] = [60, 230, 910, 3000, 14000]
 
+// Single source of truth for the +-12dB range referenced by the comment
+// below and by settingsService.ts's persisted-value validation - previously
+// duplicated as a bare 12/-12 in EqualizerPopover.tsx's slider props.
+export const EQ_MAX_GAIN_DB = 12
+
 export interface EqualizerPreset {
   id: string
   labelKey: TranslationKey
