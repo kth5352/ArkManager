@@ -178,15 +178,11 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
       />
       <div className="sticky top-0 z-10 flex items-start justify-between gap-2 border-b border-border bg-card p-4">
         <p className="text-sm font-medium">{game.name}</p>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('game.closeSidebar')}
-          onClick={onClose}
-          className="shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <HoverTooltip content={t('game.closeSidebar')} className="shrink-0">
+          <Button variant="ghost" size="icon" aria-label={t('game.closeSidebar')} onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </HoverTooltip>
       </div>
       <div className="flex flex-col gap-3 p-4">
         <div
@@ -200,22 +196,27 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
               <span className="px-2 text-center text-xs">{t('customCover.clickToChange')}</span>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            aria-label={t('game.toggleCleared')}
-            onClick={(e) => {
-              e.stopPropagation()
-              toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
-            }}
-            className="absolute right-2 top-2 z-10 rounded-full bg-background/70"
+          <HoverTooltip
+            content={t('game.toggleCleared')}
+            className="absolute right-2 top-2 z-10"
           >
-            <CheckCircle2
-              className={`h-5 w-5 ${userData?.isCleared ? 'text-green-500' : ''}`}
-              fill={userData?.isCleared ? 'currentColor' : 'none'}
-            />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              aria-label={t('game.toggleCleared')}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+              }}
+              className="rounded-full bg-background/70"
+            >
+              <CheckCircle2
+                className={`h-5 w-5 ${userData?.isCleared ? 'text-green-500' : ''}`}
+                fill={userData?.isCleared ? 'currentColor' : 'none'}
+              />
+            </Button>
+          </HoverTooltip>
         </div>
         {metadata?.title && metadata.title !== game.name && (
           <p className="text-sm text-muted-foreground">{metadata.title}</p>

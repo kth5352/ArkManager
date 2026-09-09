@@ -8,6 +8,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { Button } from '../ui/button'
+import { HoverTooltip } from '../ui/hover-tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Slider } from '../ui/slider'
 import { useTranslation } from '../../i18n/useTranslation'
@@ -45,29 +46,33 @@ export function PageToolbar({
   return (
     <div className="flex flex-1 items-center gap-2">
       {sidebarOpen !== undefined && onSidebarOpenChange && (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('pageToolbar.toggleSidebar')}
-          onClick={() => onSidebarOpenChange(!sidebarOpen)}
-        >
-          {sidebarOpen ? (
-            <PanelLeftClose className="h-4 w-4" />
-          ) : (
-            <PanelLeftOpen className="h-4 w-4" />
-          )}
-        </Button>
+        <HoverTooltip content={t('pageToolbar.toggleSidebar')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('pageToolbar.toggleSidebar')}
+            onClick={() => onSidebarOpenChange(!sidebarOpen)}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftOpen className="h-4 w-4" />
+            )}
+          </Button>
+        </HoverTooltip>
       )}
       {onRefresh && (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('pageToolbar.refreshFiles')}
-          onClick={onRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw className={isRefreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-        </Button>
+        <HoverTooltip content={t('pageToolbar.refreshFiles')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('pageToolbar.refreshFiles')}
+            onClick={onRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={isRefreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+          </Button>
+        </HoverTooltip>
       )}
       <Select
         value={sortField}
@@ -82,27 +87,35 @@ export function PageToolbar({
           <SelectItem value="extension">{t('pageToolbar.extension')}</SelectItem>
         </SelectContent>
       </Select>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={t('pageToolbar.toggleSortDirection')}
-        onClick={() => onSortChange(sortField, sortDirection === 'asc' ? 'desc' : 'asc')}
-      >
-        {sortDirection === 'asc' ? (
-          <ArrowUpAZ className="h-4 w-4" />
-        ) : (
-          <ArrowDownAZ className="h-4 w-4" />
-        )}
-      </Button>
-      {viewMode !== undefined && onViewModeChange && (
+      <HoverTooltip content={t('pageToolbar.toggleSortDirection')}>
         <Button
           variant="ghost"
           size="icon"
-          aria-label={t('pageToolbar.toggleViewMode')}
-          onClick={() => onViewModeChange(viewMode === 'list' ? 'grid' : 'list')}
+          aria-label={t('pageToolbar.toggleSortDirection')}
+          onClick={() => onSortChange(sortField, sortDirection === 'asc' ? 'desc' : 'asc')}
         >
-          {viewMode === 'list' ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+          {sortDirection === 'asc' ? (
+            <ArrowUpAZ className="h-4 w-4" />
+          ) : (
+            <ArrowDownAZ className="h-4 w-4" />
+          )}
         </Button>
+      </HoverTooltip>
+      {viewMode !== undefined && onViewModeChange && (
+        <HoverTooltip content={t('pageToolbar.toggleViewMode')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('pageToolbar.toggleViewMode')}
+            onClick={() => onViewModeChange(viewMode === 'list' ? 'grid' : 'list')}
+          >
+            {viewMode === 'list' ? (
+              <LayoutGrid className="h-4 w-4" />
+            ) : (
+              <List className="h-4 w-4" />
+            )}
+          </Button>
+        </HoverTooltip>
       )}
       {zoom !== undefined && onZoomChange && (
         <Slider
