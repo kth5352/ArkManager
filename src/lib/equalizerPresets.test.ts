@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   EQ_BAND_COUNT,
   EQ_BAND_FREQUENCIES_HZ,
+  EQ_MAX_GAIN_DB,
   EQUALIZER_PRESETS,
   findEqualizerPresetMatchingGains,
 } from './equalizerPresets'
@@ -17,11 +18,11 @@ describe('equalizerPresets', () => {
     expect(EQ_BAND_FREQUENCIES_HZ.length).toBe(EQ_BAND_COUNT)
   })
 
-  it('every preset gain is within -12..12dB', () => {
+  it('every preset gain is within the +-EQ_MAX_GAIN_DB range', () => {
     for (const preset of EQUALIZER_PRESETS) {
       for (const gain of preset.gains) {
-        expect(gain).toBeGreaterThanOrEqual(-12)
-        expect(gain).toBeLessThanOrEqual(12)
+        expect(gain).toBeGreaterThanOrEqual(-EQ_MAX_GAIN_DB)
+        expect(gain).toBeLessThanOrEqual(EQ_MAX_GAIN_DB)
       }
     }
   })
