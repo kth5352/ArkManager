@@ -178,6 +178,13 @@ export function useCustomCoverImage(entry: Pick<ScannedEntry, 'code' | 'path'> |
       : ['game-user-data', 'custom-cover-image', 'none'],
     queryFn: () => window.api.gameUserData.getCustomCoverImage(entry!.code, entry!.path),
     enabled: entry !== null,
+    // Same reasoning as useGameCoverImage in metadataService.ts - repeat
+    // remounts of the same entry (react-window scroll recycling) were
+    // re-fetching every time with no staleTime set. invalidateCustomCover
+    // below already covers every mutation that can actually change this
+    // query's result (set from file/clipboard, clear), so a stale cached
+    // value is never shown past an action that would invalidate it.
+    staleTime: 5 * 60_000,
   })
 }
 

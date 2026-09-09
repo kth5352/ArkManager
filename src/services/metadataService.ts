@@ -46,6 +46,18 @@ export function useGameCoverImage(code: GameCode | null) {
     queryKey: code ? ['metadata', 'cover-image', code.value] : ['metadata', 'cover-image', 'none'],
     queryFn: () => window.api.metadata.getCoverImage(code!),
     enabled: code !== null,
+    // Without this, react-window recycling a Gallery/List/DetailList card
+    // during scroll (unmount + remount of the same code moments later) was
+    // measured re-fetching the same cover on every single remount (P0's
+    // synthetic benchmark: 5 IPC calls across 5 scroll-out/scroll-in
+    // cycles of the same code, dropping to 1 with this staleTime). A
+    // cached `null` (no cover found) is a real, meaningful result here too
+    // - it must NOT be treated as "no data yet" - so it benefits from the
+    // same staleTime and gets refreshed the same way a real cover does:
+    // via useCrawlGameMetadata/useBulkCrawlMissingMetadata/useClearCache's
+    // existing invalidateQueries({queryKey: ['metadata']}) calls, which
+    // this query's key already falls under.
+    staleTime: 5 * 60_000,
   })
 }
 
