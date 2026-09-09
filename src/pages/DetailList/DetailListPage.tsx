@@ -40,6 +40,7 @@ import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useEntryActionDialogs } from '../../hooks/useEntryActionDialogs'
 import { useLongPress } from '../../hooks/useLongPress'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { cn } from '../../lib/utils'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { ScanProgressIndicator } from '../../components/layout/ScanProgressIndicator'
@@ -191,6 +192,7 @@ function Row({
   const entry = entries[index]
   const { data: userData } = useGameUserData(entry ?? { code: null, path: '' })
   const activateSelection = useSelectionStore((s) => s.activate)
+  const isSelected = useSelectionStore((s) => (entry ? s.selectedPaths.has(entry.path) : false))
   const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() => {
     if (entry) activateSelection(entry.path)
   })
@@ -206,7 +208,10 @@ function Row({
         <div
           style={style}
           {...longPressHandlers}
-          className="flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground"
+          className={cn(
+            'flex cursor-pointer items-center gap-4 border-b border-border px-4 text-xs text-muted-foreground transition-colors hover:bg-accent',
+            isSelected && 'bg-primary/10'
+          )}
           onClick={() => {
             if (consumeLongPressClick()) return
             onOpenDetail(entry)

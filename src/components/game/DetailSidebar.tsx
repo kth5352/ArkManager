@@ -15,6 +15,10 @@ import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { MoveDialog } from './MoveDialog'
 import { useOpenExternal, useShowItemInFolder } from '../../services/shellService'
 import { useLaunchGame } from '../../services/launchService'
+import { useConfirmedPulse } from '../../hooks/useConfirmedPulse'
+import { appToast } from '../../lib/appToast'
+import { cn } from '../../lib/utils'
+import { UI_MOTION } from '../../lib/motion'
 import {
   useGameUserData,
   usePickCustomCoverFile,
@@ -63,6 +67,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   const pickCoverFile = usePickCustomCoverFile()
   const setCoverFromFile = useSetCustomCoverFromFile()
   const toggleCleared = useToggleCleared()
+  const clearedPulse = useConfirmedPulse(userData?.isCleared ?? false, userData !== undefined)
   // A failed launch (no saved config yet) opens the centered modal dialog
   // instead of expanding LaunchConfigSection inline - more discoverable/less
   // easy to miss than an inline section quietly expanding somewhere in an
@@ -169,7 +174,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
       style={{ width }}
       initial={{ opacity: 0, x: 24 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
+      transition={{ duration: UI_MOTION.selection, ease: 'easeOut' }}
       className="relative flex h-full shrink-0 flex-col overflow-y-auto border-l border-border bg-card"
     >
       <div
@@ -207,9 +212,16 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
               aria-label={t('game.toggleCleared')}
               onClick={(e) => {
                 e.stopPropagation()
-                toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+                const isCleared = !(userData?.isCleared ?? false)
+                toggleCleared.mutate(
+                  { entry: game, isCleared },
+                  { onError: () => appToast.error(t('game.toggleClearedFailed')) }
+                )
               }}
-              className="rounded-full bg-background/70"
+              className={cn(
+                'rounded-full bg-background/70',
+                clearedPulse && '[animation:icon-pulse_180ms_ease-in-out] motion-reduce:animate-none'
+              )}
             >
               <CheckCircle2
                 className={`h-5 w-5 ${userData?.isCleared ? 'text-green-500' : ''}`}

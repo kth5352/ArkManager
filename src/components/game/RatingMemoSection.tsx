@@ -105,7 +105,7 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
             key={value}
             onClick={() => handleRatingClick(value)}
             disabled={!canEdit}
-            className="disabled:cursor-not-allowed disabled:opacity-50"
+            className="transition-transform duration-120 active:scale-[0.9] motion-reduce:transform-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Star
               className="h-5 w-5 text-yellow-500"
@@ -121,7 +121,7 @@ export function RatingMemoSection({ game }: RatingMemoSectionProps) {
         onBlur={handleMemoBlur}
         disabled={!canEdit}
         placeholder={t('ratingMemo.memoPlaceholder')}
-        className="min-h-20 w-full rounded-md border border-border bg-background p-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-20 w-full rounded-md border border-border bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
       />
       <p className="h-4 text-xs text-muted-foreground">
         {setRatingAndMemo.isPending

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
+import { CollapsibleSection } from './CollapsibleSection'
 import { useGameUserData } from '../../services/gameUserDataService'
 import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
 import { useShowItemInFolder } from '../../services/shellService'
@@ -32,46 +32,45 @@ export function SaveDataSection({ game }: SaveDataSectionProps) {
   }
 
   return (
-    <div className="border-t border-border pt-3">
-      <button
-        className="flex w-full items-center gap-1 text-xs font-medium text-muted-foreground"
-        onClick={() => setExpanded((current) => !current)}
+    <>
+      <CollapsibleSection
+        title={t('saveManager.sectionTitle')}
+        expanded={expanded}
+        onToggle={() => setExpanded((current) => !current)}
       >
-        <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        {t('saveManager.sectionTitle')}
-      </button>
-      {expanded && (
-        <div className="mt-2 flex flex-col gap-2">
-          {userData?.savePath && (
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-xs text-muted-foreground" title={userData.savePath}>
-                {userData.savePath}
-              </p>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="shrink-0"
-                onClick={() => showItemInFolder.mutate(userData.savePath!)}
-              >
-                {t('game.openFolder')}
-              </Button>
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={handlePickSaveFolder}>
-              {t('launchConfig.pickSaveFolder')}
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => setShowSaveManager(true)}>
-              {t('launchConfig.manageSaves')}
+        {userData?.savePath && (
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-xs text-muted-foreground" title={userData.savePath}>
+              {userData.savePath}
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="shrink-0"
+              onClick={() => showItemInFolder.mutate(userData.savePath!)}
+            >
+              {t('game.openFolder')}
             </Button>
           </div>
+        )}
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={handlePickSaveFolder}>
+            {t('launchConfig.pickSaveFolder')}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => setShowSaveManager(true)}>
+            {t('launchConfig.manageSaves')}
+          </Button>
         </div>
-      )}
+      </CollapsibleSection>
+      {/* Deliberately a sibling of CollapsibleSection, not inside it - once
+          open, the dialog must keep showing even if the user collapses this
+          section in the background, and it must never be torn down by
+          CollapsibleSection's own AnimatePresence exit animation. */}
       <SaveManagerDialog
         entry={showSaveManager ? game : null}
         savePath={userData?.savePath ?? null}
         onClose={() => setShowSaveManager(false)}
       />
-    </div>
+    </>
   )
 }

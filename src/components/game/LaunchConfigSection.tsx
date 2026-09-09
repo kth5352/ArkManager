@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
+import { CollapsibleSection } from './CollapsibleSection'
 import {
   useListExecutables,
   useLocaleEmulatorAvailable,
@@ -55,69 +55,62 @@ export function LaunchConfigSection({ game }: LaunchConfigSectionProps) {
   }
 
   return (
-    <div className="border-t border-border pt-3">
-      <button
-        className="flex w-full items-center gap-1 text-xs font-medium text-muted-foreground"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        {t('launchConfig.title')}
-      </button>
-      {expanded && (
-        <div className="mt-2 flex flex-col gap-3">
-          {game.kind !== 'folder' ? (
-            <p className="text-xs text-muted-foreground">{t('launchConfig.archiveNotSupported')}</p>
-          ) : (
-            <>
-              <div className="flex flex-col gap-1">
-                <p className="text-xs font-medium">{t('launchConfig.executable')}</p>
-                {(executables ?? []).map((exe) => (
-                  <label key={exe} className="flex items-center gap-2 text-xs">
-                    <input
-                      type="radio"
-                      name="executable"
-                      checked={selectedExe === exe}
-                      onChange={() => setSelectedExe(exe)}
-                    />
-                    {exe}
-                  </label>
-                ))}
-                {(executables ?? []).length === 0 && (
-                  <p className="text-xs text-muted-foreground">{t('launchConfig.noExeFound')}</p>
-                )}
-              </div>
+    <CollapsibleSection
+      title={t('launchConfig.title')}
+      expanded={expanded}
+      onToggle={() => setExpanded(!expanded)}
+    >
+      {game.kind !== 'folder' ? (
+        <p className="text-xs text-muted-foreground">{t('launchConfig.archiveNotSupported')}</p>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-medium">{t('launchConfig.executable')}</p>
+            {(executables ?? []).map((exe) => (
+              <label key={exe} className="flex items-center gap-2 text-xs">
+                <input
+                  type="radio"
+                  name="executable"
+                  checked={selectedExe === exe}
+                  onChange={() => setSelectedExe(exe)}
+                />
+                {exe}
+              </label>
+            ))}
+            {(executables ?? []).length === 0 && (
+              <p className="text-xs text-muted-foreground">{t('launchConfig.noExeFound')}</p>
+            )}
+          </div>
 
-              <div className="flex flex-col gap-1">
-                <p className="text-xs font-medium">{t('launchConfig.launchMode')}</p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="radio"
-                    name="launchMode"
-                    checked={launchMode === 'normal'}
-                    onChange={() => setLaunchMode('normal')}
-                  />
-                  {t('launchConfig.normalLaunch')}
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="radio"
-                    name="launchMode"
-                    checked={launchMode === 'locale-emulator'}
-                    onChange={() => setLaunchMode('locale-emulator')}
-                    disabled={!leAvailable}
-                  />
-                  {t('launchConfig.localeEmulatorLaunch')}
-                  {!leAvailable && t('launchConfig.notInstalled')}
-                </label>
-              </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-medium">{t('launchConfig.launchMode')}</p>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="radio"
+                name="launchMode"
+                checked={launchMode === 'normal'}
+                onChange={() => setLaunchMode('normal')}
+              />
+              {t('launchConfig.normalLaunch')}
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="radio"
+                name="launchMode"
+                checked={launchMode === 'locale-emulator'}
+                onChange={() => setLaunchMode('locale-emulator')}
+                disabled={!leAvailable}
+              />
+              {t('launchConfig.localeEmulatorLaunch')}
+              {!leAvailable && t('launchConfig.notInstalled')}
+            </label>
+          </div>
 
-              <Button size="sm" onClick={handleSaveLaunchConfig} disabled={!selectedExe}>
-                {t('launchConfig.saveLaunchConfig')}
-              </Button>
-            </>
-          )}
-        </div>
+          <Button size="sm" onClick={handleSaveLaunchConfig} disabled={!selectedExe}>
+            {t('launchConfig.saveLaunchConfig')}
+          </Button>
+        </>
       )}
-    </div>
+    </CollapsibleSection>
   )
 }

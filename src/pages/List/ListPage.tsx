@@ -24,7 +24,10 @@ import {
 import { useGameDetailSidebar } from '../../hooks/useGameDetailSidebar'
 import { useFavoriteShortcut } from '../../hooks/useFavoriteShortcut'
 import { useLongPress } from '../../hooks/useLongPress'
+import { useConfirmedPulse } from '../../hooks/useConfirmedPulse'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { appToast } from '../../lib/appToast'
+import { cn } from '../../lib/utils'
 import { useScanProgress } from '../../hooks/useScanProgress'
 import { useTriggerBulkCrawlMissingMetadata } from '../../hooks/useBulkCrawlMissingMetadata'
 import { Skeleton } from '../../components/ui/skeleton'
@@ -91,16 +94,25 @@ function GameRow({
   const toggleCleared = useToggleCleared()
   const openExternal = useOpenExternal()
   const activateSelection = useSelectionStore((s) => s.activate)
+  // Rows get background/ring treatment only, per design §3 ("행 자체의
+  // transform/height 변경은 하지 않는다") - unlike Gallery's card, nothing
+  // here scales or resizes on selection/hover.
+  const isSelected = useSelectionStore((s) => s.selectedPaths.has(game.path))
   const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
     activateSelection(game.path)
   )
+  const favoritePulse = useConfirmedPulse(userData?.isFavorite ?? false, userData !== undefined)
+  const clearedPulse = useConfirmedPulse(userData?.isCleared ?? false, userData !== undefined)
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
           {...longPressHandlers}
-          className="flex cursor-pointer items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent"
+          className={cn(
+            'flex cursor-pointer items-center gap-4 border-b border-border px-4 py-2 transition-colors hover:bg-accent',
+            isSelected && 'bg-primary/10'
+          )}
           onClick={() => {
             if (consumeLongPressClick()) return
             onOpenDetail(game)
@@ -113,9 +125,16 @@ function GameRow({
             aria-label={t('game.toggleFavorite')}
             onClick={(e) => {
               e.stopPropagation()
-              toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
+              const isFavorite = !(userData?.isFavorite ?? false)
+              toggleFavorite.mutate(
+                { entry: game, isFavorite },
+                { onError: () => appToast.error(t('game.toggleFavoriteFailed')) }
+              )
             }}
-            className="shrink-0 text-muted-foreground hover:text-foreground"
+            className={cn(
+              'shrink-0 text-muted-foreground transition-[color,transform] duration-120 hover:text-foreground active:scale-[0.9] motion-reduce:transform-none',
+              favoritePulse && '[animation:icon-pulse_180ms_ease-in-out] motion-reduce:animate-none'
+            )}
           >
             <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
           </button>
@@ -123,9 +142,16 @@ function GameRow({
             aria-label={t('game.toggleCleared')}
             onClick={(e) => {
               e.stopPropagation()
-              toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+              const isCleared = !(userData?.isCleared ?? false)
+              toggleCleared.mutate(
+                { entry: game, isCleared },
+                { onError: () => appToast.error(t('game.toggleClearedFailed')) }
+              )
             }}
-            className="shrink-0 text-muted-foreground hover:text-foreground"
+            className={cn(
+              'shrink-0 text-muted-foreground transition-[color,transform] duration-120 hover:text-foreground active:scale-[0.9] motion-reduce:transform-none',
+              clearedPulse && '[animation:icon-pulse_180ms_ease-in-out] motion-reduce:animate-none'
+            )}
           >
             <CheckCircle2
               className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}

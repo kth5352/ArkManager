@@ -38,6 +38,22 @@
   }
 }
 
+/* design §4: "즐겨찾기·완료 | ... 확정된 상태 변경 아이콘 pulse 최대 1.12/180ms" -
+   a one-shot bounce for an icon whose underlying value just actually
+   changed (see useConfirmedPulse.ts), not a continuous/looping animation
+   like marquee or the indeterminate progress sweep above. */
+@keyframes icon-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* 타이포그래피 스케일 (4단계) - 새 화면/컴포넌트를 만들 때 이 조합을 그대로
    재사용한다. 전용 컴포넌트로 감싸지 않고 Tailwind 클래스 조합을 직접 쓰는
    이 프로젝트의 기존 관례를 그대로 따름 (예: SettingsPage.tsx의 h1이 이미

@@ -257,6 +257,8 @@ const ko = {
 
   'game.toggleFavorite': '즐겨찾기 토글',
   'game.toggleCleared': '클리어 표시 토글',
+  'game.toggleFavoriteFailed': '즐겨찾기 상태를 저장하지 못했습니다.',
+  'game.toggleClearedFailed': '클리어 표시를 저장하지 못했습니다.',
   'game.duplicateTitle': '같은 코드의 파일이 {count}개 있습니다.',
   'game.archiveExtracted': '압축 해제됨',
   'common.scanError': '라이브러리를 스캔하는 중 오류가 발생했습니다.',
@@ -644,6 +646,8 @@ const ja: Record<keyof typeof ko, string> = {
 
   'game.toggleFavorite': 'お気に入り切り替え',
   'game.toggleCleared': 'クリア表示の切り替え',
+  'game.toggleFavoriteFailed': 'お気に入り状態を保存できませんでした。',
+  'game.toggleClearedFailed': 'クリア表示を保存できませんでした。',
   'game.duplicateTitle': '同じコードのファイルが{count}個あります。',
   'game.archiveExtracted': '展開済み',
   'common.scanError': 'ライブラリのスキャン中にエラーが発生しました。',
@@ -1032,6 +1036,8 @@ const en: Record<keyof typeof ko, string> = {
 
   'game.toggleFavorite': 'Toggle favorite',
   'game.toggleCleared': 'Toggle cleared',
+  'game.toggleFavoriteFailed': 'Failed to save favorite status.',
+  'game.toggleClearedFailed': 'Failed to save cleared status.',
   'game.duplicateTitle': '{count} files share this code.',
   'game.archiveExtracted': 'Extracted',
   'common.scanError': 'An error occurred while scanning the library.',

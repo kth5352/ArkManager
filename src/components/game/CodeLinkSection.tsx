@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { CollapsibleSection } from './CollapsibleSection'
 import { useLinkCode, useUnlinkCode } from '../../services/gameUserDataService'
 import { useCrawlGameMetadata } from '../../services/metadataService'
 import { parseCodeInput } from '../../pages/DlsiteSearch/parseCodeInput'
@@ -23,23 +23,19 @@ export function CodeLinkSection({ game }: CodeLinkSectionProps) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="border-t border-border pt-3">
-      <button
-        className="flex w-full items-center gap-1 text-xs font-medium text-muted-foreground"
-        onClick={() => setExpanded((current) => !current)}
-      >
-        <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        {t('codeLink.manage')}
-      </button>
-      {expanded &&
-        (game.code && game.codeSource === 'override' ? (
-          <UnlinkSection game={game} />
-        ) : !game.code ? (
-          <LinkSection game={game} />
-        ) : (
-          <p className="mt-2 text-xs text-muted-foreground">{t('codeLink.filenameCodeNoUnlink')}</p>
-        ))}
-    </div>
+    <CollapsibleSection
+      title={t('codeLink.manage')}
+      expanded={expanded}
+      onToggle={() => setExpanded((current) => !current)}
+    >
+      {game.code && game.codeSource === 'override' ? (
+        <UnlinkSection game={game} />
+      ) : !game.code ? (
+        <LinkSection game={game} />
+      ) : (
+        <p className="text-xs text-muted-foreground">{t('codeLink.filenameCodeNoUnlink')}</p>
+      )}
+    </CollapsibleSection>
   )
 }
 
@@ -67,7 +63,7 @@ function LinkSection({ game }: { game: ScannedEntry }) {
   }
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {!confirming ? (
         <>
           <p className="text-xs text-muted-foreground">{t('codeLink.linkHint')}</p>
@@ -114,16 +110,14 @@ function UnlinkSection({ game }: { game: ScannedEntry }) {
 
   if (!confirming) {
     return (
-      <div className="mt-2">
-        <Button size="sm" variant="secondary" onClick={() => setConfirming(true)}>
-          {t('codeLink.unlink')}
-        </Button>
-      </div>
+      <Button size="sm" variant="secondary" onClick={() => setConfirming(true)}>
+        {t('codeLink.unlink')}
+      </Button>
     )
   }
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <p className="text-xs">
         {t('codeLink.confirmUnlinkMessage1', { code: game.code?.value ?? '' })}
       </p>

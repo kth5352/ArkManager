@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Grid, useGridRef, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { motion } from 'framer-motion'
 import { CheckCircle2, Clock, Copy, Heart, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
+import { useConfirmedPulse } from '../../hooks/useConfirmedPulse'
+import { appToast } from '../../lib/appToast'
+import { cn } from '../../lib/utils'
 import { GameThumbnail } from '../../components/game/GameThumbnail'
 import { FileKindIcon } from '../../components/game/FileKindIcon'
 import { SelectionCheckbox } from '../../components/game/SelectionCheckbox'
@@ -63,7 +65,12 @@ const GENRE_ROW_HEIGHT = 22
 // from the column-layout math keeps it from being drawn on top of the
 // rightmost card whenever the grid's content overflows vertically.
 const SCROLLBAR_GUTTER = 17
-const CARD_TEXT_BLOCK_HEIGHT = 16 + 36 + 20 + 20 + GENRE_ROW_HEIGHT // 마지막 +20은 제목 2번째 줄분
+// Leading 24 = the info block's own top+bottom padding (design §3's 12px
+// card-internal spacing, p-3 below - was 16 for the previous p-2/8px).
+// Changing the info block's padding without updating this constant clips
+// the card, since react-window's row height comes from computeCardHeight
+// below, not from the actual rendered content.
+const CARD_TEXT_BLOCK_HEIGHT = 24 + 36 + 20 + 20 + GENRE_ROW_HEIGHT // 마지막 +20은 제목 2번째 줄분
 
 function computeCardHeight(cardWidth: number): number {
   return cardWidth * (4 / 3) + CARD_TEXT_BLOCK_HEIGHT
@@ -115,14 +122,29 @@ function GameCard({
   const toggleFavorite = useToggleFavorite()
   const toggleCleared = useToggleCleared()
   const activateSelection = useSelectionStore((s) => s.activate)
+  // Previously the only visual sign a card was multi-selected was its own
+  // small SelectionCheckbox's native checked state - easy to miss at a
+  // glance, especially in dark mode. A ring on the whole card is design
+  // §3's own stated requirement for Gallery specifically ("선택 ring").
+  const isSelected = useSelectionStore((s) => s.selectedPaths.has(game.path))
   const { handlers: longPressHandlers, consumeLongPressClick } = useLongPress(() =>
     activateSelection(game.path)
   )
 
+  // Driven by the CONFIRMED value (userData, only ever updated in
+  // useToggleFavorite/useToggleCleared's onSuccess - there is no optimistic
+  // update here, so a failed mutation simply leaves this unchanged), not by
+  // this card's own click handler - see useConfirmedPulse.ts. This is what
+  // makes the pulse fire identically whether the toggle came from this
+  // card's heart/check button or from useFavoriteShortcut's "press F while
+  // hovering" path, which is a separate mutation instance entirely.
+  const favoritePulse = useConfirmedPulse(userData?.isFavorite ?? false, userData !== undefined)
+  const clearedPulse = useConfirmedPulse(userData?.isCleared ?? false, userData !== undefined)
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <motion.div
+        <div
           {...longPressHandlers}
           onMouseEnter={() => onHoverChange(game)}
           onMouseLeave={() => onHoverChange(null)}
@@ -130,17 +152,25 @@ function GameCard({
             if (consumeLongPressClick()) return
             onOpenDetail(game)
           }}
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.15 }}
-          className="relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card"
+          className={cn(
+            'group relative flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-card',
+            isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+          )}
         >
           <button
             aria-label={t('game.toggleFavorite')}
             onClick={(e) => {
               e.stopPropagation()
-              toggleFavorite.mutate({ entry: game, isFavorite: !(userData?.isFavorite ?? false) })
+              const isFavorite = !(userData?.isFavorite ?? false)
+              toggleFavorite.mutate(
+                { entry: game, isFavorite },
+                { onError: () => appToast.error(t('game.toggleFavoriteFailed')) }
+              )
             }}
-            className="absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+            className={cn(
+              'absolute right-2 top-2 z-10 rounded-full bg-background/70 p-1 text-muted-foreground transition-[color,transform] duration-120 hover:text-foreground active:scale-[0.9] motion-reduce:transform-none',
+              favoritePulse && '[animation:icon-pulse_180ms_ease-in-out] motion-reduce:animate-none'
+            )}
           >
             <Heart className="h-4 w-4" fill={userData?.isFavorite ? 'currentColor' : 'none'} />
           </button>
@@ -148,9 +178,16 @@ function GameCard({
             aria-label={t('game.toggleCleared')}
             onClick={(e) => {
               e.stopPropagation()
-              toggleCleared.mutate({ entry: game, isCleared: !(userData?.isCleared ?? false) })
+              const isCleared = !(userData?.isCleared ?? false)
+              toggleCleared.mutate(
+                { entry: game, isCleared },
+                { onError: () => appToast.error(t('game.toggleClearedFailed')) }
+              )
             }}
-            className="absolute right-2 top-9 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
+            className={cn(
+              'absolute right-2 top-9 z-10 rounded-full bg-background/70 p-1 text-muted-foreground transition-[color,transform] duration-120 hover:text-foreground active:scale-[0.9] motion-reduce:transform-none',
+              clearedPulse && '[animation:icon-pulse_180ms_ease-in-out] motion-reduce:animate-none'
+            )}
           >
             <CheckCircle2
               className={`h-4 w-4 ${userData?.isCleared ? 'text-green-500' : ''}`}
@@ -164,10 +201,15 @@ function GameCard({
             path={game.path}
             className="absolute left-2 top-9 z-10 h-4 w-4 rounded-sm"
           />
-          <div className="aspect-[3/4] w-full bg-muted">
-            <GameThumbnail entry={game} />
+          {/* Cover scales slightly on hover, not the whole card (outer div's
+              own bounds/position stay fixed) - overflow-hidden on the card
+              clips the scaled cover to the card's rounded corners. */}
+          <div className="aspect-[3/4] w-full overflow-hidden bg-muted">
+            <div className="h-full w-full transition-transform duration-160 group-hover:scale-[1.02] motion-reduce:transform-none">
+              <GameThumbnail entry={game} />
+            </div>
           </div>
-          <div className="shrink-0 p-2">
+          <div className="shrink-0 p-3">
             <p className="line-clamp-2 break-words text-sm font-medium">{game.name}</p>
             <div className="flex items-center gap-1">
               {game.code && (
@@ -225,7 +267,7 @@ function GameCard({
                 ))}
             </div>
           </div>
-        </motion.div>
+        </div>
       </ContextMenuTrigger>
       <GameEntryContextMenu
         entry={game}
