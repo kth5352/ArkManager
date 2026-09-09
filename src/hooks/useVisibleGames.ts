@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useGames } from '../services/useGames'
 import { useLibraries } from '../services/librariesService'
 import { useLibraryVisibilityStore } from '../stores/libraryVisibilityStore'
@@ -27,17 +28,31 @@ export function useVisibleGames(): UseVisibleGamesResult {
   const hiddenLibraryIds = useLibraryVisibilityStore((s) => s.hiddenLibraryIds)
   const { data: excludedEntries } = useExcludedEntries()
 
-  const excludedPaths = new Set((excludedEntries ?? []).map((e) => e.path))
+  // Memoized so a re-render caused by something this hook doesn't even read
+  // (P0's synthetic benchmark measured every render otherwise producing a
+  // brand-new array + Set here, even with unchanged inputs) doesn't force
+  // every downstream consumer's own filter/sort/groupDuplicates work to
+  // redo itself just because the reference "changed". excludedEntries is
+  // its own dependency (not folded into the games filter's deps directly)
+  // so a change to it alone doesn't force a new Set from scratch on every
+  // games-filter recompute either - the Set itself is a stable input.
+  const excludedPaths = useMemo(
+    () => new Set((excludedEntries ?? []).map((e) => e.path)),
+    [excludedEntries]
+  )
 
-  const data =
-    games === undefined
-      ? games
-      : games.filter((entry) => {
-          if (isEntryExcluded(entry, excludedPaths)) return false
-          if (hiddenLibraryIds.size === 0) return true
-          const library = findLibraryForPath(entry.path, libraries ?? [])
-          return !library || !hiddenLibraryIds.has(library.id)
-        })
+  const data = useMemo(
+    () =>
+      games === undefined
+        ? games
+        : games.filter((entry) => {
+            if (isEntryExcluded(entry, excludedPaths)) return false
+            if (hiddenLibraryIds.size === 0) return true
+            const library = findLibraryForPath(entry.path, libraries ?? [])
+            return !library || !hiddenLibraryIds.has(library.id)
+          }),
+    [games, excludedPaths, hiddenLibraryIds, libraries]
+  )
 
   return { data, isLoading, isError }
 }

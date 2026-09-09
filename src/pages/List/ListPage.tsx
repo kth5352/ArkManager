@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { List, type RowComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
@@ -326,12 +326,49 @@ export function ListPage() {
   useFavoriteShortcut(hoveredGameRef)
   const scanProgress = useScanProgress(isLoading)
 
-  const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
+  // Memoized on `games` alone (not recomputed on every render caused by
+  // hover/dialog-open/etc.) - see GalleryPage.tsx's identical pattern for
+  // the full reasoning.
+  const codes = useMemo(() => (games ?? []).flatMap((g) => (g.code ? [g.code.value] : [])), [games])
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
-  const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
+  const gameCodes = useMemo(() => (games ?? []).flatMap((g) => (g.code ? [g.code] : [])), [games])
   useTriggerBulkCrawlMissingMetadata(gameCodes)
-  const duplicateGroups = groupDuplicatesByCode(games ?? [])
-  const extractedArchiveCodes = getExtractedArchiveCodes(games ?? [])
+  const duplicateGroups = useMemo(() => groupDuplicatesByCode(games ?? []), [games])
+  const extractedArchiveCodes = useMemo(() => getExtractedArchiveCodes(games ?? []), [games])
+
+  // Moved above the isError/isLoading early returns below (see
+  // GalleryPage.tsx's identical pattern) - hooks can't be called
+  // conditionally.
+  const filteredGames = useMemo(
+    () =>
+      games === undefined
+        ? []
+        : games.length > 0
+          ? filterEntries(
+              games,
+              metadataByCode,
+              searchQuery,
+              includedGenres,
+              excludedGenres,
+              fileKindFilter
+            )
+          : games,
+    [games, metadataByCode, searchQuery, includedGenres, excludedGenres, fileKindFilter]
+  )
+  const sortedGames = useMemo(
+    () =>
+      filteredGames.length > 0
+        ? sortEntries(filteredGames, sortField, sortDirection)
+        : filteredGames,
+    [filteredGames, sortField, sortDirection]
+  )
+  const visibleGames = useMemo(
+    () =>
+      duplicatesOnly
+        ? sortedGames.filter((g) => hasDuplicateGroupForEntry(g, duplicateGroups))
+        : sortedGames,
+    [duplicatesOnly, sortedGames, duplicateGroups]
+  )
 
   if (isError && !games) {
     return (
@@ -353,23 +390,6 @@ export function ListPage() {
       </div>
     )
   }
-
-  const filteredGames =
-    games.length > 0
-      ? filterEntries(
-          games,
-          metadataByCode,
-          searchQuery,
-          includedGenres,
-          excludedGenres,
-          fileKindFilter
-        )
-      : games
-  const sortedGames =
-    filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
-  const visibleGames = duplicatesOnly
-    ? sortedGames.filter((g) => hasDuplicateGroupForEntry(g, duplicateGroups))
-    : sortedGames
 
   return (
     <div className="flex h-full flex-col">

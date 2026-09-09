@@ -73,3 +73,11 @@ Real Zustand `useMediaPlayerStore`, subscribed the same way `useMediaPlayerSync.
 | P3 (media broadcast) | Yes - and the worst-case magnitude is the most dramatic of the three | ~916KB IPC payload per irrelevant UI toggle at a 10k-track queue | High (direct measurement) |
 
 All three should be re-measured with these same synthetic scenarios once implemented, per the plan's own re-measurement requirement - this document's numbers are the "before" baseline only.
+
+## Re-measurement after P1 (list derivation stabilization)
+
+Commit: (see the `perf: stabilize visible games and library derived data` commit immediately following this doc's initial version).
+
+Scenario 2 (`useVisibleGames()` reference stability) was re-run as a permanent regression test (`src/hooks/useVisibleGames.test.ts`, not a throwaway benchmark this time) rather than re-measured ad hoc, since the fix makes the property itself the thing worth continuously guarding: with the `useMemo` wrapping in place, `data` (and the internal `excludedPaths` Set) now stays the exact same reference across a re-render caused by state the hook doesn't read, and produces a genuinely new reference only when `games`, `excludedEntries`, `hiddenLibraryIds`, or `libraries` actually change. Empirically verified by reverting the implementation only and confirming the reference-stability test fails against the pre-fix code with the exact same "brand new array every render" symptom Scenario 2 originally measured.
+
+The same `useMemo` treatment was applied to `GalleryPage.tsx`/`ListPage.tsx`/`DetailListPage.tsx`'s own `codes`/`gameCodes`/`duplicateGroups`/`extractedArchiveCodes`/filtered/sorted/visible derivations (Scenario 1's targets), moved above each page's `isLoading`/`isError` early return (required - hooks can't be called conditionally) and scoped to only the inputs each actually depends on. Not independently re-benchmarked at the full-page level (these pages have heavy DOM/virtualization/dnd-kit dependencies not practical to harness synthetically in the time available) - the underlying claim (memoized derivation recomputes only when its own dependencies change, not on every render) is the same property `useVisibleGames.test.ts` directly proves for the hook layer, and `react-hooks/exhaustive-deps` lint confirms no dependency was omitted at the page layer.

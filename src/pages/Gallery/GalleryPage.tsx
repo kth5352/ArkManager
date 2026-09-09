@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Grid, useGridRef, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
@@ -388,12 +388,54 @@ export function GalleryPage() {
   const visibleAnchorRef = useRef({ rowStartIndex: 0, columnStartIndex: 0 })
   const prevColumnCountRef = useRef<number | null>(null)
 
-  const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
+  // Memoized on `games` alone (not recomputed on every render caused by
+  // zoom/hover/dialog-open/etc.) - P0's synthetic benchmark measured
+  // useVisibleGames() itself returning a stable reference now, so these
+  // derivations only need to redo their own work when `games` genuinely
+  // changes, not on every render this component happens to do for
+  // unrelated reasons.
+  const codes = useMemo(() => (games ?? []).flatMap((g) => (g.code ? [g.code.value] : [])), [games])
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
-  const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
+  const gameCodes = useMemo(() => (games ?? []).flatMap((g) => (g.code ? [g.code] : [])), [games])
   useTriggerBulkCrawlMissingMetadata(gameCodes)
-  const duplicateGroups = groupDuplicatesByCode(games ?? [])
-  const extractedArchiveCodes = getExtractedArchiveCodes(games ?? [])
+  const duplicateGroups = useMemo(() => groupDuplicatesByCode(games ?? []), [games])
+  const extractedArchiveCodes = useMemo(() => getExtractedArchiveCodes(games ?? []), [games])
+
+  // Moved above the isError/isLoading early returns below (and guarded for
+  // an undefined `games` internally instead) - hooks can't be called
+  // conditionally, and these need to be real useMemo calls (not plain
+  // consts computed after the early return) so an unrelated re-render
+  // doesn't redo filter/sort/dupe-filtering from scratch every time.
+  const filteredGames = useMemo(
+    () =>
+      games === undefined
+        ? []
+        : games.length > 0
+          ? filterEntries(
+              games,
+              metadataByCode,
+              activeSearchQuery,
+              includedGenres,
+              excludedGenres,
+              fileKindFilter
+            )
+          : games,
+    [games, metadataByCode, activeSearchQuery, includedGenres, excludedGenres, fileKindFilter]
+  )
+  const sortedGames = useMemo(
+    () =>
+      filteredGames.length > 0
+        ? sortEntries(filteredGames, sortField, sortDirection)
+        : filteredGames,
+    [filteredGames, sortField, sortDirection]
+  )
+  const visibleGames = useMemo(
+    () =>
+      duplicatesOnly
+        ? sortedGames.filter((g) => hasDuplicateGroupForEntry(g, duplicateGroups))
+        : sortedGames,
+    [duplicatesOnly, sortedGames, duplicateGroups]
+  )
 
   useEffect(() => {
     // `container` is a callback ref (state), not a plain object ref - this
@@ -443,23 +485,6 @@ export function GalleryPage() {
   const cardWidth = CARD_WIDTH * zoom
   const cardHeight = computeCardHeight(cardWidth)
   const gap = GAP * zoom
-
-  const filteredGames =
-    games.length > 0
-      ? filterEntries(
-          games,
-          metadataByCode,
-          activeSearchQuery,
-          includedGenres,
-          excludedGenres,
-          fileKindFilter
-        )
-      : games
-  const sortedGames =
-    filteredGames.length > 0 ? sortEntries(filteredGames, sortField, sortDirection) : filteredGames
-  const visibleGames = duplicatesOnly
-    ? sortedGames.filter((g) => hasDuplicateGroupForEntry(g, duplicateGroups))
-    : sortedGames
 
   return (
     <div className="flex h-full flex-col">

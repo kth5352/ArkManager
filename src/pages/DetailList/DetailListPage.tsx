@@ -1,7 +1,13 @@
 import { List, useListCallbackRef, type RowComponentProps } from 'react-window'
 import { useQueryClient } from '@tanstack/react-query'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { Copy, Star } from 'lucide-react'
 import { useVisibleGames } from '../../hooks/useVisibleGames'
 import { useGameMetadataMany } from '../../services/metadataService'
@@ -362,15 +368,38 @@ export function DetailListPage() {
   const isSelectionActive = useSelectionStore((s) => s.isActive)
   const scanProgress = useScanProgress(isLoading)
 
-  const codes = (games ?? []).flatMap((g) => (g.code ? [g.code.value] : []))
+  // Memoized on `games` alone (not recomputed on every render caused by
+  // column resize/selection/etc.) - see GalleryPage.tsx's identical pattern
+  // for the full reasoning.
+  const codes = useMemo(() => (games ?? []).flatMap((g) => (g.code ? [g.code.value] : [])), [games])
   const { data: metadataByCode = {} } = useGameMetadataMany(codes)
-  const gameCodes = (games ?? []).flatMap((g) => (g.code ? [g.code] : []))
+  const gameCodes = useMemo(() => (games ?? []).flatMap((g) => (g.code ? [g.code] : [])), [games])
   useTriggerBulkCrawlMissingMetadata(gameCodes)
   // Computed from the full unfiltered library, not the current search/filter
   // results - "this game has another copy elsewhere" should stay true
   // regardless of what's currently visible.
-  const duplicateGroups = groupDuplicatesByCode(games ?? [])
-  const extractedArchiveCodes = getExtractedArchiveCodes(games ?? [])
+  const duplicateGroups = useMemo(() => groupDuplicatesByCode(games ?? []), [games])
+  const extractedArchiveCodes = useMemo(() => getExtractedArchiveCodes(games ?? []), [games])
+
+  // Moved above the isError/isLoading early returns below (see
+  // GalleryPage.tsx's identical pattern) - hooks can't be called
+  // conditionally.
+  const filtered = useMemo(
+    () =>
+      games === undefined
+        ? []
+        : filterEntries(games, metadataByCode, searchQuery, includedGenres, excludedGenres, fileKindFilter),
+    [games, metadataByCode, searchQuery, includedGenres, excludedGenres, fileKindFilter]
+  )
+  const sorted = useMemo(
+    () => sortEntries(filtered, sortField, sortDirection),
+    [filtered, sortField, sortDirection]
+  )
+  const visible = useMemo(
+    () =>
+      duplicatesOnly ? sorted.filter((e) => hasDuplicateGroupForEntry(e, duplicateGroups)) : sorted,
+    [duplicatesOnly, sorted, duplicateGroups]
+  )
 
   const resizeColumn = (column: keyof ColumnWidths, deltaX: number): void => {
     setColumnWidths((prev) => ({
@@ -399,19 +428,6 @@ export function DetailListPage() {
       </div>
     )
   }
-
-  const filtered = filterEntries(
-    games,
-    metadataByCode,
-    searchQuery,
-    includedGenres,
-    excludedGenres,
-    fileKindFilter
-  )
-  const sorted = sortEntries(filtered, sortField, sortDirection)
-  const visible = duplicatesOnly
-    ? sorted.filter((e) => hasDuplicateGroupForEntry(e, duplicateGroups))
-    : sorted
 
   return (
     <div className="flex h-full flex-col">
