@@ -8,7 +8,12 @@ export function useGames() {
 
   return useQuery<ScannedEntry[]>({
     queryKey: ['games', 'scan', libraryPaths],
-    queryFn: () => window.api.scanner.scanRecursive(libraryPaths),
+    // allowPartial: true - a registered library going offline (unmounted
+    // drive, deleted folder) should drop that one library's results, not
+    // fail the whole Gallery/List/DetailList scan, regardless of how many
+    // libraries happen to be registered (see D3 in
+    // docs/verification/2026-09-09-performance-results.md).
+    queryFn: () => window.api.scanner.scanRecursive(libraryPaths, true),
     enabled: libraries !== undefined,
     // Interim mitigation until a real games cache table lands: without this,
     // React Query's staleTime: 0 default re-runs a full recursive filesystem

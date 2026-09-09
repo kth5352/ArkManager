@@ -156,8 +156,8 @@ const api = {
     getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   },
   scanner: {
-    scanRecursive: (libraryPaths: string[]): Promise<ScannedEntry[]> =>
-      ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, { libraryPaths }),
+    scanRecursive: (libraryPaths: string[], allowPartial?: boolean): Promise<ScannedEntry[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, { libraryPaths, allowPartial }),
     scanShallow: (dirPath: string): Promise<ScannedEntry[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SCANNER_SCAN_SHALLOW, { dirPath }),
     // Subscribes to live progress updates for whichever SCANNER_SCAN_RECURSIVE

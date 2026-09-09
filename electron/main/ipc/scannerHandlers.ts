@@ -34,7 +34,7 @@ const PROGRESS_INTERVAL = 25
 
 export function registerScannerHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SCANNER_SCAN_RECURSIVE, async (event, payload: unknown) => {
-    const { libraryPaths } = ScanRecursiveRequestSchema.parse(payload)
+    const { libraryPaths, allowPartial } = ScanRecursiveRequestSchema.parse(payload)
     const overrides = listPathCodeOverrides(db)
 
     let scanned = 0
@@ -45,13 +45,17 @@ export function registerScannerHandlers(db: AppDatabase): void {
       }
     }
 
-    // A single-path request is Explorer's "search from here down" shape
-    // (see useFolderScanRecursive in src/services/scannerService.ts, which
-    // always calls scanRecursive([path])) - the renderer wants to know if
-    // THIS scan failed (folder deleted/unmounted mid-search) rather than
-    // seeing a result indistinguishable from "no matches", so let the
-    // failure propagate here instead of being swallowed below.
-    if (libraryPaths.length === 1) {
+    // allowPartial (not libraryPaths.length) decides this policy - a
+    // registered-library Gallery scan (useGames, allowPartial: true) must
+    // tolerate one offline library and still return results for the rest
+    // regardless of how many libraries happen to be registered, while
+    // Explorer's "search from here down" request (useFolderScanRecursive,
+    // always exactly one path, allowPartial left at its false default)
+    // wants a genuine failure to propagate so the renderer can show it,
+    // not silently show zero matches. Deriving this from path count alone
+    // would make a user with exactly one registered library indistinguishable
+    // from an Explorer request.
+    if (!allowPartial) {
       const result = await scanLibraryRecursive(libraryPaths[0], overrides, onProgress)
       event.sender.send(IPC_CHANNELS.SCANNER_SCAN_PROGRESS, { scanned })
       return result

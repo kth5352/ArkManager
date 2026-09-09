@@ -204,6 +204,15 @@ export type RemoveLibraryRequest = z.infer<typeof RemoveLibraryRequestSchema>
 
 export const ScanRecursiveRequestSchema = z.object({
   libraryPaths: z.array(z.string()),
+  // Distinguishes a registered-library scan (Gallery/List/DetailList's
+  // useGames - tolerates one offline library, returns partial results for
+  // the rest) from Explorer's own "search from here down" request
+  // (useFolderScanRecursive - always exactly one path, wants a genuine
+  // failure to propagate so the renderer can show it, not silently show
+  // zero matches). libraryPaths.length alone can't distinguish these: a
+  // user with exactly one registered library sends a single-path Gallery
+  // request that looks identical in shape to an Explorer request.
+  allowPartial: z.boolean().default(false),
 })
 export type ScanRecursiveRequest = z.infer<typeof ScanRecursiveRequestSchema>
 
