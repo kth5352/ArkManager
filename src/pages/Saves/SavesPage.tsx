@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import { useGameCoverImage, useGameMetadata } from '../../services/metadataService'
 import { useGamesWithSavePath, useSaveSnapshots } from '../../services/saveService'
 import { useGames } from '../../services/useGames'
@@ -71,11 +72,19 @@ function SaveEntryRow({
       }
       className="flex w-full items-center gap-3 border-b border-border px-4 py-2 text-left text-sm transition-colors hover:bg-accent"
     >
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+      {/* whileHover scale: matches the icon/thumbnail-level hover treatment
+          already established elsewhere (FolderView.tsx's EntryIcon) - this
+          page had zero framer-motion despite every comparable browsing view
+          giving its thumbnail some hover feedback. */}
+      <motion.div
+        whileHover={{ scale: 1.08 }}
+        transition={{ duration: 0.15 }}
+        className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted"
+      >
         {coverImage && (
           <img src={coverImage} alt="" className="h-full w-full object-cover" draggable={false} />
         )}
-      </div>
+      </motion.div>
       <div className="min-w-0 flex-1">
         <p className="truncate">{metadata?.title ?? entryKey}</p>
         {code && <p className="truncate text-xs text-muted-foreground">{code.value}</p>}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
@@ -31,7 +32,15 @@ function renderResultCard(
       onClick={() => onSelect(result)}
       className="flex items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-accent"
     >
-      <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted">
+      {/* whileHover scale: matches the icon/thumbnail-level hover treatment
+          already established elsewhere (FolderView.tsx's EntryIcon,
+          FolderEntryCard) - this page had zero framer-motion despite every
+          comparable browsing view giving its thumbnail some hover feedback. */}
+      <motion.div
+        whileHover={{ scale: 1.08 }}
+        transition={{ duration: 0.15 }}
+        className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted"
+      >
         {result.thumbnailUrl && (
           <img
             src={result.thumbnailUrl}
@@ -40,7 +49,7 @@ function renderResultCard(
             draggable={false}
           />
         )}
-      </div>
+      </motion.div>
       <div className="flex flex-col gap-0.5 text-sm">
         <p className="font-medium">{result.title}</p>
         <p className="text-xs text-muted-foreground">{result.code.value}</p>
