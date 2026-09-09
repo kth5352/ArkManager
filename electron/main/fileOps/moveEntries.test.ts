@@ -9,24 +9,31 @@ import { join } from 'node:path'
 // module's export directly ("Module namespace is not configurable in ESM"),
 // so this is done via vi.mock + importOriginal instead, the same pattern
 // this project already uses in restoreSnapshot.test.ts.
-const { renameMock, cpMock, actualRenameRef, actualCpRef } = vi.hoisted(() => ({
-  renameMock: vi.fn<typeof import('node:fs/promises').rename>(),
-  cpMock: vi.fn<typeof import('node:fs/promises').cp>(),
-  actualRenameRef: { current: null as typeof import('node:fs/promises').rename | null },
-  actualCpRef: { current: null as typeof import('node:fs/promises').cp | null },
-}))
+const { renameMock, cpMock, rmMock, actualRenameRef, actualCpRef, actualRmRef } = vi.hoisted(
+  () => ({
+    renameMock: vi.fn<typeof import('node:fs/promises').rename>(),
+    cpMock: vi.fn<typeof import('node:fs/promises').cp>(),
+    rmMock: vi.fn<typeof import('node:fs/promises').rm>(),
+    actualRenameRef: { current: null as typeof import('node:fs/promises').rename | null },
+    actualCpRef: { current: null as typeof import('node:fs/promises').cp | null },
+    actualRmRef: { current: null as typeof import('node:fs/promises').rm | null },
+  })
+)
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()
   actualRenameRef.current = actual.rename
   actualCpRef.current = actual.cp
+  actualRmRef.current = actual.rm
   renameMock.mockImplementation(actual.rename)
   cpMock.mockImplementation(actual.cp)
-  return { ...actual, rename: renameMock, cp: cpMock }
+  rmMock.mockImplementation(actual.rm)
+  return { ...actual, rename: renameMock, cp: cpMock, rm: rmMock }
 })
 
 const { moveEntries } = await import('./moveEntries')
 const actualRename = actualRenameRef.current!
 const actualCp = actualCpRef.current!
+const actualRm = actualRmRef.current!
 
 describe('moveEntries', () => {
   let dir: string
@@ -39,10 +46,11 @@ describe('moveEntries', () => {
     destDir = join(dir, 'dest')
     await mkdir(sourceDir)
     await mkdir(destDir)
-    // Reset to the real implementations before each test - only the test
-    // that specifically exercises the EXDEV fallback overrides these.
+    // Reset to the real implementations before each test - only the tests
+    // that specifically exercise the EXDEV fallback override these.
     renameMock.mockImplementation(actualRename)
     cpMock.mockImplementation(actualCp)
+    rmMock.mockImplementation(actualRm)
   })
 
   afterEach(async () => {
@@ -143,5 +151,35 @@ describe('moveEntries', () => {
     // permanently block every future retry of this same move via the
     // "already exists" collision check at the top of moveOne.
     await expect(access(destPath)).rejects.toThrow()
+  })
+
+  it('reports the original cp failure, not a secondary cleanup failure, when both fail', async () => {
+    const filePath = join(sourceDir, 'a.zip')
+    await writeFile(filePath, 'content')
+    const destPath = join(destDir, 'a.zip')
+
+    renameMock.mockImplementation(async () => {
+      const error = new Error('simulated: cross-volume move') as NodeJS.ErrnoException
+      error.code = 'EXDEV'
+      throw error
+    })
+    cpMock.mockImplementation(async () => {
+      await writeFile(destPath, 'partial')
+      throw new Error('simulated: disk full mid-copy')
+    })
+    rmMock.mockImplementation(async (...args) => {
+      const [path] = args as [string]
+      // Only the partial-copy cleanup targets destPath directly - afterEach's
+      // whole-temp-dir teardown targets `dir`, a different, unrelated path.
+      if (path === destPath) throw new Error('simulated: destPath locked by an AV scanner')
+      return actualRm(...args)
+    })
+
+    const results = await moveEntries([filePath], destDir)
+
+    // The original, more informative failure must win - not the secondary
+    // cleanup error masking it.
+    expect(results[0]).toMatchObject({ success: false, error: expect.stringContaining('disk full') })
+    expect(results[0].error).not.toContain('AV scanner')
   })
 })

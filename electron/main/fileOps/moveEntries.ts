@@ -38,7 +38,14 @@ async function moveOne(sourcePath: string, destDir: string): Promise<string> {
       // future retry of this same move (the collision check above only
       // knows destPath already exists, not that it's a botched half-copy),
       // forcing the user to go delete it manually first.
-      await rm(destPath, { recursive: true, force: true })
+      //
+      // Best-effort only: cpError is already the more informative failure
+      // (e.g. "disk full"), and a secondary EPERM/EBUSY from something else
+      // holding the half-copied destPath open (an AV scanner, a lingering
+      // handle from the interrupted copy) must not replace it with a less
+      // useful cleanup error - same reasoning as restoreSnapshot.ts's
+      // equivalent best-effort cleanups.
+      await rm(destPath, { recursive: true, force: true }).catch(() => {})
       throw cpError
     }
     await rm(sourcePath, { recursive: true, force: true })
