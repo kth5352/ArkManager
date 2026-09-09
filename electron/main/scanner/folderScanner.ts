@@ -17,6 +17,39 @@ import { createConcurrencyLimiter } from './concurrencyLimiter'
 // which this synthetic benchmark can't provide.
 const statLimiter = createConcurrencyLimiter(32)
 
+// A genuinely HUNG stat() (as opposed to one that errors quickly - a
+// permission denial, a deleted file) never resolves at all, so its
+// statLimiter permit would never be released either - with a shared
+// process-lifetime pool, enough such hangs (an unresponsive network share,
+// a stalled removable drive) would eventually starve every OTHER, unrelated
+// scan too, not just the one that hit the hang. fs.promises.stat() has no
+// built-in timeout, so this races it against one - the underlying libuv
+// I/O itself can't be cancelled once dispatched (Node has no API for that),
+// but the permit is freed either way, so this scan (and every other queued
+// one) can keep making progress instead of being blocked on it forever.
+const STAT_TIMEOUT_MS = 15_000
+
+// timeoutMs is a parameter (not just the STAT_TIMEOUT_MS constant inlined
+// below) so tests can exercise the timeout path with a real, short duration
+// instead of driving 15 real seconds of fake timers - mixing vi.useFakeTimers
+// with the real fs I/O the rest of a scan depends on proved unreliable in
+// practice (the race against the hung call's own never-resolving promise
+// never observably settled, even after advancing well past the deadline).
+async function statWithTimeout(path: string, timeoutMs: number = STAT_TIMEOUT_MS) {
+  return Promise.race([
+    stat(path),
+    new Promise<never>((_resolve, reject) => {
+      setTimeout(() => {
+        reject(
+          Object.assign(new Error(`stat() timed out after ${timeoutMs}ms: ${path}`), {
+            code: 'ETIMEDOUT',
+          })
+        )
+      }, timeoutMs)
+    }),
+  ])
+}
+
 // Prefers the filename-derived code; falls back to a manually-linked
 // path_code_overrides entry (the "코드 연동" feature) for code-less
 // files/folders whose name doesn't contain a recognizable code. This is what
@@ -43,11 +76,12 @@ async function toScannedEntry(
   parentPath: string,
   name: string,
   overrides: Map<string, string>,
-  onProgress?: () => void
+  onProgress?: () => void,
+  statTimeoutMs?: number
 ): Promise<ScannedEntry | null> {
   const path = join(parentPath, name)
   try {
-    const stats = await statLimiter(() => stat(path))
+    const stats = await statLimiter(() => statWithTimeout(path, statTimeoutMs))
     return {
       name,
       path,
@@ -92,13 +126,14 @@ function isImageFile(name: string): boolean {
 async function scanNonImageChildren(
   dirPath: string,
   overrides: Map<string, string>,
-  onProgress?: () => void
+  onProgress?: () => void,
+  statTimeoutMs?: number
 ): Promise<ScannedEntry[]> {
   const names = await readdir(dirPath)
   const entries = await Promise.all(
     names
       .filter((name) => !isImageFile(name))
-      .map((name) => toScannedEntry(dirPath, name, overrides, onProgress))
+      .map((name) => toScannedEntry(dirPath, name, overrides, onProgress, statTimeoutMs))
   )
   return entries.filter(isScannedEntry)
 }
@@ -179,7 +214,8 @@ export async function scanFolderShallow(
 async function scanChildren(
   children: ScannedEntry[],
   overrides: Map<string, string>,
-  onProgress?: () => void
+  onProgress?: () => void,
+  statTimeoutMs?: number
 ): Promise<ScannedEntry[]> {
   const results: ScannedEntry[] = []
 
@@ -201,7 +237,7 @@ async function scanChildren(
 
     let nestedChildren: ScannedEntry[]
     try {
-      nestedChildren = await scanNonImageChildren(entry.path, overrides, onProgress)
+      nestedChildren = await scanNonImageChildren(entry.path, overrides, onProgress, statTimeoutMs)
     } catch {
       // Subfolder became unreadable mid-scan (permission error, race, or
       // a race with deletion) - skip this branch only, sibling branches
@@ -216,7 +252,7 @@ async function scanChildren(
       continue
     }
 
-    const nested = await scanChildren(nestedChildren, overrides, onProgress)
+    const nested = await scanChildren(nestedChildren, overrides, onProgress, statTimeoutMs)
     results.push(...nested)
   }
 
@@ -239,8 +275,11 @@ async function scanChildren(
 export async function scanLibraryRecursive(
   libraryPath: string,
   overrides: Map<string, string> = new Map(),
-  onProgress?: () => void
+  onProgress?: () => void,
+  // Test-only seam (see statWithTimeout) - production callers never pass
+  // this, so every real scan keeps using the full STAT_TIMEOUT_MS.
+  statTimeoutMs?: number
 ): Promise<ScannedEntry[]> {
-  const children = await scanNonImageChildren(libraryPath, overrides, onProgress)
-  return scanChildren(children, overrides, onProgress)
+  const children = await scanNonImageChildren(libraryPath, overrides, onProgress, statTimeoutMs)
+  return scanChildren(children, overrides, onProgress, statTimeoutMs)
 }

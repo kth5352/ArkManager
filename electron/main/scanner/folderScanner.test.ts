@@ -426,4 +426,30 @@ describe('folderScanner stat() concurrency limiting (D1)', () => {
     expect(progressCount).toBe(FILE_COUNT)
     expect(entries).toHaveLength(FILE_COUNT)
   })
+
+  // Review follow-up (D1): the shared statLimiter pool means a genuinely
+  // HUNG stat() (never resolves, not just slow/erroring) would otherwise
+  // hold its permit forever - with a process-lifetime pool, enough hangs
+  // would eventually starve every other, unrelated scan too. This proves
+  // the timeout actually frees the permit instead of blocking forever.
+  it('times out a stat() call that never resolves, treating that one entry as unstattable without blocking the rest of the scan', async () => {
+    await writeFile(join(dir, 'RJ01111.zip'), '')
+    const hungPath = join(dir, 'hung.zip')
+    await writeFile(hungPath, '')
+
+    const { stat: realStat } =
+      await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    statOverride.impl = (path) =>
+      path === hungPath ? new Promise(() => {}) : realStat(path)
+
+    // A real, short timeout (not vi.useFakeTimers() against the production
+    // 15s constant) - mixing fake timers with the real fs I/O the rest of a
+    // scan depends on proved unreliable (the race against the hung call's
+    // own never-resolving promise never observably settled, even well past
+    // the deadline). scanLibraryRecursive's statTimeoutMs param exists
+    // solely for this - see its comment in folderScanner.ts.
+    const entries = await scanLibraryRecursive(dir, new Map(), undefined, 20)
+
+    expect(entries.map((e) => e.name)).toEqual(['RJ01111.zip'])
+  })
 })
