@@ -128,14 +128,26 @@ export function registerSaveHandlers(db: AppDatabase): void {
   ipcMain.handle(
     IPC_CHANNELS.SAVE_DIFF,
     async (_event, payload: unknown): Promise<SaveDiffEntryDto[]> => {
-      const { identifier, timestamp } = SaveDiffRequestSchema.parse(payload)
+      const { identifier, timestamp, mode } = SaveDiffRequestSchema.parse(payload)
       const { key } = resolveGameEntryKey(identifier)
 
       const userData = getGameUserData(db, key)
       if (!userData?.savePath) return []
 
       const snapshotDir = timestamp ? join(backupRootDir(key), timestamp) : null
-      return diffSaveFolders(snapshotDir, userData.savePath)
+      return diffSaveFolders(snapshotDir, userData.savePath, {
+        // A null timestamp means "no prior snapshot to compare" (normal,
+        // e.g. the very first save) - allowed. An explicitly chosen
+        // timestamp's directory going missing is a real error (the backup
+        // was deleted out from under this call), never silently treated as
+        // empty.
+        allowMissingLeftRoot: timestamp === null,
+        // The live save folder not existing yet is only a legitimate,
+        // expected state when the user is about to RESTORE into it
+        // (restoreSnapshot.ts already treats this as normal) - previewing a
+        // NEW backup of a folder that doesn't exist is a real error.
+        allowMissingRightRoot: mode === 'restore',
+      })
     }
   )
 

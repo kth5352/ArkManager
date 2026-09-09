@@ -54,16 +54,25 @@ export function useSaveSnapshots(entry: Pick<ScannedEntry, 'code' | 'path'> | nu
 }
 
 // timestamp: the snapshot to diff the live save folder against, or null to
-// diff against "no prior snapshot" (i.e. treat every live file as new) -
-// see saveHandlers.ts's SAVE_DIFF handler.
+// diff against "no prior snapshot" (i.e. treat every live file as new).
+// mode: 'save' (default) previews a NEW backup - the live save folder must
+// exist. 'restore' previews restoring the chosen snapshot onto the live
+// folder, which may not exist yet (a normal, allowed state there). See
+// saveHandlers.ts's SAVE_DIFF handler for the exact policy this selects.
 export function useSaveDiff(
   entry: Pick<ScannedEntry, 'code' | 'path'> | null,
   timestamp: string | null,
-  enabled: boolean
+  enabled: boolean,
+  mode: 'save' | 'restore' = 'save'
 ) {
   return useQuery<SaveDiffEntryDto[]>({
-    queryKey: ['save-diff', entry ? identifierKey(entry) : 'none', timestamp ?? '__none__'],
-    queryFn: () => window.api.save.diff(entry!.code, entry!.path, timestamp),
+    queryKey: [
+      'save-diff',
+      entry ? identifierKey(entry) : 'none',
+      timestamp ?? '__none__',
+      mode,
+    ],
+    queryFn: () => window.api.save.diff(entry!.code, entry!.path, timestamp, mode),
     enabled: enabled && entry !== null,
   })
 }

@@ -471,9 +471,15 @@ export const RestoreSaveSnapshotRequestSchema = z.object({
   timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN),
 })
 
+// mode distinguishes which side of the comparison is allowed to be
+// legitimately missing: 'save' (default, previewing a NEW backup - the live
+// save folder MUST exist) vs 'restore' (previewing what restoring a chosen
+// snapshot would change - the live save folder may not exist yet, same as
+// restoreSnapshot.ts's own "targetDir might not exist yet" normal case).
 export const SaveDiffRequestSchema = z.object({
   identifier: GameEntryIdentifierSchema,
   timestamp: z.string().regex(SNAPSHOT_TIMESTAMP_PATTERN).nullable(),
+  mode: z.enum(['save', 'restore']).default('save'),
 })
 
 export const SetSnapshotLabelRequestSchema = z.object({

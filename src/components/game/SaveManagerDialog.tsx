@@ -115,10 +115,16 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
     null
   )
   const { data: snapshots } = useSaveSnapshots(entry)
-  const { data: diff } = useSaveDiff(
+  const {
+    data: diff,
+    isPending: isDiffPending,
+    isError: isDiffError,
+    refetch: refetchDiff,
+  } = useSaveDiff(
     entry,
     pending?.type === 'save' ? pending.against : pending?.type === 'restore' ? pending.timestamp : null,
-    pending !== null && (pending.type === 'save' || pending.type === 'restore')
+    pending !== null && (pending.type === 'save' || pending.type === 'restore'),
+    pending?.type === 'restore' ? 'restore' : 'save'
   )
   const createSnapshot = useCreateSaveSnapshot()
   const restoreSnapshot = useRestoreSaveSnapshot()
@@ -346,10 +352,19 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
                 : t('saveManager.restoreDiffTitle')}
             </p>
             <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-              {diff === undefined ? null : diff.length === 0 ? (
+              {isDiffPending ? (
+                <p className="text-sm text-muted-foreground">{t('saveManager.diffLoading')}</p>
+              ) : isDiffError ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-destructive">{t('saveManager.diffFailed')}</p>
+                  <Button size="sm" variant="ghost" onClick={() => refetchDiff()}>
+                    {t('common.retry')}
+                  </Button>
+                </div>
+              ) : diff && diff.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t('saveManager.noDifferences')}</p>
               ) : (
-                diff.map((d) => {
+                (diff ?? []).map((d) => {
                   const status = displayStatus(d.status, pending.type)
                   return (
                     <div key={d.relativePath} className="flex items-center gap-2 text-xs">
@@ -365,14 +380,17 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
                 {t('common.cancel')}
               </Button>
               {pending.type === 'save' ? (
-                <Button onClick={handleConfirmSave} disabled={createSnapshot.isPending}>
+                <Button
+                  onClick={handleConfirmSave}
+                  disabled={createSnapshot.isPending || isDiffPending || isDiffError}
+                >
                   {t('saveManager.confirmSave')}
                 </Button>
               ) : (
                 <Button
                   variant="destructive"
                   onClick={handleConfirmRestore}
-                  disabled={restoreSnapshot.isPending}
+                  disabled={restoreSnapshot.isPending || isDiffPending || isDiffError}
                 >
                   {t('saveManager.confirmRestore')}
                 </Button>

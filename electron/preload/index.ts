@@ -328,9 +328,10 @@ const api = {
     diff: (
       code: GameCode | null,
       path: string,
-      timestamp: string | null
+      timestamp: string | null,
+      mode: 'save' | 'restore' = 'save'
     ): Promise<SaveDiffEntryDto[]> =>
-      ipcRenderer.invoke(IPC_CHANNELS.SAVE_DIFF, { identifier: { code, path }, timestamp }),
+      ipcRenderer.invoke(IPC_CHANNELS.SAVE_DIFF, { identifier: { code, path }, timestamp, mode }),
     listGamesWithSavePath: (): Promise<GameWithSavePathDto[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.SAVE_LIST_GAMES_WITH_SAVE_PATH),
     setSnapshotLabel: (
