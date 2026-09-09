@@ -164,6 +164,54 @@ describe('resolveMediaThumbnail', () => {
     expect(result).toBeNull()
   })
 
+  it('does not re-run ffmpeg extraction on a second request for a track with no thumbnail', async () => {
+    const audioPath = join(dir, 'song.mp3')
+    await writeFile(audioPath, '')
+    let extractCalls = 0
+    const deps = {
+      extractVideoFrame: async () => false,
+      extractAudioArt: async () => {
+        extractCalls++
+        return false
+      },
+      findThumbnailPath: async () => null,
+    }
+
+    const first = await resolveMediaThumbnail(cacheDir, audioPath, false, deps)
+    const second = await resolveMediaThumbnail(cacheDir, audioPath, false, deps)
+
+    expect(first).toBeNull()
+    expect(second).toBeNull()
+    // The real regression: every prior request re-paid the full extraction
+    // cost - including ffmpeg's own up-to-15s timeout - for a file that will
+    // never produce a thumbnail.
+    expect(extractCalls).toBe(1)
+  })
+
+  it('does re-attempt extraction after a transient read/save failure (not cached negatively)', async () => {
+    const videoPath = join(dir, 'clip.mp4')
+    await writeFile(videoPath, '')
+    let extractCalls = 0
+    const deps = {
+      // Reports success but never actually writes outputPath - readFile
+      // inside resolveMediaThumbnail then throws, landing in the catch
+      // block that must NOT be treated as "no thumbnail exists".
+      extractVideoFrame: async () => {
+        extractCalls++
+        return true
+      },
+      extractAudioArt: async () => false,
+      findThumbnailPath: async () => null,
+    }
+
+    const first = await resolveMediaThumbnail(cacheDir, videoPath, true, deps)
+    const second = await resolveMediaThumbnail(cacheDir, videoPath, true, deps)
+
+    expect(first).toBeNull()
+    expect(second).toBeNull()
+    expect(extractCalls).toBe(2)
+  })
+
   it('extracts to a .jpg temp path, not a muxer-ambiguous extension like .tmp', async () => {
     const videoPath = join(dir, 'clip.mp4')
     await writeFile(videoPath, '')

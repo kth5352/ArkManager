@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, rm } from 'node:fs/promises'
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { keyToSafeDirName } from '../save/keyToSafeDirName'
@@ -44,6 +44,18 @@ export async function resolveMediaThumbnail(
 ): Promise<string | null> {
   const cachePath = join(cacheDir, `${keyToSafeDirName(filePath)}.webp`)
   if (await pathExists(cachePath)) return cachePath
+  // A prior call already tried every tier below (ffmpeg extraction, then the
+  // directory-image fallback for audio) and genuinely found nothing - without
+  // this, a track with no embedded art and no folder image (a corrupted
+  // file, an unsupported codec, or just a track that never had cover art)
+  // re-pays the full extraction cost - including ffmpeg's up-to-15s timeout
+  // on a file it can't read - on every single request, forever. This was a
+  // real, live-reported cause of the Media tab "feeling heavy" on repeat
+  // visits. Cleared the same way as the positive cache above: deleting
+  // cache/media-thumbnails (see clearCache.ts) removes this marker too, so a
+  // user can force a re-attempt if the underlying file ever changes.
+  const notFoundMarkerPath = `${cachePath}.notfound`
+  if (await pathExists(notFoundMarkerPath)) return null
 
   await mkdir(cacheDir, { recursive: true })
   // Unique per call (not just per filePath) so two concurrent requests for
@@ -97,5 +109,10 @@ export async function resolveMediaThumbnail(
     }
   }
 
+  // Every tier was tried and genuinely found nothing (as opposed to the
+  // catch blocks above, which are transient read/save failures - those must
+  // NOT be cached negatively, since retrying could succeed once whatever
+  // went wrong clears up).
+  await writeFile(notFoundMarkerPath, '')
   return null
 }
