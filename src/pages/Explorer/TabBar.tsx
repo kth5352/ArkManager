@@ -80,7 +80,16 @@ function SortableTab({ tab }: { tab: ExplorerTab }) {
               : 'border-transparent hover:bg-accent'
           } ${isFileDropTarget ? 'bg-accent ring-1 ring-inset ring-primary' : ''}`}
         >
-          <span>{tab.label}</span>
+          {/* max-w + truncate: Pretendard renders Korean/Japanese folder
+              names wider than the previous system font - an unbounded
+              label could grow a single tab wide enough to push the
+              trailing add-tab/open-folder buttons off-screen with no way
+              to reach them (see the row's own overflow-x-auto below, which
+              handles the case where even truncated tabs still don't all
+              fit). */}
+          <span className="max-w-40 truncate" title={tab.label}>
+            {tab.label}
+          </span>
           <Button
             variant="ghost"
             size="icon"
@@ -173,7 +182,11 @@ export function TabBar() {
 
   return (
     <SortableContext items={tabs.map((t) => t.id)} strategy={horizontalListSortingStrategy}>
-      <div className="flex items-center border-b border-border">
+      {/* overflow-x-auto: with no wrap and every tab shrink-0, enough tabs
+          (or wide-enough labels) previously overflowed the row silently -
+          the add-tab/open-folder buttons at the end got pushed past the
+          right edge with no way to scroll to them. */}
+      <div className="flex items-center overflow-x-auto border-b border-border">
         <AnimatePresence mode="popLayout">
           {tabs.map((tab) => (
             <motion.div
