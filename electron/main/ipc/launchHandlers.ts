@@ -72,6 +72,18 @@ export function registerLaunchHandlers(db: AppDatabase): void {
     if (!userData?.launchConfig) {
       throw new Error(NO_LAUNCH_CONFIG_ERROR_MESSAGE)
     }
+    // Re-checked on every launch, not just when LAUNCH_SET_CONFIG first wrote
+    // it - isLaunchConfig (gameUserDataRepository.ts) only validates that
+    // executablePath is a string, not that it still points under a
+    // registered library. A corrupted or manually-edited DB row could hold a
+    // well-formed launchConfig pointing anywhere (e.g. a system binary) - the
+    // same error as "no config" reuses this game's existing reconfigure flow
+    // (isNoLaunchConfigError -> LaunchConfigDialog) rather than a raw crash,
+    // and is more useful than "launch failed" for a path the user never
+    // actually chose.
+    if (!isPathWithinAnyLibrary(userData.launchConfig.executablePath, libraryRootsOf(db))) {
+      throw new Error(NO_LAUNCH_CONFIG_ERROR_MESSAGE)
+    }
 
     startSession(key, keyType)
     try {
