@@ -14,9 +14,7 @@ function isStringArray(value: unknown): value is string[] {
 // call, just that row's genres list.
 function parseGenres(code: string, raw: string | null): string[] {
   if (!raw) return []
-  return (
-    parseJsonSafely(raw, isStringArray, `game_metadata.genres (code=${code})`) ?? []
-  )
+  return parseJsonSafely(raw, isStringArray, `game_metadata.genres (code=${code})`) ?? []
 }
 
 export interface GameMetadataRow {

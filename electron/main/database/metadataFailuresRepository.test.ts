@@ -52,4 +52,22 @@ describe('metadataFailuresRepository', () => {
     expect(row?.attemptedSources).toEqual([])
     expect(row?.reason).toBe('blocked')
   })
+
+  // Locks in a pre-existing, deliberate behavior this D4 fix must not
+  // tighten: getMetadataFailure validates the parsed value is an array (via
+  // Array.isArray, not a stricter isStringArray-style check) and THEN
+  // filters non-string elements out per-element, rather than discarding the
+  // whole array the moment one element isn't a string.
+  it('keeps the string elements of a valid-but-mixed-shape array instead of discarding the whole thing', () => {
+    saveMetadataFailure(db, 'RJ08888888', ['dlsite-html'], 'parse')
+    db.update(metadataFailures)
+      .set({ attemptedSources: JSON.stringify(['dlsite-html', 123, 'dlsite-json', null]) })
+      .where(eq(metadataFailures.code, 'RJ08888888'))
+      .run()
+
+    expect(getMetadataFailure(db, 'RJ08888888')?.attemptedSources).toEqual([
+      'dlsite-html',
+      'dlsite-json',
+    ])
+  })
 })

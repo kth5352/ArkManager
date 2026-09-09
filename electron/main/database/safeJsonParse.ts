@@ -9,10 +9,16 @@
 // fail a whole batch fetch (getManyGameMetadata) or a single game's entire
 // read, not just the one corrupted field.
 //
-// Never touches the DB - the caller decides what to return to the UI, but
-// the original (corrupted) value on disk is left exactly as-is, so a future
-// app version with different parsing logic (or a manual fix) still has the
-// original bytes to work with.
+// This function itself never touches the DB - a plain read (getGameUserData,
+// getGameMetadata, getManyGameMetadata, getMetadataFailure) leaves the
+// original (corrupted) column value on disk exactly as-is. That guarantee
+// does NOT extend to every caller of those read functions, though -
+// gameUserDataRepository's rekeyToCode/rekeyPath read a row via
+// getGameUserData and then WRITE it back (re-serializing whatever
+// launchConfig came back, i.e. null for a corrupted one) as part of their
+// own normal move/merge behavior, which does replace the original bytes.
+// That's an accepted, pre-existing consequence of reusing the read path
+// there, not something this helper can or should prevent.
 export function parseJsonSafely<T>(
   raw: string,
   isValid: (value: unknown) => value is T,

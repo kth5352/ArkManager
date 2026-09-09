@@ -47,7 +47,9 @@ export function getMetadataFailure(db: AppDatabase, code: string): MetadataFailu
     ) ?? []
   return {
     ...row,
-    attemptedSources: parsedSources.filter((source): source is string => typeof source === 'string'),
+    attemptedSources: parsedSources.filter(
+      (source): source is string => typeof source === 'string'
+    ),
     reason: row.reason as MetadataFailureReason,
   }
 }
