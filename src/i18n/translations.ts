@@ -32,6 +32,10 @@ const ko = {
   'common.retry': '다시 시도',
 
   'settings.libraryTitle': '라이브러리 설정',
+  'settings.groupLibrary': '라이브러리',
+  'settings.groupGeneral': '일반',
+  'settings.groupLaunchMetadata': '실행 및 메타데이터',
+  'settings.groupManagement': '관리 및 업데이트',
   'settings.addLibrary': '라이브러리 추가',
   'settings.newLibrary': '새 라이브러리',
   'settings.namePlaceholder': '이름 (비워두면 폴더명 사용)',
@@ -423,6 +427,10 @@ const ja: Record<keyof typeof ko, string> = {
   'common.retry': '再試行',
 
   'settings.libraryTitle': 'ライブラリ設定',
+  'settings.groupLibrary': 'ライブラリ',
+  'settings.groupGeneral': '一般',
+  'settings.groupLaunchMetadata': '起動とメタデータ',
+  'settings.groupManagement': '管理とアップデート',
   'settings.addLibrary': 'ライブラリ追加',
   'settings.newLibrary': '新しいライブラリ',
   'settings.namePlaceholder': '名前（空欄の場合はフォルダ名を使用）',
@@ -812,6 +820,10 @@ const en: Record<keyof typeof ko, string> = {
   'common.retry': 'Retry',
 
   'settings.libraryTitle': 'Library Settings',
+  'settings.groupLibrary': 'Library',
+  'settings.groupGeneral': 'General',
+  'settings.groupLaunchMetadata': 'Launch & Metadata',
+  'settings.groupManagement': 'Management & Updates',
   'settings.addLibrary': 'Add Library',
   'settings.newLibrary': 'New Library',
   'settings.namePlaceholder': 'Name (leave blank to use folder name)',

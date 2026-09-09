@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../../components/ui/dialog'
+import { HoverTooltip } from '../../components/ui/hover-tooltip'
+import { SettingsSection } from './SettingsSection'
+import { UI_MOTION } from '../../lib/motion'
 import {
   Select,
   SelectContent,
@@ -285,10 +289,10 @@ function LocaleEmulatorSection() {
   }
 
   return (
-    <div className="mt-4 border-t border-border pt-4">
+    <div>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold">Locale Emulator</h2>
+          <h3 className="text-sm font-medium">Locale Emulator</h3>
           <p className="text-xs text-muted-foreground">
             {isCheckingAvailable
               ? t('settings.localeEmulatorChecking')
@@ -414,10 +418,10 @@ function UpdateSection() {
     checkForUpdates.isPending || status.state === 'checking' || status.state === 'downloading'
 
   return (
-    <div className="mt-4 border-t border-border pt-4">
+    <div className="border-t border-border pt-3">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold">{t('settings.updateTitle')}</h2>
+          <h3 className="text-sm font-medium">{t('settings.updateTitle')}</h3>
           {version && (
             <p className="text-xs text-muted-foreground">
               {t('settings.currentVersion', { version })}
@@ -466,8 +470,8 @@ function LanguageSection() {
   const setLanguage = useSetLanguageMutation()
 
   return (
-    <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-      <h2 className="text-sm font-semibold">{t('settings.language')}</h2>
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-medium">{t('settings.language')}</h3>
       <Select value={locale} onValueChange={(value) => setLanguage.mutate(value as Locale)}>
         <SelectTrigger className="w-32">
           <SelectValue />
@@ -488,9 +492,9 @@ function WindowCloseBehaviorSection() {
   const setWindowCloseBehavior = useSetWindowCloseBehaviorMutation()
 
   return (
-    <section className="mt-4 flex items-center justify-between border-t border-border pt-4">
+    <div className="flex items-center justify-between border-t border-border pt-3">
       <div>
-        <h2 className="text-sm font-semibold">{t('settings.windowCloseBehavior')}</h2>
+        <h3 className="text-sm font-medium">{t('settings.windowCloseBehavior')}</h3>
         <p className="text-xs text-muted-foreground">{t('settings.windowCloseBehaviorDesc')}</p>
       </div>
       <Select
@@ -507,7 +511,7 @@ function WindowCloseBehaviorSection() {
           <SelectItem value="tray">{t('settings.windowCloseBehaviorTray')}</SelectItem>
         </SelectContent>
       </Select>
-    </section>
+    </div>
   )
 }
 
@@ -551,9 +555,9 @@ function ExternalMetadataProviderSection() {
   const setSettings = useSetExternalMetadataProviderSettings()
 
   return (
-    <section className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+    <div className="flex flex-col gap-3 border-t border-border pt-3">
       <div>
-        <h2 className="text-sm font-semibold">{t('settings.externalMetadataProvider')}</h2>
+        <h3 className="text-sm font-medium">{t('settings.externalMetadataProvider')}</h3>
         <p className="text-xs text-muted-foreground">
           {t('settings.externalMetadataProviderDesc')}
         </p>
@@ -575,7 +579,7 @@ function ExternalMetadataProviderSection() {
           onUpdate={(update) => setSettings.mutate(update)}
         />
       )}
-    </section>
+    </div>
   )
 }
 
@@ -586,60 +590,98 @@ export function SettingsPage() {
     null
   )
   const { data: version } = useAppVersion()
+  // design §4: "reduced motion은 layout false와 이동/height animation 생략" - unlike
+  // the transform-based animations MotionConfig's reducedMotion="user"
+  // (main.tsx) already strips automatically app-wide, a plain `height`
+  // value is NOT a transform, so it needs this explicit branch: no `layout`
+  // prop, no height animation at all under reduced motion, opacity only.
+  const prefersReducedMotion = useReducedMotion()
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-4 overflow-y-auto p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">{t('settings.libraryTitle')}</h1>
-        <AddLibraryDialog />
       </div>
-      {isLoading || !libraries ? (
-        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-      ) : libraries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('settings.noLibraries')}</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {libraries.map((lib) => (
-            <li
-              key={lib.id}
-              className="flex items-center justify-between rounded-md border border-border p-3"
-            >
-              <div>
-                <p className="font-medium">{lib.name}</p>
-                <p className="text-xs text-muted-foreground">{lib.path}</p>
-                {!lib.exists && (
-                  <p className="text-xs text-destructive">{t('settings.pathNotFound')}</p>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setRemovingLibrary({ id: lib.id, name: lib.name })}
-              >
-                {t('common.delete')}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <RemoveLibraryConfirmDialog
-        library={removingLibrary}
-        onClose={() => setRemovingLibrary(null)}
-      />
 
-      <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-        <div>
-          <h2 className="text-sm font-semibold">{t('settings.cacheManagement')}</h2>
-          <p className="text-xs text-muted-foreground">{t('settings.cacheManagementDesc')}</p>
+      <SettingsSection id="settings-group-library" title={t('settings.groupLibrary')}>
+        <div className="flex items-center justify-end">
+          <AddLibraryDialog />
         </div>
-        <ClearCacheDialog />
-      </div>
+        {isLoading || !libraries ? (
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : libraries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('settings.noLibraries')}</p>
+        ) : (
+          // AnimatePresence initial={false}: the FIRST load of an already-
+          // populated list must not entrance-animate every row - only a
+          // real add/remove after that (design §4's "최초 로딩 목록 전체 entrance는
+          // 하지 않는다"). layout="position" + height 0<->auto + opacity
+          // 0<->1, 180ms - matches design's motion table row for this exact
+          // interaction. Cancelling the confirm dialog removes nothing (no
+          // library left the `libraries` array), so nothing exits; a failed
+          // remove leaves the row in place for the same reason (see
+          // RemoveLibraryConfirmDialog - it only calls onClose, which
+          // doesn't touch this list, on mutation SUCCESS).
+          <ul className="flex flex-col gap-2">
+            <AnimatePresence initial={false}>
+              {libraries.map((lib) => (
+                <motion.li
+                  key={lib.id}
+                  layout={prefersReducedMotion ? false : 'position'}
+                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
+                  exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                  transition={{ duration: UI_MOTION.panel, ease: UI_MOTION.ease }}
+                  className="flex items-center justify-between gap-2 overflow-hidden rounded-md border border-border p-3"
+                >
+                  <HoverTooltip content={lib.path} className="min-w-0 flex-1">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{lib.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{lib.path}</p>
+                      {!lib.exists && (
+                        <p className="text-xs text-destructive">{t('settings.pathNotFound')}</p>
+                      )}
+                    </div>
+                  </HoverTooltip>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setRemovingLibrary({ id: lib.id, name: lib.name })}
+                  >
+                    {t('common.delete')}
+                  </Button>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        )}
+        <RemoveLibraryConfirmDialog
+          library={removingLibrary}
+          onClose={() => setRemovingLibrary(null)}
+        />
+      </SettingsSection>
 
-      <LocaleEmulatorSection />
-      <ExternalMetadataProviderSection />
-      <WindowCloseBehaviorSection />
-      <LanguageSection />
-      <UpdateSection />
+      <SettingsSection id="settings-group-general" title={t('settings.groupGeneral')}>
+        <LanguageSection />
+        <WindowCloseBehaviorSection />
+      </SettingsSection>
+
+      <SettingsSection id="settings-group-launch-metadata" title={t('settings.groupLaunchMetadata')}>
+        <LocaleEmulatorSection />
+        <ExternalMetadataProviderSection />
+      </SettingsSection>
+
+      <SettingsSection id="settings-group-management" title={t('settings.groupManagement')}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-medium">{t('settings.cacheManagement')}</h3>
+            <p className="text-xs text-muted-foreground">{t('settings.cacheManagementDesc')}</p>
+          </div>
+          <ClearCacheDialog />
+        </div>
+        <UpdateSection />
+      </SettingsSection>
 
       {version && (
         <p className="mt-auto flex justify-end text-xs text-muted-foreground">
