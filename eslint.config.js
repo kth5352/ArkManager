@@ -8,7 +8,16 @@ const globals = require('globals')
 
 module.exports = [
   {
-    ignores: ['out', 'dist', 'node_modules', '*.config.ts', '*.config.js', '*.cjs'],
+    ignores: [
+      'out',
+      'dist',
+      'node_modules',
+      '*.config.ts',
+      '*.config.js',
+      '*.cjs',
+      '.superpowers/**',
+      '.worktrees/**',
+    ],
   },
   js.configs.recommended,
   ...tsPlugin.configs['flat/recommended'],
