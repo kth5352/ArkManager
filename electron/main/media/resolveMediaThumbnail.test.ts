@@ -232,9 +232,11 @@ describe('resolveMediaThumbnail', () => {
     expect(extname(capturedOutputPath)).toBe('.jpg')
   })
 
-  it('uses a unique temp path per call so concurrent requests for the same file do not collide', async () => {
-    const videoPath = join(dir, 'clip.mp4')
-    await writeFile(videoPath, '')
+  it('uses a unique temp path per call for DIFFERENT files resolving at the same time', async () => {
+    const videoPathA = join(dir, 'clip-a.mp4')
+    const videoPathB = join(dir, 'clip-b.mp4')
+    await writeFile(videoPathA, '')
+    await writeFile(videoPathB, '')
     const capturedOutputPaths: string[] = []
     const deps = {
       extractVideoFrame: async (_video: string, outputPath: string) => {
@@ -247,11 +249,112 @@ describe('resolveMediaThumbnail', () => {
     }
 
     await Promise.all([
-      resolveMediaThumbnail(cacheDir, videoPath, true, deps),
-      resolveMediaThumbnail(cacheDir, videoPath, true, deps),
+      resolveMediaThumbnail(cacheDir, videoPathA, true, deps),
+      resolveMediaThumbnail(cacheDir, videoPathB, true, deps),
     ])
 
     expect(capturedOutputPaths).toHaveLength(2)
     expect(capturedOutputPaths[0]).not.toBe(capturedOutputPaths[1])
+  })
+
+  it('merges concurrent requests for the SAME uncached file into a single extraction, not one each', async () => {
+    const videoPath = join(dir, 'clip.mp4')
+    await writeFile(videoPath, '')
+    let extractCalls = 0
+    const deps = {
+      extractVideoFrame: async (_video: string, outputPath: string) => {
+        extractCalls++
+        // A real delay so the two calls below genuinely overlap in time
+        // instead of the first one finishing before the second even starts.
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        await writeFakeFrame(outputPath)
+        return true
+      },
+      extractAudioArt: async () => false,
+      findThumbnailPath: async () => null,
+    }
+
+    const [a, b] = await Promise.all([
+      resolveMediaThumbnail(cacheDir, videoPath, true, deps),
+      resolveMediaThumbnail(cacheDir, videoPath, true, deps),
+    ])
+
+    // Not just "both succeeded" - before merging existed, a synthetic
+    // benchmark found the SECOND of two concurrent calls could genuinely
+    // fail (return null) because both independently called
+    // saveCustomCoverImage (sharp().toFile()) against the same destination
+    // path at once. Merging means only one of those calls ever happens.
+    expect(extractCalls).toBe(1)
+    expect(a).not.toBeNull()
+    expect(b).toBe(a)
+  })
+
+  it('removes the in-flight entry once settled, so a later non-concurrent request checks the cache fresh', async () => {
+    const videoPath = join(dir, 'clip.mp4')
+    await writeFile(videoPath, '')
+    let extractCalls = 0
+    const deps = {
+      extractVideoFrame: async (_video: string, outputPath: string) => {
+        extractCalls++
+        await writeFakeFrame(outputPath)
+        return true
+      },
+      extractAudioArt: async () => false,
+      findThumbnailPath: async () => null,
+    }
+    const inFlight = new Map<string, Promise<string | null>>()
+
+    const first = await resolveMediaThumbnail(cacheDir, videoPath, true, deps, inFlight)
+    expect(inFlight.size).toBe(0)
+    const second = await resolveMediaThumbnail(cacheDir, videoPath, true, deps, inFlight)
+
+    expect(second).toBe(first)
+    // The second call hit the on-disk cache check, not a lingering
+    // in-flight entry - extraction only ran once, and the Map is provably
+    // empty in between.
+    expect(extractCalls).toBe(1)
+  })
+
+  it('accepts an injected in-flight Map so tests never share the module-level production singleton', async () => {
+    const videoPath = join(dir, 'clip.mp4')
+    await writeFile(videoPath, '')
+    const deps = {
+      extractVideoFrame: async (_video: string, outputPath: string) => {
+        await writeFakeFrame(outputPath)
+        return true
+      },
+      extractAudioArt: async () => false,
+      findThumbnailPath: async () => null,
+    }
+    const ownInFlight = new Map<string, Promise<string | null>>()
+
+    const result = await resolveMediaThumbnail(cacheDir, videoPath, true, deps, ownInFlight)
+
+    expect(result).not.toBeNull()
+    expect(ownInFlight.size).toBe(0)
+  })
+
+  it('caps concurrent ffmpeg extraction calls at 2 across multiple DIFFERENT uncached files', async () => {
+    const paths = Array.from({ length: 6 }, (_, i) => join(dir, `clip-${i}.mp4`))
+    await Promise.all(paths.map((p) => writeFile(p, '')))
+
+    let active = 0
+    let peak = 0
+    const deps = {
+      extractVideoFrame: async (_video: string, outputPath: string) => {
+        active++
+        peak = Math.max(peak, active)
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        active--
+        await writeFakeFrame(outputPath)
+        return true
+      },
+      extractAudioArt: async () => false,
+      findThumbnailPath: async () => null,
+    }
+
+    await Promise.all(paths.map((p) => resolveMediaThumbnail(cacheDir, p, true, deps)))
+
+    expect(peak).toBeLessThanOrEqual(2)
   })
 })

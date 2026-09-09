@@ -6,6 +6,7 @@ import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
 import { extractVideoFrame as defaultExtractVideoFrame } from './extractVideoFrame'
 import { extractAudioArt as defaultExtractAudioArt } from './extractAudioArt'
 import { findThumbnailPath as defaultFindThumbnailPath } from '../scanner/thumbnail'
+import { createConcurrencyLimiter } from '../scanner/concurrencyLimiter'
 
 export interface ResolveMediaThumbnailDeps {
   extractVideoFrame: (videoPath: string, outputPath: string) => Promise<boolean>
@@ -19,6 +20,26 @@ const defaultDeps: ResolveMediaThumbnailDeps = {
   findThumbnailPath: defaultFindThumbnailPath,
 }
 
+// Module-level singleton for real production use (mediaThumbnailProtocol.ts
+// never passes its own) - every uncached-file request in the running app
+// funnels through this one Map, so a Media-page row and the fullscreen
+// overlay resolving the same uncached track around the same time genuinely
+// share one extraction+save instead of racing. Tests that need to control
+// in-flight state independently pass their own Map (see
+// resolveMediaThumbnail.test.ts) so they never share this process-lifetime
+// singleton with each other or with production code.
+const defaultInFlight = new Map<string, Promise<string | null>>()
+
+// Each extractVideoFrame/extractAudioArt call spawns a real ffmpeg child
+// process (execFile, up to a 15s timeout) - in-flight merging above only
+// dedupes repeat requests for the SAME file; scrolling a Media page with
+// many DIFFERENT uncached tracks visible at once could still spawn one
+// ffmpeg process per track simultaneously with no cap at all. 2 is the
+// plan's own starting point for this limiter; module-level so the cap
+// holds across concurrent resolveMediaThumbnail calls for different files,
+// not just within one.
+const extractionLimiter = createConcurrencyLimiter(2)
+
 async function pathExists(path: string): Promise<boolean> {
   try {
     await access(path)
@@ -28,46 +49,34 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-// Auto-extraction tier of the media-thumbnail priority chain (see
-// docs/superpowers/specs/2026-08-03-media-thumbnails-design.md section 2) -
-// the manual-override tier is checked by the protocol handler BEFORE this
-// ever runs (mediaThumbnailProtocol.ts), not here. Caches to
-// {cacheDir}/{hash of filePath}.webp via saveCustomCoverImage (the exact
-// same cache-write helper game covers already use) - file existence on disk
-// IS the cache, same design as thumb://'s own findThumbnailPath, so a
-// second request for the same file skips straight past ffmpeg entirely.
-export async function resolveMediaThumbnail(
+// The actual resolution work, run at most once per in-flight key at a time
+// (see the wrapper below) - a synthetic benchmark measured that WITHOUT
+// merging, two concurrent requests for the same uncached file didn't just
+// waste a duplicate ffmpeg extraction: both also called saveCustomCoverImage
+// (sharp().toFile()) against the SAME destination path concurrently, and one
+// of the two calls failed outright (returning null - a thumbnail that should
+// have resolved successfully silently didn't). Merging closes both the
+// wasted-work and the correctness problem at once, since only one
+// saveCustomCoverImage call for a given file ever runs at a time now.
+async function resolveMediaThumbnailUncached(
   cacheDir: string,
   filePath: string,
   isVideo: boolean,
-  deps: ResolveMediaThumbnailDeps = defaultDeps
+  deps: ResolveMediaThumbnailDeps,
+  cachePath: string,
+  notFoundMarkerPath: string
 ): Promise<string | null> {
-  const cachePath = join(cacheDir, `${keyToSafeDirName(filePath)}.webp`)
-  if (await pathExists(cachePath)) return cachePath
-  // A prior call already tried every tier below (ffmpeg extraction, then the
-  // directory-image fallback for audio) and genuinely found nothing - without
-  // this, a track with no embedded art and no folder image (a corrupted
-  // file, an unsupported codec, or just a track that never had cover art)
-  // re-pays the full extraction cost - including ffmpeg's up-to-15s timeout
-  // on a file it can't read - on every single request, forever. This was a
-  // real, live-reported cause of the Media tab "feeling heavy" on repeat
-  // visits. Cleared the same way as the positive cache above: deleting
-  // cache/media-thumbnails (see clearCache.ts) removes this marker too, so a
-  // user can force a re-attempt if the underlying file ever changes.
-  const notFoundMarkerPath = `${cachePath}.notfound`
-  if (await pathExists(notFoundMarkerPath)) return null
-
   await mkdir(cacheDir, { recursive: true })
   // Unique per call (not just per filePath) so two concurrent requests for
-  // the same file - e.g. a Media-page row and the fullscreen overlay both
-  // resolving an uncached track around the same time - never share one temp
-  // filename. Without this, one call's `finally` cleanup below could delete
-  // the temp file out from under the other call's readFile above it.
+  // DIFFERENT files never share one temp filename. (Two concurrent requests
+  // for the SAME file no longer reach here independently at all - see the
+  // in-flight merge below - but this still matters across different files
+  // resolving at the same time.)
   const tempPath = join(cacheDir, `${keyToSafeDirName(filePath)}-${randomUUID()}.jpg`)
 
-  const extracted = isVideo
-    ? await deps.extractVideoFrame(filePath, tempPath)
-    : await deps.extractAudioArt(filePath, tempPath)
+  const extracted = await extractionLimiter(() =>
+    isVideo ? deps.extractVideoFrame(filePath, tempPath) : deps.extractAudioArt(filePath, tempPath)
+  )
 
   if (extracted) {
     try {
@@ -115,4 +124,61 @@ export async function resolveMediaThumbnail(
   // went wrong clears up).
   await writeFile(notFoundMarkerPath, '')
   return null
+}
+
+// Auto-extraction tier of the media-thumbnail priority chain (see
+// docs/superpowers/specs/2026-08-03-media-thumbnails-design.md section 2) -
+// the manual-override tier is checked by the protocol handler BEFORE this
+// ever runs (mediaThumbnailProtocol.ts), not here. Caches to
+// {cacheDir}/{hash of filePath}.webp via saveCustomCoverImage (the exact
+// same cache-write helper game covers already use) - file existence on disk
+// IS the cache, same design as thumb://'s own findThumbnailPath, so a
+// second request for the same file skips straight past ffmpeg entirely.
+export async function resolveMediaThumbnail(
+  cacheDir: string,
+  filePath: string,
+  isVideo: boolean,
+  deps: ResolveMediaThumbnailDeps = defaultDeps,
+  inFlight: Map<string, Promise<string | null>> = defaultInFlight
+): Promise<string | null> {
+  const cachePath = join(cacheDir, `${keyToSafeDirName(filePath)}.webp`)
+  if (await pathExists(cachePath)) return cachePath
+  // A prior call already tried every tier below (ffmpeg extraction, then the
+  // directory-image fallback for audio) and genuinely found nothing - without
+  // this, a track with no embedded art and no folder image (a corrupted
+  // file, an unsupported codec, or just a track that never had cover art)
+  // re-pays the full extraction cost - including ffmpeg's up-to-15s timeout
+  // on a file it can't read - on every single request, forever. This was a
+  // real, live-reported cause of the Media tab "feeling heavy" on repeat
+  // visits. Cleared the same way as the positive cache above: deleting
+  // cache/media-thumbnails (see clearCache.ts) removes this marker too, so a
+  // user can force a re-attempt if the underlying file ever changes.
+  const notFoundMarkerPath = `${cachePath}.notfound`
+  if (await pathExists(notFoundMarkerPath)) return null
+
+  // Merge concurrent requests for the exact same (cacheDir, filePath,
+  // isVideo) - isVideo is part of the key even though it's derivable from
+  // filePath alone in practice, since nothing here enforces that invariant
+  // and a mismatched isVideo for the same path would otherwise silently
+  // share the wrong in-flight promise.
+  const inFlightKey = `${cacheDir} ${filePath} ${isVideo}`
+  const existing = inFlight.get(inFlightKey)
+  if (existing) return existing
+
+  const promise = resolveMediaThumbnailUncached(
+    cacheDir,
+    filePath,
+    isVideo,
+    deps,
+    cachePath,
+    notFoundMarkerPath
+  ).finally(() => {
+    // Removed once settled (success OR failure) regardless - a later,
+    // non-concurrent request for the same file starts its own fresh
+    // pathExists(cachePath)/pathExists(notFoundMarkerPath) check rather than
+    // being stuck sharing a long-finished promise.
+    inFlight.delete(inFlightKey)
+  })
+  inFlight.set(inFlightKey, promise)
+  return promise
 }
