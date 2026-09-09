@@ -172,4 +172,15 @@ describe('SAVE_DIFF missing-root policy', () => {
     // named snapshot going missing is a real error.
     await expect(diff(timestamp, 'restore')).rejects.toMatchObject({ code: 'ENOENT' })
   })
+
+  it('defaults a legacy payload with no mode field to save-mode policy', async () => {
+    // SaveDiffRequestSchema.default('save') is what makes this channel
+    // backward-compatible - a payload from before `mode` existed must still
+    // get the strict (save-mode) behavior, not silently become permissive.
+    setSavePath(db, 'd:\\games\\mygame', 'path', join(userDataRoot, 'missing-live'))
+
+    await expect(
+      registeredHandler(IPC_CHANNELS.SAVE_DIFF)({}, { identifier, timestamp: null })
+    ).rejects.toMatchObject({ code: 'ENOENT' })
+  })
 })

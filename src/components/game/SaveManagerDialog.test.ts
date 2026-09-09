@@ -14,16 +14,25 @@ const fixture = vi.hoisted(() => ({
   refetchDiff: vi.fn(),
   createSnapshotMutate: vi.fn(),
   restoreSnapshotMutate: vi.fn(),
+  useSaveDiffCalls: vi.fn(),
 }))
 
 vi.mock('../../services/saveService', () => ({
   useSaveSnapshots: () => ({ data: fixture.snapshots }),
-  useSaveDiff: () => ({
-    data: fixture.diffData,
-    isPending: fixture.diffPending,
-    isError: fixture.diffError,
-    refetch: fixture.refetchDiff,
-  }),
+  useSaveDiff: (
+    entry: unknown,
+    timestamp: string | null,
+    enabled: boolean,
+    mode?: 'save' | 'restore'
+  ) => {
+    fixture.useSaveDiffCalls(timestamp, enabled, mode)
+    return {
+      data: fixture.diffData,
+      isPending: fixture.diffPending,
+      isError: fixture.diffError,
+      refetch: fixture.refetchDiff,
+    }
+  },
   useCreateSaveSnapshot: () => ({ mutate: fixture.createSnapshotMutate, isPending: false }),
   useRestoreSaveSnapshot: () => ({ mutate: fixture.restoreSnapshotMutate, isPending: false }),
   useSetSnapshotLabel: () => ({ mutate: vi.fn() }),
@@ -53,6 +62,7 @@ beforeEach(() => {
   fixture.refetchDiff.mockClear()
   fixture.createSnapshotMutate.mockClear()
   fixture.restoreSnapshotMutate.mockClear()
+  fixture.useSaveDiffCalls.mockClear()
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
@@ -129,6 +139,39 @@ it('does not show a success state when isError is true even if stale diff data i
   expect(document.body.textContent).toContain('saveManager.diffFailed')
   expect(document.body.textContent).not.toContain('stale.dat')
   expect(buttonByText('saveManager.confirmSave')?.disabled).toBe(true)
+})
+
+it('passes mode: save for a save preview and mode: restore (with the chosen timestamp) for a restore preview', async () => {
+  // The whole point of this change: an inverted ternary here would silently
+  // reopen the exact hole R2 closed (a save preview treated as permissive,
+  // or a restore preview treated as strict) with a green suite, since
+  // every other test in this file mocks useSaveDiff without inspecting its
+  // arguments.
+  fixture.snapshots = [
+    {
+      timestamp: '2026-01-01T00-00-00-000Z',
+      fileCount: 1,
+      totalSizeBytes: 10,
+      memo: null,
+      version: null,
+    },
+  ]
+  await render()
+
+  await act(async () => buttonByText('saveManager.saveNew')!.click())
+  expect(fixture.useSaveDiffCalls).toHaveBeenLastCalledWith(
+    '2026-01-01T00-00-00-000Z',
+    true,
+    'save'
+  )
+
+  await act(async () => buttonByText('common.cancel')!.click())
+  await act(async () => buttonByText('saveManager.restore')!.click())
+  expect(fixture.useSaveDiffCalls).toHaveBeenLastCalledWith(
+    '2026-01-01T00-00-00-000Z',
+    true,
+    'restore'
+  )
 })
 
 it('allows confirming a restore whose preview succeeded against a missing live folder', async () => {
