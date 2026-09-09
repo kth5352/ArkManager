@@ -2,6 +2,22 @@ import { eq, inArray } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { gameMetadata } from './schema'
 import type { CrawledGameMetadata } from '../metadata/crawlGameMetadata'
+import { parseJsonSafely } from './safeJsonParse'
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === 'string')
+}
+
+// Falls back to [] for a corrupted or unexpectedly-shaped genres column
+// (see safeJsonParse.ts) rather than throwing - a single bad row must not
+// fail getManyGameMetadata's whole batch, nor a single-code getGameMetadata
+// call, just that row's genres list.
+function parseGenres(code: string, raw: string | null): string[] {
+  if (!raw) return []
+  return (
+    parseJsonSafely(raw, isStringArray, `game_metadata.genres (code=${code})`) ?? []
+  )
+}
 
 export interface GameMetadataRow {
   code: string
@@ -18,7 +34,7 @@ export interface GameMetadataRow {
 export function getGameMetadata(db: AppDatabase, code: string): GameMetadataRow | undefined {
   const row = db.select().from(gameMetadata).where(eq(gameMetadata.code, code)).get()
   if (!row) return undefined
-  return { ...row, genres: row.genres ? (JSON.parse(row.genres) as string[]) : [] }
+  return { ...row, genres: parseGenres(row.code, row.genres) }
 }
 
 export function getManyGameMetadata(
@@ -29,10 +45,7 @@ export function getManyGameMetadata(
 
   const rows = db.select().from(gameMetadata).where(inArray(gameMetadata.code, codes)).all()
   return new Map(
-    rows.map((row) => [
-      row.code,
-      { ...row, genres: row.genres ? (JSON.parse(row.genres) as string[]) : [] },
-    ])
+    rows.map((row) => [row.code, { ...row, genres: parseGenres(row.code, row.genres) }])
   )
 }
 

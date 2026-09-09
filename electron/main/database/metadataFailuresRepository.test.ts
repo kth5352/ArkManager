@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { createDbClient, type AppDatabase } from './client'
+import { metadataFailures } from './schema'
 import {
   clearMetadataFailure,
   getMetadataFailure,
@@ -29,5 +31,25 @@ describe('metadataFailuresRepository', () => {
 
     clearMetadataFailure(db, 'RJ01494021')
     expect(getMetadataFailure(db, 'RJ01494021')).toBeUndefined()
+  })
+
+  // D4 (performance-reliability plan): attemptedSources is a free-text DB
+  // column holding a JSON string, not validated on write beyond
+  // JSON.stringify's own output. Simulated by writing an invalid value
+  // directly to the column after a normal save, never against the real
+  // user DB.
+  it('falls back to an empty attemptedSources array (not a thrown error) for syntactically invalid JSON', () => {
+    saveMetadataFailure(db, 'RJ09999999', ['dlsite-html'], 'blocked')
+    db.update(metadataFailures)
+      .set({ attemptedSources: '{not valid json' })
+      .where(eq(metadataFailures.code, 'RJ09999999'))
+      .run()
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const row = getMetadataFailure(db, 'RJ09999999')
+    warn.mockRestore()
+
+    expect(row?.attemptedSources).toEqual([])
+    expect(row?.reason).toBe('blocked')
   })
 })

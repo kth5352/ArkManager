@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { createDbClient, type AppDatabase } from './client'
+import { gameMetadata } from './schema'
 import {
   getGameMetadata,
   saveGameMetadata,
@@ -92,6 +94,99 @@ describe('gameMetadataRepository', () => {
 
   it('returns an empty map for an empty code list', () => {
     expect(getManyGameMetadata(db, []).size).toBe(0)
+  })
+
+  // D4 (performance-reliability plan): genres is a free-text DB column
+  // holding a JSON string, not validated on write beyond JSON.stringify's
+  // own output - a crash mid-write, manual DB editing, or a future
+  // migration bug could leave it holding something JSON.parse can't read,
+  // or something that parses but isn't a string array. Simulated here by
+  // writing an invalid value directly to the column after a normal save,
+  // never against the real user DB.
+  describe('corrupted genres JSON (D4)', () => {
+    it('falls back to an empty genres array (not a thrown error) for syntactically invalid JSON', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: ['원래장르'],
+        coverImageUrl: null,
+        workType: null,
+      })
+      db.update(gameMetadata)
+        .set({ genres: '{not valid json' })
+        .where(eq(gameMetadata.code, 'RJ01111111'))
+        .run()
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const row = getGameMetadata(db, 'RJ01111111')
+      warn.mockRestore()
+
+      expect(row?.genres).toEqual([])
+      expect(row?.title).toBe('A')
+    })
+
+    it('falls back to an empty genres array for valid JSON that is not a string array', () => {
+      saveGameMetadata(db, 'RJ02222222', {
+        title: 'B',
+        circle: 'B',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+        workType: null,
+      })
+      db.update(gameMetadata)
+        .set({ genres: '{"unexpected":"shape"}' })
+        .where(eq(gameMetadata.code, 'RJ02222222'))
+        .run()
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const row = getGameMetadata(db, 'RJ02222222')
+      warn.mockRestore()
+
+      expect(row?.genres).toEqual([])
+    })
+
+    it('lets a corrupted row fall back safely without failing the rest of a batch fetch', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'Good A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: ['액션'],
+        coverImageUrl: null,
+        workType: null,
+      })
+      saveGameMetadata(db, 'RJ02222222', {
+        title: 'Corrupted B',
+        circle: 'B',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+        workType: null,
+      })
+      db.update(gameMetadata)
+        .set({ genres: 'not json at all' })
+        .where(eq(gameMetadata.code, 'RJ02222222'))
+        .run()
+      saveGameMetadata(db, 'RJ03333333', {
+        title: 'Good C',
+        circle: 'C',
+        releaseDate: '2025-01-01',
+        genres: ['드라마'],
+        coverImageUrl: null,
+        workType: null,
+      })
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = getManyGameMetadata(db, ['RJ01111111', 'RJ02222222', 'RJ03333333'])
+      warn.mockRestore()
+
+      expect(result.size).toBe(3)
+      expect(result.get('RJ01111111')?.genres).toEqual(['액션'])
+      expect(result.get('RJ02222222')?.title).toBe('Corrupted B')
+      expect(result.get('RJ02222222')?.genres).toEqual([])
+      expect(result.get('RJ03333333')?.genres).toEqual(['드라마'])
+    })
   })
 
   describe('clearAllGameMetadata', () => {

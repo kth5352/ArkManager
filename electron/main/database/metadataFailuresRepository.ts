@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { metadataFailures } from './schema'
+import { parseJsonSafely } from './safeJsonParse'
 
 export type MetadataFailureReason = 'not_found' | 'blocked' | 'network' | 'parse' | 'provider_error'
 
@@ -32,12 +33,21 @@ export function getMetadataFailure(db: AppDatabase, code: string): MetadataFailu
   const row = db.select().from(metadataFailures).where(eq(metadataFailures.code, code)).get()
   if (!row) return undefined
 
-  const parsedSources: unknown = JSON.parse(row.attemptedSources)
+  // A corrupted/wrongly-shaped attemptedSources falls back to [] (see
+  // safeJsonParse.ts) rather than throwing - this is a diagnostic-only
+  // field (why a crawl failed), so an empty list is a safe, silent-enough
+  // degradation. Array.isArray is deliberately the only shape check here
+  // (not "every element is a string") to preserve this function's existing,
+  // more lenient per-element filtering below.
+  const parsedSources =
+    parseJsonSafely(
+      row.attemptedSources,
+      (value): value is unknown[] => Array.isArray(value),
+      `metadata_failures.attemptedSources (code=${row.code})`
+    ) ?? []
   return {
     ...row,
-    attemptedSources: Array.isArray(parsedSources)
-      ? parsedSources.filter((source): source is string => typeof source === 'string')
-      : [],
+    attemptedSources: parsedSources.filter((source): source is string => typeof source === 'string'),
     reason: row.reason as MetadataFailureReason,
   }
 }

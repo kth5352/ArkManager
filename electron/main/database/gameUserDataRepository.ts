@@ -1,12 +1,28 @@
 import { desc, eq, isNotNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from './client'
 import { gameUserData } from './schema'
+import { parseJsonSafely } from './safeJsonParse'
 
 export type GameUserDataKeyType = 'code' | 'path'
 
 export interface LaunchConfig {
   executablePath: string
   launchMode: 'normal' | 'locale-emulator'
+}
+
+// A corrupted/wrongly-shaped launchConfig is especially high-stakes among
+// this repository's JSON columns - LAUNCH_GAME (launchHandlers.ts) spawns
+// config.executablePath directly (see launchGame.ts), so a malformed value
+// must fall back to null (routing through LAUNCH_GAME's existing
+// "no launch config" error) rather than ever reaching spawn() with a
+// missing/garbage path or an unrecognized launchMode.
+function isLaunchConfig(value: unknown): value is LaunchConfig {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Record<string, unknown>
+  return (
+    typeof candidate.executablePath === 'string' &&
+    (candidate.launchMode === 'normal' || candidate.launchMode === 'locale-emulator')
+  )
 }
 
 export interface GameUserDataRow {
@@ -31,7 +47,13 @@ export function getGameUserData(db: AppDatabase, key: string): GameUserDataRow |
   return {
     ...row,
     keyType: row.keyType as GameUserDataKeyType,
-    launchConfig: row.launchConfig ? (JSON.parse(row.launchConfig) as LaunchConfig) : null,
+    launchConfig: row.launchConfig
+      ? parseJsonSafely(
+          row.launchConfig,
+          isLaunchConfig,
+          `game_user_data.launchConfig (key=${row.key})`
+        )
+      : null,
   }
 }
 

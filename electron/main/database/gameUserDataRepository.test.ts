@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { createDbClient, type AppDatabase } from './client'
+import { gameUserData } from './schema'
 import {
   getGameUserData,
   touchGameUserData,
@@ -26,6 +28,91 @@ describe('gameUserDataRepository', () => {
 
   it('returns undefined when no user data exists for a key', () => {
     expect(getGameUserData(db, 'RJ01234567')).toBeUndefined()
+  })
+
+  // D4 (performance-reliability plan): launchConfig is a free-text DB
+  // column holding a JSON string, not validated on write beyond
+  // JSON.stringify's own output. A corrupted or wrongly-shaped value here is
+  // especially high-stakes - LAUNCH_GAME spawns config.executablePath
+  // directly (see launchGame.ts), so this must never resolve to launching
+  // an arbitrary/garbage path. Simulated by writing an invalid value
+  // directly to the column after a normal save, never against the real
+  // user DB.
+  describe('corrupted launchConfig JSON (D4)', () => {
+    it('falls back to launchConfig: null (not a thrown error) for syntactically invalid JSON', () => {
+      setLaunchConfig(db, 'RJ01111111', 'code', {
+        executablePath: 'C:\\games\\RJ01111111\\game.exe',
+        launchMode: 'normal',
+      })
+      db.update(gameUserData)
+        .set({ launchConfig: '{not valid json' })
+        .where(eq(gameUserData.key, 'RJ01111111'))
+        .run()
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const row = getGameUserData(db, 'RJ01111111')
+      warn.mockRestore()
+
+      expect(row?.launchConfig).toBeNull()
+    })
+
+    it('falls back to launchConfig: null for valid JSON missing executablePath, never passing a garbage path through', () => {
+      setLaunchConfig(db, 'RJ02222222', 'code', {
+        executablePath: 'C:\\games\\RJ02222222\\game.exe',
+        launchMode: 'normal',
+      })
+      db.update(gameUserData)
+        .set({ launchConfig: '{"launchMode":"normal"}' })
+        .where(eq(gameUserData.key, 'RJ02222222'))
+        .run()
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const row = getGameUserData(db, 'RJ02222222')
+      warn.mockRestore()
+
+      expect(row?.launchConfig).toBeNull()
+    })
+
+    it('falls back to launchConfig: null for a launchMode outside the known union', () => {
+      setLaunchConfig(db, 'RJ03333333', 'code', {
+        executablePath: 'C:\\games\\RJ03333333\\game.exe',
+        launchMode: 'normal',
+      })
+      db.update(gameUserData)
+        .set({
+          launchConfig: JSON.stringify({
+            executablePath: 'C:\\games\\RJ03333333\\game.exe',
+            launchMode: 'some-future-mode',
+          }),
+        })
+        .where(eq(gameUserData.key, 'RJ03333333'))
+        .run()
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const row = getGameUserData(db, 'RJ03333333')
+      warn.mockRestore()
+
+      expect(row?.launchConfig).toBeNull()
+    })
+
+    it('does not touch the row otherwise - other fields still read back normally', () => {
+      setFavorite(db, 'RJ04444444', 'code', true)
+      setLaunchConfig(db, 'RJ04444444', 'code', {
+        executablePath: 'C:\\games\\RJ04444444\\game.exe',
+        launchMode: 'normal',
+      })
+      db.update(gameUserData)
+        .set({ launchConfig: 'not json' })
+        .where(eq(gameUserData.key, 'RJ04444444'))
+        .run()
+
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const row = getGameUserData(db, 'RJ04444444')
+      warn.mockRestore()
+
+      expect(row?.isFavorite).toBe(true)
+      expect(row?.launchConfig).toBeNull()
+    })
   })
 
   it('creates a code-keyed row', () => {
