@@ -61,7 +61,10 @@ export function MarqueeText({ text, className, alwaysAnimate = false }: MarqueeT
         {text}
       </span>
       {animating && (
-        <div className="absolute left-0 top-0 flex w-max animate-[marquee_8s_linear_infinite]">
+        <div
+          data-ui-motion="marquee"
+          className="absolute left-0 top-0 flex w-max animate-[marquee_8s_linear_infinite] motion-reduce:static motion-reduce:animate-none"
+        >
           <span className="mr-8 whitespace-nowrap">{text}</span>
           <span className="mr-8 whitespace-nowrap" aria-hidden="true">
             {text}

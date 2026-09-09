@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
+import { MotionConfig } from 'framer-motion'
 import { router } from './router'
 import { PlayerWindowPage } from './pages/PlayerWindow/PlayerWindowPage'
 import { SubtitlePipPage } from './pages/SubtitlePip/SubtitlePipPage'
@@ -40,13 +41,22 @@ const isSubtitlePipWindow = window.location.hash.startsWith('#/subtitle-pip')
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      {isPlayerWindow ? (
-        <PlayerWindowPage />
-      ) : isSubtitlePipWindow ? (
-        <SubtitlePipPage />
-      ) : (
-        <RouterProvider router={router} />
-      )}
+      {/* reducedMotion="user" defers to the OS prefers-reduced-motion setting
+          for every framer-motion animation under this one root - shared by
+          all three window kinds (main router, detached player, subtitle PIP)
+          so they get the same policy. This alone does not stop plain CSS
+          transitions/animations (button hover, marquee, Radix data-state
+          fades) - those get their own @media (prefers-reduced-motion: reduce)
+          rules in globals.css. */}
+      <MotionConfig reducedMotion="user">
+        {isPlayerWindow ? (
+          <PlayerWindowPage />
+        ) : isSubtitlePipWindow ? (
+          <SubtitlePipPage />
+        ) : (
+          <RouterProvider router={router} />
+        )}
+      </MotionConfig>
     </QueryClientProvider>
   </StrictMode>
 )

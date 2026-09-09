@@ -48,6 +48,27 @@ export default {
       borderRadius: {
         md: 'var(--radius)',
       },
+      // duration-120/160 - not in Tailwind's default duration scale
+      // (75/100/150/200/300/500/700/1000) - match the exact ms values design
+      // §4's motion contract specifies (button hover/press color transition,
+      // Radix popup fade+zoom) so callers can write duration-120/duration-160
+      // instead of an arbitrary-value duration-[120ms]/duration-[160ms].
+      transitionDuration: {
+        '120': '120ms',
+        '160': '160ms',
+      },
+      // z-80/z-100 - not in Tailwind's default z-index scale (0/10/20/30/40/
+      // 50/auto). design §5's layering: tooltip 100 > popup (popover/
+      // dropdown/context-menu/select content) 80 > existing fullscreen media
+      // 50 / media sidebar 60, both left untouched elsewhere. Dialog's own
+      // z-50 is also left untouched - it already has its own
+      // deliberately-lower-than-media-sidebar relationship (see
+      // DialogContent's overlayClassName escape hatch), which this task does
+      // not change.
+      zIndex: {
+        '80': '80',
+        '100': '100',
+      },
     },
   },
   plugins: [],

@@ -7,7 +7,15 @@ import { cn } from '../../lib/utils'
 export function IndeterminateProgressBar({ className }: { className?: string }) {
   return (
     <div className={cn('h-1 w-full overflow-hidden rounded-full bg-muted', className)}>
-      <div className="h-full w-1/3 rounded-full bg-primary [animation:indeterminate-progress_1.2s_ease-in-out_infinite]" />
+      {/* A static (unfilled/unswept) partial bar under reduced motion, not a
+          full-width one - a full bar would misleadingly read as "done" for
+          an operation that has no actual completion percentage to report.
+          Callers pairing this with a live count/label (useScanProgress) are
+          what actually conveys "still working" once the sweep is off. */}
+      <div
+        data-ui-motion="progress"
+        className="h-full w-1/3 rounded-full bg-primary [animation:indeterminate-progress_1.2s_ease-in-out_infinite] motion-reduce:animate-none motion-reduce:transform-none"
+      />
     </div>
   )
 }
