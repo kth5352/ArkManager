@@ -73,6 +73,17 @@ describe('useMediaPlayerStore reorderPlaylist', () => {
     // Verify no undefined entries were inserted
     expect(state.playlist.every((track) => track && track.path)).toBe(true)
   })
+
+  // P3 (media sync broadcast dedup) trusts this: sameMediaSyncState
+  // (src/lib/mediaSyncState.ts) compares playlist by reference, not deep
+  // equality, on the assumption that every real content change produces a
+  // genuinely new array. An in-place mutation here would make P3's
+  // broadcast-skip logic silently miss real changes.
+  it('produces a genuinely new playlist array reference, not an in-place mutation', () => {
+    const before = useMediaPlayerStore.getState().playlist
+    useMediaPlayerStore.getState().reorderPlaylist(2, 0)
+    expect(useMediaPlayerStore.getState().playlist).not.toBe(before)
+  })
 })
 
 describe('useMediaPlayerStore appendAndPlay', () => {

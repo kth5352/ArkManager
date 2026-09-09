@@ -1,21 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useMediaPlayerStore } from '../stores/mediaPlayerStore'
-import type { MediaSyncState } from '../../shared/types/ipc'
-
-function toSyncState(state: MediaSyncState): MediaSyncState {
-  return {
-    playlist: state.playlist,
-    currentIndex: state.currentIndex,
-    isPlaying: state.isPlaying,
-    volume: state.volume,
-    previousVolume: state.previousVolume,
-    repeatMode: state.repeatMode,
-    shuffleMode: state.shuffleMode,
-    shuffleOrder: state.shuffleOrder,
-    shufflePosition: state.shufflePosition,
-    isDetached: state.isDetached,
-  }
-}
+import { sameMediaSyncState, toMediaSyncState } from '../lib/mediaSyncState'
 
 // Mirrors this window's media player store to every other open window (main
 // <-> the detached player window) via the main process as a relay -
@@ -31,17 +16,36 @@ export function useMediaPlayerSync(options?: { requestInitialStateOnMount?: bool
   const applyingRemote = useRef(false)
 
   useEffect(() => {
-    return useMediaPlayerStore.subscribe((state) => {
+    // (state, previousState) - zustand's vanilla store passes both to every
+    // subscriber, no middleware needed. Previously broadcast unconditionally
+    // on ANY store change, including fields toMediaSyncState doesn't even
+    // read (mediaExpanded, sidebarActiveTab, mediaFullscreenBarHeight, ...) -
+    // P0's synthetic benchmark measured this directly: a UI-only toggle
+    // broadcasts every time, and at a 10,000-track queue each broadcast
+    // serializes to ~916KB. Only broadcasting when the actual sync DTO
+    // changed closes that gap without touching which fields are sent or how
+    // the receiving side applies them.
+    return useMediaPlayerStore.subscribe((state, previousState) => {
       if (applyingRemote.current) return
-      window.api.media.broadcastState(toSyncState(state))
+      const next = toMediaSyncState(state)
+      const prev = toMediaSyncState(previousState)
+      if (sameMediaSyncState(next, prev)) return
+      window.api.media.broadcastState(next)
     })
   }, [])
 
   useEffect(() => {
     return window.api.media.onStateSync((state) => {
       applyingRemote.current = true
-      useMediaPlayerStore.setState(state)
-      applyingRemote.current = false
+      try {
+        useMediaPlayerStore.setState(state)
+      } finally {
+        // try/finally, not a bare assignment after setState - a throwing
+        // setState (a malformed remote payload, a reducer error) must not
+        // leave this guard stuck true forever, which would silently stop
+        // this window from ever broadcasting its own future changes again.
+        applyingRemote.current = false
+      }
     })
   }, [])
 
@@ -53,10 +57,12 @@ export function useMediaPlayerSync(options?: { requestInitialStateOnMount?: bool
   // no response at all once the requester's own onStateSync applies it (the
   // requester only cares about the LAST state it receives, and only one
   // other window - the one hosting playback - has anything non-default to
-  // send).
+  // send). Deliberately NOT gated by sameMediaSyncState above - a fresh
+  // window has no "previous" state to compare against and must always get
+  // an explicit response, even one that happens to equal some default.
   useEffect(() => {
     return window.api.media.onStateSyncRequested(() => {
-      window.api.media.broadcastState(toSyncState(useMediaPlayerStore.getState()))
+      window.api.media.broadcastState(toMediaSyncState(useMediaPlayerStore.getState()))
     })
   }, [])
 
