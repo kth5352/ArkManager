@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRouterState } from '@tanstack/react-router'
+import { UI_MOTION } from '../../lib/motion'
 import { Toaster } from 'sonner'
 import { Sidebar } from './Sidebar'
 import { BulkCrawlProgressBanner } from './BulkCrawlProgressBanner'
@@ -77,15 +78,30 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex h-screen flex-col bg-background text-foreground">
       <div className="flex min-h-0 flex-1">
         <Sidebar />
-        <main className="flex-1 overflow-auto">
+        {/* min-w-0/min-h-0: without these, a flex item defaults to a min
+            size equal to its content's intrinsic size, not 0 - a page with
+            a wide table/list (DetailList's own columns) could then push
+            `main` itself wider than the row instead of scrolling inside its
+            own overflow-auto, and/or force the row taller than the viewport.
+            Sidebar/MediaSidebar's own scroll responsibilities are
+            unaffected - they're not flex-1 here, so they already size to
+            their own content. */}
+        <main className="min-h-0 min-w-0 flex-1 overflow-auto">
+          {/* design §4: page transition is 160ms opacity + up to 4px move
+              (was 150ms/8px). y itself is automatically suppressed to 0
+              under reduced motion by main.tsx's MotionConfig
+              reducedMotion="user" - framer-motion strips transform-affecting
+              values from every animation under that root when the OS
+              prefers-reduced-motion is on, leaving only the opacity fade -
+              no extra per-component reduced-motion branching needed here. */}
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
               className="h-full"
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: UI_MOTION.normal }}
             >
               {children}
             </motion.div>

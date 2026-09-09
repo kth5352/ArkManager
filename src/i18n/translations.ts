@@ -7,6 +7,9 @@ export const DEFAULT_LOCALE: Locale = 'ko'
 // enforces that every key added to ko also gets a ja and en translation;
 // there's no way for one locale to silently fall behind another.
 const ko = {
+  'nav.groupLibrary': '라이브러리',
+  'nav.groupActivity': '활동',
+  'nav.groupMedia': '미디어',
   'nav.gallery': 'Gallery',
   'nav.list': 'List',
   'nav.detailList': 'DetailList',
@@ -393,6 +396,9 @@ const ko = {
 } as const
 
 const ja: Record<keyof typeof ko, string> = {
+  'nav.groupLibrary': 'ライブラリ',
+  'nav.groupActivity': 'アクティビティ',
+  'nav.groupMedia': 'メディア',
   'nav.gallery': 'ギャラリー',
   'nav.list': 'リスト',
   'nav.detailList': '詳細リスト',
@@ -777,6 +783,9 @@ const ja: Record<keyof typeof ko, string> = {
 }
 
 const en: Record<keyof typeof ko, string> = {
+  'nav.groupLibrary': 'Library',
+  'nav.groupActivity': 'Activity',
+  'nav.groupMedia': 'Media',
   'nav.gallery': 'Gallery',
   'nav.list': 'List',
   'nav.detailList': 'DetailList',
