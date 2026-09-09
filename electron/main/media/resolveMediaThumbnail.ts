@@ -63,7 +63,6 @@ async function resolveMediaThumbnailUncached(
   filePath: string,
   isVideo: boolean,
   deps: ResolveMediaThumbnailDeps,
-  cachePath: string,
   notFoundMarkerPath: string
 ): Promise<string | null> {
   await mkdir(cacheDir, { recursive: true })
@@ -103,9 +102,9 @@ async function resolveMediaThumbnailUncached(
   // visit (readFile + IPC transfer + Chromium decode, repeated per track,
   // forever - live-reported as "the whole Media tab feels heavy"). Caching
   // it under the requesting track's own key means only the FIRST request
-  // per track pays this cost - the top-of-function pathExists(cachePath)
-  // check short-circuits every later request for the same track, same as
-  // the extraction tier.
+  // per track pays this cost - resolveMediaThumbnail's own top-of-function
+  // pathExists(cachePath) check short-circuits every later request for the
+  // same track, same as the extraction tier.
   if (!isVideo) {
     const directoryImage = await deps.findThumbnailPath(dirname(filePath))
     if (directoryImage) {
@@ -160,8 +159,10 @@ export async function resolveMediaThumbnail(
   // isVideo) - isVideo is part of the key even though it's derivable from
   // filePath alone in practice, since nothing here enforces that invariant
   // and a mismatched isVideo for the same path would otherwise silently
-  // share the wrong in-flight promise.
-  const inFlightKey = `${cacheDir} ${filePath} ${isVideo}`
+  // share the wrong in-flight promise. Pipe-joined (not space-joined) so a
+  // cacheDir/filePath boundary is never ambiguous - a space is a valid
+  // Windows path character, but | is reserved and can never appear in one.
+  const inFlightKey = [cacheDir, filePath, isVideo].join('|')
   const existing = inFlight.get(inFlightKey)
   if (existing) return existing
 
@@ -170,7 +171,6 @@ export async function resolveMediaThumbnail(
     filePath,
     isVideo,
     deps,
-    cachePath,
     notFoundMarkerPath
   ).finally(() => {
     // Removed once settled (success OR failure) regardless - a later,

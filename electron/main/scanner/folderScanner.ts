@@ -36,18 +36,25 @@ const STAT_TIMEOUT_MS = 15_000
 // practice (the race against the hung call's own never-resolving promise
 // never observably settled, even after advancing well past the deadline).
 async function statWithTimeout(path: string, timeoutMs: number = STAT_TIMEOUT_MS) {
-  return Promise.race([
-    stat(path),
-    new Promise<never>((_resolve, reject) => {
-      setTimeout(() => {
-        reject(
-          Object.assign(new Error(`stat() timed out after ${timeoutMs}ms: ${path}`), {
-            code: 'ETIMEDOUT',
-          })
-        )
-      }, timeoutMs)
-    }),
-  ])
+  let timer: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        Object.assign(new Error(`stat() timed out after ${timeoutMs}ms: ${path}`), {
+          code: 'ETIMEDOUT',
+        })
+      )
+    }, timeoutMs)
+  })
+  try {
+    return await Promise.race([stat(path), timeoutPromise])
+  } finally {
+    // Without this, a large scan (thousands of stat() calls, the overwhelming
+    // majority resolving well before the deadline) leaves thousands of live
+    // timers pending simultaneously, each doing nothing but waiting to fire a
+    // no-op rejection against an already-settled race.
+    clearTimeout(timer!)
+  }
 }
 
 // Prefers the filename-derived code; falls back to a manually-linked
