@@ -108,7 +108,16 @@ function TreeNode({
         >
           {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         </button>
-        <button type="button" onClick={() => onNavigate(path)} className="truncate text-left">
+        {/* min-w-0 flex-1: a flex item's default min-width is auto (its own
+            content width), which refuses to shrink below that regardless of
+            `truncate` - the row's own min-w-0 doesn't cascade to children.
+            Same gap as FolderTreeTab.tsx's identical TreeNode pattern. */}
+        <button
+          type="button"
+          onClick={() => onNavigate(path)}
+          className="min-w-0 flex-1 truncate text-left"
+          title={label}
+        >
           {label}
         </button>
       </div>

@@ -73,7 +73,18 @@ function TreeNodeRow({
         ) : (
           <span className="h-4 w-4 shrink-0" />
         )}
-        <button type="button" onClick={() => onNavigate(node.path)} className="truncate text-left">
+        {/* min-w-0 flex-1: a flex item's default min-width is auto (its own
+            content width), which refuses to shrink below that regardless of
+            `truncate` - the row's own min-w-0 doesn't cascade to children.
+            Without this, a long folder name (Pretendard renders Korean/
+            Japanese wider than the previous system font) overflows the
+            320px sidebar's right edge unclipped instead of ellipsizing. */}
+        <button
+          type="button"
+          onClick={() => onNavigate(node.path)}
+          className="min-w-0 flex-1 truncate text-left"
+          title={node.name}
+        >
           {node.name}
         </button>
       </div>

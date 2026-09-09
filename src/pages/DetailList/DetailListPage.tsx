@@ -228,10 +228,16 @@ function Row({
               (path/genres/modified/size/rating) would shift right only for
               rows that happen to have duplicates, misaligning them from
               both the header and from every other row. */}
-          <span className="flex w-20 shrink-0 items-center">
+          {/* overflow-hidden: the two badges below can co-occur (a
+              duplicate that's also an extracted archive), and neither had
+              shrink-0/truncate of its own - together they could exceed this
+              slot's reserved 80px and push every later column out of
+              alignment with the header instead of just clipping. gap-0.5
+              added so they don't visually touch when both are present. */}
+          <span className="flex w-20 shrink-0 items-center gap-0.5 overflow-hidden">
             {duplicates && (
               <span
-                className="flex items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
+                className="flex shrink-0 items-center gap-0.5 rounded bg-destructive/10 px-1 py-0.5 text-destructive"
                 title={t('detailList.duplicateTooltip', {
                   count: duplicates.length - 1,
                   paths: duplicates
@@ -245,7 +251,10 @@ function Row({
               </span>
             )}
             {archiveExtracted && (
-              <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">
+              <span
+                className="truncate rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary"
+                title={t('game.archiveExtracted')}
+              >
                 {t('game.archiveExtracted')}
               </span>
             )}

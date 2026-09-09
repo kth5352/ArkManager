@@ -202,9 +202,14 @@ function GameRow({
               ))}
             </div>
           )}
+          {/* w-24 (was w-20) + whitespace-nowrap: Pretendard renders a value
+              like "12시간 34분" wider than the previous system font fit in
+              80px minus the icon - it wrapped onto a second line and got
+              clipped by this row's fixed ROW_HEIGHT. No header row to stay
+              aligned with in this list, so widening is safe. */}
           {!!userData?.totalPlaytimeMs && (
-            <span className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
+            <span className="flex w-24 shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
+              <Clock className="h-3 w-3 shrink-0" />
               {formatPlaytime(userData.totalPlaytimeMs, t)}
             </span>
           )}

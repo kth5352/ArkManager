@@ -80,7 +80,13 @@ function SaveEntryRow({
         <p className="truncate">{metadata?.title ?? entryKey}</p>
         {code && <p className="truncate text-xs text-muted-foreground">{code.value}</p>}
       </div>
-      <span className="shrink-0 truncate text-xs text-muted-foreground">{savePath}</span>
+      {/* min-w-0 (not shrink-0) - shrink-0 and truncate are self-cancelling:
+          shrink-0 refuses to shrink below content width, so truncate's
+          overflow-hidden/ellipsis never has a narrower box to actually
+          apply to. min-w-0 lets this shrink alongside the row instead. */}
+      <span className="min-w-0 truncate text-xs text-muted-foreground" title={savePath}>
+        {savePath}
+      </span>
       <span className="shrink-0 text-xs text-muted-foreground">
         {t('saveManager.snapshotCount', { count: snapshots?.length ?? 0 })}
       </span>
@@ -121,7 +127,12 @@ export function SavesPage() {
   const visibleGames = filterSaveGamesBySnapshotCounts(filteredGames, snapshotCounts)
 
   return (
-    <div className="flex flex-col">
+    // h-full: the empty-state branch below uses flex-1 items-center
+    // justify-center to vertically center its message, which needs a
+    // sized parent to fill - without it, this column is only as tall as
+    // its own content, flex-1 has nothing to distribute, and the message
+    // sits right under the search bar instead of centered in the page.
+    <div className="flex h-full flex-col">
       <div className="border-b border-border p-2">
         <input
           className="w-full rounded border border-border bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground"

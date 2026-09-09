@@ -35,8 +35,16 @@ function RecentlyPlayedRow({ entryKey, lastPlayedAt }: { entryKey: string; lastP
           <img src={coverImage} alt="" className="h-full w-full object-cover" draggable={false} />
         )}
       </div>
-      <span className="flex-1">{metadata?.title ?? entryKey}</span>
-      <span className="flex items-center gap-3 text-xs text-muted-foreground">
+      {/* min-w-0: a flex item's default min-width is its own content width,
+          which ignores `truncate` entirely without this - a long title
+          (Pretendard renders Korean/Japanese wider than the previous system
+          font) would squeeze the meta span on the right instead of
+          ellipsizing itself. shrink-0 on the meta span keeps playtime/date
+          from wrapping onto a second line as the title claims space back. */}
+      <span className="min-w-0 flex-1 truncate" title={metadata?.title ?? entryKey}>
+        {metadata?.title ?? entryKey}
+      </span>
+      <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
         <span>{formatPlaytime(userData?.totalPlaytimeMs ?? 0, t)}</span>
         <span>{lastPlayedAt.slice(0, 10)}</span>
       </span>
