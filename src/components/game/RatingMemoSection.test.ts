@@ -123,6 +123,11 @@ it('allows editing immediately from warm cache (data already present on mount)',
   await render()
   expect(textarea().disabled).toBe(false)
   expect(textarea().value).toBe('warm')
+  await act(async () => star(3).click())
+  expect(fixture.mutate).toHaveBeenLastCalledWith(
+    { entry: game, rating: 4, memo: 'warm' },
+    expect.any(Object)
+  )
 })
 
 it('keeps a local memo draft when a stale query response arrives after the edit', async () => {
@@ -137,7 +142,12 @@ it('keeps a local memo draft when a stale query response arrives after the edit'
   // A stale response for the SAME query key arriving after the user has
   // already started editing must not clobber the in-progress draft - this
   // component intentionally hydrates from userData only once (see its own
-  // comment), not on every cache update.
+  // comment), not on every cache update. A genuinely NEW object (not the
+  // same reference reused) with the pre-edit content - the actual shape of
+  // a real stale refetch response - so this test can't pass merely because
+  // a naive `useEffect(..., [userData])` re-sync wouldn't re-fire on an
+  // unchanged reference.
+  fixture.data = { rating: 1, memo: 'original' }
   await render()
   expect(textarea().value).toBe('draft in progress')
 })
