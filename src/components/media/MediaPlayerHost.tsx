@@ -14,7 +14,7 @@ import { useMediaVolumeQuery, useSetMediaVolumeMutation } from '../../services/s
 // page navigation because this lives above the router's <Outlet>.
 //
 // Owns the single useMediaPlayback instance for the main window: exactly
-// one <video>/<audio> element exists here at a time, shared between the
+// one mpv playback canvas exists here at a time, shared between the
 // docked bar (when minimized) and FullscreenMediaOverlay (when expanded)
 // purely via CSS visibility - see FullscreenMediaOverlay's own comment for
 // why it's never unmounted just to minimize.
@@ -137,8 +137,8 @@ export function MediaPlayerHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setVolumeMutation is a fresh object every render (useMutation); including it would fire this on every render, not just on a real volume change.
   }, [volume])
 
-  // Bridges playback.currentTime/handleSeek (tied to the live <video>/
-  // <audio> element this component alone mounts via useMediaPlayback) into
+  // Bridges playback.currentTime/handleSeek (tied to the live mpv playback
+  // canvas this component alone mounts via useMediaPlayback) into
   // mediaPlayerStore so LyricsLogTab - rendered from AppLayout.tsx, a
   // separate part of the tree - can read/drive them without a second
   // useMediaPlayback instance (which would mount a second live media

@@ -68,7 +68,7 @@ function findScrollableAncestor(start: HTMLElement): HTMLElement {
 // Rendered from MediaSidebar's `lyrics` tab, which AppLayout.tsx mounts as a
 // flex sibling of <main> - a different part of the tree than MediaPlayerHost,
 // which is the ONLY place useMediaPlayback() may be called (a second call
-// would mount a second live <video>/<audio> element ref). This component
+// would mount a second live mpv playback canvas). This component
 // therefore takes no playback/parsedLyrics props:
 //  - currentTime/onSeek are bridged through mediaPlayerStore's
 //    playbackCurrentTime/seekPlayback (written by MediaPlayerHost's own

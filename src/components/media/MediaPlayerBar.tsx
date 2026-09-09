@@ -31,7 +31,7 @@ interface MediaPlayerBarProps {
 
 // The slim, always-docked bar - used whenever the current track (video or
 // audio) is minimized, or playback is running in the detached window
-// instead. Never hosts the actual <video>/<audio> element itself - see
+// instead. Never hosts the actual mpv playback canvas itself - see
 // FullscreenMediaOverlay, which stays mounted (just CSS-hidden) whenever
 // this window isn't detached, for both video and audio, so minimizing back
 // to this bar doesn't tear down and rebuffer anything.

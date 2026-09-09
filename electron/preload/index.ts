@@ -487,9 +487,9 @@ const api = {
     // set up its own `window.addEventListener('message', ...)` directly -
     // window.postMessage/addEventListener are plain DOM APIs, available to
     // main-world code with no contextBridge involvement needed for this
-    // piece specifically. See useMediaPlayback.ts (or MpvDebugPage.tsx) for
-    // the consumer-side listener this relay is paired with; it must filter
-    // on `event.data === 'mpv-frame-port-relay'` to match the string below.
+    // piece specifically. See useMediaPlayback.ts for the consumer-side
+    // listener this relay is paired with; it must filter on
+    // `event.data === 'mpv-frame-port-relay'` to match the string below.
     //
     // (moved to module scope below the `api` object/contextBridge.exposeInMainWorld
     // call, so it registers unconditionally as soon as this preload script

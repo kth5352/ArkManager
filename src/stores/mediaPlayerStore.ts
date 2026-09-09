@@ -49,9 +49,10 @@ interface MediaPlayerState {
   shuffleOrder: number[]
   shufflePosition: number
   // True once playback has been detached into its own Electron window (see
-  // useMediaPlayerSync) - the main window stops mounting a real <video>/
-  // <audio> element while this is true (only one window may ever host
-  // actual playback at a time), but playlist/currentIndex/isPlaying/volume
+  // useMediaPlayerSync) - the main window stops mounting its mpv playback
+  // canvas (useMediaPlayback's canvasRef) while this is true (only one
+  // window may ever host actual playback at a time), but
+  // playlist/currentIndex/isPlaying/volume
   // stay live here as a shared "control plane" so the main window's
   // transport buttons keep working as remote controls for the detached
   // window's player.
@@ -127,8 +128,8 @@ interface MediaPlayerState {
   mediaBrowseGoForward: () => void
   resetMediaBrowseRoot: (rootPath: string) => void
   // Bridges playback's live currentTime/handleSeek (both tied to the actual
-  // mounted <video>/<audio> element, which only exists inside
-  // MediaPlayerHost's single useMediaPlayback() call) across the tree
+  // mpv playback canvas, which only exists inside MediaPlayerHost's single
+  // useMediaPlayback() call) across the tree
   // boundary to LyricsLogTab, which AppLayout.tsx now renders as a sibling
   // of MediaPlayerHost rather than a descendant of it - same cross-tree
   // reasoning as sidebarActiveTab above, just for playback position instead
@@ -182,7 +183,7 @@ interface MediaPlayerState {
 // MediaPlayerHost in AppLayout (plus, once detached, PlayerWindowPage in
 // its own BrowserWindow - see useMediaPlayerSync for how this store stays
 // in sync across the two); Explorer/the dedicated Media page only ever call
-// these actions, never render <video>/<audio> themselves.
+// these actions, never mount the mpv playback canvas themselves.
 export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   playlist: [],
   currentIndex: null,
