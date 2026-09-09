@@ -28,7 +28,19 @@ async function moveOne(sourcePath: string, destDir: string): Promise<string> {
     // failure (permission denied, source no longer exists, etc.) and
     // shouldn't be silently swallowed by attempting a copy anyway.
     if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error
-    await cp(sourcePath, destPath, { recursive: true })
+    try {
+      await cp(sourcePath, destPath, { recursive: true })
+    } catch (cpError) {
+      // Unlike rename(), cp() across volumes is not atomic - a failure
+      // partway through (disk full on the destination volume, a source file
+      // that becomes unreadable mid-copy) can leave a partial, corrupt
+      // destPath behind. Left in place, it would permanently block every
+      // future retry of this same move (the collision check above only
+      // knows destPath already exists, not that it's a botched half-copy),
+      // forcing the user to go delete it manually first.
+      await rm(destPath, { recursive: true, force: true })
+      throw cpError
+    }
     await rm(sourcePath, { recursive: true, force: true })
   }
 
