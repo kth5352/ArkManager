@@ -11,19 +11,24 @@ import { join } from 'node:path'
 // export directly ("Module namespace is not configurable in ESM"), so this
 // is done via vi.mock + importOriginal instead, the same pattern this
 // project already uses elsewhere (see mediaThumbnailHandlers.test.ts).
-const { renameMock, actualRenameRef } = vi.hoisted(() => ({
+const { renameMock, rmMock, actualRenameRef, actualRmRef } = vi.hoisted(() => ({
   renameMock: vi.fn<typeof import('node:fs/promises').rename>(),
+  rmMock: vi.fn<typeof import('node:fs/promises').rm>(),
   actualRenameRef: { current: null as typeof import('node:fs/promises').rename | null },
+  actualRmRef: { current: null as typeof import('node:fs/promises').rm | null },
 }))
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()
   actualRenameRef.current = actual.rename
+  actualRmRef.current = actual.rm
   renameMock.mockImplementation(actual.rename)
-  return { ...actual, rename: renameMock }
+  rmMock.mockImplementation(actual.rm)
+  return { ...actual, rename: renameMock, rm: rmMock }
 })
 
 const { restoreSnapshot } = await import('./restoreSnapshot')
 const actualRename = actualRenameRef.current!
+const actualRm = actualRmRef.current!
 
 describe('restoreSnapshot', () => {
   let backupRootDir: string
@@ -32,9 +37,10 @@ describe('restoreSnapshot', () => {
   beforeEach(async () => {
     backupRootDir = await mkdtemp(join(tmpdir(), 'ark-manager-restore-root-'))
     targetDir = await mkdtemp(join(tmpdir(), 'ark-manager-restore-target-'))
-    // Reset to the real implementation before each test - only the tests
-    // that specifically exercise a rename failure override this.
+    // Reset to the real implementations before each test - only the tests
+    // that specifically exercise a rename/rm failure override these.
     renameMock.mockImplementation(actualRename)
+    rmMock.mockImplementation(actualRm)
   })
 
   afterEach(async () => {
@@ -175,6 +181,45 @@ describe('restoreSnapshot', () => {
     // A prior version of this function never reached this cleanup on the
     // double-failure path at all.
     await expect(access(newDir)).rejects.toThrow()
+  })
+
+  it('mentions the leftover newDir in the double-failure message if its own cleanup also fails', async () => {
+    await mkdir(join(backupRootDir, 'snap1'))
+    await writeFile(join(backupRootDir, 'snap1', 'save1.dat'), 'from snapshot')
+    await writeFile(join(targetDir, 'existing-save.dat'), 'must survive')
+
+    const newDir = `${targetDir}.ark-manager-restoring`
+    const previousDir = `${targetDir}.ark-manager-previous`
+    renameMock.mockImplementation(async (...args) => {
+      const [from, to] = args as [string, string]
+      if (from === newDir && to === targetDir) throw new Error('simulated swap failure')
+      if (from === previousDir && to === targetDir) throw new Error('simulated recovery failure')
+      return actualRename(...args)
+    })
+    // Only the SECOND rm(newDir, ...) call fails - the first is the
+    // unconditional pre-emptive cleanup at the top of the function (which
+    // must succeed for the test to even reach the double-failure path); the
+    // second is the best-effort cleanup inside the recoveryError catch that
+    // this test actually targets.
+    let newDirRmCalls = 0
+    rmMock.mockImplementation(async (...args) => {
+      const [path] = args as [string]
+      if (path === newDir) {
+        newDirRmCalls++
+        if (newDirRmCalls === 2) throw new Error('simulated: newDir cleanup also failed')
+      }
+      return actualRm(...args)
+    })
+
+    const error = await restoreSnapshot(backupRootDir, 'snap1', targetDir).catch(
+      (caught: unknown) => caught
+    )
+
+    expect((error as Error).message).toContain(newDir)
+    expect((error as Error).message).toContain('safely delete')
+    // The primary double-failure information must still be present too -
+    // this is an addition to the message, not a replacement of it.
+    expect((error as Error).message).toContain(previousDir)
   })
 
   it('leaves the original save completely untouched and cleans up newDir if the first rename fails', async () => {

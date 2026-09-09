@@ -68,8 +68,13 @@ export async function restoreSnapshot(
       // only cleanup needed is newDir (the snapshot copy built above).
       // Reported in this function's usual reassuring shape instead of
       // letting a raw fs error (e.g. EPERM from something else having
-      // targetDir open) surface directly to the user.
-      await rm(newDir, { recursive: true, force: true })
+      // targetDir open) surface directly to the user. Best-effort only
+      // (same reasoning as the double-failure cleanup below): nothing is
+      // stranded here (targetDir is intact, previousDir was never created),
+      // so a failing cleanup must not replace this reassuring message with
+      // a raw unlink error from an unrelated contention (e.g. an AV
+      // scanner touching the just-copied newDir).
+      await rm(newDir, { recursive: true, force: true }).catch(() => {})
       throw new Error(
         `Could not prepare ${targetDir} for restore: ${(renameError as Error).message}`,
         { cause: renameError }
@@ -97,12 +102,20 @@ export async function restoreSnapshot(
         // recovery-succeeded path below - but best-effort only: this
         // double-failure error already tells the user everything they need
         // for manual recovery, and a failing cleanup here must not replace
-        // or suppress it.
-        await rm(newDir, { recursive: true, force: true }).catch(() => {})
+        // or suppress it. If it does fail, mention newDir explicitly rather
+        // than leaving an unexplained `<save>.ark-manager-restoring` folder
+        // next to the save with no error ever having named it.
+        const newDirCleanupFailed = await rm(newDir, { recursive: true, force: true })
+          .then(() => false)
+          .catch(() => true)
         throw new Error(
           `Save restore failed, and restoring your original save afterward also failed - ` +
             `it should still be intact at ${previousDir}. Move it back to ${targetDir} ` +
-            `manually. (swap error: ${(swapError as Error).message}; recovery error: ` +
+            `manually.${
+              newDirCleanupFailed
+                ? ` You can also safely delete the leftover folder at ${newDir}.`
+                : ''
+            } (swap error: ${(swapError as Error).message}; recovery error: ` +
             `${(recoveryError as Error).message})`,
           { cause: recoveryError }
         )
