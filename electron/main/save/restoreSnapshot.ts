@@ -60,7 +60,22 @@ export async function restoreSnapshot(
   // something there to preserve. Renaming (not delete-then-recopy) means
   // there is no window where targetDir exists but is empty or partial.
   const hadExistingTarget = await pathExists(targetDir)
-  if (hadExistingTarget) await rename(targetDir, previousDir)
+  if (hadExistingTarget) {
+    try {
+      await rename(targetDir, previousDir)
+    } catch (renameError) {
+      // Nothing has actually swapped yet - targetDir is untouched - so the
+      // only cleanup needed is newDir (the snapshot copy built above).
+      // Reported in this function's usual reassuring shape instead of
+      // letting a raw fs error (e.g. EPERM from something else having
+      // targetDir open) surface directly to the user.
+      await rm(newDir, { recursive: true, force: true })
+      throw new Error(
+        `Could not prepare ${targetDir} for restore: ${(renameError as Error).message}`,
+        { cause: renameError }
+      )
+    }
+  }
   try {
     await rename(newDir, targetDir)
   } catch (swapError) {
@@ -78,6 +93,12 @@ export async function restoreSnapshot(
         // say so explicitly. `cause` is this catch's own recoveryError
         // (the most immediate failure) - the original swapError's message
         // is folded into the text instead, so neither is lost.
+        // newDir (the snapshot copy) is dead weight here too, same as the
+        // recovery-succeeded path below - but best-effort only: this
+        // double-failure error already tells the user everything they need
+        // for manual recovery, and a failing cleanup here must not replace
+        // or suppress it.
+        await rm(newDir, { recursive: true, force: true }).catch(() => {})
         throw new Error(
           `Save restore failed, and restoring your original save afterward also failed - ` +
             `it should still be intact at ${previousDir}. Move it back to ${targetDir} ` +

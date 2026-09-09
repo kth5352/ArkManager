@@ -170,6 +170,42 @@ describe('restoreSnapshot', () => {
     expect(await readFile(join(previousDir, 'existing-save.dat'), 'utf-8')).toBe(
       'must survive a double failure'
     )
+    // newDir is a full duplicate of the chosen snapshot - dead weight once
+    // the failure is reported (trivially reproducible by restoring again).
+    // A prior version of this function never reached this cleanup on the
+    // double-failure path at all.
+    await expect(access(newDir)).rejects.toThrow()
+  })
+
+  it('leaves the original save completely untouched and cleans up newDir if the first rename fails', async () => {
+    await mkdir(join(backupRootDir, 'snap1'))
+    await writeFile(join(backupRootDir, 'snap1', 'save1.dat'), 'from snapshot')
+    await writeFile(join(targetDir, 'existing-save.dat'), 'must never move')
+
+    // The very first rename (targetDir -> previousDir, moving the original
+    // out of the way before the swap-in) was previously unguarded - a
+    // failure here propagated a raw fs error instead of this function's
+    // usual reassuring framing, and never cleaned up the newDir snapshot
+    // copy already built by cp() above.
+    const newDir = `${targetDir}.ark-manager-restoring`
+    const previousDir = `${targetDir}.ark-manager-previous`
+    renameMock.mockImplementation(async (...args) => {
+      const [from, to] = args as [string, string]
+      if (from === targetDir && to === previousDir) {
+        throw new Error('simulated: cannot move original out of the way')
+      }
+      return actualRename(...args)
+    })
+
+    await expect(restoreSnapshot(backupRootDir, 'snap1', targetDir)).rejects.toThrow(
+      /could not prepare/i
+    )
+
+    // rename() is atomic - a failed call moves nothing, so targetDir must
+    // still hold its original content at its original path.
+    expect(await readFile(join(targetDir, 'existing-save.dat'), 'utf-8')).toBe('must never move')
+    await expect(access(newDir)).rejects.toThrow()
+    await expect(access(previousDir)).rejects.toThrow()
   })
 
   it('refuses to proceed (rather than silently deleting a stranded original) when a previous restore left previousDir behind', async () => {
