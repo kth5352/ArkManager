@@ -10,6 +10,7 @@
 #include <mpv/client.h>
 #include <mpv/render.h>
 #include <string>
+#include <cstring>
 #include <vector>
 
 typedef mpv_handle *(*mpv_create_fn)(void);
@@ -20,6 +21,8 @@ typedef mpv_event *(*mpv_wait_event_fn)(mpv_handle *, double);
 typedef int (*mpv_set_option_string_fn)(mpv_handle *, const char *, const char *);
 typedef int (*mpv_set_property_fn)(mpv_handle *, const char *, mpv_format, void *);
 typedef int (*mpv_get_property_fn)(mpv_handle *, const char *, mpv_format, void *);
+typedef int (*mpv_observe_property_fn)(mpv_handle *, uint64_t, const char *, mpv_format);
+typedef int (*mpv_unobserve_property_fn)(mpv_handle *, uint64_t);
 typedef void (*mpv_free_fn)(void *);
 typedef const char *(*mpv_error_string_fn)(int);
 typedef const char *(*mpv_event_name_fn)(mpv_event_id);
@@ -35,6 +38,16 @@ static std::vector<uint8_t> g_buffer;
 static int g_width = 0;
 static int g_height = 0;
 
+// Read by the render-thread getters, refreshed only by PollEvent. Synchronous
+// mpv_get_property on this thread can wait for the core while the core waits
+// for us to render the post-seek frame (render.h's threading restriction).
+static double g_timePos = 0;
+static double g_duration = 0;
+static bool g_hasTimePos = false;
+static bool g_hasDuration = false;
+static bool g_eofReached = false;
+static uint64_t g_observationId = 0;
+
 static mpv_create_fn g_p_create = nullptr;
 static mpv_initialize_fn g_p_initialize = nullptr;
 static mpv_command_fn g_p_command = nullptr;
@@ -43,6 +56,8 @@ static mpv_wait_event_fn g_p_wait_event = nullptr;
 static mpv_set_option_string_fn g_p_set_option_string = nullptr;
 static mpv_set_property_fn g_p_set_property = nullptr;
 static mpv_get_property_fn g_p_get_property = nullptr;
+static mpv_observe_property_fn g_p_observe_property = nullptr;
+static mpv_unobserve_property_fn g_p_unobserve_property = nullptr;
 static mpv_free_fn g_p_free = nullptr;
 static mpv_error_string_fn g_p_error_string = nullptr;
 static mpv_event_name_fn g_p_event_name = nullptr;
@@ -59,6 +74,8 @@ static bool LoadAllSymbols() {
   g_p_set_option_string = (mpv_set_option_string_fn)GetProcAddress(g_lib, "mpv_set_option_string");
   g_p_set_property = (mpv_set_property_fn)GetProcAddress(g_lib, "mpv_set_property");
   g_p_get_property = (mpv_get_property_fn)GetProcAddress(g_lib, "mpv_get_property");
+  g_p_observe_property = (mpv_observe_property_fn)GetProcAddress(g_lib, "mpv_observe_property");
+  g_p_unobserve_property = (mpv_unobserve_property_fn)GetProcAddress(g_lib, "mpv_unobserve_property");
   g_p_free = (mpv_free_fn)GetProcAddress(g_lib, "mpv_free");
   g_p_error_string = (mpv_error_string_fn)GetProcAddress(g_lib, "mpv_error_string");
   g_p_event_name = (mpv_event_name_fn)GetProcAddress(g_lib, "mpv_event_name");
@@ -67,8 +84,46 @@ static bool LoadAllSymbols() {
   g_p_render_free = (mpv_render_context_free_fn)GetProcAddress(g_lib, "mpv_render_context_free");
   return g_p_create && g_p_initialize && g_p_command && g_p_terminate_destroy &&
          g_p_wait_event && g_p_set_option_string && g_p_set_property && g_p_get_property &&
+         g_p_observe_property && g_p_unobserve_property &&
          g_p_free && g_p_error_string && g_p_event_name &&
          g_p_render_create && g_p_render_render && g_p_render_free;
+}
+
+static void ResetPlaybackProperties() {
+  if (g_ctx && g_observationId) g_p_unobserve_property(g_ctx, g_observationId);
+  // Unobserving does not remove already queued notifications. A fresh ID
+  // prevents the previous track's late time/duration/EOF from being applied.
+  ++g_observationId;
+  g_timePos = 0;
+  g_duration = 0;
+  g_hasTimePos = false;
+  g_hasDuration = false;
+  g_eofReached = false;
+}
+
+static int ObservePlaybackProperties() {
+  ResetPlaybackProperties();
+  int rc = g_p_observe_property(g_ctx, g_observationId, "time-pos", MPV_FORMAT_DOUBLE);
+  if (rc < 0) return rc;
+  rc = g_p_observe_property(g_ctx, g_observationId, "duration", MPV_FORMAT_DOUBLE);
+  if (rc < 0) return rc;
+  return g_p_observe_property(g_ctx, g_observationId, "eof-reached", MPV_FORMAT_FLAG);
+}
+
+static void UpdatePlaybackProperty(const mpv_event *event) {
+  if (event->reply_userdata != g_observationId || !event->data) return;
+  const auto *property = static_cast<const mpv_event_property *>(event->data);
+  if (!property->name) return;
+  if (std::strcmp(property->name, "time-pos") == 0) {
+    g_hasTimePos = property->format == MPV_FORMAT_DOUBLE && property->data;
+    if (g_hasTimePos) g_timePos = *static_cast<double *>(property->data);
+  } else if (std::strcmp(property->name, "duration") == 0) {
+    g_hasDuration = property->format == MPV_FORMAT_DOUBLE && property->data;
+    if (g_hasDuration) g_duration = *static_cast<double *>(property->data);
+  } else if (std::strcmp(property->name, "eof-reached") == 0) {
+    g_eofReached = property->format == MPV_FORMAT_FLAG && property->data &&
+                   *static_cast<int *>(property->data) != 0;
+  }
 }
 
 static void ReallocBuffer(int width, int height) {
@@ -153,6 +208,7 @@ Napi::String Init(const Napi::CallbackInfo &info) {
     return Napi::String::New(env, msg);
   }
 
+  ResetPlaybackProperties();
   const char *cmd[] = {"loadfile", filePath.c_str(), NULL};
   rc = g_p_command(g_ctx, cmd);
   if (rc < 0) {
@@ -171,6 +227,7 @@ Napi::String LoadFile(const Napi::CallbackInfo &info) {
     return Napi::String::New(env, "ERROR expected filePath (string)");
   }
   std::string filePath = info[0].As<Napi::String>().Utf8Value();
+  ResetPlaybackProperties();
   const char *cmd[] = {"loadfile", filePath.c_str(), NULL};
   int rc = g_p_command(g_ctx, cmd);
   if (rc < 0) {
@@ -290,36 +347,27 @@ Napi::String SetEqualizerBandGain(const Napi::CallbackInfo &info) {
 
 Napi::Value GetTimePos(const Napi::CallbackInfo &info) {
   Napi::Env env = info.Env();
-  if (!g_ctx) return env.Null();
-  double timePos = 0;
-  int rc = g_p_get_property(g_ctx, "time-pos", MPV_FORMAT_DOUBLE, &timePos);
-  if (rc < 0) return env.Null();
-  return Napi::Number::New(env, timePos);
+  if (!g_ctx || !g_hasTimePos) return env.Null();
+  return Napi::Number::New(env, g_timePos);
 }
 
 Napi::Value GetDuration(const Napi::CallbackInfo &info) {
   Napi::Env env = info.Env();
-  if (!g_ctx) return env.Null();
-  double duration = 0;
-  int rc = g_p_get_property(g_ctx, "duration", MPV_FORMAT_DOUBLE, &duration);
-  if (rc < 0) return env.Null();
-  return Napi::Number::New(env, duration);
+  if (!g_ctx || !g_hasDuration) return env.Null();
+  return Napi::Number::New(env, g_duration);
 }
 
 // mpv is initialized with keep-open=yes (see Init() above), so reaching a
 // file's natural end does NOT unload it and does NOT emit MPV_EVENT_END_FILE
 // - and the deprecated MPV_EVENT_PAUSE/MPV_EVENT_UNPAUSE events were removed
 // from libmpv in 0.33 (the bundled client.h is API 2.3 and has no such enum
-// members). The only way to observe end-of-file with this setup is to poll
-// the `eof-reached` property, which keep-open holds true until another file
-// is loaded or the player seeks away from the end.
+// members). Observe `eof-reached`, which keep-open holds true until another
+// file is loaded or the player seeks away from the end. PollEvent processes
+// these notifications before the worker checks this cached value each tick.
 Napi::Value GetEofReached(const Napi::CallbackInfo &info) {
   Napi::Env env = info.Env();
   if (!g_ctx) return Napi::Boolean::New(env, false);
-  int eofReached = 0;
-  int rc = g_p_get_property(g_ctx, "eof-reached", MPV_FORMAT_FLAG, &eofReached);
-  if (rc < 0) return Napi::Boolean::New(env, false);
-  return Napi::Boolean::New(env, eofReached != 0);
+  return Napi::Boolean::New(env, g_eofReached);
 }
 
 Napi::Value GetHwdecCurrent(const Napi::CallbackInfo &info) {
@@ -340,11 +388,25 @@ Napi::Value PollEvent(const Napi::CallbackInfo &info) {
   if (!ev || ev->event_id == MPV_EVENT_NONE) return env.Null();
   Napi::Object result = Napi::Object::New(env);
   result.Set("name", Napi::String::New(env, g_p_event_name(ev->event_id)));
+  if (ev->event_id == MPV_EVENT_START_FILE) {
+    ResetPlaybackProperties();
+  } else if (ev->event_id == MPV_EVENT_FILE_LOADED) {
+    // Subscribe only once the new file has loaded, so an initial snapshot
+    // cannot describe the old file while loadfile is still asynchronous.
+    int rc = ObservePlaybackProperties();
+    if (rc < 0) {
+      result.Set("error", Napi::String::New(env,
+          std::string("ERROR observing playback state: ") + g_p_error_string(rc)));
+    }
+  } else if (ev->event_id == MPV_EVENT_PROPERTY_CHANGE) {
+    UpdatePlaybackProperty(ev);
+  }
   return result;
 }
 
 Napi::String Shutdown(const Napi::CallbackInfo &info) {
   Napi::Env env = info.Env();
+  if (g_ctx) ResetPlaybackProperties();
   if (g_renderCtx) {
     g_p_render_free(g_renderCtx);
     g_renderCtx = nullptr;

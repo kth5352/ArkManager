@@ -22,6 +22,16 @@ module.exports = [
   js.configs.recommended,
   ...tsPlugin.configs['flat/recommended'],
   {
+    files: ['electron/native/mpv-addon/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: globals.node,
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: tsParser,

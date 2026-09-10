@@ -40,7 +40,7 @@ const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as {
   getDuration: () => number | null
   getEofReached: () => boolean
   getHwdecCurrent: () => string
-  pollEvent: () => { name: string } | null
+  pollEvent: () => { name: string; error?: string } | null
   shutdown: () => string
 }
 
@@ -143,6 +143,15 @@ function pollAndForwardEvents(): void {
   for (;;) {
     const ev = addon.pollEvent()
     if (!ev) return
+    if (ev.error) {
+      process.parentPort.postMessage({
+        type: 'state-update',
+        isPlaying: isPlayingState,
+        currentTime: addon.getTimePos() ?? 0,
+        duration: addon.getDuration(),
+        error: ev.error,
+      })
+    }
     // Only 'end-file'/'file-loaded' are logged: they're real, current
     // libmpv events. Deliberately NOT keyed on for end-of-track detection -
     // keep-open=yes means a file reaching its natural end is never unloaded,
@@ -157,10 +166,10 @@ function pollAndForwardEvents(): void {
 // Detects a track finishing on its own, which is what drives auto-advance and
 // repeat-one in the renderer. There is no event for this: libmpv 0.33+ removed
 // the deprecated pause/unpause events (the bundled client.h is API 2.3 and has
-// no such enum members), keep-open=yes suppresses end-file at a natural EOF,
-// and the addon never calls mpv_observe_property - so the `eof-reached`
-// property has to be polled. It latches true at EOF and stays true, hence the
-// false->true edge check rather than a bare `if (eof)`.
+// no such enum members), and keep-open=yes suppresses end-file at a natural
+// EOF. PollEvent refreshes the addon's observed `eof-reached` snapshot before
+// this check; reading the snapshot never waits on mpv's rendering core.
+// It latches true at EOF, hence the false->true edge check.
 function checkEofReached(): void {
   const eof = addon.getEofReached()
   if (eof && !lastEofReached && isPlayingState) {
@@ -226,14 +235,15 @@ function restartRenderLoop(): void {
       // timeupdate event fired at. Without this, the renderer's displayed
       // time/seek-bar would only ever update at the discrete moments
       // pushStateUpdate is otherwise called (init/load/play/pause), never
-      // during actual ongoing playback. Also the only place getDuration()
-      // (null until mpv's async loadfile resolves - see Task 2's own
-      // findings) ever gets re-checked after the first, likely-null push.
+      // during actual ongoing playback. These getters read snapshots updated
+      // by pollAndForwardEvents; they must not synchronously query mpv on the
+      // rendering thread, which stalls post-seek rendering until a timeout.
       stateTickCount++
       // See suppressPeriodicStateUpdates' own comment: skipped while true so
       // this doesn't re-assert the old track's now-stale isPlaying state into
       // the gap between 'ended' and the next real transition.
-      if (stateTickCount % 15 === 0 && !suppressPeriodicStateUpdates) pushStateUpdate(isPlayingState)
+      if (stateTickCount % 15 === 0 && !suppressPeriodicStateUpdates)
+        pushStateUpdate(isPlayingState)
     }, 16)
     return
   }
