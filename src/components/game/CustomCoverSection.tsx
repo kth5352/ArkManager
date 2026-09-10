@@ -14,12 +14,13 @@ interface CustomCoverSectionProps {
   hasCustomCover: boolean
 }
 
-// Only meaningful for code-less entries (nothing to crawl from DLsite for a
-// cover) - CodeLinkSection can turn an entry code-less <-> coded without
-// this component remounting (both share DetailSidebar's game.path key), so
-// this stays mounted either way and just hides its own UI, keeping its
-// hook calls unconditional rather than being conditionally rendered by its
-// caller.
+// Works for code-linked entries too, not just code-less ones - a linked
+// game can still have the "wrong" cover crawled (wrong edition, a title
+// screen instead of box art) with no other way to override it, and
+// GameThumbnail.tsx's own priority already puts a custom cover ahead of the
+// crawled DLsite cover regardless of game.code. CodeLinkSection can turn an
+// entry code-less <-> coded without this component remounting (both share
+// DetailSidebar's game.path key), so this stays mounted either way.
 export function CustomCoverSection({ game, hasCustomCover }: CustomCoverSectionProps) {
   const { t } = useTranslation()
   const pickFile = usePickCustomCoverFile()
@@ -27,8 +28,6 @@ export function CustomCoverSection({ game, hasCustomCover }: CustomCoverSectionP
   const setFromClipboard = useSetCustomCoverFromClipboard()
   const clearCover = useClearCustomCover()
   const [error, setError] = useState<string | null>(null)
-
-  if (game.code) return null
 
   const handlePickFile = async (): Promise<void> => {
     setError(null)

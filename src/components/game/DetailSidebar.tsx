@@ -45,9 +45,15 @@ interface DetailSidebarProps {
   game: ScannedEntry | null
   onClose: () => void
   onFilterByGenre?: (genre: string) => void
+  onSearchCircle?: (circle: string) => void
 }
 
-export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarProps) {
+export function DetailSidebar({
+  game,
+  onClose,
+  onFilterByGenre,
+  onSearchCircle,
+}: DetailSidebarProps) {
   const { t } = useTranslation()
   const { data: persistedWidth } = useSidebarWidthQuery()
   const setSidebarWidth = useSetSidebarWidthMutation()
@@ -108,7 +114,7 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   }
 
   const handleClickCover = async (): Promise<void> => {
-    if (!game || game.code || pickCoverFile.isPending) return
+    if (!game || pickCoverFile.isPending) return
     const sourcePath = await pickCoverFile.mutateAsync()
     if (!sourcePath) return
     setCoverFromFile.mutate({ entry: game, sourcePath })
@@ -166,8 +172,6 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
   // CodeLinkSection's local
   // state (rating draft, memo draft, expanded/collapsed, confirm steps) -
   // should reset per game. Keying only the inner tree gives both at once.
-  const canChangeCover = !game.code
-
   return (
     <motion.div
       key={game.path}
@@ -190,17 +194,22 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         </HoverTooltip>
       </div>
       <div className="flex flex-col gap-3 p-4">
+        {/* Clickable for every entry, code-linked or not - GameThumbnail.tsx's
+            own priority already puts a custom cover ahead of the crawled
+            DLsite cover regardless of game.code, so there was never a
+            rendering reason to gate this on code-less entries only. A live
+            user asked for this explicitly: a linked game can still have the
+            "wrong" cover crawled (wrong edition, a title screen instead of
+            box art, etc.) with no way to override it before this. */}
         <div
-          onClick={canChangeCover ? handleClickCover : undefined}
-          className={`group relative aspect-[3/4] w-full overflow-hidden rounded-md bg-muted ${canChangeCover ? 'cursor-pointer' : ''}`}
+          onClick={handleClickCover}
+          className="group relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-md bg-muted"
         >
           <GameThumbnail entry={game} />
-          {canChangeCover && (
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
-              <ImagePlus className="h-6 w-6" />
-              <span className="px-2 text-center text-xs">{t('customCover.clickToChange')}</span>
-            </div>
-          )}
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <ImagePlus className="h-6 w-6" />
+            <span className="px-2 text-center text-xs">{t('customCover.clickToChange')}</span>
+          </div>
           <HoverTooltip
             content={t('game.toggleCleared')}
             className="absolute right-2 top-2 z-10"
@@ -232,6 +241,15 @@ export function DetailSidebar({ game, onClose, onFilterByGenre }: DetailSidebarP
         </div>
         {metadata?.title && metadata.title !== game.name && (
           <p className="text-sm text-muted-foreground">{metadata.title}</p>
+        )}
+        {metadata?.circle && (
+          <button
+            className="text-left text-xs text-muted-foreground underline-offset-2 enabled:hover:underline"
+            onClick={() => metadata.circle && onSearchCircle?.(metadata.circle)}
+            disabled={!onSearchCircle}
+          >
+            {metadata.circle}
+          </button>
         )}
         {game.code ? (
           <button
