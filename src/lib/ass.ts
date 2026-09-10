@@ -9,12 +9,44 @@ function parseAssTime(raw: string): number | null {
   return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]) + Number(match[4]) / 100
 }
 
+// \pN (N>=1) inside an override block switches the DIALOGUE TEXT ITSELF
+// (not just the tag) into ASS "drawing mode" - a vector-path mini-language
+// (e.g. "m 689 147 l 716 144 ...") used for decorative shapes/karaoke
+// backgrounds, not real spoken dialogue. \p0 resets back to plain text.
+// mpv's own on-screen rendering (libass) understands this and draws the
+// shape (or renders nothing visible for it); this app's subtitle log
+// independently re-parses the raw file with no equivalent drawing
+// renderer, so drawing-mode content must be dropped, not shown as text. A
+// live user found exactly this: raw path data appearing in the log for a
+// line that looked completely normal on the actual video.
 function cleanText(raw: string): string {
-  return raw
-    .replace(/\{[^}]*\}/g, '')
-    .replace(/\\N/g, '\n')
-    .replace(/\\n/g, '\n')
-    .trim()
+  let result = ''
+  let drawing = false
+  let index = 0
+
+  while (index < raw.length) {
+    const braceStart = raw.indexOf('{', index)
+    if (braceStart === -1) {
+      if (!drawing) result += raw.slice(index)
+      break
+    }
+    if (!drawing) result += raw.slice(index, braceStart)
+
+    const braceEnd = raw.indexOf('}', braceStart)
+    if (braceEnd === -1) break // Malformed (unclosed override block) - stop rather than guess.
+
+    // \pos(...)/\pbo(...)/etc. must not be mistaken for \pN - requiring a
+    // digit immediately after \p is what tells them apart. Multiple \pN
+    // tags in one block are vanishingly rare in practice, but the LAST one
+    // wins per the ASS spec's sequential tag application, same as real
+    // renderers.
+    const pMatches = raw.slice(braceStart + 1, braceEnd).match(/\\p(\d+)/g)
+    if (pMatches) drawing = Number(pMatches[pMatches.length - 1].slice(2)) > 0
+
+    index = braceEnd + 1
+  }
+
+  return result.replace(/\\N/g, '\n').replace(/\\n/g, '\n').trim()
 }
 
 // ASS/SSA subtitle scripts store lines under an [Events] section as
