@@ -387,7 +387,19 @@ export function GalleryPage() {
     )
   }, [])
 
-  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
+  // Clicking the circle/maker name in the detail sidebar replaces the
+  // current search text outright (unlike genre tags, which toggle into a
+  // structured include-list) - it's a shortcut for "search for this name",
+  // same as typing it into SearchHeader yourself.
+  const searchByCircle = useCallback((circle: string) => {
+    setSearchQuery(circle)
+  }, [])
+
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(
+    games ?? [],
+    filterByGenre,
+    searchByCircle
+  )
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   const excludeEntry = useExcludeEntry()
   const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<

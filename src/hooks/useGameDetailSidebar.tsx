@@ -8,7 +8,8 @@ import type { ScannedEntry } from '../../shared/types/scanner'
 // logic.
 export function useGameDetailSidebar(
   entries: ScannedEntry[],
-  onFilterByGenre?: (genre: string) => void
+  onFilterByGenre?: (genre: string) => void,
+  onSearchCircle?: (circle: string) => void
 ): {
   openDetail: (entry: ScannedEntry) => void
   detailSidebarElement: JSX.Element
@@ -18,7 +19,12 @@ export function useGameDetailSidebar(
   return {
     openDetail,
     detailSidebarElement: (
-      <DetailSidebar game={selectedGame} onClose={close} onFilterByGenre={onFilterByGenre} />
+      <DetailSidebar
+        game={selectedGame}
+        onClose={close}
+        onFilterByGenre={onFilterByGenre}
+        onSearchCircle={onSearchCircle}
+      />
     ),
   }
 }

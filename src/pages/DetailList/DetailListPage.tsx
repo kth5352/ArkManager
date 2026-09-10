@@ -63,6 +63,7 @@ interface ColumnWidths {
   name: number
   path: number
   genres: number
+  circle: number
 }
 
 const DEFAULT_COLUMN_WIDTHS: ColumnWidths = {
@@ -70,6 +71,7 @@ const DEFAULT_COLUMN_WIDTHS: ColumnWidths = {
   name: 300,
   path: 256,
   genres: 160,
+  circle: 140,
 }
 
 function formatSize(bytes: number): string {
@@ -161,10 +163,14 @@ function HeaderCell({
 
 interface DetailListRowProps {
   entries: ScannedEntry[]
-  metadataByCode: Record<string, { genres: string[]; workType: string | null }>
+  metadataByCode: Record<
+    string,
+    { genres: string[]; circle: string | null; workType: string | null }
+  >
   duplicateGroups: Map<string, ScannedEntry[]>
   extractedArchiveCodes: Set<string>
   columnWidths: ColumnWidths
+  onSearchCircle: (circle: string) => void
   onOpenDetail: (entry: ScannedEntry) => void
   onExclude: (entry: ScannedEntry) => void
   onAddToSavedPlaylist: (tracks: MediaPlaylistTrackDto[]) => void
@@ -181,6 +187,7 @@ function Row({
   duplicateGroups,
   extractedArchiveCodes,
   columnWidths,
+  onSearchCircle,
   onOpenDetail,
   onExclude,
   onAddToSavedPlaylist,
@@ -198,6 +205,7 @@ function Row({
   })
   if (!entry) return null
   const genres = entry.code ? (metadataByCode[entry.code.value]?.genres ?? []) : []
+  const circle = entry.code ? (metadataByCode[entry.code.value]?.circle ?? null) : null
   const workType = entry.code ? (metadataByCode[entry.code.value]?.workType ?? null) : null
   const duplicates = getDuplicateGroupForEntry(entry, duplicateGroups)
   const archiveExtracted = isArchiveExtracted(entry, extractedArchiveCodes)
@@ -285,6 +293,21 @@ function Row({
           >
             <span className="block truncate">{genres.join(', ')}</span>
           </HoverTooltip>
+          <HoverTooltip content={circle ?? t('detailList.none')} className="shrink-0" style={{ width: columnWidths.circle }}>
+            {circle ? (
+              <button
+                className="block max-w-full truncate text-left hover:text-foreground hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onSearchCircle(circle)
+                }}
+              >
+                {circle}
+              </button>
+            ) : (
+              <span className="block truncate">-</span>
+            )}
+          </HoverTooltip>
           <span className="w-24 shrink-0">{formatDate(entry.mtimeMs)}</span>
           <span className="w-20 shrink-0">{formatSize(entry.size)}</span>
           <span className="flex w-16 shrink-0 gap-0.5">
@@ -360,7 +383,19 @@ export function DetailListPage() {
     )
   }
 
-  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
+  // Unlike genres, the circle column IS clickable directly in a row (see
+  // Row's own circle cell) as well as in the detail sidebar - it replaces
+  // the current search text outright rather than toggling a structured
+  // filter, a shortcut for "search for this name".
+  const searchByCircle = (circle: string): void => {
+    setSearchQuery(circle)
+  }
+
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(
+    games ?? [],
+    filterByGenre,
+    searchByCircle
+  )
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   const excludeEntry = useExcludeEntry()
   const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
@@ -500,6 +535,11 @@ export function DetailListPage() {
                     width={columnWidths.genres}
                     onResize={(delta) => resizeColumn('genres', delta)}
                   />
+                  <HeaderCell
+                    label={t('detailList.circle')}
+                    width={columnWidths.circle}
+                    onResize={(delta) => resizeColumn('circle', delta)}
+                  />
                   <span className="w-24 shrink-0 text-xs font-medium">
                     {t('detailList.modified')}
                   </span>
@@ -524,6 +564,7 @@ export function DetailListPage() {
                           duplicateGroups,
                           extractedArchiveCodes,
                           columnWidths,
+                          onSearchCircle: searchByCircle,
                           onOpenDetail: openDetail,
                           onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
                           onAddToSavedPlaylist: setPendingSavedPlaylistTracks,

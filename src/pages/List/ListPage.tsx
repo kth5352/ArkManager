@@ -62,10 +62,12 @@ function formatMtime(mtimeMs: number): string {
 function GameRow({
   game,
   genres,
+  circle,
   workType,
   duplicateCount,
   archiveExtracted,
   onFilterByGenre,
+  onSearchCircle,
   onOpenDetail,
   onHoverChange,
   onExclude,
@@ -76,10 +78,12 @@ function GameRow({
 }: {
   game: ScannedEntry
   genres: string[]
+  circle: string | null
   workType: string | null
   duplicateCount: number | undefined
   archiveExtracted: boolean
   onFilterByGenre: (genre: string) => void
+  onSearchCircle: (circle: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onExclude: (entry: ScannedEntry) => void
@@ -198,6 +202,17 @@ function GameRow({
               ) : (
                 <p className="truncate text-xs text-muted-foreground">{t('game.noCode')}</p>
               )}
+              {circle && (
+                <button
+                  className="min-w-0 shrink truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSearchCircle(circle)
+                  }}
+                >
+                  {circle}
+                </button>
+              )}
               {!!duplicateCount && (
                 <span
                   title={t('game.duplicateTitle', { count: duplicateCount })}
@@ -257,10 +272,11 @@ function GameRow({
 
 interface ListRowProps {
   games: ScannedEntry[]
-  metadataByCode: Record<string, { genres: string[]; workType: string | null }>
+  metadataByCode: Record<string, { genres: string[]; circle: string | null; workType: string | null }>
   duplicateGroups: Map<string, ScannedEntry[]>
   extractedArchiveCodes: Set<string>
   onFilterByGenre: (genre: string) => void
+  onSearchCircle: (circle: string) => void
   onOpenDetail: (game: ScannedEntry) => void
   onHoverChange: (game: ScannedEntry | null) => void
   onExclude: (entry: ScannedEntry) => void
@@ -278,6 +294,7 @@ function Row({
   duplicateGroups,
   extractedArchiveCodes,
   onFilterByGenre,
+  onSearchCircle,
   onOpenDetail,
   onHoverChange,
   onExclude,
@@ -289,6 +306,7 @@ function Row({
   const game = games[index]
   if (!game) return null
   const genres = game.code ? (metadataByCode[game.code.value]?.genres ?? []) : []
+  const circle = game.code ? (metadataByCode[game.code.value]?.circle ?? null) : null
   const workType = game.code ? (metadataByCode[game.code.value]?.workType ?? null) : null
   const duplicateCount = getDuplicateGroupForEntry(game, duplicateGroups)?.length
   const archiveExtracted = isArchiveExtracted(game, extractedArchiveCodes)
@@ -297,10 +315,12 @@ function Row({
       <GameRow
         game={game}
         genres={genres}
+        circle={circle}
         workType={workType}
         duplicateCount={duplicateCount}
         archiveExtracted={archiveExtracted}
         onFilterByGenre={onFilterByGenre}
+        onSearchCircle={onSearchCircle}
         onOpenDetail={onOpenDetail}
         onHoverChange={onHoverChange}
         onExclude={onExclude}
@@ -343,7 +363,20 @@ export function ListPage() {
     )
   }, [])
 
-  const { openDetail, detailSidebarElement } = useGameDetailSidebar(games ?? [], filterByGenre)
+  // Replaces the current search text outright (unlike genre tags, which
+  // toggle into a structured include-list) - a shortcut for "search for
+  // this name", same as typing it into SearchHeader yourself. Shared by
+  // both this page's own rows (GameRow's circle button below) and the
+  // detail sidebar opened from a row.
+  const searchByCircle = useCallback((circle: string) => {
+    setSearchQuery(circle)
+  }, [])
+
+  const { openDetail, detailSidebarElement } = useGameDetailSidebar(
+    games ?? [],
+    filterByGenre,
+    searchByCircle
+  )
   const { dialogElement, openRename, openMove, openDelete } = useEntryActionDialogs()
   const excludeEntry = useExcludeEntry()
   const [pendingSavedPlaylistTracks, setPendingSavedPlaylistTracks] = useState<
@@ -463,6 +496,7 @@ export function ListPage() {
                         duplicateGroups,
                         extractedArchiveCodes,
                         onFilterByGenre: filterByGenre,
+                        onSearchCircle: searchByCircle,
                         onOpenDetail: openDetail,
                         onHoverChange: handleHoverChange,
                         onExclude: (entry: ScannedEntry) => excludeEntry.mutate(entry),
