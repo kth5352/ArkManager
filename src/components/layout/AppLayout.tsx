@@ -26,9 +26,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const sidebarActiveTab = useMediaPlayerStore((s) => s.sidebarActiveTab)
   const setSidebarActiveTab = useMediaPlayerStore((s) => s.setSidebarActiveTab)
-  const mediaExpanded = useMediaPlayerStore((s) => s.mediaExpanded)
-  const mediaFullscreenBarHeight = useMediaPlayerStore((s) => s.mediaFullscreenBarHeight)
-  const isDetached = useMediaPlayerStore((s) => s.isDetached)
   const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
     useMediaSidebarOpenQuery()
   const setMediaSidebarOpenMutation = useSetMediaSidebarOpenMutation()
@@ -111,15 +108,23 @@ export function AppLayout({ children }: { children: ReactNode }) {
             pattern) rather than a `fixed` overlay - this is what makes it
             push `<main>`'s width instead of floating on top of
             DetailSidebar/BulkCrawlProgressBanner, which both live outside
-            this row. MediaSidebar's own root still carries `relative
-            z-[60]` (see MediaSidebar.tsx) and `h-full`, inheriting THIS
-            row's height - which is why the placeholder right after this row
-            (below) exists: without it, this row's flex-1 would expand to
-            fill the entire app height while FullscreenMediaOverlay is
-            showing (that component is `fixed`, so MediaPlayerHost
-            contributes zero flow height then), and MediaSidebar would
-            extend down past the fullscreen transport bar instead of
-            stopping above it the way it does in docked mode. */}
+            this row. This row is intentionally left to grow to full height
+            while FullscreenMediaOverlay is showing (that component is
+            `fixed`, so MediaPlayerHost contributes zero flow height then,
+            and BulkCrawlProgressBanner/ExcludedEntriesDialog/Toaster are
+            all fixed/portal-based too - nothing else in flow actually needs
+            the space back). Sidebar/main growing that tall is harmless -
+            they're hidden behind the fullscreen overlay's opaque
+            background regardless of their own height. MediaSidebar (z-[60],
+            deliberately above the overlay's z-50 so it stays usable during
+            fullscreen playback) is the one element here that DOES draw on
+            top of the overlay, so it sets its own explicit height directly
+            from the store instead of trusting this row's height to already
+            exclude the fullscreen bottom bar - see MediaSidebar.tsx's own
+            comment. An earlier version of this fix ALSO shrank this row via
+            a placeholder sized to the same store value, which double-
+            subtracted the bar's height and made the sidebar noticeably
+            shorter than the video area beside it - removed. */}
         {/* No longer gated on whether a track is queued (currentIndex !==
             null) - the sidebar's playlist-management tab is a persistent
             feature (create/rename/delete/play saved playlists, reachable
@@ -139,19 +144,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           />
         )}
       </div>
-      {/* Reserves real flow height for FullscreenMediaOverlay's bottom
-          transport bar while it's showing - see the comment on the row
-          above for why this is needed. Height is the bar's own actual
-          measured height (mediaPlayerStore.ts's mediaFullscreenBarHeight,
-          reported by a ResizeObserver in FullscreenMediaOverlay.tsx), not a
-          guessed constant, so it can never desync from the real thing.
-          Gated on !isDetached too - when detached, FullscreenMediaOverlay
-          never renders in this window (MediaPlayerHost's own gate), so
-          there's nothing here to reserve space for regardless of
-          mediaExpanded's stale value. */}
-      {mediaExpanded && !isDetached && (
-        <div style={{ height: mediaFullscreenBarHeight }} className="shrink-0" />
-      )}
       <MediaPlayerHost />
       <BulkCrawlProgressBanner progress={bulkCrawlProgress} />
       <ExcludedEntriesDialog />
