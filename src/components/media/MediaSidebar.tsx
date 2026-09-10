@@ -45,14 +45,20 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
   const setWidthMutation = useSetMediaSidebarWidthMutation()
   const [width, setWidth] = useState(persistedWidth ?? MEDIA_SIDEBAR_WIDTH_DEFAULT)
   const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
-  // This is the ONLY place that reserves space for FullscreenMediaOverlay's
-  // bottom transport bar - AppLayout.tsx used to also shrink this sidebar's
-  // parent row via a placeholder sized to the same store value, but running
-  // both at once double-subtracted the bar's height (sidebar ended up a
-  // full bar-height shorter than the video area beside it). That placeholder
-  // is gone now; this direct read is the single source of truth, using the
-  // exact same measured value FullscreenMediaOverlay's own ResizeObserver
-  // reports (not a guess).
+  // Whenever FullscreenMediaOverlay's bottom bar is showing, this sidebar
+  // switches from a normal flex-flow box (h-full of its row) to `fixed`,
+  // anchored to top:0/right:0/bottom:<bar height>px with no explicit height
+  // - the browser computes the height by resolving the gap between those
+  // two edges itself. Earlier attempts computed that height by hand
+  // (`calc(100% - barHeight)`, subtracted once or twice against a
+  // separately-shrunk parent row) and never quite matched the video area
+  // beside it - always slightly over or under, since "100%" here depended
+  // on the row's own computed height (itself dependent on this component's
+  // ancestors), a second moving part that didn't need to be in the
+  // equation at all. Anchoring both edges directly removes that entirely:
+  // top/bottom are absolute viewport offsets (same coordinate system
+  // FullscreenMediaOverlay's own `fixed inset-0` uses), so there is no
+  // arithmetic left to get wrong.
   const mediaExpanded = useMediaPlayerStore((s) => s.mediaExpanded)
   const mediaFullscreenBarHeight = useMediaPlayerStore((s) => s.mediaFullscreenBarHeight)
   const isDetached = useMediaPlayerStore((s) => s.isDetached)
@@ -104,24 +110,30 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
     <div
       style={{
         width,
-        // Explicit height override (see reserveForFullscreenBar's own
-        // comment above) - falls back to the h-full class below (undefined
-        // lets the CSS class take over) whenever fullscreen's bottom bar
-        // isn't showing.
-        height: reserveForFullscreenBar ? `calc(100% - ${mediaFullscreenBarHeight}px)` : undefined,
+        // Only meaningful (and only rendered - see className below) while
+        // reserveForFullscreenBar is true; `bottom` is a plain number here
+        // so React appends 'px' the same as it does for `width` above.
+        bottom: reserveForFullscreenBar ? mediaFullscreenBarHeight : undefined,
       }}
-      // relative (stacking context anchor) + z-[60] - one above
-      // FullscreenMediaOverlay's z-50 - keeps this sidebar usable (browsing
-      // the queue/lyrics) even while a video is fullscreen. Now a normal
-      // flex child (not `fixed`, see AppLayout.tsx), but FullscreenMediaOverlay
-      // is still `fixed inset-0 z-50` elsewhere in the tree (only its inner
-      // video-area div gets a conditional `marginRight` for this sidebar,
-      // not the outer box) - since no ancestor here establishes an isolating
+      // Normally a real flex sibling of Sidebar/main in AppLayout.tsx's row
+      // (`relative h-full`, matches DetailSidebar's own pattern) - that's
+      // what makes it push `<main>`'s width instead of floating on top of
+      // DetailSidebar/BulkCrawlProgressBanner, which both live outside that
+      // row. z-[60] is one above FullscreenMediaOverlay's z-50 so this
+      // sidebar stays usable (browsing the queue/lyrics) even while a video
+      // is fullscreen - since no ancestor here establishes an isolating
       // stacking context (no transform/opacity/will-change/isolate on the
-      // plain flex/block divs in between), this element's z-[60] still
-      // stacks correctly against that fixed z-50 sibling per normal CSS
-      // stacking rules.
-      className="relative z-[60] flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-card"
+      // plain flex/block divs in between), z-[60] stacks correctly against
+      // that fixed z-50 sibling regardless of which positioning branch is
+      // active below.
+      //
+      // While FullscreenMediaOverlay's bottom bar is showing though, this
+      // switches to `fixed` with top/right/bottom all pinned (no `h-full`)
+      // - see reserveForFullscreenBar's own comment above for why.
+      className={cn(
+        'z-[60] flex shrink-0 flex-col overflow-hidden border-l border-border bg-card',
+        reserveForFullscreenBar ? 'fixed right-0 top-0' : 'relative h-full'
+      )}
     >
       <div
         onPointerDown={handleResizePointerDown}

@@ -77,22 +77,23 @@ export function FullscreenMediaOverlay({
   const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
   const thumbFailed = thumbFailedPath === playback.track.path
 
-  // Reports this bar's real rendered height to the store so AppLayout.tsx
-  // can reserve exactly that much flow space below the sidebar row - without
-  // this, MediaSidebar's h-full inherits that row's flex-1 height, which
-  // expands to fill the ENTIRE app height while fullscreen is showing
-  // (MediaPlayerHost contributes zero flow height then - FullscreenMediaOverlay
-  // is `fixed`, taken out of flow entirely), so the sidebar would extend down
-  // behind/past this bar instead of stopping above it like it does in docked
-  // mode. Measured (not hardcoded) so a future content/padding change here
-  // can't silently desync from a guessed pixel value in AppLayout.tsx.
+  // Reports this bar's real rendered height to the store so MediaSidebar.tsx
+  // can anchor its own bottom edge to it - without this, MediaSidebar would
+  // have no way to know how much of the viewport this bar occupies, and
+  // would extend down behind/past it instead of stopping exactly above it
+  // like it does in docked mode. Measured (not hardcoded) so a future
+  // content/padding change here can't silently desync from a guessed pixel
+  // value elsewhere. Reads getBoundingClientRect().height rather than the
+  // observer entry's own contentRect - contentRect reports only the content
+  // box, excluding this element's own `p-3` padding (24px combined
+  // top+bottom), which previously underreported the real occupied height by
+  // that much.
   const barRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = barRef.current
     if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (entry) setMediaFullscreenBarHeight(entry.contentRect.height)
+    const observer = new ResizeObserver(() => {
+      setMediaFullscreenBarHeight(el.getBoundingClientRect().height)
     })
     observer.observe(el)
     return () => observer.disconnect()

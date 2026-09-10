@@ -105,26 +105,24 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </AnimatePresence>
         </main>
         {/* Real flex sibling of Sidebar/main (matches DetailSidebar's own
-            pattern) rather than a `fixed` overlay - this is what makes it
-            push `<main>`'s width instead of floating on top of
-            DetailSidebar/BulkCrawlProgressBanner, which both live outside
-            this row. This row is intentionally left to grow to full height
-            while FullscreenMediaOverlay is showing (that component is
-            `fixed`, so MediaPlayerHost contributes zero flow height then,
-            and BulkCrawlProgressBanner/ExcludedEntriesDialog/Toaster are
-            all fixed/portal-based too - nothing else in flow actually needs
-            the space back). Sidebar/main growing that tall is harmless -
-            they're hidden behind the fullscreen overlay's opaque
-            background regardless of their own height. MediaSidebar (z-[60],
-            deliberately above the overlay's z-50 so it stays usable during
-            fullscreen playback) is the one element here that DOES draw on
-            top of the overlay, so it sets its own explicit height directly
-            from the store instead of trusting this row's height to already
-            exclude the fullscreen bottom bar - see MediaSidebar.tsx's own
-            comment. An earlier version of this fix ALSO shrank this row via
-            a placeholder sized to the same store value, which double-
-            subtracted the bar's height and made the sidebar noticeably
-            shorter than the video area beside it - removed. */}
+            pattern) rather than a `fixed` overlay while docked - this is
+            what makes it push `<main>`'s width instead of floating on top
+            of DetailSidebar/BulkCrawlProgressBanner, which both live
+            outside this row. While FullscreenMediaOverlay's bottom bar is
+            showing though, MediaSidebar switches itself to `position:
+            fixed` (top/right/bottom pinned directly, no computed height at
+            all) rather than trusting this row's own height to already
+            exclude that bar - see MediaSidebar.tsx's own comment for why
+            (two earlier approaches computed that height by hand from this
+            row's size and never quite matched). This row is left to grow
+            to full height in that state regardless (MediaPlayerHost
+            contributes zero flow height then, and
+            BulkCrawlProgressBanner/ExcludedEntriesDialog/Toaster are all
+            fixed/portal-based, so nothing else in flow needs the space
+            back) - harmless since Sidebar/main are hidden behind the
+            overlay's opaque background either way, and MediaSidebar no
+            longer participates in this row's flex sizing once it's
+            `fixed`. */}
         {/* No longer gated on whether a track is queued (currentIndex !==
             null) - the sidebar's playlist-management tab is a persistent
             feature (create/rename/delete/play saved playlists, reachable
