@@ -111,15 +111,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
             pattern) rather than a `fixed` overlay - this is what makes it
             push `<main>`'s width instead of floating on top of
             DetailSidebar/BulkCrawlProgressBanner, which both live outside
-            this row. MediaSidebar's own root still carries `relative
-            z-[60]` (see MediaSidebar.tsx) and `h-full`, inheriting THIS
-            row's height - which is why the placeholder right after this row
-            (below) exists: without it, this row's flex-1 would expand to
-            fill the entire app height while FullscreenMediaOverlay is
-            showing (that component is `fixed`, so MediaPlayerHost
-            contributes zero flow height then), and MediaSidebar would
-            extend down past the fullscreen transport bar instead of
-            stopping above it the way it does in docked mode. */}
+            this row. This row's own flex-1 would otherwise expand to fill
+            the entire app height while FullscreenMediaOverlay is showing
+            (that component is `fixed`, so MediaPlayerHost contributes zero
+            flow height then) - the placeholder right after this row exists
+            for that reason, keeping this row (and Sidebar/main within it)
+            from growing that tall. MediaSidebar's OWN root (`relative
+            z-[60]`, see MediaSidebar.tsx) no longer depends on that
+            shrinkage for its own correctness though - a live user found it
+            still visually covered part of the fullscreen bottom bar even
+            with this row properly sized, so MediaSidebar now sets its own
+            explicit height (100% minus the bar's measured height) directly
+            from the store whenever fullscreen is showing, rather than
+            trusting this row's computed height to already exclude it. */}
         {/* No longer gated on whether a track is queued (currentIndex !==
             null) - the sidebar's playlist-management tab is a persistent
             feature (create/rename/delete/play saved playlists, reachable
