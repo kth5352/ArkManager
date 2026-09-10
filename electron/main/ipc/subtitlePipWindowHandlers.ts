@@ -84,7 +84,6 @@ export function registerSubtitlePipWindowHandlers(
       ...bounds,
       frame: false,
       transparent: true,
-      alwaysOnTop: true,
       skipTaskbar: true,
       resizable: true,
       minWidth: 160,
@@ -93,6 +92,12 @@ export function registerSubtitlePipWindowHandlers(
         preload: join(__dirname, '../preload/index.js'),
       },
     })
+
+    // Request this level on the FIRST always-on-top transition. The default
+    // 'floating' level moves the HWND behind the Windows taskbar, which can
+    // demote it when a borderless game makes the taskbar non-topmost.
+    // This avoids that placement; it does not support exclusive fullscreen.
+    win.setAlwaysOnTop(true, 'screen-saver')
 
     // 드래그/리사이즈가 끝난 뒤에만 저장 - 'move'/'resize'는 드래그 도중
     // 계속 발생하므로, 매번 동기 SQLite write를 하지 않도록 짧게 디바운스한다.
