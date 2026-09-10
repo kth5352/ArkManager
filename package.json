@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build && electron-builder",
+    "release": "electron-vite build && electron-builder --publish always",
     "typecheck": "tsc --build --force",
     "lint": "eslint .",
     "format": "prettier --write .",
