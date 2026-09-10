@@ -28,6 +28,7 @@ import {
   saveGameMetadata,
   setGameMetadataCoverPath,
   getManyGameMetadata,
+  listAllGameMetadataCodes,
 } from '../database/gameMetadataRepository'
 import type { AppDatabase } from '../database/client'
 import {
@@ -38,6 +39,8 @@ import {
 import { getSetting } from '../database/settingsRepository'
 import { encodeThumbnail } from './scannerHandlers'
 import type { GameCode } from '../../../shared/types/scanner'
+import type { BulkCrawlProgressDto } from '../../../shared/types/ipc'
+import { parseCanonicalGameCode } from '../../../shared/gameCode'
 import { metadataFailureReasonFromError } from '../metadata/metadataSourceError'
 
 const metadataSearchFns: Record<
@@ -70,7 +73,21 @@ function initialMetadataSource(code: GameCode): string {
   return 'dlsite-html'
 }
 
-export function registerMetadataHandlers(db: AppDatabase): void {
+export interface MetadataHandlersApi {
+  // "전체 메타데이터 새로고침"/"Refresh All Metadata" (electron/main/index.ts's
+  // File menu item) - force re-crawls every code that already has a
+  // game_metadata row, overwriting it. Distinct from
+  // METADATA_CRAWL_MISSING's own bulkCrawlQueue.enqueue, which only ever
+  // targets codes that DON'T have one yet. The menu item's own click
+  // handler calls listAllGameMetadataCodes(db) itself first (to show a
+  // count in its confirm dialog before committing) - this re-derives the
+  // same list rather than taking it as a parameter, since that first query
+  // is cheap and keeping this self-contained means the two can never drift
+  // out of sync with each other.
+  refreshAllMetadata(onProgress: (progress: BulkCrawlProgressDto) => void): void
+}
+
+export function registerMetadataHandlers(db: AppDatabase): MetadataHandlersApi {
   const bulkCrawlQueue = createBulkCrawlQueue(db, join(app.getPath('userData'), 'cache', 'covers'))
 
   ipcMain.handle(IPC_CHANNELS.METADATA_GET, (_event, payload: unknown) => {
@@ -169,4 +186,13 @@ export function registerMetadataHandlers(db: AppDatabase): void {
       event.sender.send(IPC_CHANNELS.METADATA_BULK_CRAWL_PROGRESS, progress)
     })
   })
+
+  return {
+    refreshAllMetadata(onProgress) {
+      const codes = listAllGameMetadataCodes(db)
+        .map(parseCanonicalGameCode)
+        .filter((c): c is GameCode => c !== null)
+      bulkCrawlQueue.forceEnqueue(codes, onProgress)
+    },
+  }
 }

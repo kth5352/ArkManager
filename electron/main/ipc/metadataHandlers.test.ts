@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../shared/types/ipc'
 import { createDbClient, type AppDatabase } from '../database/client'
-import { getGameMetadata } from '../database/gameMetadataRepository'
+import { getGameMetadata, saveGameMetadata } from '../database/gameMetadataRepository'
 import { getMetadataFailure, saveMetadataFailure } from '../database/metadataFailuresRepository'
 import { registerMetadataHandlers } from './metadataHandlers'
 
@@ -141,5 +141,73 @@ describe('METADATA_CRAWL_AND_SAVE', () => {
       attemptedSources: ['dlsite-html', 'dlsite-json'],
       reason: 'blocked',
     })
+  })
+})
+
+// The File menu's "전체 메타데이터 새로고침"/"Refresh All Metadata" item
+// (electron/main/index.ts) calls this returned API function directly - it
+// isn't reached through ipcMain at all, unlike every handler above.
+describe('refreshAllMetadata', () => {
+  let db: AppDatabase
+
+  beforeEach(() => {
+    electronMocks.handle.mockClear()
+    crawlMocks.crawlGameMetadata.mockReset()
+    db = createDbClient(':memory:')
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    db.$client.close()
+    vi.useRealTimers()
+  })
+
+  it('force re-crawls every code that already has a game_metadata row, overwriting it', async () => {
+    saveGameMetadata(db, 'RJ01111111', {
+      title: 'Stale',
+      circle: 'Stale Circle',
+      releaseDate: '2020-01-01',
+      genres: [],
+      coverImageUrl: null,
+      workType: null,
+    })
+    saveGameMetadata(db, 'VJ02222222', {
+      title: 'Also Stale',
+      circle: 'Also Stale Circle',
+      releaseDate: '2020-02-02',
+      genres: [],
+      coverImageUrl: null,
+      workType: null,
+    })
+    crawlMocks.crawlGameMetadata.mockImplementation(async (c: { value: string }) => ({
+      title: `Fresh ${c.value}`,
+      circle: 'Fresh Circle',
+      releaseDate: '2026-01-01',
+      genres: [],
+      coverImageUrl: null,
+      workType: null,
+    }))
+    const api = registerMetadataHandlers(db)
+    const onProgress = vi.fn()
+
+    api.refreshAllMetadata(onProgress)
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(crawlMocks.crawlGameMetadata).toHaveBeenCalledTimes(2)
+    expect(getGameMetadata(db, 'RJ01111111')?.title).toBe('Fresh RJ01111111')
+    expect(getGameMetadata(db, 'VJ02222222')?.title).toBe('Fresh VJ02222222')
+    expect(onProgress).toHaveBeenLastCalledWith({ completed: 2, total: 2 })
+  })
+
+  it('does nothing when nothing has been crawled yet', async () => {
+    const api = registerMetadataHandlers(db)
+    const onProgress = vi.fn()
+
+    api.refreshAllMetadata(onProgress)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(crawlMocks.crawlGameMetadata).not.toHaveBeenCalled()
+    expect(onProgress).not.toHaveBeenCalled()
   })
 })

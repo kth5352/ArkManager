@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, Menu, Tray, type MenuItemConstructorOptions } from 'electron'
 import { IPC_CHANNELS, LocaleSchema, type Locale } from '../../shared/types/ipc'
 import { join } from 'node:path'
-import { createDbClient } from './database/client'
+import { createDbClient, type AppDatabase } from './database/client'
 import { getSetting, setSetting } from './database/settingsRepository'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
 import { registerLibrariesHandlers } from './ipc/librariesHandlers'
@@ -9,7 +9,7 @@ import { registerScannerHandlers } from './ipc/scannerHandlers'
 import { registerExplorerHandlers } from './ipc/explorerHandlers'
 import { registerSortHandlers } from './ipc/sortHandlers'
 import { registerShellHandlers } from './ipc/shellHandlers'
-import { registerMetadataHandlers } from './ipc/metadataHandlers'
+import { registerMetadataHandlers, type MetadataHandlersApi } from './ipc/metadataHandlers'
 import { registerGameUserDataHandlers } from './ipc/gameUserDataHandlers'
 import { registerLaunchHandlers } from './ipc/launchHandlers'
 import { registerSaveHandlers } from './ipc/saveHandlers'
@@ -30,7 +30,10 @@ import * as mpv from './media/mpvProcessManager'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
-import { rewriteCoverImagePathPrefix } from './database/gameMetadataRepository'
+import {
+  rewriteCoverImagePathPrefix,
+  listAllGameMetadataCodes,
+} from './database/gameMetadataRepository'
 import { migrateUserDataFolder, NEW_DB_FILENAME } from './migrateUserDataFolder'
 import { migrateVndbSaveDirectories } from './save/migrateVndbSaveDirectories'
 import {
@@ -65,6 +68,14 @@ if (!gotSingleInstanceLock) {
   let isMainWindowReadyToShow = false
   let closePlayerWindow: (() => void) | null = null
   let closeSubtitlePipWindow: (() => void) | null = null
+  let metadataApi: MetadataHandlersApi | null = null
+  // buildApplicationMenu is defined before app.whenReady() creates the real
+  // `db` - its own File menu item needs read access to game_metadata (to
+  // count refreshable codes before showing the confirm dialog), so this is
+  // set once whenReady's callback creates the real client, mirroring
+  // metadataApi/closePlayerWindow's own "register elsewhere, use here"
+  // pattern above.
+  let dbRef: AppDatabase | null = null
   let tray: Tray | null = null
   let quitLifecycle: ReturnType<typeof createQuitLifecycle> | null = null
   let closeController: {
@@ -179,20 +190,69 @@ if (!gotSingleInstanceLock) {
   // below). The default's Help menu (a single "Learn More" link to
   // electronjs.org) is deliberately dropped rather than reproduced - it has
   // no relevance to this app and an empty Help menu would be worse than no
-  // Help menu at all. File/Edit/the non-reload View items/Window's
-  // Minimize+Zoom stay English (Electron's own role-derived defaults - those
-  // labels come from Electron itself based on the OS locale, not this app,
-  // so there is nothing here to make them follow the in-app language
-  // setting) - only the items this app actually added custom behavior to
-  // are localized (menuLocalization.ts, re-read from currentLocale every
-  // time this function runs - see this file's onSettingChanged wiring for
-  // why that's kept in sync). Window's Close item itself stays English too,
-  // matching its role-derived label before this fix (it's stripped of its
-  // accelerator, not given new behavior).
+  // Help menu at all. Edit/the non-reload View items/Window's Minimize+Zoom
+  // stay English (Electron's own role-derived defaults - those labels come
+  // from Electron itself based on the OS locale, not this app, so there is
+  // nothing here to make them follow the in-app language setting) - only
+  // the items this app actually added custom behavior to are localized
+  // (menuLocalization.ts, re-read from currentLocale every time this
+  // function runs - see this file's onSettingChanged wiring for why that's
+  // kept in sync). Window's Close item itself stays English too, matching
+  // its role-derived label before this fix (it's stripped of its
+  // accelerator, not given new behavior). File is spelled out too now (was
+  // role: 'fileMenu' - just Exit on Windows) for the same reason View is:
+  // its own new item needs a custom click handler, and Exit is kept as
+  // role: 'quit' right below it.
   function buildApplicationMenu(): void {
     const labels = getMenuLabels(currentLocale)
     const template: MenuItemConstructorOptions[] = [
-      { role: 'fileMenu' },
+      {
+        label: 'File',
+        submenu: [
+          {
+            label: labels.refreshAllMetadata,
+            click: () => {
+              if (!mainWindow || !dbRef) return
+              if (mainWindow.isMinimized()) mainWindow.restore()
+              mainWindow.focus()
+              const win = mainWindow
+
+              const codes = listAllGameMetadataCodes(dbRef)
+              if (codes.length === 0) {
+                dialog.showMessageBox(win, {
+                  type: 'info',
+                  buttons: [labels.refreshAllEmptyOkButton],
+                  defaultId: 0,
+                  message: labels.refreshAllEmptyMessage,
+                })
+                return
+              }
+
+              dialog
+                .showMessageBox(win, {
+                  type: 'question',
+                  buttons: [labels.refreshAllConfirmCancelButton, labels.refreshAllConfirmConfirmButton],
+                  defaultId: 0,
+                  cancelId: 0,
+                  message: labels.refreshAllConfirmMessage.replace('{count}', String(codes.length)),
+                })
+                .then(({ response }) => {
+                  if (response !== 1) return
+                  metadataApi?.refreshAllMetadata((progress) => {
+                    if (win.isDestroyed()) return
+                    win.webContents.send(IPC_CHANNELS.METADATA_BULK_CRAWL_PROGRESS, progress)
+                  })
+                })
+                .catch(() => {
+                  // Same as guardedReload's own dialog - the window can be
+                  // destroyed while the modal is still open.
+                })
+            },
+          },
+          { type: 'separator' },
+          { role: 'quit' },
+        ],
+      },
       { role: 'editMenu' },
       {
         label: 'View',
@@ -346,6 +406,7 @@ if (!gotSingleInstanceLock) {
 
     const dbPath = join(newUserDataPath, NEW_DB_FILENAME)
     const db = createDbClient(dbPath)
+    dbRef = db
     {
       const parsedLocale = LocaleSchema.safeParse(getSetting(db, 'locale'))
       if (parsedLocale.success) currentLocale = parsedLocale.data
@@ -402,7 +463,7 @@ if (!gotSingleInstanceLock) {
     registerExplorerHandlers(db)
     registerSortHandlers(db)
     registerShellHandlers(db)
-    registerMetadataHandlers(db)
+    metadataApi = registerMetadataHandlers(db)
     registerGameUserDataHandlers(db)
     registerLaunchHandlers(db)
     registerSaveHandlers(db)

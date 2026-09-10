@@ -47,6 +47,20 @@ export function getManyGameMetadata(
   )
 }
 
+// Every code this app has ever successfully crawled at least once, across
+// every registered library (game_metadata is keyed globally by code, not
+// per-library) - the "전체 메타데이터 새로고침"/"Refresh All Metadata" File
+// menu item's own code list (see bulkCrawlQueue.ts's forceEnqueue) comes
+// from here rather than a fresh folder scan, since re-crawling is only
+// meaningful for codes that already have something to overwrite.
+export function listAllGameMetadataCodes(db: AppDatabase): string[] {
+  return db
+    .select({ code: gameMetadata.code })
+    .from(gameMetadata)
+    .all()
+    .map((row) => row.code)
+}
+
 // 크롤링 결과를 저장한다. coverImagePath는 여기서 건드리지 않는다 - Task 3의
 // 이미지 캐시 다운로드가 성공한 뒤 별도로 채운다 (크롤링 자체는 성공했지만
 // 이미지 다운로드만 실패하는 경우를 구분하기 위함).

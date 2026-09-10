@@ -10,6 +10,13 @@ describe('getMenuLabels', () => {
       reloadConfirmMessage: '미디어가 재생 중입니다. 새로고침하면 재생이 중단됩니다. 계속하시겠습니까?',
       reloadConfirmCancelButton: '취소',
       reloadConfirmConfirmButton: '새로고침',
+      refreshAllMetadata: '전체 메타데이터 새로고침',
+      refreshAllConfirmMessage:
+        '이미 크롤링된 게임 {count}개를 전부 다시 크롤링합니다. 초당 1건 속도로 진행되어 라이브러리가 크면 시간이 다소 걸릴 수 있습니다. 계속하시겠습니까?',
+      refreshAllConfirmCancelButton: '취소',
+      refreshAllConfirmConfirmButton: '새로고침',
+      refreshAllEmptyMessage: '새로고침할 메타데이터가 없습니다.',
+      refreshAllEmptyOkButton: '확인',
     })
   })
 
@@ -21,6 +28,13 @@ describe('getMenuLabels', () => {
       reloadConfirmMessage: 'メディアを再生中です。再読み込みすると再生が中断されます。続行しますか?',
       reloadConfirmCancelButton: 'キャンセル',
       reloadConfirmConfirmButton: '再読み込み',
+      refreshAllMetadata: 'すべてのメタデータを更新',
+      refreshAllConfirmMessage:
+        'すでにクロール済みの{count}件の作品をすべて再クロールします。1秒に1件のペースで進むため、ライブラリが大きいと時間がかかる場合があります。続行しますか?',
+      refreshAllConfirmCancelButton: 'キャンセル',
+      refreshAllConfirmConfirmButton: '更新',
+      refreshAllEmptyMessage: '更新するメタデータがありません。',
+      refreshAllEmptyOkButton: 'OK',
     })
   })
 
@@ -32,6 +46,13 @@ describe('getMenuLabels', () => {
       reloadConfirmMessage: 'Media is currently playing. Reloading will stop playback. Continue?',
       reloadConfirmCancelButton: 'Cancel',
       reloadConfirmConfirmButton: 'Reload',
+      refreshAllMetadata: 'Refresh All Metadata',
+      refreshAllConfirmMessage:
+        'This will re-crawl all {count} already-crawled games, overwriting their metadata. It runs at 1 per second, so a large library may take a while. Continue?',
+      refreshAllConfirmCancelButton: 'Cancel',
+      refreshAllConfirmConfirmButton: 'Refresh',
+      refreshAllEmptyMessage: 'There is no metadata to refresh yet.',
+      refreshAllEmptyOkButton: 'OK',
     })
   })
 

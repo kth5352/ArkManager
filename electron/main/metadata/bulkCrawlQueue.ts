@@ -27,6 +27,15 @@ export interface BulkCrawlQueue {
   // call while the queue is already processing just adds to it rather than
   // starting a second concurrent worker.
   enqueue(codes: GameCode[], onProgress: (progress: BulkCrawlProgressDto) => void): void
+  // "전체 메타데이터 새로고침"/"Refresh All Metadata" (File menu) - unlike
+  // enqueue, never skips a code just because it already has a game_metadata
+  // row (the entire point is overwriting it with a fresh crawl) or because
+  // it was already attempted this session. saveGameMetadata's own
+  // onConflictDoUpdate already handles the overwrite; this only needed to
+  // stop enqueue's own filtering from skipping it. Still marks every code
+  // `attempted` so a concurrent passive enqueue() call (a library page
+  // mounting mid-refresh) doesn't also queue the same code a second time.
+  forceEnqueue(codes: GameCode[], onProgress: (progress: BulkCrawlProgressDto) => void): void
 }
 
 export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCrawlQueue {
@@ -81,29 +90,41 @@ export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCra
     setTimeout(processNext, CRAWL_INTERVAL_MS)
   }
 
+  // Shared by enqueue and forceEnqueue - both just differ in which codes
+  // from their input actually make it into `newCodes` before calling this.
+  function pushAndStart(
+    newCodes: GameCode[],
+    onProgress: (progress: BulkCrawlProgressDto) => void
+  ): void {
+    reportProgress = onProgress
+    if (newCodes.length === 0) return
+    for (const code of newCodes) attempted.add(code.value)
+
+    pending.push(...newCodes)
+    total += newCodes.length
+    // Best-effort - see processNext's own comment on why a throw here
+    // (the calling window already closed) must not propagate.
+    try {
+      reportProgress({ completed, total })
+    } catch {
+      // Best-effort - see above.
+    }
+
+    if (!processing) {
+      processing = true
+      processNext()
+    }
+  }
+
   return {
     enqueue(codes, onProgress) {
-      reportProgress = onProgress
       const newCodes = codes.filter(
         (code) => !attempted.has(code.value) && !getGameMetadata(db, code.value)
       )
-      if (newCodes.length === 0) return
-      for (const code of newCodes) attempted.add(code.value)
-
-      pending.push(...newCodes)
-      total += newCodes.length
-      // Best-effort - see processNext's own comment on why a throw here
-      // (the calling window already closed) must not propagate.
-      try {
-        reportProgress({ completed, total })
-      } catch {
-        // Best-effort - see above.
-      }
-
-      if (!processing) {
-        processing = true
-        processNext()
-      }
+      pushAndStart(newCodes, onProgress)
+    },
+    forceEnqueue(codes, onProgress) {
+      pushAndStart(codes, onProgress)
     },
   }
 }

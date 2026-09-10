@@ -148,6 +148,36 @@ describe('createBulkCrawlQueue', () => {
     expect(crawlGameMetadataMock).toHaveBeenCalledTimes(1)
   })
 
+  it('forceEnqueue re-crawls and overwrites a code that already has a game_metadata row', async () => {
+    saveGameMetadata(db, 'RJ01111111', {
+      title: 'Stale Title',
+      circle: 'Stale Circle',
+      releaseDate: '2020-01-01',
+      genres: ['old'],
+      coverImageUrl: null,
+      workType: null,
+    })
+    crawlGameMetadataMock.mockImplementation(async (c) => metadataFor(c.value))
+    const queue = createBulkCrawlQueue(db, '/cache/covers')
+
+    queue.forceEnqueue([code('RJ01111111')], vi.fn())
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(crawlGameMetadataMock).toHaveBeenCalledTimes(1)
+    expect(getGameMetadata(db, 'RJ01111111')?.title).toBe('Title RJ01111111')
+  })
+
+  it('forceEnqueue still marks codes attempted, so a concurrent enqueue does not double-queue them', async () => {
+    crawlGameMetadataMock.mockImplementation(async (c) => metadataFor(c.value))
+    const queue = createBulkCrawlQueue(db, '/cache/covers')
+
+    queue.forceEnqueue([code('RJ01111111')], vi.fn())
+    queue.enqueue([code('RJ01111111')], vi.fn())
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(crawlGameMetadataMock).toHaveBeenCalledTimes(1)
+  })
+
   it('merges a second enqueue call into the already-running queue instead of starting a second worker', async () => {
     crawlGameMetadataMock.mockImplementation(async (c) => metadataFor(c.value))
     const queue = createBulkCrawlQueue(db, '/cache/covers')

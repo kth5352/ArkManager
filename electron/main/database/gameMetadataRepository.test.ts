@@ -9,6 +9,7 @@ import {
   getManyGameMetadata,
   rewriteCoverImagePathPrefix,
   clearAllGameMetadata,
+  listAllGameMetadataCodes,
 } from './gameMetadataRepository'
 import { getGameUserData, setFavorite } from './gameUserDataRepository'
 
@@ -308,6 +309,33 @@ describe('gameMetadataRepository', () => {
       rewriteCoverImagePathPrefix(db, 'C:\\same', 'C:\\same')
 
       expect(getGameMetadata(db, 'RJ01111111')?.coverImagePath).toBe('C:\\same\\RJ01111111.webp')
+    })
+  })
+
+  describe('listAllGameMetadataCodes', () => {
+    it('returns an empty array when nothing has been crawled yet', () => {
+      expect(listAllGameMetadataCodes(db)).toEqual([])
+    })
+
+    it('returns every code that has a game_metadata row', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'A',
+        circle: 'A',
+        releaseDate: '2025-01-01',
+        genres: [],
+        coverImageUrl: null,
+        workType: null,
+      })
+      saveGameMetadata(db, 'VJ02222222', {
+        title: 'B',
+        circle: 'B',
+        releaseDate: '2025-02-02',
+        genres: [],
+        coverImageUrl: null,
+        workType: null,
+      })
+
+      expect(listAllGameMetadataCodes(db).sort()).toEqual(['RJ01111111', 'VJ02222222'])
     })
   })
 })
