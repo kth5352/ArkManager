@@ -132,7 +132,17 @@ export function parseStoredMediaEqualizerBands(raw: string | undefined): number[
   return parsed as number[]
 }
 
-export function registerSettingsHandlers(db: AppDatabase): void {
+export function registerSettingsHandlers(
+  db: AppDatabase,
+  // Fired synchronously after a setting is persisted, with the exact
+  // (key, value) pair just written - index.ts uses this to rebuild the
+  // native application menu when 'locale' changes, since (unlike a dialog,
+  // which reads getSetting fresh every time it's about to show - see
+  // windowCloseBehavior.ts's getWindowClosePrompt) Electron's menu bar is a
+  // static object that never re-reads anything on its own once
+  // Menu.setApplicationMenu() has been called.
+  onSettingChanged?: (key: string, value: string) => void
+): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, (_event, payload: unknown) => {
     const { key } = GetSettingRequestSchema.parse(payload)
     if (key === 'theme') return parseStoredTheme(getSetting(db, key))
@@ -164,6 +174,7 @@ export function registerSettingsHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event, payload: unknown) => {
     const { key, value } = SetSettingRequestSchema.parse(payload)
     setSetting(db, key, value)
+    onSettingChanged?.(key, value)
   })
 
   // Synchronous read used only at renderer boot to apply the persisted theme

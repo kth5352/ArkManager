@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, Menu, Tray, type MenuItemConstructorOptions } from 'electron'
-import { IPC_CHANNELS } from '../../shared/types/ipc'
+import { IPC_CHANNELS, LocaleSchema, type Locale } from '../../shared/types/ipc'
 import { join } from 'node:path'
 import { createDbClient } from './database/client'
 import { getSetting, setSetting } from './database/settingsRepository'
@@ -48,6 +48,7 @@ import {
   getOrCreateMainWindow,
   getWindowClosePrompt,
 } from './windowCloseBehavior'
+import { getMenuLabels } from './menuLocalization'
 
 // better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
@@ -69,6 +70,16 @@ if (!gotSingleInstanceLock) {
   let closeController: {
     requestClose(target: BrowserWindow | null): Promise<void>
   } | null = null
+  // Kept in sync with the 'locale' setting (initialized from the DB once
+  // available, updated on every SETTINGS_SET for that key - see
+  // registerSettingsHandlers' onSettingChanged below) so
+  // buildApplicationMenu/guardedReload always use the CURRENT language, not
+  // whatever was persisted at app startup. A live user found that changing
+  // Settings > language never touched the native menu bar (File/Edit/View/
+  // Window) at all - this is what actually fixes that, since Electron's
+  // menu is a static object that never re-reads anything on its own once
+  // Menu.setApplicationMenu() has been called.
+  let currentLocale: Locale = 'ko'
 
   function showMainWindow(): void {
     getOrCreateMainWindow(
@@ -137,13 +148,14 @@ if (!gotSingleInstanceLock) {
       doReload()
       return
     }
+    const labels = getMenuLabels(currentLocale)
     dialog
       .showMessageBox(win, {
         type: 'question',
-        buttons: ['취소', '새로고침'],
+        buttons: [labels.reloadConfirmCancelButton, labels.reloadConfirmConfirmButton],
         defaultId: 0,
         cancelId: 0,
-        message: '미디어가 재생 중입니다. 새로고침하면 재생이 중단됩니다. 계속하시겠습니까?',
+        message: labels.reloadConfirmMessage,
       })
       .then(({ response }) => {
         if (response === 1) doReload()
@@ -168,15 +180,17 @@ if (!gotSingleInstanceLock) {
   // electronjs.org) is deliberately dropped rather than reproduced - it has
   // no relevance to this app and an empty Help menu would be worse than no
   // Help menu at all. File/Edit/the non-reload View items/Window's
-  // Minimize+Zoom stay English (Electron's own role-derived defaults, same
-  // as before this menu existed) - only the items this app actually added
-  // custom behavior to get Korean labels, matching the confirm dialog they
-  // open (guardedReload, for the reload pair) or this codebase's
-  // main-process convention of hardcoded Korean for anything genuinely
-  // app-specific (see saveHandlers.ts's error strings). Window's Close item
-  // itself stays English too, matching its role-derived label before this
-  // fix (it's stripped of its accelerator, not given new behavior).
+  // Minimize+Zoom stay English (Electron's own role-derived defaults - those
+  // labels come from Electron itself based on the OS locale, not this app,
+  // so there is nothing here to make them follow the in-app language
+  // setting) - only the items this app actually added custom behavior to
+  // are localized (menuLocalization.ts, re-read from currentLocale every
+  // time this function runs - see this file's onSettingChanged wiring for
+  // why that's kept in sync). Window's Close item itself stays English too,
+  // matching its role-derived label before this fix (it's stripped of its
+  // accelerator, not given new behavior).
   function buildApplicationMenu(): void {
+    const labels = getMenuLabels(currentLocale)
     const template: MenuItemConstructorOptions[] = [
       { role: 'fileMenu' },
       { role: 'editMenu' },
@@ -184,14 +198,14 @@ if (!gotSingleInstanceLock) {
         label: 'View',
         submenu: [
           {
-            label: '새로고침',
+            label: labels.reload,
             accelerator: 'CmdOrCtrl+R',
             click: (_item, win) => {
               if (win instanceof BrowserWindow) guardedReload(win, false)
             },
           },
           {
-            label: '강제 새로고침',
+            label: labels.forceReload,
             accelerator: 'CmdOrCtrl+Shift+R',
             click: (_item, win) => {
               if (win instanceof BrowserWindow) guardedReload(win, true)
@@ -206,7 +220,7 @@ if (!gotSingleInstanceLock) {
           { role: 'togglefullscreen' },
           { type: 'separator' },
           {
-            label: '제외 항목 관리...',
+            label: labels.manageExcludedItems,
             // Unlike the reload items above, this always targets mainWindow
             // specifically rather than whichever window is focused - the
             // dialog it opens only exists in the main window's renderer
@@ -332,6 +346,10 @@ if (!gotSingleInstanceLock) {
 
     const dbPath = join(newUserDataPath, NEW_DB_FILENAME)
     const db = createDbClient(dbPath)
+    {
+      const parsedLocale = LocaleSchema.safeParse(getSetting(db, 'locale'))
+      if (parsedLocale.success) currentLocale = parsedLocale.data
+    }
     closeController = createWindowCloseController<BrowserWindow | null>({
       getBehavior: () => getSetting(db, 'window-close-behavior'),
       showPrompt: async (win) => {
@@ -372,7 +390,13 @@ if (!gotSingleInstanceLock) {
     // rewriteCoverImagePathPrefix's own comment for why this silently broke
     // more than just the cover image for anything crawled before a rename.
     rewriteCoverImagePathPrefix(db, oldUserDataPath, newUserDataPath)
-    registerSettingsHandlers(db)
+    registerSettingsHandlers(db, (key, value) => {
+      if (key !== 'locale') return
+      const parsedLocale = LocaleSchema.safeParse(value)
+      if (!parsedLocale.success) return
+      currentLocale = parsedLocale.data
+      buildApplicationMenu()
+    })
     registerLibrariesHandlers(db)
     registerScannerHandlers(db)
     registerExplorerHandlers(db)

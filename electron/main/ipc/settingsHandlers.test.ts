@@ -23,6 +23,14 @@ function getSettingHandler(): RegisteredHandler {
   return registration[1] as RegisteredHandler
 }
 
+function setSettingHandler(): RegisteredHandler {
+  const registration = electronMocks.handle.mock.calls.find(
+    ([channel]) => channel === IPC_CHANNELS.SETTINGS_SET
+  )
+  if (!registration) throw new Error('settings set handler was not registered')
+  return registration[1] as RegisteredHandler
+}
+
 describe('SETTINGS_GET', () => {
   let db: AppDatabase
 
@@ -101,5 +109,40 @@ describe('SETTINGS_GET', () => {
     setSetting(db, 'media-equalizer-bands', '[6, 4, 0, 0, -2]')
 
     expect(getSettingHandler()({}, { key: 'media-equalizer-bands' })).toBe('[6,4,0,0,-2]')
+  })
+})
+
+// index.ts's own onSettingChanged wiring (rebuilding the native application
+// menu when 'locale' changes - see menuLocalization.ts) depends on this
+// callback actually firing with the exact (key, value) pair just written. A
+// live user found that changing Settings > language never touched the menu
+// bar at all before this callback existed.
+describe('SETTINGS_SET onSettingChanged callback', () => {
+  let db: AppDatabase
+
+  beforeEach(() => {
+    electronMocks.handle.mockClear()
+    electronMocks.on.mockClear()
+    db = createDbClient(':memory:')
+  })
+
+  afterEach(() => {
+    db.$client.close()
+  })
+
+  it('fires with the key and value after a setting is persisted', () => {
+    const onSettingChanged = vi.fn()
+    registerSettingsHandlers(db, onSettingChanged)
+
+    setSettingHandler()({}, { key: 'locale', value: 'ja' })
+
+    expect(onSettingChanged).toHaveBeenCalledWith('locale', 'ja')
+    expect(getSettingHandler()({}, { key: 'locale' })).toBe('ja')
+  })
+
+  it('does not throw when no callback is provided', () => {
+    registerSettingsHandlers(db)
+
+    expect(() => setSettingHandler()({}, { key: 'theme', value: 'dark' })).not.toThrow()
   })
 })
