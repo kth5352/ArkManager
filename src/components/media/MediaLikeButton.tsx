@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { Heart } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useLikedTracks, useToggleTrackLike } from '../../services/mediaPlaylistService'
+import { useConfirmedPulse } from '../../hooks/useConfirmedPulse'
+import { appToast } from '../../lib/appToast'
 import { useTranslation } from '../../i18n/useTranslation'
 
 interface MediaLikeButtonProps {
@@ -24,9 +26,18 @@ interface MediaLikeButtonProps {
 export function MediaLikeButton({ path, name, className }: MediaLikeButtonProps) {
   const { t } = useTranslation()
   const { data: likedTracks } = useLikedTracks()
-  const likedPaths = useMemo(() => new Set((likedTracks ?? []).map((track) => track.path)), [likedTracks])
+  const likedPaths = useMemo(
+    () => new Set((likedTracks ?? []).map((track) => track.path)),
+    [likedTracks]
+  )
   const liked = likedPaths.has(path)
   const toggle = useToggleTrackLike()
+  // useToggleTrackLike has no optimistic update (only invalidates on
+  // success, so a failed toggle already correctly left the old state
+  // untouched) but also had no onError at all - a failed like silently did
+  // nothing visible, the same gap found and fixed for Gallery/List/
+  // DetailSidebar's favorite/cleared buttons in U4.
+  const likedPulse = useConfirmedPulse(liked, likedTracks !== undefined)
 
   return (
     <button
@@ -35,11 +46,12 @@ export function MediaLikeButton({ path, name, className }: MediaLikeButtonProps)
       aria-pressed={liked}
       onClick={(event) => {
         event.stopPropagation()
-        toggle.mutate({ path, name })
+        toggle.mutate({ path, name }, { onError: () => appToast.error(t('media.likeFailed')) })
       }}
       className={cn(
-        'shrink-0 transition-colors',
+        'shrink-0 transition-[color,transform] duration-120 active:scale-[0.9] motion-reduce:transform-none',
         liked ? 'text-destructive' : 'text-muted-foreground hover:text-foreground',
+        likedPulse && '[animation:icon-pulse_180ms_ease-in-out] motion-reduce:animate-none',
         className
       )}
     >

@@ -1,6 +1,8 @@
 import { useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { UI_MOTION } from '../../lib/motion'
 import {
   useMediaSidebarWidthQuery,
   useSetMediaSidebarWidthMutation,
@@ -126,14 +128,27 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
               // default 320px width - without this it wrapped onto a
               // second line, pushing the whole tab row (and everything
               // below it) down instead of staying a single fixed-height row.
-              'min-w-0 flex-1 truncate px-2 py-2 text-xs font-medium',
+              'relative min-w-0 flex-1 truncate px-2 py-2 text-xs font-medium',
               tab === activeTab
-                ? 'border-b-2 border-primary text-foreground'
+                ? 'text-foreground'
                 : 'text-muted-foreground transition-colors hover:text-foreground'
             )}
             title={tabLabel(tab)}
           >
-            {tabLabel(tab)}
+            {/* layoutId scoped to this sidebar only ("media-sidebar-selection"),
+                separate from Sidebar.tsx's "app-sidebar-selection" and
+                TabBar.tsx's "explorer-tab-selection" - design §4 explicitly
+                requires each menu/tab surface to animate its own selection
+                independently rather than sharing one layoutId across
+                unrelated surfaces. */}
+            {tab === activeTab && (
+              <motion.span
+                layoutId="media-sidebar-selection"
+                className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
+                transition={{ duration: UI_MOTION.selection, ease: UI_MOTION.ease }}
+              />
+            )}
+            <span className="relative z-10">{tabLabel(tab)}</span>
           </button>
         ))}
         <button
