@@ -5,6 +5,7 @@ import { useGameUserData } from '../../services/gameUserDataService'
 import { usePickSaveFolder, useSetSavePath } from '../../services/saveService'
 import { useShowItemInFolder } from '../../services/shellService'
 import { SaveManagerDialog } from './SaveManagerDialog'
+import { appToast } from '../../lib/appToast'
 import { useTranslation } from '../../i18n/useTranslation'
 import type { ScannedEntry } from '../../../shared/types/scanner'
 
@@ -28,7 +29,15 @@ export function SaveDataSection({ game }: SaveDataSectionProps) {
 
   const handlePickSaveFolder = async (): Promise<void> => {
     const path = await pickSaveFolder.mutateAsync(game.path)
-    if (path) setSavePath.mutate({ entry: game, savePath: path })
+    if (!path) return
+    setSavePath.mutate(
+      { entry: game, savePath: path },
+      // Same gap found and fixed across this session's other favorite/
+      // cleared/like toggles and SaveManagerDialog's own mutations - no
+      // optimistic update here (so a failure already correctly left the
+      // old savePath alone), but no onError meant a failure was invisible.
+      { onError: () => appToast.error(t('saveManager.setSavePathFailed')) }
+    )
   }
 
   return (

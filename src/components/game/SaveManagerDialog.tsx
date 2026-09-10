@@ -83,14 +83,17 @@ function VersionBadge({
     return (
       <input
         autoFocus
-        className="w-20 rounded border border-border bg-transparent px-1 text-xs text-foreground"
+        className="w-20 rounded border border-border bg-transparent px-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         defaultValue={version ?? ''}
         onBlur={(e) => {
           setEditing(false)
           if (!entry) return
           const next = e.target.value
           if (next !== (version ?? '')) {
-            onSave.mutate({ entry, timestamp, updates: { version: next } })
+            onSave.mutate(
+              { entry, timestamp, updates: { version: next } },
+              { onError: () => appToast.error(t('saveManager.labelUpdateFailed')) }
+            )
           }
         }}
       />
@@ -111,9 +114,10 @@ function VersionBadge({
 export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialogProps) {
   const { t } = useTranslation()
   const [pending, setPending] = useState<PendingAction | null>(null)
-  const [mismatch, setMismatch] = useState<{ timestamp: string; result: VersionMismatchDto } | null>(
-    null
-  )
+  const [mismatch, setMismatch] = useState<{
+    timestamp: string
+    result: VersionMismatchDto
+  } | null>(null)
   const { data: snapshots } = useSaveSnapshots(entry)
   const {
     data: diff,
@@ -122,7 +126,11 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
     refetch: refetchDiff,
   } = useSaveDiff(
     entry,
-    pending?.type === 'save' ? pending.against : pending?.type === 'restore' ? pending.timestamp : null,
+    pending?.type === 'save'
+      ? pending.against
+      : pending?.type === 'restore'
+        ? pending.timestamp
+        : null,
     pending !== null && (pending.type === 'save' || pending.type === 'restore'),
     pending?.type === 'restore' ? 'restore' : 'save'
   )
@@ -142,7 +150,14 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
 
   const handleConfirmSave = (): void => {
     if (!entry) return
-    createSnapshot.mutate(entry, { onSuccess: () => setPending(null) })
+    createSnapshot.mutate(entry, {
+      onSuccess: () => setPending(null),
+      // Same gap this session found repeatedly elsewhere (Gallery/List/
+      // DetailSidebar/Media's favorite/cleared/like toggles) - a failed
+      // save previously left the dialog sitting on the diff view with no
+      // feedback, indistinguishable from a slow success.
+      onError: () => appToast.error(t('saveManager.saveFailed')),
+    })
   }
 
   const handleClickRestore = (timestamp: string): void => {
@@ -187,13 +202,19 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
     if (!entry || pending?.type !== 'delete') return
     deleteSnapshot.mutate(
       { entry, timestamp: pending.timestamp },
-      { onSuccess: () => setPending(null) }
+      {
+        onSuccess: () => setPending(null),
+        onError: () => appToast.error(t('saveManager.deleteFailed')),
+      }
     )
   }
 
   const handleConfirmDeleteAll = (): void => {
     if (!entry) return
-    deleteAllSnapshots.mutate(entry, { onSuccess: () => setPending(null) })
+    deleteAllSnapshots.mutate(entry, {
+      onSuccess: () => setPending(null),
+      onError: () => appToast.error(t('saveManager.deleteAllFailed')),
+    })
   }
 
   return (
@@ -242,7 +263,10 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
                 {t('saveManager.saveNew')}
               </Button>
               {(snapshots ?? []).length > 0 && (
-                <Button variant="destructive" onClick={() => setPending({ type: 'deleteAll', step: 1 })}>
+                <Button
+                  variant="destructive"
+                  onClick={() => setPending({ type: 'deleteAll', step: 1 })}
+                >
                   {t('saveManager.deleteAll')}
                 </Button>
               )}
@@ -274,14 +298,17 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
                     </span>
                   </div>
                   <input
-                    className="rounded border border-border bg-transparent px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
+                    className="rounded border border-border bg-transparent px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     placeholder={t('saveManager.memoPlaceholder')}
                     defaultValue={snapshot.memo ?? ''}
                     onBlur={(e) => {
                       if (!entry) return
                       const memo = e.target.value
                       if (memo !== (snapshot.memo ?? '')) {
-                        setSnapshotLabel.mutate({ entry, timestamp: snapshot.timestamp, updates: { memo } })
+                        setSnapshotLabel.mutate(
+                          { entry, timestamp: snapshot.timestamp, updates: { memo } },
+                          { onError: () => appToast.error(t('saveManager.labelUpdateFailed')) }
+                        )
                       }
                     }}
                   />
@@ -289,7 +316,10 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => entry && showSnapshotInFolder.mutate({ entry, timestamp: snapshot.timestamp })}
+                      onClick={() =>
+                        entry &&
+                        showSnapshotInFolder.mutate({ entry, timestamp: snapshot.timestamp })
+                      }
                     >
                       {t('game.openFolder')}
                     </Button>
@@ -300,7 +330,11 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
                     >
                       {t('common.delete')}
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => handleClickRestore(snapshot.timestamp)}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleClickRestore(snapshot.timestamp)}
+                    >
                       {t('saveManager.restore')}
                     </Button>
                   </div>
@@ -315,7 +349,11 @@ export function SaveManagerDialog({ entry, savePath, onClose }: SaveManagerDialo
               <Button variant="secondary" onClick={() => setPending(null)}>
                 {t('common.cancel')}
               </Button>
-              <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteSnapshot.isPending}>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={deleteSnapshot.isPending}
+              >
                 {t('common.delete')}
               </Button>
             </div>

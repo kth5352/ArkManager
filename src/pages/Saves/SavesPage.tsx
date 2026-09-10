@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Input } from '../../components/ui/input'
 import { useGameCoverImage, useGameMetadata } from '../../services/metadataService'
 import { useGamesWithSavePath, useSaveSnapshots } from '../../services/saveService'
 import { useGames } from '../../services/useGames'
@@ -143,8 +144,8 @@ export function SavesPage() {
     // sits right under the search bar instead of centered in the page.
     <div className="flex h-full flex-col">
       <div className="border-b border-border p-2">
-        <input
-          className="w-full rounded border border-border bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground"
+        <Input
+          className="h-8"
           placeholder={t('saveManager.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
