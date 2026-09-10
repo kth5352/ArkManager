@@ -16,7 +16,7 @@ import { PlaylistManagementTab } from './PlaylistManagementTab'
 import { CurrentQueueTab } from './CurrentQueueTab'
 import { LyricsLogTab } from './LyricsLogTab'
 import { FolderTreeTab } from './FolderTreeTab'
-import { useMediaPlayerStore, type MediaSidebarTab } from '../../stores/mediaPlayerStore'
+import type { MediaSidebarTab } from '../../stores/mediaPlayerStore'
 
 // Re-exported so callers that only need the tab-name type can import it
 // alongside this component instead of reaching into mediaPlayerStore.ts
@@ -45,21 +45,6 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
   const setWidthMutation = useSetMediaSidebarWidthMutation()
   const [width, setWidth] = useState(persistedWidth ?? MEDIA_SIDEBAR_WIDTH_DEFAULT)
   const [syncedWidth, setSyncedWidth] = useState(persistedWidth)
-  // AppLayout.tsx reserves flow height for FullscreenMediaOverlay's bottom
-  // transport bar via a sibling placeholder div, which is SUPPOSED to shrink
-  // this sidebar's own `h-full` parent row by the same amount - a live user
-  // found that in practice the sidebar still extended down far enough to
-  // cover part of that bar (z-[60] over the overlay's z-50 makes it draw on
-  // top, not just occupy adjacent space). Rather than continue relying on
-  // that row-level shrink working out exactly right, this reads the same
-  // measured height directly from the store and subtracts it explicitly -
-  // guaranteed correct regardless of any parent flex-sizing subtlety, since
-  // it's the same real number FullscreenMediaOverlay's own ResizeObserver
-  // reports, not a guess.
-  const mediaExpanded = useMediaPlayerStore((s) => s.mediaExpanded)
-  const mediaFullscreenBarHeight = useMediaPlayerStore((s) => s.mediaFullscreenBarHeight)
-  const isDetached = useMediaPlayerStore((s) => s.isDetached)
-  const reserveForFullscreenBar = mediaExpanded && !isDetached
 
   // Render-time sync, not a useEffect - same pattern ExplorerSidebar.tsx/
   // DetailSidebar.tsx use for their own persisted-width sync.
@@ -105,14 +90,7 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
 
   return (
     <div
-      style={{
-        width,
-        // Explicit height override (see reserveForFullscreenBar's own
-        // comment above) - falls back to the h-full class below (undefined
-        // lets the CSS class take over) whenever fullscreen's bottom bar
-        // isn't showing.
-        height: reserveForFullscreenBar ? `calc(100% - ${mediaFullscreenBarHeight}px)` : undefined,
-      }}
+      style={{ width }}
       // relative (stacking context anchor) + z-[60] - one above
       // FullscreenMediaOverlay's z-50 - keeps this sidebar usable (browsing
       // the queue/lyrics) even while a video is fullscreen. Now a normal
@@ -123,7 +101,10 @@ export function MediaSidebar({ activeTab, onActiveTabChange, onClose }: MediaSid
       // stacking context (no transform/opacity/will-change/isolate on the
       // plain flex/block divs in between), this element's z-[60] still
       // stacks correctly against that fixed z-50 sibling per normal CSS
-      // stacking rules.
+      // stacking rules. This element's own real HEIGHT (not stacking) is
+      // what actually keeps it from extending past the fullscreen bar's row
+      // - see AppLayout.tsx's placeholder div, right after this row, for
+      // that mechanism.
       className="relative z-[60] flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-card"
     >
       <div
