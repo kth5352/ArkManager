@@ -12,7 +12,7 @@ describe('getMenuLabels', () => {
       reloadConfirmConfirmButton: '새로고침',
       refreshAllMetadata: '전체 메타데이터 새로고침',
       refreshAllConfirmMessage:
-        '이미 크롤링된 게임 {count}개를 전부 다시 크롤링합니다. 초당 1건 속도로 진행되어 라이브러리가 크면 시간이 다소 걸릴 수 있습니다. 계속하시겠습니까?',
+        '이미 크롤링을 시도한 항목 {count}개를 전부 다시 크롤링합니다(가져오지 못했던 항목 포함). 초당 1건 속도로 진행되어 라이브러리가 크면 시간이 다소 걸릴 수 있습니다. 계속하시겠습니까?',
       refreshAllConfirmCancelButton: '취소',
       refreshAllConfirmConfirmButton: '새로고침',
       refreshAllEmptyMessage: '새로고침할 메타데이터가 없습니다.',
@@ -30,7 +30,7 @@ describe('getMenuLabels', () => {
       reloadConfirmConfirmButton: '再読み込み',
       refreshAllMetadata: 'すべてのメタデータを更新',
       refreshAllConfirmMessage:
-        'すでにクロール済みの{count}件の作品をすべて再クロールします。1秒に1件のペースで進むため、ライブラリが大きいと時間がかかる場合があります。続行しますか?',
+        'すでにクロールを試みた{count}件（取得できなかった作品も含む）をすべて再クロールします。1秒に1件のペースで進むため、ライブラリが大きいと時間がかかる場合があります。続行しますか?',
       refreshAllConfirmCancelButton: 'キャンセル',
       refreshAllConfirmConfirmButton: '更新',
       refreshAllEmptyMessage: '更新するメタデータがありません。',
@@ -48,7 +48,7 @@ describe('getMenuLabels', () => {
       reloadConfirmConfirmButton: 'Reload',
       refreshAllMetadata: 'Refresh All Metadata',
       refreshAllConfirmMessage:
-        'This will re-crawl all {count} already-crawled games, overwriting their metadata. It runs at 1 per second, so a large library may take a while. Continue?',
+        'This will re-crawl all {count} previously-attempted items (including ones that failed to fetch before). It runs at 1 per second, so a large library may take a while. Continue?',
       refreshAllConfirmCancelButton: 'Cancel',
       refreshAllConfirmConfirmButton: 'Refresh',
       refreshAllEmptyMessage: 'There is no metadata to refresh yet.',

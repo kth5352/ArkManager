@@ -11,7 +11,6 @@ const electronMocks = vi.hoisted(() => ({
 }))
 
 const crawlMocks = vi.hoisted(() => ({
-  crawlGameMetadata: vi.fn(),
   crawlGameMetadataWithTrace: vi.fn(),
   createCrawlGameMetadataDeps: vi.fn((config: { enabled: boolean; endpointUrl: string }) => ({
     crawlDlsiteHtml: vi.fn(),
@@ -152,7 +151,7 @@ describe('refreshAllMetadata', () => {
 
   beforeEach(() => {
     electronMocks.handle.mockClear()
-    crawlMocks.crawlGameMetadata.mockReset()
+    crawlMocks.crawlGameMetadataWithTrace.mockReset()
     db = createDbClient(':memory:')
     vi.useFakeTimers()
   })
@@ -179,13 +178,17 @@ describe('refreshAllMetadata', () => {
       coverImageUrl: null,
       workType: null,
     })
-    crawlMocks.crawlGameMetadata.mockImplementation(async (c: { value: string }) => ({
-      title: `Fresh ${c.value}`,
-      circle: 'Fresh Circle',
-      releaseDate: '2026-01-01',
-      genres: [],
-      coverImageUrl: null,
-      workType: null,
+    crawlMocks.crawlGameMetadataWithTrace.mockImplementation(async (c: { value: string }) => ({
+      metadata: {
+        title: `Fresh ${c.value}`,
+        circle: 'Fresh Circle',
+        releaseDate: '2026-01-01',
+        genres: [],
+        coverImageUrl: null,
+        workType: null,
+      },
+      attemptedSources: ['dlsite-html'],
+      reason: null,
     }))
     const api = registerMetadataHandlers(db)
     const onProgress = vi.fn()
@@ -194,7 +197,7 @@ describe('refreshAllMetadata', () => {
     await vi.advanceTimersByTimeAsync(0)
     await vi.advanceTimersByTimeAsync(1000)
 
-    expect(crawlMocks.crawlGameMetadata).toHaveBeenCalledTimes(2)
+    expect(crawlMocks.crawlGameMetadataWithTrace).toHaveBeenCalledTimes(2)
     expect(getGameMetadata(db, 'RJ01111111')?.title).toBe('Fresh RJ01111111')
     expect(getGameMetadata(db, 'VJ02222222')?.title).toBe('Fresh VJ02222222')
     expect(onProgress).toHaveBeenLastCalledWith({ completed: 2, total: 2 })
@@ -207,7 +210,7 @@ describe('refreshAllMetadata', () => {
     api.refreshAllMetadata(onProgress)
     await vi.advanceTimersByTimeAsync(0)
 
-    expect(crawlMocks.crawlGameMetadata).not.toHaveBeenCalled()
+    expect(crawlMocks.crawlGameMetadataWithTrace).not.toHaveBeenCalled()
     expect(onProgress).not.toHaveBeenCalled()
   })
 })

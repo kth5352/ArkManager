@@ -1,10 +1,15 @@
-import { crawlGameMetadata } from './crawlGameMetadata'
+import { crawlGameMetadataWithTrace } from './crawlGameMetadata'
 import { cacheCoverImage } from './cacheCoverImage'
 import {
   getGameMetadata,
   saveGameMetadata,
   setGameMetadataCoverPath,
 } from '../database/gameMetadataRepository'
+import {
+  getMetadataFailure,
+  saveMetadataFailure,
+  clearMetadataFailure,
+} from '../database/metadataFailuresRepository'
 import type { GameCode } from '../../../shared/types/scanner'
 import type { BulkCrawlProgressDto } from '../../../shared/types/ipc'
 import type { AppDatabase } from '../database/client'
@@ -19,13 +24,20 @@ import type { AppDatabase } from '../database/client'
 const CRAWL_INTERVAL_MS = 1000
 
 export interface BulkCrawlQueue {
-  // Adds any code with no game_metadata row yet and not already attempted
-  // this session (covers "crawled but the work turned out to be delisted" -
-  // retrying that every time a page mounts would just be wasted traffic).
-  // Safe to call repeatedly with overlapping code lists (e.g. once per
-  // library page mount) - already-queued/attempted codes are skipped, and a
-  // call while the queue is already processing just adds to it rather than
-  // starting a second concurrent worker.
+  // Adds any code with no game_metadata row AND no recorded metadata_failures
+  // row yet, and not already attempted this session. A code that fails to
+  // crawl (delisted, blocked, network/parse error) gets a persisted failure
+  // row (see processNext) specifically so this filter can keep skipping it
+  // on every LATER call too, including a fresh app launch - a live user
+  // found that before this, a code that failed once was silently retried on
+  // every single app launch forever: nothing distinguished "never
+  // attempted" from "attempted and failed" once the in-memory `attempted`
+  // Set below reset on restart, since a failed crawl left neither a
+  // game_metadata row nor any other record behind. Safe to call repeatedly
+  // with overlapping code lists (e.g. once per library page mount) -
+  // already-queued/attempted codes are skipped, and a call while the queue
+  // is already processing just adds to it rather than starting a second
+  // concurrent worker.
   enqueue(codes: GameCode[], onProgress: (progress: BulkCrawlProgressDto) => void): void
   // "전체 메타데이터 새로고침"/"Refresh All Metadata" (File menu) - unlike
   // enqueue, never skips a code just because it already has a game_metadata
@@ -56,17 +68,32 @@ export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCra
     }
 
     try {
-      const crawled = await crawlGameMetadata(code)
-      if (crawled) {
-        saveGameMetadata(db, code.value, crawled)
-        if (crawled.coverImageUrl) {
-          const coverPath = await cacheCoverImage(cacheDir, code.value, crawled.coverImageUrl)
+      const { metadata, attemptedSources, reason } = await crawlGameMetadataWithTrace(code)
+      if (metadata) {
+        saveGameMetadata(db, code.value, metadata)
+        // Clears any stale failure from an earlier attempt - only reachable
+        // here via forceEnqueue (enqueue's own filter already skips a code
+        // with a failure row), but a successful re-crawl must not leave a
+        // now-wrong failure record behind for other readers (e.g.
+        // DetailSidebar's useMetadataFailure) to keep showing.
+        clearMetadataFailure(db, code.value)
+        if (metadata.coverImageUrl) {
+          const coverPath = await cacheCoverImage(cacheDir, code.value, metadata.coverImageUrl)
           if (coverPath) setGameMetadataCoverPath(db, code.value, coverPath)
         }
+      } else {
+        // reason is only null when metadata is non-null (see
+        // CrawlTraceResult) - the ?? fallback is for TypeScript, not a real
+        // runtime case.
+        saveMetadataFailure(db, code.value, attemptedSources, reason ?? 'blocked')
       }
     } catch {
-      // Best-effort - one failing/timed-out code shouldn't stop the rest of
-      // the queue from being attempted.
+      // Best-effort - crawlGameMetadataWithTrace already turns a real
+      // network/parse/etc. failure into a `reason` above instead of
+      // rejecting (see its own per-source try/catch) - this only guards
+      // against something else in this block throwing unexpectedly (e.g.
+      // saveGameMetadata/cacheCoverImage itself), so one such code still
+      // can't stop the rest of the queue from being attempted.
     }
 
     completed += 1
@@ -119,7 +146,10 @@ export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCra
   return {
     enqueue(codes, onProgress) {
       const newCodes = codes.filter(
-        (code) => !attempted.has(code.value) && !getGameMetadata(db, code.value)
+        (code) =>
+          !attempted.has(code.value) &&
+          !getGameMetadata(db, code.value) &&
+          !getMetadataFailure(db, code.value)
       )
       pushAndStart(newCodes, onProgress)
     },

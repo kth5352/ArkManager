@@ -12,6 +12,7 @@ import {
   listAllGameMetadataCodes,
 } from './gameMetadataRepository'
 import { getGameUserData, setFavorite } from './gameUserDataRepository'
+import { saveMetadataFailure } from './metadataFailuresRepository'
 
 describe('gameMetadataRepository', () => {
   let db: AppDatabase
@@ -313,6 +314,20 @@ describe('gameMetadataRepository', () => {
   })
 
   describe('listAllGameMetadataCodes', () => {
+    it('includes failed-only codes so the refresh menu can retry them', () => {
+      saveMetadataFailure(db, 'RJ03333333', ['dlsite-html'], 'not_found')
+      expect(listAllGameMetadataCodes(db)).toEqual(['RJ03333333'])
+    })
+
+    it('counts a previously successful code with a later failure only once', () => {
+      saveGameMetadata(db, 'RJ01111111', {
+        title: 'Saved', circle: '', releaseDate: '', genres: [], coverImageUrl: null, workType: null,
+      })
+      saveMetadataFailure(db, 'RJ01111111', ['dlsite-html'], 'network')
+      saveMetadataFailure(db, 'RJ02222222', ['dlsite-html'], 'blocked')
+      expect(listAllGameMetadataCodes(db).sort()).toEqual(['RJ01111111', 'RJ02222222'])
+    })
+
     it('returns an empty array when nothing has been crawled yet', () => {
       expect(listAllGameMetadataCodes(db)).toEqual([])
     })

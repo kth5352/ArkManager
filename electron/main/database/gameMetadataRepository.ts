@@ -1,6 +1,6 @@
 import { eq, inArray } from 'drizzle-orm'
 import type { AppDatabase } from './client'
-import { gameMetadata } from './schema'
+import { gameMetadata, metadataFailures } from './schema'
 import type { CrawledGameMetadata } from '../metadata/crawlGameMetadata'
 import { parseJsonSafely } from './safeJsonParse'
 
@@ -47,18 +47,22 @@ export function getManyGameMetadata(
   )
 }
 
-// Every code this app has ever successfully crawled at least once, across
-// every registered library (game_metadata is keyed globally by code, not
-// per-library) - the "전체 메타데이터 새로고침"/"Refresh All Metadata" File
-// menu item's own code list (see bulkCrawlQueue.ts's forceEnqueue) comes
-// from here rather than a fresh folder scan, since re-crawling is only
-// meaningful for codes that already have something to overwrite.
+// Every code this app has ever attempted to crawl at least once - both a
+// successful game_metadata row AND a metadata_failures-only code (crawled,
+// but delisted/blocked/network/parse-failed, so nothing to overwrite yet -
+// see metadataFailuresRepository.ts), deduplicated, across every registered
+// library (both tables are keyed globally by code, not per-library). The
+// "전체 메타데이터 새로고침"/"Refresh All Metadata" File menu item's own code
+// list (see bulkCrawlQueue.ts's forceEnqueue) comes from here - a
+// failed-only code needs to be included too, or a code that failed once
+// would have no way to ever be retried again at all: bulkCrawlQueue's own
+// enqueue() permanently skips a code once it has a metadata_failures row
+// (see its own comment), so this Refresh-All action is the only remaining
+// path back to a genuine retry.
 export function listAllGameMetadataCodes(db: AppDatabase): string[] {
-  return db
-    .select({ code: gameMetadata.code })
-    .from(gameMetadata)
-    .all()
-    .map((row) => row.code)
+  const crawledCodes = db.select({ code: gameMetadata.code }).from(gameMetadata).all()
+  const failedCodes = db.select({ code: metadataFailures.code }).from(metadataFailures).all()
+  return [...new Set([...crawledCodes, ...failedCodes].map((row) => row.code))]
 }
 
 // 크롤링 결과를 저장한다. coverImagePath는 여기서 건드리지 않는다 - Task 3의

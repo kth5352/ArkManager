@@ -76,9 +76,14 @@ function initialMetadataSource(code: GameCode): string {
 export interface MetadataHandlersApi {
   // "전체 메타데이터 새로고침"/"Refresh All Metadata" (electron/main/index.ts's
   // File menu item) - force re-crawls every code that already has a
-  // game_metadata row, overwriting it. Distinct from
-  // METADATA_CRAWL_MISSING's own bulkCrawlQueue.enqueue, which only ever
-  // targets codes that DON'T have one yet. The menu item's own click
+  // game_metadata row (overwriting it) AND every code with only a
+  // metadata_failures row (see listAllGameMetadataCodes) - the latter is
+  // what makes this the only way to ever retry a code that previously
+  // failed to crawl, since bulkCrawlQueue's own passive enqueue()
+  // permanently skips a code once it has a failure row (that's the whole
+  // fix for a code re-crawling on every single app launch forever). Distinct
+  // from METADATA_CRAWL_MISSING's own bulkCrawlQueue.enqueue, which only
+  // ever targets codes with neither row yet. The menu item's own click
   // handler calls listAllGameMetadataCodes(db) itself first (to show a
   // count in its confirm dialog before committing) - this re-derives the
   // same list rather than taking it as a parameter, since that first query
