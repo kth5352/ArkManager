@@ -59,7 +59,8 @@
     "publish": {
       "provider": "github",
       "owner": "kth5352",
-      "repo": "ArkManager"
+      "repo": "ArkManager",
+      "releaseType": "release"
     }
   },
   "dependencies": {
