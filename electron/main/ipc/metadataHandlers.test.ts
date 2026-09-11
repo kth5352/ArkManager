@@ -11,6 +11,7 @@ const electronMocks = vi.hoisted(() => ({
 }))
 
 const crawlMocks = vi.hoisted(() => ({
+  crawlGameMetadata: vi.fn(),
   crawlGameMetadataWithTrace: vi.fn(),
   createCrawlGameMetadataDeps: vi.fn((config: { enabled: boolean; endpointUrl: string }) => ({
     crawlDlsiteHtml: vi.fn(),
