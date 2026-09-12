@@ -161,15 +161,22 @@ describe('migrateVndbCodePrefixes', () => {
     expect(pathUserDataAfterFirstRun).toEqual(pathUserDataBefore)
     expect(pathUserDataAfterSecondRun).toEqual(pathUserDataBefore)
 
+    // VNV1 (already canonical, never referenced by anything) survives - see the
+    // dedicated regression test below for why: it needs no migration at all,
+    // so it must never be treated as an orphaned cache row the way an actual
+    // legacy-keyed one (VN40, VN1) correctly still is.
     expect(sqlite.prepare(`SELECT code FROM game_metadata ORDER BY code`).pluck().all()).toEqual([
+      'VNV1',
       'VNV13774',
       'VNV17',
       'VNV30',
       'VNV751',
     ])
+    // VNV912 (already canonical, unreferenced) also now survives, for the
+    // same reason VNV1 does above.
     expect(
       sqlite.prepare(`SELECT code FROM metadata_failures ORDER BY code`).pluck().all()
-    ).toEqual(['VNR20', 'VNR30'])
+    ).toEqual(['VNR20', 'VNR30', 'VNV912'])
     expect(sqlite.prepare(`SELECT key, key_type FROM game_user_data ORDER BY key`).all()).toEqual([
       { key: 'VN40', key_type: 'path' },
       { key: 'VNV13774', key_type: 'code' },
@@ -183,5 +190,89 @@ describe('migrateVndbCodePrefixes', () => {
     ).toEqual(['VNR30', 'VNV30'])
 
     sqlite.close()
+  })
+
+  // Regression: a live user found the exact same ~21 VNDB-coded library
+  // entries re-crawling their metadata on every single app launch, forever
+  // - despite bulkCrawlQueue.ts already persisting a metadata_failures row
+  // on a genuine crawl failure (see that file's own comment) so it should
+  // have stopped re-attempting them. Root cause traced to here: this
+  // migration runs on every app start (see database/client.ts's
+  // createDbClient) and was deleting ANY unreferenced VNDB game_metadata/
+  // metadata_failures row, canonical or not - a perfectly normal library
+  // entry the user simply hadn't favorited/rated/saved yet (the overwhelming
+  // common case for a VNDB title just sitting in the library) got its
+  // already-successfully-crawled row wiped and re-crawled from scratch
+  // every time, since nothing about an already-canonical VNV/VNR code
+  // needed migrating in the first place.
+  it('never deletes an already-canonical VNDB cache row just because nothing else references it', () => {
+    const sqlite = new Database(':memory:')
+    sqlite.exec(`
+      CREATE TABLE game_metadata (
+        code TEXT PRIMARY KEY,
+        title TEXT,
+        circle TEXT,
+        release_date TEXT,
+        genres TEXT,
+        cover_image_path TEXT,
+        work_type TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE metadata_failures (
+        code TEXT PRIMARY KEY,
+        attempted_sources TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE game_user_data (
+        key TEXT PRIMARY KEY,
+        key_type TEXT NOT NULL,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        is_cleared INTEGER NOT NULL DEFAULT 0,
+        rating INTEGER,
+        memo TEXT,
+        launch_config TEXT,
+        total_playtime_ms INTEGER NOT NULL DEFAULT 0,
+        last_played_at TEXT,
+        save_path TEXT,
+        custom_cover_path TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE path_code_overrides (path TEXT PRIMARY KEY, code TEXT NOT NULL, created_at TEXT NOT NULL);
+      CREATE TABLE save_snapshot_labels (
+        key TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        memo TEXT,
+        version TEXT,
+        PRIMARY KEY (key, timestamp)
+      );
+    `)
+    const createdAt = '2026-01-01T00:00:00.000Z'
+    sqlite
+      .prepare(
+        `INSERT INTO game_metadata
+          (code, title, circle, release_date, genres, cover_image_path, work_type, created_at, updated_at)
+         VALUES ('VNV13774', 'Untouched VN', null, null, null, null, null, ?, ?)`
+      )
+      .run(createdAt, createdAt)
+
+    // Three "launches" in a row - the exact scenario a live user hit.
+    migrateVndbCodePrefixes(sqlite)
+    migrateVndbCodePrefixes(sqlite)
+    migrateVndbCodePrefixes(sqlite)
+
+    expect(sqlite.prepare(`SELECT * FROM game_metadata WHERE code = 'VNV13774'`).get()).toEqual({
+      code: 'VNV13774',
+      title: 'Untouched VN',
+      circle: null,
+      release_date: null,
+      genres: null,
+      cover_image_path: null,
+      work_type: null,
+      created_at: createdAt,
+      updated_at: createdAt,
+    })
   })
 })

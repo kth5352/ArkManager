@@ -168,7 +168,13 @@ describe('createDbClient legacy VNDB code migration', () => {
       '2026-01-01T00:00:00.000Z',
       '2026-01-02T00:00:00.000Z'
     )
-    metadataInsert.run('VNV1', 'False filename cache', null, null, null, null, createdAt, createdAt)
+    // Already canonical, never referenced by game_user_data/path_code_overrides/
+    // save_snapshot_labels - an entirely normal state for a real library entry
+    // nobody has favorited/rated/saved yet. Must survive: neither needs
+    // migrating (already "VNV"/"VNR") nor is it safe to treat "unreferenced"
+    // as "orphaned" for an already-canonical code - see
+    // migrateVndbCodePrefixes.ts's own comment on this exact regression.
+    metadataInsert.run('VNV1', 'Untouched VN game', null, null, null, null, createdAt, createdAt)
     const failureInsert = raw.prepare(
       `INSERT INTO metadata_failures (code, attempted_sources, reason, updated_at)
        VALUES (?, ?, ?, ?)`
@@ -221,12 +227,21 @@ describe('createDbClient legacy VNDB code migration', () => {
 
     const metadataCodes = firstRows.metadata.map((row) => (row as { code: string }).code)
     const failureCodes = firstRows.failures.map((row) => (row as { code: string }).code)
-    expect(metadataCodes).toEqual(['VNV17'])
-    expect(failureCodes).toEqual(['VNR20'])
-    expect(metadataCodes).not.toContain('VNV1')
-    expect(failureCodes).not.toContain('VNV912')
+    expect(metadataCodes).toEqual(['VNV1', 'VNV17'])
+    expect(failureCodes).toEqual(['VNR20', 'VNV912'])
 
     expect(firstRows.metadata).toEqual([
+      {
+        code: 'VNV1',
+        title: 'Untouched VN game',
+        circle: null,
+        release_date: null,
+        genres: null,
+        cover_image_path: null,
+        work_type: null,
+        created_at: createdAt,
+        updated_at: createdAt,
+      },
       {
         code: 'VNV17',
         title: 'Legacy VN',
@@ -245,6 +260,12 @@ describe('createDbClient legacy VNDB code migration', () => {
         attempted_sources: '["vndb"]',
         reason: 'not found',
         updated_at: '2026-01-03T00:00:00.000Z',
+      },
+      {
+        code: 'VNV912',
+        attempted_sources: '["vndb"]',
+        reason: 'not_found',
+        updated_at: createdAt,
       },
     ])
     expect(firstRows.userData).toEqual([

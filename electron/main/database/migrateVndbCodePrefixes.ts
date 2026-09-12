@@ -115,8 +115,18 @@ export function migrateVndbCodePrefixes(sqlite: Database.Database): void {
         const canonicalKey = legacyVndbCodeToCanonical(legacyKey)
         const isCacheTable =
           migration.table === 'game_metadata' || migration.table === 'metadata_failures'
-        const canonicalIdentity = vndbCodeToCanonicalIdentity(legacyKey)
-        if (isCacheTable && canonicalIdentity && !referenced.has(canonicalIdentity)) {
+        // Only a genuinely LEGACY-keyed cache row (canonicalKey non-null - "VN"/"VR", not
+        // already "VNV"/"VNR") is ever a migration candidate at all, so only that kind of
+        // row should be discarded here when unreferenced - it's a stale row about to be
+        // superseded (or simply orphaned) by the migration below. Using
+        // vndbCodeToCanonicalIdentity's broader match (which also accepts an ALREADY-
+        // canonical code) as this branch's own gate deleted every VNDB game_metadata/
+        // metadata_failures row on every single app launch unless the game had a
+        // favorite/rating/save/override too - a live user found this: a normal library
+        // entry nobody had rated/favorited yet, sitting in canonical VNV/VNR form with a
+        // perfectly good crawled row already, got wiped and re-crawled from scratch on
+        // every startup, forever, since nothing here actually needed migrating.
+        if (isCacheTable && canonicalKey && !referenced.has(canonicalKey)) {
           deleteSource.run(...migration.deleteColumns.map((column) => row[column]))
           continue
         }
