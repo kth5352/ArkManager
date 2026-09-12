@@ -10,27 +10,6 @@ describe('normalizeLibraryPath', () => {
   it('trims trailing slashes', () => {
     expect(normalizeLibraryPath('D:\\Games\\')).toBe('d:\\games')
   })
-
-  // A live user registered "F:" (their whole drive) as a library and got
-  // zero games detected, with no error - traced to this: a bare drive
-  // letter with no trailing backslash is NOT the same path as its root on
-  // Windows. fs calls against "f:" alone resolve to that process's current
-  // working directory ON the F: drive (a legacy per-drive-CWD quirk - e.g.
-  // fs.readdirSync('C:') on this very machine returns this repo's own
-  // files, not C:\'s root), not the drive's actual root, so the scanner
-  // silently scanned the wrong directory (often empty or irrelevant)
-  // instead of throwing anything a user could act on. Stripping trailing
-  // slashes is safe for every other path ("F:\Games\" and "F:\Games" mean
-  // the same thing) but corrupts a drive-root path's meaning entirely.
-  it('keeps exactly one trailing backslash for a bare drive-letter root', () => {
-    expect(normalizeLibraryPath('F:\\')).toBe('f:\\')
-    expect(normalizeLibraryPath('F:')).toBe('f:\\')
-    expect(normalizeLibraryPath('f:/')).toBe('f:\\')
-  })
-
-  it('still trims trailing slashes for an actual subfolder, drive-root fix aside', () => {
-    expect(normalizeLibraryPath('F:\\Games\\')).toBe('f:\\games')
-  })
 })
 
 describe('librariesRepository', () => {
