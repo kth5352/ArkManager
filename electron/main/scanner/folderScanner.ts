@@ -124,36 +124,6 @@ function isImageFile(name: string): boolean {
   return IMAGE_EXTENSIONS.has(name.slice(dotIndex).toLowerCase())
 }
 
-// Windows creates these at the root of every real volume - they only ever
-// appear there, never as a legitimate game. A live user found this the hard
-// way: registering a whole drive as a library (see normalizeLibraryPath.ts's
-// own drive-root fix) makes scanLibraryRecursive actually reach the real
-// root for the first time, which was never reached before that fix landed -
-// so this exclusion was never needed until then. $RECYCLE.BIN's own internal
-// deleted-file staging names (per-SID subfolders full of "$Rxxxxxxx"/
-// "$Ixxxxxxx" pairs) surfaced as library entries, one of them close enough
-// to a real RJ code to be alarming on sight. Matched case-insensitively
-// (Windows filesystems are case-insensitive) and, like isImageFile, only
-// applied here - Explorer's plain folder browsing (scanFolderShallow) still
-// shows everything, matching a real file explorer.
-const SYSTEM_RESERVED_NAMES = new Set([
-  '$recycle.bin',
-  'system volume information',
-  '$windows.~bt',
-  '$windows.~ws',
-  '$winreagent',
-  '$sysreset',
-  'recovery',
-  'config.msi',
-  'pagefile.sys',
-  'hiberfil.sys',
-  'swapfile.sys',
-])
-
-function isSystemReservedName(name: string): boolean {
-  return SYSTEM_RESERVED_NAMES.has(name.toLowerCase())
-}
-
 // Like scanFolderShallow, but for scanLibraryRecursive's internal use only:
 // images are filtered out of `names` before stat() is ever called on them
 // (never worth the syscall - see isImageFile), and the result doubles as
@@ -169,7 +139,7 @@ async function scanNonImageChildren(
   const names = await readdir(dirPath)
   const entries = await Promise.all(
     names
-      .filter((name) => !isImageFile(name) && !isSystemReservedName(name))
+      .filter((name) => !isImageFile(name))
       .map((name) => toScannedEntry(dirPath, name, overrides, onProgress, statTimeoutMs))
   )
   return entries.filter(isScannedEntry)

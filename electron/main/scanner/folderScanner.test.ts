@@ -108,29 +108,6 @@ describe('scanLibraryRecursive', () => {
     expect(entries[0].path).toBe(join(dir, 'a', 'b', 'c', 'RJ01234567.zip'))
   })
 
-  // Regression: registering a whole drive as a library (see
-  // normalizeLibraryPath.ts's own fix for a related bug) makes this
-  // function's dirPath the real drive root for the first time - which
-  // means it now also reads long-standing Windows system folders that were
-  // simply never reached before. A live user found $RECYCLE.BIN's own
-  // internal deleted-file staging names (e.g. "$RJ3LDR2.old" - close enough
-  // to a real RJ code to be alarming) surfacing as library entries once
-  // their drive-root library actually worked. These reserved names only
-  // ever appear at a drive's real root, never as a legitimate game, so they
-  // must never be walked into or surfaced as entries regardless of what's
-  // inside them.
-  it('never scans into Windows-reserved system folders at a drive root', async () => {
-    await mkdir(join(dir, '$RECYCLE.BIN', 'S-1-5-21-1'), { recursive: true })
-    await writeFile(join(dir, '$RECYCLE.BIN', 'S-1-5-21-1', '$RJ3LDR2.old'), '')
-    await mkdir(join(dir, 'System Volume Information'), { recursive: true })
-    await writeFile(join(dir, 'System Volume Information', 'RJ99999999.zip'), '')
-    await writeFile(join(dir, 'RJ01111111.zip'), '')
-
-    const entries = await scanLibraryRecursive(dir)
-
-    expect(entries.map((e) => e.name)).toEqual(['RJ01111111.zip'])
-  })
-
   it('includes a code-less file alongside a coded sibling in the same folder', async () => {
     await mkdir(join(dir, 'mixed'))
     await writeFile(join(dir, 'mixed', 'RJ01111.zip'), '')
