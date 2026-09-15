@@ -25,7 +25,24 @@ import { IPC_CHANNELS, type MediaHardwareKeyAction } from '../../shared/types/ip
 // playing anything.
 let registered = false
 
+// A live user found play/pause "repeating at an insane speed" the moment
+// this shipped - some hardware (cheap headsets/USB DACs in particular)
+// sends a continuous stream of duplicate HID reports for a single physical
+// button press rather than one clean press+release, a quirk Chromium's own
+// built-in media key handling normally absorbs internally. globalShortcut
+// has no such debouncing of its own, so every duplicate report toggled
+// playback again, producing the flicker. Tracked per action (not one
+// shared timestamp) so a genuine rapid play/pause-then-next within the
+// window isn't dropped just because an unrelated action fired recently.
+const DEBOUNCE_MS = 300
+const lastFiredAt = new Map<MediaHardwareKeyAction, number>()
+
 function broadcast(action: MediaHardwareKeyAction): void {
+  const now = Date.now()
+  const last = lastFiredAt.get(action) ?? 0
+  if (now - last < DEBOUNCE_MS) return
+  lastFiredAt.set(action, now)
+
   for (const win of BrowserWindow.getAllWindows()) {
     if (win.isDestroyed()) continue
     win.webContents.send(IPC_CHANNELS.MEDIA_HARDWARE_KEY, action)

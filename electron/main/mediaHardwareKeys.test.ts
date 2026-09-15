@@ -19,6 +19,7 @@ function windowDouble() {
 describe('setMediaHardwareKeysActive', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.useFakeTimers()
     electronMocks.register.mockClear()
     electronMocks.unregister.mockClear()
     electronMocks.getAllWindows.mockReturnValue([])
@@ -26,6 +27,7 @@ describe('setMediaHardwareKeysActive', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
   it('registers all three media key accelerators when activated', async () => {
@@ -80,5 +82,71 @@ describe('setMediaHardwareKeysActive', () => {
 
     expect(win1.webContents.send).toHaveBeenCalledWith(IPC_CHANNELS.MEDIA_HARDWARE_KEY, 'playpause')
     expect(destroyedWin.webContents.send).not.toHaveBeenCalled()
+  })
+
+  // Regression: a live user found play/pause "repeating at an insane
+  // speed" the moment hardware key support shipped - some hardware sends a
+  // continuous stream of duplicate HID reports for a single physical
+  // button press, and every one of them toggled playback again with no
+  // debouncing in place.
+  it('drops a duplicate signal for the same action that arrives within the debounce window', async () => {
+    const win = windowDouble()
+    electronMocks.getAllWindows.mockReturnValue([win])
+    const { setMediaHardwareKeysActive } = await import('./mediaHardwareKeys')
+    setMediaHardwareKeysActive(true)
+    const playPauseHandler = electronMocks.register.mock.calls.find(
+      ([accelerator]) => accelerator === 'MediaPlayPause'
+    )?.[1] as () => void
+
+    playPauseHandler()
+    vi.advanceTimersByTime(50)
+    playPauseHandler()
+    vi.advanceTimersByTime(50)
+    playPauseHandler()
+
+    expect(win.webContents.send).toHaveBeenCalledTimes(1)
+  })
+
+  it('lets a genuinely later press of the same action through once the debounce window has passed', async () => {
+    const win = windowDouble()
+    electronMocks.getAllWindows.mockReturnValue([win])
+    const { setMediaHardwareKeysActive } = await import('./mediaHardwareKeys')
+    setMediaHardwareKeysActive(true)
+    const playPauseHandler = electronMocks.register.mock.calls.find(
+      ([accelerator]) => accelerator === 'MediaPlayPause'
+    )?.[1] as () => void
+
+    playPauseHandler()
+    vi.advanceTimersByTime(301)
+    playPauseHandler()
+
+    expect(win.webContents.send).toHaveBeenCalledTimes(2)
+  })
+
+  it('debounces each action independently, so a different action right after is not dropped', async () => {
+    const win = windowDouble()
+    electronMocks.getAllWindows.mockReturnValue([win])
+    const { setMediaHardwareKeysActive } = await import('./mediaHardwareKeys')
+    setMediaHardwareKeysActive(true)
+    const playPauseHandler = electronMocks.register.mock.calls.find(
+      ([accelerator]) => accelerator === 'MediaPlayPause'
+    )?.[1] as () => void
+    const nextTrackHandler = electronMocks.register.mock.calls.find(
+      ([accelerator]) => accelerator === 'MediaNextTrack'
+    )?.[1] as () => void
+
+    playPauseHandler()
+    nextTrackHandler()
+
+    expect(win.webContents.send).toHaveBeenNthCalledWith(
+      1,
+      IPC_CHANNELS.MEDIA_HARDWARE_KEY,
+      'playpause'
+    )
+    expect(win.webContents.send).toHaveBeenNthCalledWith(
+      2,
+      IPC_CHANNELS.MEDIA_HARDWARE_KEY,
+      'nexttrack'
+    )
   })
 })
