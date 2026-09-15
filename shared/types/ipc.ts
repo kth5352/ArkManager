@@ -80,6 +80,13 @@ export const IPC_CHANNELS = {
   // fire-and-forget, no request/response schema.
   MEDIA_REQUEST_STATE_SYNC: 'media:request-state-sync',
   MEDIA_STATE_SYNC_REQUESTED: 'media:state-sync-requested',
+  // Fired from main (electron/main/mediaHardwareKeys.ts's globalShortcut
+  // listeners) to every open window whenever a hardware media key (headset
+  // inline button, keyboard media key) is pressed - see that file's own
+  // comment for why globalShortcut, not the Web Media Session API alone,
+  // is what's needed here. No request/response schema, matches
+  // MEDIA_STATE_BROADCAST's own fire-and-forget shape.
+  MEDIA_HARDWARE_KEY: 'media:hardware-key',
   SUBTITLE_PIP_OPEN: 'subtitle-pip:open',
   SUBTITLE_PIP_CLOSE: 'subtitle-pip:close',
   SUBTITLE_PIP_OPENED: 'subtitle-pip:opened',
@@ -608,6 +615,9 @@ export const MediaSyncStateSchema = z.object({
   isDetached: z.boolean(),
 })
 export type MediaSyncState = z.infer<typeof MediaSyncStateSchema>
+
+export const MediaHardwareKeyActionSchema = z.enum(['playpause', 'previoustrack', 'nexttrack'])
+export type MediaHardwareKeyAction = z.infer<typeof MediaHardwareKeyActionSchema>
 
 export const MediaGetLyricsRequestSchema = z.object({
   filePath: z.string(),

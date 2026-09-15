@@ -1,4 +1,12 @@
-import { app, BrowserWindow, dialog, Menu, Tray, type MenuItemConstructorOptions } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  globalShortcut,
+  Menu,
+  Tray,
+  type MenuItemConstructorOptions,
+} from 'electron'
 import { IPC_CHANNELS, LocaleSchema, type Locale } from '../../shared/types/ipc'
 import { join } from 'node:path'
 import { createDbClient, type AppDatabase } from './database/client'
@@ -487,6 +495,10 @@ if (!gotSingleInstanceLock) {
     const lifecycle = createQuitLifecycle(() => {
       closePlayerWindow?.()
       closeSubtitlePipWindow?.()
+      // Electron unregisters these automatically on quit regardless, but
+      // explicit cleanup matches every other resource release in this same
+      // callback (mpv.shutdown() right below) rather than relying on that.
+      globalShortcut.unregisterAll()
       // Releases the native mpv session (mpv_render_context_free /
       // mpv_terminate_destroy / FreeLibrary - see mpv_addon.cc's
       // Shutdown()) deterministically instead of relying on Electron

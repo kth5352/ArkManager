@@ -11,6 +11,7 @@ import {
   type Library,
   type LibraryWithStatus,
   type Locale,
+  type MediaHardwareKeyAction,
   type MediaPlaylistDto,
   type MediaPlaylistTrackDto,
   type MediaSyncState,
@@ -382,6 +383,11 @@ const api = {
       const listener = (): void => callback()
       ipcRenderer.on(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_STATE_SYNC_REQUESTED, listener)
+    },
+    onHardwareKey: (callback: (action: MediaHardwareKeyAction) => void): (() => void) => {
+      const listener = (_event: unknown, action: MediaHardwareKeyAction): void => callback(action)
+      ipcRenderer.on(IPC_CHANNELS.MEDIA_HARDWARE_KEY, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_HARDWARE_KEY, listener)
     },
     onPlayerWindowClosed: (callback: () => void): (() => void) => {
       const listener = (): void => callback()

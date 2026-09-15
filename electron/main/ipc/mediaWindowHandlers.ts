@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { IPC_CHANNELS, MediaSyncStateSchema } from '../../../shared/types/ipc'
 import { installZoomInShortcut } from '../zoomShortcuts'
+import { setMediaHardwareKeysActive } from '../mediaHardwareKeys'
 
 // Detached video playback lives in its own BrowserWindow (see
 // FullscreenVideoOverlay's "새 창으로 분리" button) - only one at a time; a
@@ -92,6 +93,12 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
     if (!result.success) return
     const state = result.data
     isMediaPlaying = state.isPlaying
+    // Registered while a track is loaded regardless of play/pause state -
+    // gating on isPlaying instead would mean the hardware Play key could
+    // never resume a paused track, since the shortcut wouldn't even be
+    // registered to receive it. See mediaHardwareKeys.ts's own comment for
+    // why this needs to be un-registered at all rather than left on always.
+    setMediaHardwareKeysActive(state.currentIndex !== null)
     for (const win of BrowserWindow.getAllWindows()) {
       if (win.webContents.id !== event.sender.id) {
         win.webContents.send(IPC_CHANNELS.MEDIA_STATE_SYNC, state)

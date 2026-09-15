@@ -385,6 +385,30 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     }
   }, [setPlaying, prev, next, seekTo])
 
+  // Belt-and-suspenders alongside the Web Media Session wiring above:
+  // Chromium's own OS media-key routing for that API still depends on
+  // Chromium itself believing this window is currently "audible", which
+  // never happens here (mpv plays audio entirely inside its own utility
+  // process, never through Chromium's audio pipeline) - the Media Session
+  // handlers above may simply never be invoked by the OS at all. main's
+  // globalShortcut-based interception (mediaHardwareKeys.ts) doesn't depend
+  // on that and is the one actually confirmed to reach the app. Both
+  // windows that mount this hook receive this broadcast equally (main
+  // sends to every open window), so this is gated on isHost - only the
+  // window actually driving mpv should act on it, exactly like the
+  // keyboard shortcut handler above; the other window picks up the
+  // resulting state change via the existing cross-window sync instead of
+  // also independently calling these actions itself, which would
+  // double-fire (e.g. skip two tracks instead of one).
+  useEffect(() => {
+    if (!isHost) return
+    return window.api.media.onHardwareKey((action) => {
+      if (action === 'playpause') togglePlay()
+      else if (action === 'previoustrack') prev()
+      else if (action === 'nexttrack') next()
+    })
+  }, [isHost, togglePlay, prev, next])
+
   if (!track) return { canvasRef: setCanvasRef, playback: null }
 
   return {
