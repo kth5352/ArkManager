@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerStore'
 import { isVideoFile } from '../../../shared/isMediaFile'
 import { computeMpvRenderSize } from '../../lib/computeMpvRenderSize'
+import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
 
 export interface MediaPlaybackState {
   track: MediaTrack
@@ -44,6 +45,7 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   const setVolume = useMediaPlayerStore((s) => s.setVolume)
   const repeatMode = useMediaPlayerStore((s) => s.repeatMode)
   const next = useMediaPlayerStore((s) => s.next)
+  const prev = useMediaPlayerStore((s) => s.prev)
 
   const canvasElRef = useRef<HTMLCanvasElement | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
@@ -63,6 +65,15 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     setDuration(0)
     setError(null)
   }
+
+  // Shared by the Media Session 'seekto' handler below and the returned
+  // playback.handleSeek - defined here (not inline in the return object,
+  // where handleSeek used to live) so an effect declared earlier in this
+  // hook can reference the same logic without duplicating it.
+  const seekTo = useCallback((value: number) => {
+    window.api.mpv.seek(value)
+    setCurrentTime(value)
+  }, [])
 
   // Draws incoming frames onto the canvas - registered FIRST, before the
   // becomeHost()/load() effects below that can trigger the main process to
@@ -308,12 +319,73 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [track, isHost, volume, setVolume, togglePlay, currentTime, duration])
 
-  if (!track) return { canvasRef: setCanvasRef, playback: null }
+  // Web Media Session API - restores OS-level hardware media key (headset
+  // inline buttons, keyboard media keys) and System Media Transport
+  // Controls integration. Chromium wires that up automatically for a real
+  // <video>/<audio> element, but the libmpv migration replaced that with a
+  // <canvas> fed raw decoded frames (video) and audio played entirely
+  // inside a separate utility process - there is no DOM media element left
+  // for Chromium to associate hardware keys with, so that automatic
+  // integration silently stopped working. This restores it explicitly
+  // instead; a live user found play/pause hardware keys dead after the
+  // migration.
+  //
+  // Action handlers only ever touch shared store state (setPlaying/prev/
+  // next) or call seekTo, exactly like the keyboard shortcut handler above
+  // - the actual mpv IPC call only ever fires from whichever window's own
+  // effects (above) are currently host, so none of this needs its own
+  // isHost gating. Both the fullscreen overlay and the detached window
+  // mount this hook and so both set their own navigator.mediaSession from
+  // the same shared store state - harmless, since only one window is ever
+  // the OS's actual foreground target for hardware keys at a time.
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !track) return
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.name,
+      artwork: [{ src: buildMediaThumbnailUrl(track.path) }],
+    })
+    return () => {
+      navigator.mediaSession.metadata = null
+    }
+  }, [track])
 
-  const handleSeek = (value: number): void => {
-    window.api.mpv.seek(value)
-    setCurrentTime(value)
-  }
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.playbackState = track ? (isPlaying ? 'playing' : 'paused') : 'none'
+  }, [track, isPlaying])
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !track) return
+    // duration/position must both be finite for setPositionState - a track
+    // whose duration mpv hasn't reported yet (see MediaPlaybackState's own
+    // comment elsewhere on this) would otherwise throw synchronously.
+    if (!Number.isFinite(duration) || duration <= 0) return
+    navigator.mediaSession.setPositionState({
+      duration,
+      playbackRate: 1,
+      position: Math.min(currentTime, duration),
+    })
+  }, [track, currentTime, duration])
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.setActionHandler('play', () => setPlaying(true))
+    navigator.mediaSession.setActionHandler('pause', () => setPlaying(false))
+    navigator.mediaSession.setActionHandler('previoustrack', () => prev())
+    navigator.mediaSession.setActionHandler('nexttrack', () => next())
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime !== undefined) seekTo(details.seekTime)
+    })
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null)
+      navigator.mediaSession.setActionHandler('pause', null)
+      navigator.mediaSession.setActionHandler('previoustrack', null)
+      navigator.mediaSession.setActionHandler('nexttrack', null)
+      navigator.mediaSession.setActionHandler('seekto', null)
+    }
+  }, [setPlaying, prev, next, seekTo])
+
+  if (!track) return { canvasRef: setCanvasRef, playback: null }
 
   return {
     canvasRef: setCanvasRef,
@@ -324,7 +396,7 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
       duration,
       isPlaying,
       error,
-      handleSeek,
+      handleSeek: seekTo,
     },
   }
 }
