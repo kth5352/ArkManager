@@ -11,19 +11,23 @@ DLsite, Steam, VNDB, Getchu 게임과 로컬 미디어 라이브러리를 한 �
 세 가지 방식 중 원하는 방식으로 라이브러리를 볼 수 있습니다.
 
 <p align="center">
-  <img src="docs/screenshots/06-gallery-view.png" width="800" alt="Gallery 화면">
+  <img src="docs/screenshots/gallery-view.png" width="800" alt="Gallery 화면">
 </p>
 <p align="center">
-  <img src="docs/screenshots/07-list-view.png" width="800" alt="List 화면">
-  <img src="docs/screenshots/08-detaillist-view.png" width="800" alt="DetailList 화면">
+  <img src="docs/screenshots/list-view.png" width="800" alt="List 화면">
+  <img src="docs/screenshots/detaillist-view.png" width="800" alt="DetailList 화면">
 </p>
 
 ### 식별코드 기반 데이터 관리
 
 DLsite(RJ, VJ), Steam(ST), VNDB(VNV, VNR), Getchu(GC) — 각각 알파벳으로 시작하는 식별코드로 데이터를 관리합니다. 같은 식별코드의 파일들은 메모, 평점, 세이브 백업 등을 서로 공유합니다.
 
+### 실행 설정
+
+상세 화면에서 실행파일 경로와 실행 방식(일반 실행 / Locale Emulator)을 지정할 수 있습니다. 같은 창에서 세이브 파일 백업 위치도 함께 설정합니다.
+
 <p align="center">
-  <img src="docs/screenshots/09-gallery-cards.png" width="800" alt="같은 식별코드로 묶이는 게임 카드">
+  <img src="docs/screenshots/launch-settings.png" width="800" alt="실행/저장 설정 창">
 </p>
 
 ### 세이브 백업
@@ -31,35 +35,26 @@ DLsite(RJ, VJ), Steam(ST), VNDB(VNV, VNR), Getchu(GC) — 각각 알파벳으로
 게임을 다 클리어했거나 여러 루트를 보고 싶을 때, 세이브 파일만 따로 Ark Manager가 저장해 둘 수 있습니다. 게임을 지웠다 다시 설치해도 원상복구가 가능합니다. 단, 세이브 파일 위치는 직접 등록해야 합니다. (일부 게임은 지원하지 않을 수 있습니다.)
 
 <p align="center">
-  <img src="docs/screenshots/10-detail-save-section.png" width="800" alt="상세 화면의 세이브 데이터 관리 섹션">
+  <img src="docs/screenshots/save-section.png" width="500" alt="상세 화면의 세이브 데이터 관리 섹션">
 </p>
 <p align="center">
-  <img src="docs/screenshots/11-save-manager-modal.png" width="800" alt="세이브 스냅샷 관리 창">
+  <img src="docs/screenshots/save-restore-modal.png" width="500" alt="세이브 복원 확인 창">
 </p>
 
 ### 미디어 재생 기능
 
-음성 파일(mp3, flac, wav, m4a)이나 영상 파일(mp4, mkv)을 재생할 수 있습니다. 뷰어와는 별개의 창으로 열리며, 음성 파일에 `.lrc` 같은 자막 파일이 있으면 자막을 함께 띄워줍니다. 재생목록 기반 랜덤 재생, 한 곡 반복재생, 팝업 창으로 열기 등 다양한 기능을 지원합니다. 동인 음성 감상용으로도, 버튜버 콘서트 영상 감상용으로도 사용하고 있습니다.
+음성 파일(mp3, flac, wav, m4a)이나 영상 파일(mp4, mkv)을 재생할 수 있습니다. 뷰어와는 별개의 창으로 열리며, 음성 파일에 `.lrc` 같은 자막 파일이 있으면 자막을 함께 띄워줍니다. 재생목록 기반 랜덤 재생, 한 곡 반복재생, 팝업 창으로 열기 등 다양한 기능을 지원합니다. 동인 음성 감상용으로도, 버튜버 콘서트·행사 영상 감상용으로도 사용하고 있습니다.
 
 <p align="center">
-  <img src="docs/screenshots/12-media-subtitle.png" width="800" alt="자막이 표시되는 음성 재생 화면">
+  <img src="docs/screenshots/media-grid-playlist.png" width="800" alt="미디어 그리드뷰와 재생목록 사이드바">
 </p>
 <p align="center">
-  <img src="docs/screenshots/13-video-fullscreen.png" width="800" alt="전체화면 영상 재생">
-  <img src="docs/screenshots/14-video-vtuber-concert.png" width="800" alt="버튜버 콘서트 영상 재생">
+  <img src="docs/screenshots/video-queue.png" width="800" alt="영상 재생 화면과 현재 재생 큐">
 </p>
-<p align="center">
-  <img src="docs/screenshots/15-media-popup-window.png" width="800" alt="팝업 창으로 여는 미디어 플레이어">
-</p>
-
 
 ### DLsite / Steam / VNDB / Getchu 통합 검색
 
 제목으로도, 식별코드로도 검색할 수 있습니다.
-
-<p align="center">
-  <img src="docs/screenshots/16-unified-search.png" width="800" alt="통합 검색 화면">
-</p>
 
 ### 파일 탐색기 (Explorer)
 
@@ -179,11 +174,6 @@ Ark Manager로 실행한 게임은 종료 시점에 플레이타임이 기록됩
 
 원래는 프로그램 창을 닫기 버튼으로 닫으면 항상 시스템 트레이에 남아있었는데, 이제 종료할지 트레이로 보낼지 선택할 수 있습니다.
 
-<p align="center">
-  <img src="docs/screenshots/02-close-to-tray-dialog.png" width="500" alt="창 닫기 확인 창">
-  <img src="docs/screenshots/03-tray-icon.png" width="220" alt="시스템 트레이 아이콘">
-</p>
-
 ### 1.1.0 (2026.08.08)
 
 **미디어 기능 개선**
@@ -200,12 +190,6 @@ Ark Manager로 실행한 게임은 종료 시점에 플레이타임이 기록됩
 - Toast 알림 스타일 및 동작 통일
 - 파일/폴더 우클릭 메뉴에서 특정 항목을 목록에서 제외하는 기능 추가 (파일이 삭제되는 건 아닙니다)
 - View 메뉴의 제외 항목 관리에서 숨긴 항목을 확인하고 다시 표시할 수 있음
-
-  <p align="center">
-    <img src="docs/screenshots/04-exclude-context-menu.png" width="360" alt="목록에서 제외 컨텍스트 메뉴">
-    <img src="docs/screenshots/05-exclude-manage-menu.png" width="360" alt="제외 항목 관리 메뉴">
-  </p>
-
 - 검색 버튼 확장 영역에 태그 입력 필드 통합, 함께 확장/축소되도록 개선
 - 일괄 이름 변경 후 선택 모드가 해제되지 않던 문제 수정
 - Explorer 아이콘 정렬/간격, 목록 전환 애니메이션, 탭 추가·제거 애니메이션 개선
@@ -257,10 +241,6 @@ Ark Manager로 실행한 게임은 종료 시점에 플레이타임이 기록됩
 - **자동 업데이트 지원**: 새 버전이 나오면 앱 안에서 확인 → 다운로드 → 설치까지 바로 할 수 있습니다. 설정 페이지에 업데이트 확인 버튼이 추가됐고, 다운로드가 끝나면 업데이트 내역(패치노트) 창이 자동으로 뜹니다.
 - **설치 경로 직접 선택 가능**: 설치 시 원하는 폴더를 직접 지정할 수 있습니다. (관리자 권한 없이 설치되는 방식은 그대로 유지)
 - **버전 표시 추가**: 설정 페이지 하단에 현재 설치된 버전이 표시됩니다.
-
-<p align="center">
-  <img src="docs/screenshots/01-settings-update-check.png" width="700" alt="설정 페이지의 업데이트 확인 버튼">
-</p>
 
 **버그 수정**
 
