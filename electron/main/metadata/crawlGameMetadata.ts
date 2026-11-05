@@ -13,6 +13,7 @@ import {
   metadataFailureReasonFromError,
   type MetadataSourceFailureReason,
 } from './metadataSourceError'
+import { safeFetch } from '../net/safeFetch'
 
 export type { CrawledGameMetadata }
 
@@ -43,9 +44,9 @@ const STEAM_AGE_CHECK_COOKIE =
   'birthtime=283996801; lastagecheckage=1-0-1979; wants_mature_content=1'
 
 export async function crawlDlsiteHtml(code: GameCode): Promise<CrawledGameMetadata | null> {
-  const response = await fetch(dlsiteWorkPageUrl(code), {
+  const response = await safeFetch(dlsiteWorkPageUrl(code), {
     headers: { 'User-Agent': USER_AGENT },
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return null
   return parseDlsiteWorkPage(await response.text())
@@ -53,9 +54,9 @@ export async function crawlDlsiteHtml(code: GameCode): Promise<CrawledGameMetada
 
 async function crawlSteam(code: GameCode): Promise<CrawledGameMetadata | null> {
   const numericId = code.value.slice(2)
-  const response = await fetch(`https://store.steampowered.com/app/${numericId}`, {
+  const response = await safeFetch(`https://store.steampowered.com/app/${numericId}`, {
     headers: { 'User-Agent': USER_AGENT, Cookie: STEAM_AGE_CHECK_COOKIE },
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return null
   return parseSteamStorePage(await response.text())
@@ -81,9 +82,9 @@ async function crawlSteam(code: GameCode): Promise<CrawledGameMetadata | null> {
 // already links to for a human to click through, just supplied upfront.
 async function crawlGetchu(code: GameCode): Promise<CrawledGameMetadata | null> {
   const numericId = code.value.slice(2)
-  const response = await fetch(`https://www.getchu.com/item/${numericId}/?gc=gc`, {
+  const response = await safeFetch(`https://www.getchu.com/item/${numericId}/?gc=gc`, {
     headers: { 'User-Agent': USER_AGENT },
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return null
   const buffer = await response.arrayBuffer()

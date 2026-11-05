@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import sharp from 'sharp'
 import { cacheCoverImage } from './cacheCoverImage'
 
+const LOCAL_TEST_SERVER = { allowLoopbackHttp: true }
+
 describe('cacheCoverImage', () => {
   let server: Server
   let baseUrl: string
@@ -54,39 +56,44 @@ describe('cacheCoverImage', () => {
   })
 
   it('downloads an image, converts it to webp, and saves it under cacheDir/code.webp', async () => {
-    const savedPath = await cacheCoverImage(cacheDir, 'RJ01169914', `${baseUrl}/cover.jpg`)
+    const savedPath = await cacheCoverImage(cacheDir, 'RJ01169914', `${baseUrl}/cover.jpg`, LOCAL_TEST_SERVER)
     expect(savedPath).toBe(join(cacheDir, 'RJ01169914.webp'))
     const buffer = await readFile(savedPath!)
     expect(buffer.subarray(8, 12).toString('ascii')).toBe('WEBP')
   })
 
+  it('refuses to fetch loopback/LAN URLs by default (SSRF guard)', async () => {
+    const savedPath = await cacheCoverImage(cacheDir, 'RJ01169914', `${baseUrl}/cover.jpg`)
+    expect(savedPath).toBeNull()
+  })
+
   it('returns null when the download fails', async () => {
-    const savedPath = await cacheCoverImage(cacheDir, 'RJ00000000', `${baseUrl}/missing.jpg`)
+    const savedPath = await cacheCoverImage(cacheDir, 'RJ00000000', `${baseUrl}/missing.jpg`, LOCAL_TEST_SERVER)
     expect(savedPath).toBeNull()
   })
 
   it('creates cacheDir if it does not exist', async () => {
     const nonExistentDir = join(cacheDir, 'nested', 'cache', 'dir')
-    const savedPath = await cacheCoverImage(nonExistentDir, 'RJ01169914', `${baseUrl}/cover.jpg`)
+    const savedPath = await cacheCoverImage(nonExistentDir, 'RJ01169914', `${baseUrl}/cover.jpg`, LOCAL_TEST_SERVER)
     expect(savedPath).toBe(join(nonExistentDir, 'RJ01169914.webp'))
     const buffer = await readFile(savedPath!)
     expect(buffer.subarray(8, 12).toString('ascii')).toBe('WEBP')
   })
 
   it('returns null when image parsing fails', async () => {
-    const savedPath = await cacheCoverImage(cacheDir, 'RJ00000000', `${baseUrl}/invalid.jpg`)
+    const savedPath = await cacheCoverImage(cacheDir, 'RJ00000000', `${baseUrl}/invalid.jpg`, LOCAL_TEST_SERVER)
     expect(savedPath).toBeNull()
   })
 
   it('hashes a code containing path-traversal segments instead of writing outside cacheDir', async () => {
-    const savedPath = await cacheCoverImage(cacheDir, '../../evil', `${baseUrl}/cover.jpg`)
+    const savedPath = await cacheCoverImage(cacheDir, '../../evil', `${baseUrl}/cover.jpg`, LOCAL_TEST_SERVER)
     expect(savedPath).not.toBeNull()
     expect(savedPath!.startsWith(cacheDir)).toBe(true)
     expect(savedPath).not.toContain('evil')
   })
 
   it('sends a same-origin Referer header, succeeding against hotlink-protected hosts (e.g. getchu.com)', async () => {
-    const savedPath = await cacheCoverImage(cacheDir, 'GC01169914', `${baseUrl}/referer-gated.jpg`)
+    const savedPath = await cacheCoverImage(cacheDir, 'GC01169914', `${baseUrl}/referer-gated.jpg`, LOCAL_TEST_SERVER)
     expect(savedPath).toBe(join(cacheDir, 'GC01169914.webp'))
   })
 })

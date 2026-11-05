@@ -1,6 +1,7 @@
 import type { CrawledGameMetadata } from './dlsiteParser'
 import { numericGameCodeId } from '../../../shared/gameCode'
 import type { GameCode } from '../../../shared/types/scanner'
+import { safeFetch } from '../net/safeFetch'
 
 // Without this, an unresponsive api.vndb.org leaves this fetch pending
 // forever, matching crawlGameMetadata.ts's own reasoning for the same
@@ -87,7 +88,7 @@ export function mapReleaseToMetadata(release: VndbApiRelease): CrawledGameMetada
 }
 
 async function crawlVndbVn(code: VndbGameCode): Promise<CrawledGameMetadata | null> {
-  const response = await fetch(VNDB_VN_API_URL, {
+  const response = await safeFetch(VNDB_VN_API_URL, {
     method: 'POST',
     headers: {
       'User-Agent': USER_AGENT,
@@ -98,7 +99,7 @@ async function crawlVndbVn(code: VndbGameCode): Promise<CrawledGameMetadata | nu
       filters: ['id', '=', toVndbId(code)],
       fields: 'title, released, image.url, developers.name, tags.name, tags.rating, tags.spoiler',
     }),
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return null
 
@@ -108,7 +109,7 @@ async function crawlVndbVn(code: VndbGameCode): Promise<CrawledGameMetadata | nu
 }
 
 async function crawlVndbRelease(code: VndbGameCode): Promise<CrawledGameMetadata | null> {
-  const response = await fetch(VNDB_RELEASE_API_URL, {
+  const response = await safeFetch(VNDB_RELEASE_API_URL, {
     method: 'POST',
     headers: {
       'User-Agent': USER_AGENT,
@@ -119,7 +120,7 @@ async function crawlVndbRelease(code: VndbGameCode): Promise<CrawledGameMetadata
       filters: ['id', '=', toVndbId(code)],
       fields: 'title, released, producers.name, producers.developer, vns.title, vns.image.url',
     }),
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return null
 
@@ -164,7 +165,7 @@ export async function searchVndb(query: string): Promise<VndbSearchResult[]> {
   const trimmed = query.trim()
   if (trimmed === '') return []
 
-  const response = await fetch(VNDB_VN_API_URL, {
+  const response = await safeFetch(VNDB_VN_API_URL, {
     method: 'POST',
     headers: {
       'User-Agent': USER_AGENT,
@@ -177,7 +178,7 @@ export async function searchVndb(query: string): Promise<VndbSearchResult[]> {
       sort: 'searchrank',
       results: 25,
     }),
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return []
 

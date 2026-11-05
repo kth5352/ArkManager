@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain } from 'electron'
+import { secureWebPreferences } from '../security'
 import { join } from 'node:path'
 import { IPC_CHANNELS, MediaSyncStateSchema } from '../../../shared/types/ipc'
 import { installZoomInShortcut } from '../zoomShortcuts'
@@ -49,9 +50,7 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
       height: 640,
       minWidth: 480,
       minHeight: 320,
-      webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
-      },
+      webPreferences: secureWebPreferences(join(__dirname, '../preload/index.js')),
     })
     installZoomInShortcut(win.webContents)
 

@@ -1,4 +1,5 @@
 import { parseDlsiteSearchResults, type DlsiteSearchResult } from './dlsiteSearchParser'
+import { safeFetch } from '../net/safeFetch'
 
 export type { DlsiteSearchResult }
 
@@ -17,9 +18,9 @@ export async function crawlDlsiteSearch(query: string): Promise<DlsiteSearchResu
   const trimmed = query.trim()
   if (trimmed === '') return []
 
-  const response = await fetch(searchUrl(trimmed), {
+  const response = await safeFetch(searchUrl(trimmed), {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0' },
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return []
 

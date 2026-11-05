@@ -60,6 +60,12 @@ import {
   getWindowClosePrompt,
 } from './windowCloseBehavior'
 import { getMenuLabels } from './menuLocalization'
+import {
+  installPermissionLockdown,
+  installTrustedIpcGuard,
+  installWebContentsLockdown,
+  secureWebPreferences,
+} from './security'
 
 // better-sqlite3 opens this app's db file with an exclusive file lock - a second
 // launch (e.g. double-clicking the app's icon again) would otherwise either
@@ -72,6 +78,11 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) {
   app.quit()
 } else {
+  // Security: must run before any ipcMain.handle()/on() registration and
+  // before the first WebContents is created.
+  installTrustedIpcGuard()
+  installWebContentsLockdown()
+
   let mainWindow: BrowserWindow | null = null
   let isMainWindowReadyToShow = false
   let closePlayerWindow: (() => void) | null = null
@@ -348,9 +359,7 @@ if (!gotSingleInstanceLock) {
       minHeight: 480,
       show: false,
       icon: resolveLogoPath(),
-      webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
-      },
+      webPreferences: secureWebPreferences(join(__dirname, '../preload/index.js')),
     })
     installZoomInShortcut(win.webContents)
 
@@ -400,6 +409,7 @@ if (!gotSingleInstanceLock) {
   }
 
   app.whenReady().then(async () => {
+    installPermissionLockdown()
     // The app was renamed from "dlibrary" to "ark-manager" - Electron
     // derives userData's location from the app's own name, so an existing
     // install's registered libraries/ratings/cache would otherwise be

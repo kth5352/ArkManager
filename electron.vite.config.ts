@@ -1,5 +1,40 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import type { Plugin } from 'vite'
+
+// Content-Security-Policy for the packaged renderer. The renderer never needs
+// the network (all remote data is fetched by the main process), so every
+// fetch/script/frame source is closed except the app's own files and its two
+// custom image protocols. Injected only for production builds because the
+// Vite dev server needs inline scripts / eval / websockets for HMR.
+const PRODUCTION_CSP = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: thumb: mediathumb:",
+  "font-src 'self' data:",
+  "media-src 'none'",
+  "connect-src 'self' thumb: mediathumb:",
+  "worker-src 'none'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ')
+
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'ark-content-security-policy',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace(
+        '<meta charset="UTF-8" />',
+        `<meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="${PRODUCTION_CSP}" />`
+      )
+    },
+  }
+}
 
 export default defineConfig({
   main: {
@@ -41,6 +76,6 @@ export default defineConfig({
         input: 'index.html',
       },
     },
-    plugins: [react()],
+    plugins: [react(), contentSecurityPolicy()],
   },
 })

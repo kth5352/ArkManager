@@ -1,12 +1,14 @@
 import { join } from 'node:path'
 import { mkdir } from 'node:fs/promises'
-import sharp from 'sharp'
+import { openRasterImage } from '../net/rasterImage'
+import { safeFetch, type SafeFetchOptions } from '../net/safeFetch'
 import { keyToSafeDirName } from '../save/keyToSafeDirName'
 
 // Same reasoning as crawlGameMetadata.ts's NETWORK_TIMEOUT_MS - an
 // unresponsive image host would otherwise hang this fetch (and the awaiting
 // METADATA_CRAWL_AND_SAVE handler) indefinitely.
 const NETWORK_TIMEOUT_MS = 15_000
+const MAX_COVER_BYTES = 15 * 1024 * 1024
 
 // 원본 이미지를 받아 webp로 변환해 cacheDir/{code}.webp에 저장한다. 게임
 // 파일이 위치한 경로와는 완전히 분리된 디렉터리에만 쓴다 - 호출자가
@@ -14,7 +16,9 @@ const NETWORK_TIMEOUT_MS = 15_000
 export async function cacheCoverImage(
   cacheDir: string,
   code: string,
-  imageUrl: string
+  imageUrl: string,
+  // Test seam only (e.g. allowLoopbackHttp for a local test server); production callers omit it.
+  fetchOptions: Pick<SafeFetchOptions, 'allowLoopbackHttp'> = {}
 ): Promise<string | null> {
   try {
     // Some hosts (getchu.com, verified live) hotlink-protect their images and
@@ -22,9 +26,11 @@ export async function cacheCoverImage(
     // real browser sends when the image is displayed on its own product
     // page, so this is honest, not spoofing - and it's harmless for the
     // other 3 hosts this app fetches from (DLsite, Steam, VNDB).
-    const response = await fetch(imageUrl, {
+    const response = await safeFetch(imageUrl, {
       headers: { Referer: new URL(imageUrl).origin + '/' },
-      signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+      timeoutMs: NETWORK_TIMEOUT_MS,
+      maxBytes: MAX_COVER_BYTES,
+      ...fetchOptions,
     })
     if (!response.ok) return null
 
@@ -38,7 +44,7 @@ export async function cacheCoverImage(
     // caller.
     const outputPath = join(cacheDir, `${keyToSafeDirName(code)}.webp`)
     await mkdir(cacheDir, { recursive: true })
-    await sharp(buffer).webp().toFile(outputPath)
+    await (await openRasterImage(buffer)).webp().toFile(outputPath)
     return outputPath
   } catch {
     return null

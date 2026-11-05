@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import sharp from 'sharp'
+import { openRasterImage } from '../net/rasterImage'
 import { keyToSafeDirName } from '../save/keyToSafeDirName'
 
 // Callers render this at small thumbnail sizes (the largest is
@@ -23,7 +23,7 @@ export async function saveCustomCoverImage(
 ): Promise<string> {
   const outputPath = join(cacheDir, `${keyToSafeDirName(key)}.webp`)
   await mkdir(cacheDir, { recursive: true })
-  await sharp(imageBuffer)
+  await (await openRasterImage(imageBuffer))
     .resize(MAX_DIMENSION_PX, MAX_DIMENSION_PX, { fit: 'inside', withoutEnlargement: true })
     .webp()
     .toFile(outputPath)

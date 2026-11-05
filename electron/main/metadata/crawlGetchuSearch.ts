@@ -1,5 +1,6 @@
 import iconv from 'iconv-lite'
 import { parseGetchuSearchResults, type GetchuSearchResult } from './getchuSearchParser'
+import { safeFetch } from '../net/safeFetch'
 
 export type { GetchuSearchResult }
 
@@ -49,9 +50,9 @@ export async function crawlGetchuSearch(query: string): Promise<GetchuSearchResu
   const trimmed = query.trim()
   if (trimmed === '') return []
 
-  const response = await fetch(searchUrl(trimmed), {
+  const response = await safeFetch(searchUrl(trimmed), {
     headers: { 'User-Agent': USER_AGENT },
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return []
 

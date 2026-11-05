@@ -1,4 +1,5 @@
 import type { GameCode } from '../../../shared/types/scanner'
+import { safeFetch } from '../net/safeFetch'
 
 // Without this, an unresponsive store.steampowered.com leaves this fetch
 // pending forever, matching vndbClient.ts's/crawlGameMetadata.ts's own
@@ -37,9 +38,9 @@ export async function crawlSteamSearch(query: string): Promise<SteamSearchResult
   if (trimmed === '') return []
 
   const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(trimmed)}&l=english&cc=US`
-  const response = await fetch(url, {
+  const response = await safeFetch(url, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    timeoutMs: NETWORK_TIMEOUT_MS,
   })
   if (!response.ok) return []
 

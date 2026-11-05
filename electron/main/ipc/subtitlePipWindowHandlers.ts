@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain, screen } from 'electron'
+import { secureWebPreferences } from '../security'
 import { join } from 'node:path'
 import {
   IPC_CHANNELS,
@@ -88,9 +89,7 @@ export function registerSubtitlePipWindowHandlers(
       resizable: true,
       minWidth: 160,
       minHeight: 48,
-      webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
-      },
+      webPreferences: secureWebPreferences(join(__dirname, '../preload/index.js')),
     })
 
     // Request this level on the FIRST always-on-top transition. The default

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { GameCode } from '../../../shared/types/scanner'
 import type { CrawledGameMetadata } from './dlsiteParser'
 import { MetadataSourceError } from './metadataSourceError'
+import { safeFetch } from '../net/safeFetch'
 
 const NETWORK_TIMEOUT_MS = 15_000
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0'
@@ -34,7 +35,13 @@ function isLoopbackHostname(hostname: string): boolean {
 export async function crawlExternalMetadataProvider(
   code: GameCode,
   config: ExternalMetadataProviderConfig,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = ((input, init) =>
+    safeFetch(String(input), {
+      headers: init?.headers as Record<string, string> | undefined,
+      timeoutMs: NETWORK_TIMEOUT_MS,
+      allowLoopbackHttp: true,
+      allowPrivateNetwork: true,
+    })) as typeof fetch
 ): Promise<CrawledGameMetadata | null> {
   if (code.type !== 'RJ' && code.type !== 'VJ') return null
   if (!config.enabled || config.endpointUrl.trim() === '') return null
