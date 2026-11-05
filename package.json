@@ -93,10 +93,10 @@
     "react-hook-form": "^7.82.0",
     "react-virtualized-auto-sizer": "^2.0.3",
     "react-window": "^2.3.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3",
+    "zod": "^4.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -112,7 +112,7 @@
     "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.5.4",
     "drizzle-kit": "^0.31.10",
-    "electron": "^43.2.0",
+    "electron": "^43.8.7",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "eslint": "^10.7.0",
@@ -128,5 +128,19 @@
     "typescript": "^6.0.0",
     "vite": "^7.3.6",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "cheerio": {
+      "undici": "^7.30.2"
+    },
+    "@electron/get": {
+      "undici": "^7.30.2"
+    },
+    "node-gyp": {
+      "undici": "^6.29.1"
+    },
+    "seroval": "^1.7.7",
+    "seroval-plugins": "^1.7.7",
+    "js-yaml": "^4.3.2"
   }
 }
