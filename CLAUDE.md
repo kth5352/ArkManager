@@ -12,3 +12,10 @@
 - DB 스키마 변경 시 `schema.ts`와 `database/client.ts` 둘 다 수정
 - UI 문자열은 `src/i18n/translations.ts`에 ko/ja/en 모두 추가
 - 검증: `npm run typecheck`, `npm run lint`, `npm test`
+
+## 보안 규칙 (자세한 내용: `docs/SECURITY.md`)
+- 폴더/파일 이름·미디어·이미지는 전부 신뢰할 수 없는 입력. 외부 프로세스에 `shell: true` 금지, 문자열 보간 금지
+- 메인 프로세스의 외부 요청은 `electron/main/net/safeFetch.ts`, 이미지 디코딩은 `rasterImage.ts`만 사용
+- 새 `BrowserWindow`는 `secureWebPreferences()` 사용, 원격 URL 로드 금지 (CSP는 프로덕션 빌드에서 주입)
+- 파일을 실행하는 동작은 `.exe` 한정 또는 네이티브 확인창, 새 비밀값은 `SECRET_KEYS`에 추가
+- 의존성 변경 시 `npm run audit:prod`, 설치는 `npm ci`

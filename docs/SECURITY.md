@@ -1,0 +1,84 @@
+# Ark Manager — 보안 점검 및 조치 기록
+
+작성: 2026-11-05 / 대상: v1.2.3 → `security/hardening` 브랜치
+범위: 메인/프리로드/렌더러 코드, IPC, 파일·프로세스 접근, 네트워크, 의존성·빌드·배포 공급망.
+방법: 소스 전체 grep + 핵심 경로 정독 + `npm audit` + 단위 테스트(자동화 가능한 것은 회귀 테스트로 고정).
+
+> 이 앱의 가장 큰 특징은 **출처를 알 수 없는 다운로드 파일을 다룬다**는 점입니다. 폴더·파일 이름, 미디어/자막/재생목록 파일, 이미지는 모두 공격자가 만들 수 있다고 가정하고 설계했습니다. 또 라이브러리 안의 게임 `.exe`는 사용자가 실행하는 순간 사용자 권한으로 돌아갑니다. 앱이 막을 수 없는 영역이므로 **모르는 게임은 Windows Sandbox/VM에서 먼저 실행**하는 것을 권장합니다.
+
+---
+
+## 1. 발견 사항과 조치 요약
+
+| # | 심각도 | 발견 | 조치 | 상태 |
+|---|---|---|---|---|
+| 1 | **치명** | `readExeFileVersion`이 `shell: true` + PowerShell 스크립트 문자열 보간. 다운로드한 게임의 폴더/파일 이름에 `$(...)`, `'`, `&` 등이 있으면 **세이브 스냅샷 생성·버전 불일치 검사 시 임의 명령 실행** | 셸 제거, 절대경로 `powershell.exe` 직접 실행, 경로는 환경변수(`ARK_EXE_PATH`)로만 전달(스크립트는 값을 데이터로만 읽음). 적대적 파일명으로 실제 PowerShell 실행해 무해함 확인, 회귀 테스트 추가 | ✅ 수정 |
+| 2 | 높음 | Electron 43.2.0에 공개된 취약점 다수(샌드박스 상속, `file://` 교차 출처 읽기, 프리로드 캐시 오염 등, 43.8.1 미만 해당) | Electron **43.8.7**로 상향 | ✅ 수정 |
+| 3 | 높음 | 프로덕션 의존성 취약점 5건(sharp/libheif·librsvg, zod 메모리 고갈, undici 다수, seroval, js-yaml) | sharp 0.35.5, zod 4.6.7, `overrides`로 undici/seroval/js-yaml 상향 → `npm audit --omit=dev` **0건** | ✅ 수정 |
+| 4 | 높음 | 렌더러 방어선 부재: CSP 없음, `window.open`/페이지 이동/`<webview>` 차단 없음, 권한 요청 무방비, IPC 발신자 검증 없음, `webPreferences` 기본값 의존 | `electron/main/security.ts` 신설: 명시적 `sandbox/contextIsolation/nodeIntegration:false`, 신뢰 URL 외 이동·팝업·webview 차단, 클립보드 쓰기 외 모든 권한 거부, **모든 `ipcMain.handle/on`이 앱 자신의 최상위 프레임에서 온 호출인지 검증**, 프로덕션 빌드에 CSP(`default-src 'none'`, 스크립트·connect는 자기 자신만) 주입 | ✅ 수정 |
+| 5 | 높음 | 외부 URL(크롤링한 HTML/외부 API가 주는 표지 URL) 요청에 제한 없음 → LAN/localhost/클라우드 메타데이터(SSRF), 무제한 용량, 리다이렉트 무검증 | `electron/main/net/safeFetch.ts`: https만, 사설/루프백/링크로컬/내부 호스트명·DNS 결과 차단, 리다이렉트 3회·매 홉 재검증(교차 출처 시 Authorization/Cookie 제거), 응답 크기 상한. 모든 크롤러·표지 다운로드·외부 프로바이더에 적용(외부 프로바이더만 사용자가 지정한 LAN 서버 허용) | ✅ 수정 |
+| 6 | 중간 | 이미지 디코더 공격면: sharp가 SVG(librsvg)·HEIF(libheif) 등을 그대로 파싱 | `rasterImage.ts`: jpeg/png/webp/gif만 허용, 픽셀(5천만)·용량(30MB) 상한, 압축폭탄 거부 | ✅ 수정 |
+| 7 | 중간 | `shell.openPath`가 라이브러리 안의 `.exe/.lnk/.bat/.js/.hta…`도 그대로 실행 | 폴더·일반 문서는 그대로, 실행 가능 형식/확장자 없음은 **메인 프로세스 네이티브 확인창**(렌더러가 대신 누를 수 없음). `.exe.` / `:stream` 위장 이름도 처리 | ✅ 수정 |
+| 8 | 중간 | 라이브러리 등록이 어떤 경로든 허용(`C:\`, 사용자 폴더, 앱 데이터 폴더 포함) → 이후 모든 "라이브러리 안" 검사가 무력화 | 존재하는 폴더만, 앱 데이터 폴더/그 상위·하위, Windows·Program Files·ProgramData 금지. **폴더 선택창이 아닌 입력·드롭 경로는 네이티브 확인창** | ✅ 수정 |
+| 9 | 중간 | 실행 설정이 `.exe` 여부를 검사하지 않음(`.bat/.lnk` 등) | 설정 시·실행 시 모두 `.exe`만 허용 | ✅ 수정 |
+| 10 | 중간 | libmpv: 악성 재생목록/EDL/ASX가 외부 URL·다른 파일을 따라감, ytdl/스크립트 훅 | `access-references/load-unsafe-playlists/ytdl/load-scripts/config/audio-file-auto/osc/기본 키바인딩` 모두 off. `MPV_LOAD`는 렌더러 문자열이 아니라 **검증된 절대경로**만 전달 | ✅ 수정 (**애드온 재빌드 필요**) |
+| 11 | 낮음 | 외부 메타데이터 API 키가 SQLite에 평문 | Electron `safeStorage`(Windows DPAPI)로 암호화 저장, 기존 평문 값은 시작 시 자동 이전 | ✅ 수정 |
+| 12 | 낮음 | `ELECTRON_RUN_AS_NODE` 등 패키징 앱 변조 경로 | Electron Fuses: `runAsNode`, `NODE_OPTIONS`, `--inspect` off, cookie 암호화 on, app.asar에서만 로드 | ✅ 설정 (패키징 검증 필요) |
+| 13 | 낮음 | 제3자 바이너리(`libmpv-2.dll`) 변조 감지 수단 없음 | SHA-256 기록(`CHECKSUMS.sha256`) + `npm run verify:binaries`를 `build`/`release`에 연결 | ✅ 추가 |
+| 14 | 정보 | 개발 도구 취약점 21 moderate + 1 high(`brace-expansion` 다중 메이저) | 런타임/패키지에 포함되지 않음. `vite 7.3.7`, `nanoid`, `source-map-js`, `fast-uri`, `@xmldom/xmldom`은 상향. 나머지는 상위 패키지 업데이트 대기 | ⚠️ 잔여(개발 전용) |
+
+### 점검했으나 문제가 없던 항목
+- 렌더러에 `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `new Function`, `window.open`, `<a href>`, `<iframe>`, `<webview>` 없음. 크롤링한 제목·태그·릴리스 노트는 모두 텍스트로만 렌더링(릴리스 노트는 cheerio로 태그 제거).
+- `child_process`는 ffmpeg(`execFile` + 인자 배열)와 실행 파일 `spawn`(셸 없음)만 사용. SQL은 Drizzle 파라미터 바인딩(동적 DDL은 상수 테이블/컬럼명).
+- IPC 입력은 전부 Zod `parse`. 파일 조작(이름변경/이동/삭제/썸네일/실행/shell)은 모두 라이브러리 경계 검증(`path.resolve` 후 비교). 세이브 폴더·커스텀 표지·미디어 썸네일은 "방금 선택창에서 고른 경로"만 허용하는 패턴 사용.
+- 저장소 이력(708 커밋)에 토큰/키/비밀번호 형태의 문자열 없음, `.env`/인증서 파일 없음. 모든 npm 패키지가 `registry.npmjs.org`에서 `integrity` 포함으로 잠겨 있음.
+
+---
+
+## 2. 반드시 직접 해 주셔야 하는 것
+
+1. **의존성 재설치와 애드온 재빌드** (이 환경에서는 `--ignore-scripts`로 설치했습니다)
+   ```
+   npm ci
+   npm run build:mpv-addon && npm run rebuild:mpv-addon   # postinstall이 자동 실행
+   ```
+2. **실제 앱 실행 점검** (이 세션에서는 GUI를 띄우지 못했습니다. 자동 테스트 1009개·타입체크·린트·빌드는 통과)
+   - `npm run dev` 후 콘솔(F12)에 CSP 위반 메시지가 없는지: 갤러리 표지, Explorer 아이콘, 미디어 썸네일, 폰트, 테마 전환
+   - 설정 → 라이브러리: 폴더 선택창으로 추가(무확인) / 경로 직접 입력(확인창 뜸) / `C:\` 거부
+   - Explorer에서 `.exe` 더블클릭 → 확인창, `.txt` → 바로 열림
+   - 미디어 재생(영상·음성·EQ), 하드웨어 미디어 키, 분리 창, 자막 PIP
+   - 클립보드 복사(우클릭 → RJ 번호 복사)
+   - `npm run build` 로 설치 파일을 만들어 설치본에서도 위 항목과 자동 업데이트 확인(Fuses 포함)
+3. **계정·배포 경로 보호** — CDN 탈취 피해 이력이 있으므로 특히:
+   - GitHub 계정 2단계 인증(가능하면 보안 키/패스키), 사용 중인 GitHub 토큰·npm 토큰·브라우저 저장 비밀번호는 **다른 깨끗한 기기에서 전부 재발급**
+   - `npm run release`가 쓰는 `GH_TOKEN`은 이 저장소 `contents:write`만 가진 fine-grained 토큰으로 제한, 환경변수에 상주시키지 말 것
+   - 가능하면 릴리스 발행을 로컬 PC가 아닌 격리된 CI(보호된 브랜치 + 승인)로 이동
+4. **코드 서명** — 현재 설치 파일은 서명되어 있지 않아 자동 업데이트의 무결성은 "GitHub 릴리스가 진짜다"라는 신뢰에만 의존합니다(`latest.yml`의 해시도 같은 릴리스에서 오기 때문). 계정이 뚫리면 악성 업데이트가 그대로 배포됩니다. 인증서를 구하면 `electron-builder`의 `win.signtoolOptions`/`publisherName`을 설정해 업데이트 서명 검증을 켜세요(이 항목은 인증서가 있어야 해서 코드로 해결할 수 없습니다).
+5. **`libmpv-2.dll` 출처 확인** — `CHECKSUMS.sha256`의 해시는 "현재 저장소에 있던 파일" 기준입니다. 처음 받았던 공식 배포본과 해시가 같은지 한 번 대조해 주세요.
+
+---
+
+## 3. 잔여 위험과 후속 권장 작업 (코드로 더 줄일 수 있는 것)
+
+| 우선순위 | 항목 | 설명 |
+|---|---|---|
+| 높음 | 렌더러를 `file://` 대신 커스텀 `app://` 프로토콜로 서빙 + Fuse `grantFileProtocolExtraPrivileges` off | 지금은 렌더러가 `file://`이라 렌더러가 장악되면 다른 `file://` 리소스를 읽을 여지가 있음(CSP `connect-src`로 일부 완화). 라우팅·dev 서버·프로토콜 등록을 건드리는 변경이라 별도 작업 + 설치본 테스트 필요 |
+| 중간 | ASAR 무결성 Fuse(`enableEmbeddedAsarIntegrityValidation`) | 설치본에서 `app.asar` 변조를 감지. `asarUnpack`과의 상호작용을 설치본으로 확인한 뒤 활성화 |
+| 중간 | 심볼릭 링크/정션 경유 경계 우회 | `isPathWithinAnyLibrary`는 `resolve`만 쓰고 `realpath`는 쓰지 않음. 라이브러리 안의 정션이 밖을 가리키면 이름변경/삭제 대상이 될 수 있음(아카이브 해제만으로 정션이 생기는 경우는 드묾) |
+| 중간 | `ffmpeg-static` 설치 시 바이너리 다운로드 | 패키지의 `postinstall`이 GitHub에서 ffmpeg를 받음. CI에서 `npm ci --ignore-scripts` 후 필요한 것만 명시적으로 rebuild + 결과 해시 고정 권장 |
+| 낮음 | 프로덕션에서 DevTools 메뉴 노출 | "콘솔에 붙여넣으세요" 류 사회공학에 노출. 필요 시 패키징 빌드에서 `toggleDevTools` 제거 |
+| 낮음 | `SHELL_SHOW_ITEM_IN_FOLDER` 등은 경로 존재 확인 없이 호출 | 라이브러리 경계 검증은 있음. 영향 미미 |
+| 낮음 | Explorer 얕은 스캔은 라이브러리 밖 폴더도 나열 | 파일 탐색기 기능의 일부(읽기 전용 목록). 변경 작업은 모두 라이브러리 안으로 제한됨 |
+| 정보 | DNS 리바인딩 | `safeFetch`는 요청 직전 DNS를 검사하지만 Node `fetch`가 따로 재해석하므로 이론상 TOCTOU가 남음. 크롤 대상 도메인이 고정이라 실질 위험은 낮음 |
+
+---
+
+## 4. 이후 작업 시 지킬 보안 규칙
+
+- 외부 프로세스: **`shell: true` 금지**, 사용자/파일 유래 문자열을 명령줄·스크립트 텍스트에 끼우지 말 것(환경변수나 인자 배열로 전달).
+- 네트워크: 메인 프로세스의 모든 외부 요청은 `safeFetch`, 받은 이미지는 `openRasterImage`를 통과시킬 것. 렌더러에서 네트워크 요청 금지(CSP).
+- 파일 접근 IPC는 라이브러리 경계(+필요 시 "방금 선택창에서 고른 경로") 검증, 파일을 *실행*하는 동작은 `.exe` 한정이거나 네이티브 확인창.
+- 새 `BrowserWindow`는 반드시 `secureWebPreferences()`를 사용, 원격 URL 로드 금지.
+- 새 비밀값 설정은 `settingsRepository`의 `SECRET_KEYS`에 추가(DPAPI 암호화).
+- 의존성 추가/갱신 시 `npm run audit:prod`, 설치는 `npm ci`.
+- `libmpv-2.dll`을 바꾸면 `CHECKSUMS.sha256`을 검증 후 갱신.

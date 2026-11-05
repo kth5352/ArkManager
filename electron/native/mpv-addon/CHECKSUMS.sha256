@@ -1,0 +1,4 @@
+# SHA-256 of third-party binaries shipped with the app (checked by scripts/verify-native-binaries.mjs).
+# Recorded 2026-11-05 from the copy tracked in this repository. Before trusting it, compare it with
+# the official libmpv build you originally downloaded it from, and re-record only after verifying a new one.
+53fe8e00141f032640c6fef5be48b93c2c777a3df2f3a4e1974689e5cb17ecd6  electron/native/mpv-addon/libmpv-2.dll
