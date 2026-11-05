@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { BrowserWindow, ipcMain } from 'electron'
 import {
   IPC_CHANNELS,
@@ -49,7 +50,10 @@ export function registerMpvHandlers(
     // 1280x720 is only the initial render size, used for the handful of
     // frames produced before the renderer's ResizeObserver reports the real
     // surface size (one debounce cycle after mount) via MPV_RESIZE.
-    mpv.loadFile(filePath, 1280, 720, isVideo)
+    // Hand mpv the normalized absolute path that was just validated - never the
+    // raw renderer string (which could be a URL or an mpv pseudo-protocol such
+    // as edl:// or lavfi:// that merely resolves to a harmless-looking path).
+    mpv.loadFile(resolve(filePath), 1280, 720, isVideo)
   })
 
   // Re-points frame delivery at the calling window without touching playback

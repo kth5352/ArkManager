@@ -4,13 +4,15 @@ import {
   dialog,
   globalShortcut,
   Menu,
+  safeStorage,
   Tray,
   type MenuItemConstructorOptions,
 } from 'electron'
 import { IPC_CHANNELS, LocaleSchema, type Locale } from '../../shared/types/ipc'
 import { join } from 'node:path'
 import { createDbClient, type AppDatabase } from './database/client'
-import { getSetting, setSetting } from './database/settingsRepository'
+import { getSetting, migrateSecretSettings, setSetting } from './database/settingsRepository'
+import { installSecretCipher } from './database/secretStore'
 import { registerSettingsHandlers } from './ipc/settingsHandlers'
 import { registerLibrariesHandlers } from './ipc/librariesHandlers'
 import { registerScannerHandlers } from './ipc/scannerHandlers'
@@ -423,7 +425,13 @@ if (!gotSingleInstanceLock) {
     await migrateVndbSaveDirectories(join(newUserDataPath, 'saves'))
 
     const dbPath = join(newUserDataPath, NEW_DB_FILENAME)
+    installSecretCipher({
+      isAvailable: () => safeStorage.isEncryptionAvailable(),
+      encrypt: (plain) => safeStorage.encryptString(plain),
+      decrypt: (data) => safeStorage.decryptString(data),
+    })
     const db = createDbClient(dbPath)
+    migrateSecretSettings(db)
     dbRef = db
     {
       const parsedLocale = LocaleSchema.safeParse(getSetting(db, 'locale'))

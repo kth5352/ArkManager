@@ -162,6 +162,25 @@ Napi::String Init(const Napi::CallbackInfo &info) {
 
   g_p_set_option_string(g_ctx, "vo", "libmpv");
   g_p_set_option_string(g_ctx, "keep-open", "yes");
+  // SECURITY: the media files mpv opens come out of downloaded archives and
+  // must be treated as hostile. Switch off everything that lets a file make
+  // mpv reach beyond itself:
+  //  - access-references / load-unsafe-playlists: a playlist, EDL, ASX or
+  //    "ref" file could otherwise pull in http(s):// URLs (IP leak, SSRF) or
+  //    other local files.
+  //  - ytdl / load-scripts / config: no youtube-dl hook, no Lua/JS scripts,
+  //    no mpv.conf from a user-writable directory.
+  //  - audio-file-auto: do not pick up sibling audio files.
+  //  - input-default-bindings / osc: no key bindings or on-screen controller.
+  g_p_set_option_string(g_ctx, "access-references", "no");
+  g_p_set_option_string(g_ctx, "load-unsafe-playlists", "no");
+  g_p_set_option_string(g_ctx, "ytdl", "no");
+  g_p_set_option_string(g_ctx, "load-scripts", "no");
+  g_p_set_option_string(g_ctx, "config", "no");
+  g_p_set_option_string(g_ctx, "audio-file-auto", "no");
+  g_p_set_option_string(g_ctx, "input-default-bindings", "no");
+  g_p_set_option_string(g_ctx, "input-vo-keyboard", "no");
+  g_p_set_option_string(g_ctx, "osc", "no");
   g_p_set_option_string(g_ctx, "hwdec", hwdecMode.c_str());
   // libmpv's defaults (sub-auto=exact, sid=auto) would auto-load sidecar
   // subtitle files and auto-select embedded subtitle tracks, burning them into
