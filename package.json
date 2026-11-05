@@ -61,6 +61,13 @@
       "owner": "kth5352",
       "repo": "ArkManager",
       "releaseType": "release"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableCookieEncryption": true,
+      "onlyLoadAppFromAsar": true
     }
   },
   "dependencies": {

@@ -64,7 +64,7 @@ export function registerShellHandlers(db: AppDatabase): void {
     // handed to its default handler, which for .exe/.lnk/.bat/... executes
     // it - those need an explicit confirmation that only the main process
     // can show (a compromised renderer cannot click it).
-    let isDirectory = false
+    let isDirectory: boolean
     try {
       isDirectory = (await stat(path)).isDirectory()
     } catch {

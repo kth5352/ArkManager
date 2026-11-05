@@ -34,10 +34,10 @@ describe('readExeFileVersion (command-injection hardening)', () => {
 
   it('resolves null on failure, empty output, or an invalid path', async () => {
     execFileMock.mockImplementationOnce((_f, _a, _o, cb) => cb(new Error('boom'), ''))
-    await expect(readExeFileVersion('C:\a.exe')).resolves.toBeNull()
+    await expect(readExeFileVersion('C:/a.exe')).resolves.toBeNull()
     execFileMock.mockImplementationOnce((_f, _a, _o, cb) => cb(null, '  \n'))
-    await expect(readExeFileVersion('C:\a.exe')).resolves.toBeNull()
+    await expect(readExeFileVersion('C:/a.exe')).resolves.toBeNull()
     await expect(readExeFileVersion('')).resolves.toBeNull()
-    await expect(readExeFileVersion('C:\a\0.exe')).resolves.toBeNull()
+    await expect(readExeFileVersion('C:/a\0.exe')).resolves.toBeNull()
   })
 })

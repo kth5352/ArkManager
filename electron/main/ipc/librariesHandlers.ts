@@ -27,7 +27,7 @@ export function registerLibrariesHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.LIBRARIES_ADD, async (event, payload: unknown) => {
     const { name, path } = AddLibraryRequestSchema.parse(payload)
 
-    let isDirectory = false
+    let isDirectory: boolean
     try {
       isDirectory = statSync(path).isDirectory()
     } catch {
