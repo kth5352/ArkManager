@@ -1,3 +1,4 @@
+import { extname } from 'node:path'
 import { dialog, ipcMain } from 'electron'
 import {
   IPC_CHANNELS,
@@ -20,6 +21,12 @@ import { resolveGameEntryKey } from './resolveGameEntryKey'
 import { listLibraries } from '../database/librariesRepository'
 import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
 import type { AppDatabase } from '../database/client'
+
+// spawn() is only ever given a real Windows executable. Anything else
+// (.bat/.cmd/.lnk/.js ... or an option-looking string) is refused outright.
+function isExecutableFile(path: string): boolean {
+  return !path.includes('\0') && extname(path).toLowerCase() === '.exe'
+}
 
 function libraryRootsOf(db: AppDatabase): string[] {
   return listLibraries(db).map((library) => library.path)
@@ -57,7 +64,10 @@ export function registerLaunchHandlers(db: AppDatabase): void {
 
   ipcMain.handle(IPC_CHANNELS.LAUNCH_SET_CONFIG, (_event, payload: unknown) => {
     const { identifier, config } = SetLaunchConfigRequestSchema.parse(payload)
-    if (!isPathWithinAnyLibrary(config.executablePath, libraryRootsOf(db))) {
+    if (
+      !isExecutableFile(config.executablePath) ||
+      !isPathWithinAnyLibrary(config.executablePath, libraryRootsOf(db))
+    ) {
       throw new Error('허용되지 않은 실행 파일 경로입니다.')
     }
     const { key, keyType } = resolveGameEntryKey(identifier)
@@ -81,7 +91,10 @@ export function registerLaunchHandlers(db: AppDatabase): void {
     // (isNoLaunchConfigError -> LaunchConfigDialog) rather than a raw crash,
     // and is more useful than "launch failed" for a path the user never
     // actually chose.
-    if (!isPathWithinAnyLibrary(userData.launchConfig.executablePath, libraryRootsOf(db))) {
+    if (
+      !isExecutableFile(userData.launchConfig.executablePath) ||
+      !isPathWithinAnyLibrary(userData.launchConfig.executablePath, libraryRootsOf(db))
+    ) {
       throw new Error(NO_LAUNCH_CONFIG_ERROR_MESSAGE)
     }
 

@@ -1,4 +1,5 @@
-import { shell, ipcMain } from 'electron'
+import { stat } from 'node:fs/promises'
+import { BrowserWindow, dialog, shell, ipcMain } from 'electron'
 import {
   IPC_CHANNELS,
   OpenPathRequestSchema,
@@ -6,6 +7,8 @@ import {
   ShowItemInFolderRequestSchema,
 } from '../../../shared/types/ipc'
 import { buildExternalUrl } from '../shell/buildExternalUrl'
+import { isRiskyToOpen } from '../shell/openPathPolicy'
+import { getSetting } from '../database/settingsRepository'
 import { listLibraries } from '../database/librariesRepository'
 import { listGamesWithSavePath } from '../database/gameUserDataRepository'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from '../thumbnailProtocol'
@@ -51,12 +54,72 @@ export function registerShellHandlers(db: AppDatabase): void {
     shell.showItemInFolder(path)
   })
 
-  ipcMain.handle(IPC_CHANNELS.SHELL_OPEN_PATH, async (_event, payload: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.SHELL_OPEN_PATH, async (event, payload: unknown) => {
     const { path } = OpenPathRequestSchema.parse(payload)
-    if (!isPathWithinAnyLibrary(path, libraryRootsOf(db))) {
+    if (path.includes('\0') || !isPathWithinAnyLibrary(path, libraryRootsOf(db))) {
       throw new Error('Path is outside registered libraries.')
     }
+
+    // Folders open in the OS file explorer without any risk. A *file* is
+    // handed to its default handler, which for .exe/.lnk/.bat/... executes
+    // it - those need an explicit confirmation that only the main process
+    // can show (a compromised renderer cannot click it).
+    let isDirectory = false
+    try {
+      isDirectory = (await stat(path)).isDirectory()
+    } catch {
+      throw new Error('Path does not exist.')
+    }
+    if (!isDirectory && isRiskyToOpen(path)) {
+      const texts = openConfirmTexts(getSetting(db, 'locale'))
+      const owner = BrowserWindow.fromWebContents(event.sender)
+      const options = {
+        type: 'warning' as const,
+        buttons: [texts.cancel, texts.run],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+        title: texts.title,
+        message: texts.message,
+        detail: path,
+      }
+      const { response } = owner
+        ? await dialog.showMessageBox(owner, options)
+        : await dialog.showMessageBox(options)
+      if (response !== 1) return
+    }
+
     const error = await shell.openPath(path)
     if (error) throw new Error(error)
   })
+}
+
+function openConfirmTexts(locale: string | undefined): {
+  title: string
+  message: string
+  cancel: string
+  run: string
+} {
+  if (locale === 'ja') {
+    return {
+      title: 'ファイルを開く',
+      message: 'このファイルは実行される可能性があります。信頼できる場合のみ開いてください。',
+      cancel: 'キャンセル',
+      run: '開く',
+    }
+  }
+  if (locale === 'en') {
+    return {
+      title: 'Open file',
+      message: 'This file may run a program. Only open it if you trust it.',
+      cancel: 'Cancel',
+      run: 'Open',
+    }
+  }
+  return {
+    title: '파일 열기',
+    message: '이 파일은 프로그램을 실행할 수 있습니다. 신뢰하는 파일일 때만 여세요.',
+    cancel: '취소',
+    run: '열기',
+  }
 }

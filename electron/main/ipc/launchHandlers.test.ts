@@ -84,6 +84,22 @@ describe('LAUNCH_GAME library-boundary re-check (D4 follow-up)', () => {
     expect(launchGameMock).not.toHaveBeenCalled()
   })
 
+  it('refuses to spawn anything that is not an .exe, even inside a library (bat/lnk/js ...)', async () => {
+    for (const file of ['run.bat', 'run.cmd', 'run.lnk', 'run.js', 'run.exe.bat', 'run']) {
+      setLaunchConfig(db, 'RJ03333333', 'code', {
+        executablePath: join(libraryRoot, 'Game', file),
+        launchMode: 'normal',
+      })
+      await expect(
+        registeredHandler(IPC_CHANNELS.LAUNCH_GAME)(
+          {},
+          { identifier: { code: { value: 'RJ03333333', type: 'RJ' }, path: '' } }
+        )
+      ).rejects.toThrow(NO_LAUNCH_CONFIG_ERROR_MESSAGE)
+    }
+    expect(launchGameMock).not.toHaveBeenCalled()
+  })
+
   it('still throws the existing no-config error when no launchConfig was ever set', async () => {
     await expect(
       registeredHandler(IPC_CHANNELS.LAUNCH_GAME)(

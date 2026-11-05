@@ -10,10 +10,16 @@ const electronMocks = vi.hoisted(() => ({
   openExternal: vi.fn(),
   openPath: vi.fn(),
   showItemInFolder: vi.fn(),
+  showMessageBox: vi.fn(),
+  stat: vi.fn(),
 }))
+
+vi.mock('node:fs/promises', () => ({ stat: electronMocks.stat }))
 
 vi.mock('electron', () => ({
   ipcMain: { handle: electronMocks.handle },
+  dialog: { showMessageBox: electronMocks.showMessageBox },
+  BrowserWindow: { fromWebContents: () => null },
   shell: {
     openExternal: electronMocks.openExternal,
     openPath: electronMocks.openPath,
@@ -39,6 +45,8 @@ describe('shellHandlers', () => {
     electronMocks.openExternal.mockReset()
     electronMocks.openPath.mockReset().mockResolvedValue('')
     electronMocks.showItemInFolder.mockReset()
+    electronMocks.showMessageBox.mockReset().mockResolvedValue({ response: 0 })
+    electronMocks.stat.mockReset().mockResolvedValue({ isDirectory: () => false })
     db = createDbClient(':memory:')
     addLibrary(db, 'Games', 'D:\\Games')
     registerShellHandlers(db)
@@ -87,13 +95,50 @@ describe('shellHandlers', () => {
   })
 
   describe(IPC_CHANNELS.SHELL_OPEN_PATH, () => {
-    it('opens a path within a registered library', async () => {
+    it('opens a folder within a registered library without any prompt', async () => {
+      electronMocks.stat.mockResolvedValue({ isDirectory: () => true })
+      await registeredHandler(IPC_CHANNELS.SHELL_OPEN_PATH)({}, { path: 'D:\\Games\\MyGame' })
+
+      expect(electronMocks.showMessageBox).not.toHaveBeenCalled()
+      expect(electronMocks.openPath).toHaveBeenCalledWith('D:\\Games\\MyGame')
+    })
+
+    it('opens a harmless document without a prompt', async () => {
+      await registeredHandler(IPC_CHANNELS.SHELL_OPEN_PATH)(
+        {},
+        { path: 'D:\\Games\\MyGame\\readme.txt' }
+      )
+
+      expect(electronMocks.showMessageBox).not.toHaveBeenCalled()
+      expect(electronMocks.openPath).toHaveBeenCalledWith('D:\\Games\\MyGame\\readme.txt')
+    })
+
+    it('asks before running an executable file and does nothing when the user cancels', async () => {
+      electronMocks.showMessageBox.mockResolvedValue({ response: 0 })
+      await registeredHandler(IPC_CHANNELS.SHELL_OPEN_PATH)(
+        {},
+        { path: 'D:\\Games\\MyGame\\game.exe' }
+      )
+
+      expect(electronMocks.showMessageBox).toHaveBeenCalledTimes(1)
+      expect(electronMocks.openPath).not.toHaveBeenCalled()
+    })
+
+    it('runs an executable file only after the user confirms', async () => {
+      electronMocks.showMessageBox.mockResolvedValue({ response: 1 })
       await registeredHandler(IPC_CHANNELS.SHELL_OPEN_PATH)(
         {},
         { path: 'D:\\Games\\MyGame\\game.exe' }
       )
 
       expect(electronMocks.openPath).toHaveBeenCalledWith('D:\\Games\\MyGame\\game.exe')
+    })
+
+    it('rejects a path containing a NUL byte', async () => {
+      await expect(
+        registeredHandler(IPC_CHANNELS.SHELL_OPEN_PATH)({}, { path: 'D:\\Games\\a\0.txt' })
+      ).rejects.toThrow()
+      expect(electronMocks.openPath).not.toHaveBeenCalled()
     })
 
     it('rejects a path outside every registered library, even a configured save path', async () => {
