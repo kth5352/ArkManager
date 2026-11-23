@@ -1,5 +1,7 @@
 # Ark Manager UI 개편 인수인계 — 여기부터 읽기
 
+> **역사 기록(2026-11-23 표기).** 이 개편(U1~U8)은 1.2.0에 반영되었습니다. 결과는 `docs/verification/2026-09-09-ui-renewal-results.md`에 있고, **시각 검증은 아직 미실시**입니다. 아래에 링크된 설계·계획 문서(`docs/superpowers/`, `.superpowers/`)는 gitignore 대상이며 현재 작업 폴더에도 없습니다. 현재 기능과 할 일은 `docs/FEATURES.md`를 보세요.
+
 2026-09-09 / 조사 기준 `15cdc17` / 앱 버전 `1.1.1`.
 
 ## 현재 요청과 상태

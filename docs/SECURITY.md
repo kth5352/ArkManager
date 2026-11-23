@@ -12,7 +12,7 @@
 
 | # | 심각도 | 발견 | 조치 | 상태 |
 |---|---|---|---|---|
-| 1 | **치명** | `readExeFileVersion`이 `shell: true` + PowerShell 스크립트 문자열 보간. 다운로드한 게임의 폴더/파일 이름에 `$(...)`, `'`, `&` 등이 있으면 **세이브 스냅샷 생성·버전 불일치 검사 시 임의 명령 실행** | 셸 제거, 절대경로 `powershell.exe` 직접 실행, 경로는 환경변수(`ARK_EXE_PATH`)로만 전달(스크립트는 값을 데이터로만 읽음). 적대적 파일명으로 실제 PowerShell 실행해 무해함 확인, 회귀 테스트 추가 | ✅ 수정 |
+| 1 | **높음 (악용 미확정)** | `readExeFileVersion`이 `shell: true`(cmd.exe)로 PowerShell을 띄우면서, **다운로드한 파일/폴더 이름**을 스크립트 문자열에 직접 끼워 넣음. 이스케이프는 ASCII `'` 하나만 처리해 두 단계 파서(cmd.exe, PowerShell)에 대한 방어로는 불완전한 구조. **실제 임의 명령 실행까지는 재현하지 못했음**(시도한 입력은 모두 실행되지 않고 무시되거나 구문 오류로 끝남) | 구조 자체를 제거: 셸 없이 절대경로 `powershell.exe` 직접 실행, 경로는 환경변수(`ARK_EXE_PATH`)로만 전달하고 스크립트는 값을 데이터로만 읽음. 회귀 테스트 추가 | ✅ 수정 |
 | 2 | 높음 | Electron 43.2.0에 공개된 취약점 다수(샌드박스 상속, `file://` 교차 출처 읽기, 프리로드 캐시 오염 등, 43.8.1 미만 해당) | Electron **43.8.7**로 상향 | ✅ 수정 |
 | 3 | 높음 | 프로덕션 의존성 취약점 5건(sharp/libheif·librsvg, zod 메모리 고갈, undici 다수, seroval, js-yaml) | sharp 0.35.5, zod 4.6.7, `overrides`로 undici/seroval/js-yaml 상향 → `npm audit --omit=dev` **0건** | ✅ 수정 |
 | 4 | 높음 | 렌더러 방어선 부재: CSP 없음, `window.open`/페이지 이동/`<webview>` 차단 없음, 권한 요청 무방비, IPC 발신자 검증 없음, `webPreferences` 기본값 의존 | `electron/main/security.ts` 신설: 명시적 `sandbox/contextIsolation/nodeIntegration:false`, 신뢰 URL 외 이동·팝업·webview 차단, 클립보드 쓰기 외 모든 권한 거부, **모든 `ipcMain.handle/on`이 앱 자신의 최상위 프레임에서 온 호출인지 검증**, 프로덕션 빌드에 CSP(`default-src 'none'`, 스크립트·connect는 자기 자신만) 주입 | ✅ 수정 |
@@ -70,6 +70,17 @@
 | 낮음 | `SHELL_SHOW_ITEM_IN_FOLDER` 등은 경로 존재 확인 없이 호출 | 라이브러리 경계 검증은 있음. 영향 미미 |
 | 낮음 | Explorer 얕은 스캔은 라이브러리 밖 폴더도 나열 | 파일 탐색기 기능의 일부(읽기 전용 목록). 변경 작업은 모두 라이브러리 안으로 제한됨 |
 | 정보 | DNS 리바인딩 | `safeFetch`는 요청 직전 DNS를 검사하지만 Node `fetch`가 따로 재해석하므로 이론상 TOCTOU가 남음. 크롤 대상 도메인이 고정이라 실질 위험은 낮음 |
+
+### 3.1 2026-11-23 재검증에서 추가로 확인한 잔여 위험
+
+| 우선순위 | 항목 | 설명 |
+|---|---|---|
+| 높음 | `SETTINGS_SET`이 값을 검증하지 않음 → `locale-emulator-path` | 렌더러가 임의 문자열을 저장할 수 있고, `launchGame`은 LE 모드에서 이 경로를 존재 확인만 하고 `spawn`함. 장악된 렌더러가 LE 모드 실행 설정이 있는 게임을 실행시키면 **임의 파일 실행**(실행 설정의 `.exe`·라이브러리 검사를 우회). 수정: 이 키는 `LAUNCH_PICK_LOCALE_EMULATOR_PATH`가 방금 반환한 경로만 저장(또는 파일명 `LEProc.exe` + 존재 확인) |
+| 중간 | `SETTINGS_SET` → `media-folder` | 미디어 신뢰 루트(`computeMediaAllowedRoots`)라서 `C:\` 등으로 바꾸면 그 아래 파일을 mpv/ffmpeg로 열거나 MP3/FLAC/M4A에 표지를 삽입(쓰기)할 수 있게 됨. ASMR 재생(`usePlayAsmrFolder`)이 이 값을 프로그램적으로 설정하므로, 라이브러리 하위 또는 picker 경로만 허용하는 방식으로 제한 |
+| 낮음 | `libmpv-2.dll` 상대 이름 로드 | `LoadLibraryA("libmpv-2.dll")` + PATH 앞에 애드온 폴더 추가 방식. Windows 검색 순서상 현재 작업 폴더가 PATH보다 먼저라 DLL 심기 여지가 있음 → 전체 경로 + `LoadLibraryExW` 권장(애드온 재빌드 필요) |
+| 낮음 | `detectGameVersion(identifier.path)` | 세이브 스냅샷/버전 비교 시 렌더러가 보낸 경로로 폴더의 exe를 나열하고 버전을 읽음(읽기 전용, 셸 없음). 라이브러리 경계 검증 추가 권장 |
+| 낮음 | 재귀 스캔도 경계 검사 없음 | 얕은 스캔과 같이 읽기 전용 목록. 의도된 동작 |
+| 정보 | lint 실패 | `scripts/verify-native-binaries.mjs`가 ESLint Node globals 설정 밖이라 `npm run lint`가 오류 5건으로 실패(§15의 "ESLint 오류 0"은 이 스크립트 추가 전 결과) |
 
 ---
 

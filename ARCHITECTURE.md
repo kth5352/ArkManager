@@ -4,9 +4,9 @@
 
 개인 게임/미디어 라이브러리를 관리하는 Windows용 Electron 데스크톱 애플리케이션의 설계와 구현을 정리한 문서입니다. 폴더 단위로 등록한 라이브러리를 스캔해 식별 코드를 인식하고, 여러 외부 소스에서 메타데이터(표지, 제목, 제작사, 발매일, 태그)를 가져와 붙여주며, 파일 탐색기·미디어 플레이어·세이브 데이터 관리 기능을 하나의 앱 안에 통합합니다.
 
-**규모**: 약 2.5주 개발 기간, 468개 커밋, 렌더러·메인 프로세스 합산 약 21,000줄의 TypeScript(테스트 제외), 렌더러 28개·메인 프로세스 55개 이상의 유닛 테스트 파일.
+**규모** (2026-11-23, `security/hardening` `aa51de8` 기준): 714개 커밋, 테스트 제외 약 31,000줄의 TypeScript/TSX, IPC 채널 106개, 테스트 파일 141개(렌더러 54·메인 83·shared 4) / 테스트 1009개.
 
-**기술 스택**: Electron + electron-vite · React 19 + TypeScript(strict) · Tailwind CSS v4 + shadcn/ui(Radix) · Zustand + TanStack Query v5 + TanStack Router · Drizzle ORM + better-sqlite3 · dnd-kit · react-window(가상 스크롤) · Vitest
+**기술 스택**: Electron 43 + electron-vite · React 19 + TypeScript(strict) · Tailwind CSS v4 + shadcn/ui(Radix) · Zustand + TanStack Query v5 + TanStack Router · Drizzle ORM + better-sqlite3 · dnd-kit · react-window(가상 스크롤) · libmpv(N-API 애드온, utilityProcess) · sharp · ffmpeg-static · Vitest
 
 ---
 
@@ -16,7 +16,8 @@ Electron의 3계층 구조(메인 프로세스 / 프리로드 / 렌더러)를 �
 
 ```
 electron/main/      메인 프로세스 — Node 권한 전체. IPC 핸들러, SQLite, 파일 스캐너,
-                    메타데이터 크롤러, 파일 시스템 작업, 커스텀 프로토콜(thumb://, media://)
+                    메타데이터 크롤러, 파일 시스템 작업, 커스텀 프로토콜(thumb://, mediathumb://),
+                    mpv 유틸리티 프로세스 관리, 보안 잠금(security.ts)
 electron/preload/    렌더러에 노출할 API 표면을 정의하는 유일한 진입점 (contextBridge)
 src/                 렌더러 프로세스 — React 19, Node API 직접 접근 불가
 shared/              메인·렌더러 양쪽에서 import하는 타입/Zod 스키마/순수 로직
@@ -26,7 +27,7 @@ shared/              메인·렌더러 양쪽에서 import하는 타입/Zod 스�
 
 ### IPC 설계 원칙
 
-`shared/types/ipc.ts` 하나에 77개의 채널 상수(`IPC_CHANNELS`)와 요청/응답 스키마를 전부 모아둡니다. 거의 모든 핸들러가 동일한 패턴을 따릅니다.
+`shared/types/ipc.ts` 하나에 106개의 채널 상수(`IPC_CHANNELS`)와 요청/응답 스키마를 전부 모아둡니다. 거의 모든 핸들러가 동일한 패턴을 따릅니다.
 
 ```ts
 ipcMain.handle(IPC_CHANNELS.X, (_event, payload: unknown) => {
@@ -35,7 +36,7 @@ ipcMain.handle(IPC_CHANNELS.X, (_event, payload: unknown) => {
 })
 ```
 
-payload는 항상 `unknown`으로 받고 Zod 스키마로 `.parse()`한 뒤에만 사용합니다. 프리로드가 제공하는 타입 지정 래퍼 함수를 우회해 렌더러가 임의의 payload를 직접 보내더라도(버그든, 손상된 상태든) 메인 프로세스 경계에서 걸러지도록 하기 위한 장치입니다. 진행 상황을 알리는 push 전용 채널(`SCANNER_SCAN_PROGRESS`, `METADATA_BULK_CRAWL_PROGRESS`, `UPDATE_STATUS` 등)은 `ipcMain.handle`이 아니라 `webContents.send`로 별도 관리합니다.
+payload는 항상 `unknown`으로 받고 Zod 스키마로 `.parse()`한 뒤에만 사용합니다. 프리로드가 제공하는 타입 지정 래퍼 함수를 우회해 렌더러가 임의의 payload를 직접 보내더라도(버그든, 손상된 상태든) 메인 프로세스 경계에서 걸러지도록 하기 위한 장치입니다. 그 앞단에서 `installTrustedIpcGuard()`(§13)가 `ipcMain.handle/on` 자체를 감싸, 앱 자신의 최상위 프레임이 아닌 곳에서 온 호출은 스키마 검사까지 가기 전에 거부합니다. 진행 상황을 알리는 push 전용 채널(`SCANNER_SCAN_PROGRESS`, `METADATA_BULK_CRAWL_PROGRESS`, `UPDATE_STATUS` 등)은 `ipcMain.handle`이 아니라 `webContents.send`로 별도 관리합니다.
 
 ### 신뢰 경계
 
@@ -79,6 +80,10 @@ better-sqlite3 위에 Drizzle ORM을 얹어 타입 지정 쿼리를 작성하지
 | `save_snapshot_labels`      | 세이브 스냅샷별 메모/버전 라벨                                                                     |
 | `media_thumbnail_overrides` | 표지를 파일에 직접 삽입할 수 없는 미디어의 앱 자체 썸네일                                          |
 | `excluded_entries`          | 목록에서 개별적으로 숨긴 경로                                                                      |
+| `sort_preferences`          | 페이지별 정렬 필드/방향                                                                            |
+| `media_playlists`           | 저장형 재생목록(이름, 사용자 지정 표지)                                                            |
+| `media_playlist_tracks`     | 재생목록 트랙(경로, 이름, 순서)                                                                    |
+| `media_track_likes`         | 좋아요한 트랙 경로                                                                                 |
 
 **항목 식별 모델**: 각 항목은 파일명에서 인식된 **코드**(RJ/VJ/ST/VNV/VNR/GC) 또는 코드가 없을 경우 **정규화된 경로**로 식별됩니다. `resolveGameEntryKey()`가 이 우선순위를 한 곳에서 관리해 여러 핸들러가 각자 다른 규칙을 쓰지 않도록 합니다. 단, 숨김 목록(`excluded_entries`)만은 의도적으로 항상 경로 기준입니다 — 같은 코드를 가진 중복 사본 중 하나만 숨기고 싶은 경우가 실제로 있기 때문입니다.
 
@@ -135,6 +140,10 @@ export function legacyVndbCodeToCanonical(value: string): string | null {
 ### 백그라운드 일괄 크롤 큐
 
 캐시에 없는 코드들을 한꺼번에 조회할 때, 병렬이 아니라 **1초 간격으로 하나씩 순차 처리**하도록 명시적으로 설계했습니다. DLsite에 문서화된 요청 제한은 없지만, 동시에 여러 요청을 몰아서 보내면 이 앱의 IP가 차단될 위험이 있다고 판단한 결정입니다. 세션 내에서 이미 시도한 코드는 `Set`으로 추적해 여러 페이지에서 중복 요청되지 않도록 하고, 개별 코드 실패는 전체 큐를 막지 않고 건너뜁니다.
+
+실패는 `metadata_failures`에 **영속**되고, 자동 큐는 실패 기록이 있는 코드를 다시 넣지 않습니다(1.2.1 — 그 전에는 인메모리 `Set`이 재시작마다 초기화되어 실패 코드가 매 실행 재크롤됐음). 실패 코드를 다시 시도하는 방법은 단건 새로고침과 File 메뉴의 "전체 메타데이터 새로고침"(`forceEnqueue`, 캐시된 코드 + 실패 코드 전부)뿐입니다. 참고: 일괄 큐는 기본 deps로 크롤하므로 외부 메타데이터 프로바이더는 단건 크롤에서만 체인에 들어갑니다.
+
+모든 외부 요청은 `net/safeFetch.ts`를 거칩니다(https만, 사설/루프백 대역 차단, 리다이렉트 수동 재검증, 응답 크기 상한). 크롤 대상 HTML/JSON이 주는 표지 URL은 제3자가 통제하는 값이라 SSRF 경로가 될 수 있기 때문입니다.
 
 ---
 
@@ -229,11 +238,25 @@ TypeScript의 구조적 타이핑 덕분에 한국어 쪽에 새 문자열 키�
 
 ## 11. 테스트 전략
 
-렌더러 쪽에는 컴포넌트 렌더링 테스트가 없습니다. 대신 로직을 최대한 작은 순수 함수로 뽑아내고(이름변경 템플릿 엔진, 경로 정규화, LRC 파서, diff 라벨링, 셔플 알고리즘 등) 그 함수들을 촘촘히 테스트합니다. 컴포넌트 자체의 동작은 TypeScript strict 모드와 수동 검증에 맡기되, 까다로운 버그를 고친 자리에는 예외 없이 "왜 이렇게 처리했는가"를 설명하는 주석을 남겨 — 회귀 테스트는 없지만 회귀를 막기 위한 맥락은 코드에 그대로 남도록 했습니다. 메인 프로세스는 반대로 저장소·파일 작업·스캐너·크롤러·IPC 핸들러 전반에 걸쳐 훨씬 두껍게 테스트되어 있습니다 — 파일 시스템·DB·외부 네트워크에 닿는 코드일수록 자동화된 검증의 가치가 크다고 판단한 결과입니다.
+렌더러 쪽 테스트는 대부분 순수 함수 대상이고, 컴포넌트·훅 렌더링 테스트는 회귀를 고친 자리에 한정된 소수(`// @vitest-environment jsdom` — RatingMemoDialog/Section, SaveManagerDialog, HoverTooltip, useVisibleGames, useMediaPlayerSync, useConfirmedPulse, 서비스 훅 2개)만 있습니다. 기본적으로는 로직을 최대한 작은 순수 함수로 뽑아내고(이름변경 템플릿 엔진, 경로 정규화, LRC 파서, diff 라벨링, 셔플 알고리즘 등) 그 함수들을 촘촘히 테스트합니다. 컴포넌트 자체의 동작은 TypeScript strict 모드와 수동 검증에 맡기되, 까다로운 버그를 고친 자리에는 예외 없이 "왜 이렇게 처리했는가"를 설명하는 주석을 남겨 — 회귀 테스트는 없지만 회귀를 막기 위한 맥락은 코드에 그대로 남도록 했습니다. 메인 프로세스는 반대로 저장소·파일 작업·스캐너·크롤러·IPC 핸들러 전반에 걸쳐 훨씬 두껍게 테스트되어 있습니다 — 파일 시스템·DB·외부 네트워크에 닿는 코드일수록 자동화된 검증의 가치가 크다고 판단한 결과입니다.
 
 ---
 
-## 12. 설계 전반에서 반복되는 원칙
+## 12. 다층 보안 (security/hardening 브랜치)
+
+이 앱이 다루는 폴더·파일 이름, 미디어·자막·이미지는 대부분 출처를 알 수 없는 다운로드물입니다. 그래서 "렌더러가 장악됐다"고 가정해도 피해가 단계마다 줄어들도록 겹겹이 막습니다: **CSP → 탐색·팝업·webview 차단 → IPC 발신자 검증 → Zod 스키마 → 경로 경계 검증 → 메인 프로세스 네이티브 확인창**.
+
+- **창**: 모든 `BrowserWindow`는 `secureWebPreferences()`(sandbox, contextIsolation, nodeIntegration off)를 씁니다. 기본값에 기대지 않고 명시해 두면 Electron 기본값이 바뀌거나 누가 실수로 약화해도 유지됩니다. 권한은 클립보드 쓰기 외 전부 거부합니다.
+- **CSP**: 프로덕션 빌드의 `index.html`에만 주입합니다(Vite 개발 서버의 HMR이 인라인 스크립트를 필요로 하기 때문). 렌더러는 네트워크가 필요 없으므로 `connect-src`는 자기 자신과 두 커스텀 이미지 스킴뿐입니다.
+- **사용자 의도의 증명**: "이 경로를 신뢰해도 되는가"를 판단하는 기준은 두 가지입니다. ① 이미 신뢰한 루트(등록 라이브러리) 아래인가 ② 사용자가 **방금 네이티브 선택창에서 고른** 경로인가. 위험한 동작(라이브러리 루트 등록, 실행 가능한 파일 열기)은 메인 프로세스의 네이티브 확인창을 띄워, 장악된 렌더러가 사용자의 클릭을 위조할 수 없게 합니다.
+- **해석기 제거**: 신뢰할 수 없는 문자열이 셸·스크립트 텍스트에 끼어들지 않도록 데이터와 코드의 경로를 분리합니다(`readExeFileVersion`은 셸 없이 실행하고 경로는 환경변수로만 전달). 디코더 공격면은 허용 목록으로 좁힙니다(이미지는 jpeg/png/webp/gif만, mpv는 재생목록 참조·ytdl·스크립트 off).
+- **공급망·패키징**: Electron Fuses로 `ELECTRON_RUN_AS_NODE`/`NODE_OPTIONS`/`--inspect` 진입점을 막고, 소스 없이 동봉하는 `libmpv-2.dll`은 SHA-256을 기록해 빌드 전에 검증합니다.
+
+남은 위험(렌더러 `file://` 로드, `SETTINGS_SET` 값 무검증, `realpath` 미사용 등)과 후속 작업은 `docs/SECURITY.md` §3과 `docs/FEATURES.md` §20에 정리되어 있습니다.
+
+---
+
+## 13. 설계 전반에서 반복되는 원칙
 
 - **모든 IPC 입력은 경계에서 검증한다** (Zod `.parse`), **모든 파일 시스템 접근은 경계에서 권한을 확인한다** (`isPathWithinAnyLibrary`) — 신뢰할 수 없는 입력이 시스템 깊숙이 들어가기 전에 걸러내는 일관된 원칙입니다.
 - **실패를 조용히 감추지 않는다.** 메타데이터 조회 실패는 사유와 함께 기록되고, 파일 쓰기 실패는 백업 복원과 해시 검증까지 거칩니다.
