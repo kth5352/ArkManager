@@ -7,6 +7,7 @@ import {
   MpvSeekRequestSchema,
   MpvSetEqBandRequestSchema,
   MpvSetVolumeRequestSchema,
+  type MpvEndedPayload,
 } from '../../../shared/types/ipc'
 import * as mpv from '../media/mpvProcessManager'
 import { getSetting } from '../database/settingsRepository'
@@ -191,11 +192,17 @@ export function registerMpvHandlers(
     }
     // The current track hit its natural end (see mpvWorker.ts's
     // pollAndForwardEvents) - the renderer decides what that means
-    // (auto-advance vs repeat-one), so this just relays the bare signal.
+    // (auto-advance vs repeat-one), so this just relays the signal with the
+    // worker's identity of the load that ended (never mpv.getLoadState(): the
+    // user may already have moved on to the next track).
     if (m.type === 'ended') {
       const win = mpv.getCurrentHostWindow()
       if (!win || win.isDestroyed()) return
-      win.webContents.send(IPC_CHANNELS.MPV_ENDED)
+      const payload: MpvEndedPayload = {
+        loadGeneration: m.loadGeneration ?? 0,
+        loadedPath: m.loadedPath ?? null,
+      }
+      win.webContents.send(IPC_CHANNELS.MPV_ENDED, payload)
     }
   })
 }

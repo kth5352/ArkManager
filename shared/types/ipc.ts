@@ -724,6 +724,15 @@ export const MpvStateUpdateSchema = z.object({
 })
 export type MpvStateUpdate = z.infer<typeof MpvStateUpdateSchema>
 
+// Pushed on mpv:ended - the identity of the load that reached its natural end,
+// the same fields as MpvStateUpdate. The renderer ignores an `ended` whose
+// loadedPath is not its current track (an EOF that raced a user track change);
+// a null loadedPath (no load context) keeps the plain auto-advance behavior.
+export interface MpvEndedPayload {
+  loadGeneration: number
+  loadedPath: string | null
+}
+
 // PIP 창(subtitle-pip:line-update)이 표시할 상태 - 호스팅 중인 창이 계산해
 // 메인 프로세스로 보내면(렌더러→메인이 신뢰 경계이므로 메인 프로세스의 핸들러가
 // 이 스키마로 검증한다) 그대로 PIP 창에 릴레이된다. 'line' 외 세 값은 PIP가

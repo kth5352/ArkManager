@@ -4,7 +4,13 @@
 // the whole app (concretely validated via a deliberate crash test in
 // today's feasibility spikes).
 import { join } from 'node:path'
-import { buildStateUpdate, NO_LOAD_IDENTITY, type WorkerLoadIdentity } from './workerStateMessage'
+import {
+  buildEndedMessage,
+  buildStateUpdate,
+  NO_LOAD_IDENTITY,
+  readMediaTitle,
+  type WorkerLoadIdentity,
+} from './workerStateMessage'
 
 // The addon now loads libmpv-2.dll by absolute path (<addonDir>/libmpv-2.dll,
 // derived from its own module location - see LoadLibmpvNextToAddon in
@@ -38,7 +44,8 @@ const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as {
   getTimePos: () => number | null
   getDuration: () => number | null
   getEofReached: () => boolean
-  getMediaTitle: () => string | null
+  // Optional: missing from an addon built before it existed (see readMediaTitle).
+  getMediaTitle?: () => string | null
   getHwdecCurrent: () => string
   pollEvent: () => { name: string; error?: string } | null
   shutdown: () => string
@@ -144,7 +151,7 @@ function pushStateUpdate(isPlaying: boolean): void {
       currentTime: addon.getTimePos() ?? 0,
       duration: addon.getDuration(),
       error: null,
-      mediaTitle: addon.getMediaTitle(),
+      mediaTitle: readMediaTitle(addon),
     })
   )
 }
@@ -164,7 +171,7 @@ function pollAndForwardEvents(): void {
           currentTime: addon.getTimePos() ?? 0,
           duration: addon.getDuration(),
           error: ev.error,
-          mediaTitle: addon.getMediaTitle(),
+          mediaTitle: readMediaTitle(addon),
         })
       )
     }
@@ -194,7 +201,9 @@ function checkEofReached(): void {
     // isPlayingState transition in this file) - see suppressPeriodicStateUpdates'
     // own comment for why no consumer actually needs one at this exact instant.
     suppressPeriodicStateUpdates = true
-    process.parentPort.postMessage({ type: 'ended' })
+    // Stamped with the identity of the load that ended, so the renderer can
+    // drop an `ended` that raced a user track change (see useMediaPlayback).
+    process.parentPort.postMessage(buildEndedMessage(loadIdentity))
   }
   lastEofReached = eof
 }

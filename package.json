@@ -6,8 +6,8 @@
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "npm run verify:binaries && electron-vite build && electron-builder",
-    "release": "npm run verify:binaries && electron-vite build && electron-builder --publish always",
+    "build": "npm run verify:binaries && npm run build:mpv-addon && npm run rebuild:mpv-addon && electron-vite build && electron-builder",
+    "release": "npm run verify:binaries && npm run build:mpv-addon && npm run rebuild:mpv-addon && electron-vite build && electron-builder --publish always",
     "typecheck": "tsc --build --force",
     "lint": "eslint .",
     "format": "prettier --write .",

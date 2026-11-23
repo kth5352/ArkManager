@@ -3,7 +3,7 @@ import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerSt
 import { isVideoFile } from '../../../shared/isMediaFile'
 import { computeMpvRenderSize } from '../../lib/computeMpvRenderSize'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
-import { displayTitle, shouldAdoptLoadIdentity } from './trackTitle'
+import { displayTitle, shouldAdoptLoadIdentity, shouldHandleEnded } from './trackTitle'
 import {
   acceptReportedTime,
   getMediaShortcut,
@@ -258,9 +258,19 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   // ever acted on (next()/prev() deliberately ignore it, see
   // mediaPlayerStore.ts). Repeat-one loops in place by seeking back to 0 and
   // resuming, exactly as the old handler did with currentTime = 0 + play().
+  //
+  // An `ended` of a track this window already left (the user pressed Next/
+  // Prev in the same tick the old track hit EOF) is dropped - see
+  // shouldHandleEnded. The current path is read through a ref so a track
+  // change never has to re-subscribe this listener.
+  const trackPathRef = useRef(trackPath)
+  useEffect(() => {
+    trackPathRef.current = trackPath
+  }, [trackPath])
   useEffect(() => {
     if (!isHost) return
-    return window.api.mpv.onEnded(() => {
+    return window.api.mpv.onEnded((payload) => {
+      if (!shouldHandleEnded(payload.loadedPath, trackPathRef.current)) return
       if (repeatMode === 'one') {
         seekTo(0)
         window.api.mpv.play()

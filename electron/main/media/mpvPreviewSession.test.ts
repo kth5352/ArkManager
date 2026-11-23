@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createPreviewSession,
+  isPreviewCapableAddon,
   PREVIEW_FRAME_BYTES,
   type PreviewAddon,
   type PreviewSessionOptions,
@@ -18,6 +19,7 @@ class FakeAddon implements PreviewAddon {
   shutdown = vi.fn(() => 'OK')
   setPause = vi.fn()
   setVolume = vi.fn()
+  getMediaTitle: (() => null) | undefined = vi.fn(() => null)
   pollEvent = vi.fn((): MpvEvent | null => this.events.shift() ?? null)
   renderFrame = vi.fn((_w: number, _h: number): Buffer | null => {
     this.renderCalls++
@@ -287,5 +289,25 @@ describe('createPreviewSession', () => {
     await result
     session.shutdown()
     expect(addon.shutdown).toHaveBeenCalledTimes(1)
+  })
+
+  it('answers null without ever initialising mpv when the addon predates preview mode', async () => {
+    const old = new FakeAddon()
+    old.getMediaTitle = undefined
+    const log = vi.fn()
+    const session = createPreviewSession(old, { ...options, log })
+    await expect(session.requestFrame('D:\v.mp4', 1)).resolves.toBeNull()
+    await expect(session.requestFrame('D:\v.mp4', 2)).resolves.toBeNull()
+    expect(old.init).not.toHaveBeenCalled()
+    expect(old.seek).not.toHaveBeenCalled()
+    expect(log).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('isPreviewCapableAddon', () => {
+  it('requires the getMediaTitle export that shipped with preview mode', () => {
+    expect(isPreviewCapableAddon({ getMediaTitle: () => null })).toBe(true)
+    expect(isPreviewCapableAddon({})).toBe(false)
+    expect(isPreviewCapableAddon({ getMediaTitle: 'x' })).toBe(false)
   })
 })

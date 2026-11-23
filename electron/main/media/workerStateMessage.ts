@@ -42,3 +42,24 @@ export function buildStateUpdate(
     loadedPath: identity.loadedPath,
   }
 }
+
+// The worker's `ended` message carries the same identity as its state-updates,
+// so a natural EOF of the previous track that races a user Next/Prev can be
+// recognised (and ignored) by the renderer, which is already on the next track.
+export interface WorkerEnded extends WorkerLoadIdentity {
+  type: 'ended'
+}
+
+export function buildEndedMessage(identity: WorkerLoadIdentity): WorkerEnded {
+  return { type: 'ended', loadGeneration: identity.loadGeneration, loadedPath: identity.loadedPath }
+}
+
+// getMediaTitle was added to the addon after the first release. An addon built
+// before it (a checkout updated without `npm ci`) lacks it, and calling it in
+// the worker's state loop would throw and kill the playback process - read it
+// defensively so an old addon only loses the title.
+export function readMediaTitle(addon: { getMediaTitle?: unknown }): string | null {
+  if (typeof addon.getMediaTitle !== 'function') return null
+  const title: unknown = (addon.getMediaTitle as () => unknown)()
+  return typeof title === 'string' ? title : null
+}

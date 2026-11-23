@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { displayTitle, shouldAdoptLoadIdentity } from './trackTitle'
+import { displayTitle, shouldAdoptLoadIdentity, shouldHandleEnded } from './trackTitle'
 
 describe('displayTitle', () => {
   it('uses the media title tag when present and different from the file name', () => {
@@ -39,5 +39,18 @@ describe('shouldAdoptLoadIdentity', () => {
 
   it('ignores an update without a loaded path', () => {
     expect(shouldAdoptLoadIdentity(null, 'D:/a.mp3')).toBe(false)
+  })
+})
+
+describe('shouldHandleEnded', () => {
+  it.each([
+    // [ended loadedPath, current track path, handled]
+    ['D:/a.mp3', 'D:/a.mp3', true],
+    ['D:/a.mp3', 'D:/b.mp3', false],
+    ['D:/a.mp3', null, false],
+    [null, 'D:/b.mp3', true],
+    [null, null, true],
+  ] as const)('ended %s while on %s -> %s', (ended, current, handled) => {
+    expect(shouldHandleEnded(ended, current)).toBe(handled)
   })
 })

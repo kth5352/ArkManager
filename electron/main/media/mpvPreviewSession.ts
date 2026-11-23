@@ -23,6 +23,16 @@ export interface PreviewAddon {
   renderFrame(width: number, height: number): Buffer | null
   pollEvent(): { name: string; error?: string } | null
   shutdown(): string
+  // Only used as a version marker, see isPreviewCapableAddon.
+  getMediaTitle?: unknown
+}
+
+// An addon built before preview mode existed silently ignores init's 5th
+// argument, so its "preview" mpv would start unpaused WITH audio. getMediaTitle
+// shipped in the same addon build as preview mode, so its presence marks an
+// addon that honours `{ preview: true }`.
+export function isPreviewCapableAddon(addon: { getMediaTitle?: unknown }): boolean {
+  return typeof addon.getMediaTitle === 'function'
 }
 
 export interface PreviewSessionOptions {
@@ -31,6 +41,8 @@ export interface PreviewSessionOptions {
   loadTimeoutMs?: number
   seekTimeoutMs?: number
   now?: () => number
+  // Called once when the addon is not preview-capable (see isPreviewCapableAddon).
+  log?: (msg: string) => void
 }
 
 export interface PreviewSession {
@@ -178,8 +190,19 @@ export function createPreviewSession(
     }
   }
 
+  const capable = isPreviewCapableAddon(addon)
+  let incapableLogged = false
+
   return {
     requestFrame(filePath: string, seconds: number): Promise<Uint8Array | null> {
+      if (!capable) {
+        // Never init mpv on an old addon: it would play the file audibly.
+        if (!incapableLogged) {
+          incapableLogged = true
+          options.log?.('preview disabled: mpv_addon.node predates preview mode (rebuild it)')
+        }
+        return Promise.resolve(null)
+      }
       // Starts synchronously when idle; otherwise runs after the current one.
       const start = (): Promise<Uint8Array | null> => {
         busy = true

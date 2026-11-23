@@ -17,3 +17,15 @@ export function shouldAdoptLoadIdentity(
 ): boolean {
   return updateLoadedPath !== null && updateLoadedPath === currentTrackPath
 }
+
+// An `ended` carries the identity of the load that reached EOF. If the user
+// changed track in the same tick, the worker can post the PREVIOUS track's
+// `ended` after the renderer already moved on; acting on it would skip the new
+// track (or seek it to 0 under repeat-one). A null path has no load context
+// and keeps the plain behavior.
+export function shouldHandleEnded(
+  endedLoadedPath: string | null,
+  currentTrackPath: string | null
+): boolean {
+  return endedLoadedPath === null || endedLoadedPath === currentTrackPath
+}

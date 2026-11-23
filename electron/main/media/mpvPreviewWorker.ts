@@ -28,7 +28,9 @@ process.env.PATH = `${addonDir};${process.env.PATH ?? ''}`
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- native addon, not a TS-importable module
 const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as PreviewAddon
 
-const session = createPreviewSession(addon)
+// An addon too old for preview mode makes the session answer null to every
+// request (and log once) instead of starting an audible mpv.
+const session = createPreviewSession(addon, { log: (msg) => post({ type: 'log', msg }) })
 
 function post(msg: PreviewWorkerResponse): void {
   process.parentPort.postMessage(msg)

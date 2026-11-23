@@ -20,6 +20,7 @@ import {
   type MetadataSearchSource,
   type MetadataFailureDto,
   type MoveResultDto,
+  type MpvEndedPayload,
   type MpvPreviewFrame,
   type MpvPreviewFrameRequest,
   type MpvStateUpdate,
@@ -486,10 +487,11 @@ const api = {
       ipcRenderer.on(IPC_CHANNELS.MPV_STATE_UPDATE, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MPV_STATE_UPDATE, listener)
     },
-    // Fires when the current track reaches its natural end (payload-less) -
-    // the renderer turns this into auto-advance or repeat-one.
-    onEnded: (callback: () => void): (() => void) => {
-      const listener = (): void => callback()
+    // Fires when a track reaches its natural end, with the identity of the
+    // load that ended - the renderer turns this into auto-advance or
+    // repeat-one, after dropping an `ended` of a track it already left.
+    onEnded: (callback: (payload: MpvEndedPayload) => void): (() => void) => {
+      const listener = (_event: unknown, payload: MpvEndedPayload): void => callback(payload)
       ipcRenderer.on(IPC_CHANNELS.MPV_ENDED, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MPV_ENDED, listener)
     },

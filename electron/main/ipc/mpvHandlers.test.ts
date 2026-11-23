@@ -216,4 +216,14 @@ describe('worker state-update relay', () => {
       expect.objectContaining({ error: 'ERR', mediaTitle: null, loadGeneration: 8, loadedPath: 'A' })
     )
   })
+
+  it('relays the identity carried by ended, not main current load state', () => {
+    relay({ type: 'ended', loadGeneration: 8, loadedPath: 'A' })
+    expect(send).toHaveBeenCalledWith(IPC_CHANNELS.MPV_ENDED, { loadGeneration: 8, loadedPath: 'A' })
+  })
+
+  it('gives an ended without load context a null path', () => {
+    relay({ type: 'ended' })
+    expect(send).toHaveBeenCalledWith(IPC_CHANNELS.MPV_ENDED, { loadGeneration: 0, loadedPath: null })
+  })
 })
