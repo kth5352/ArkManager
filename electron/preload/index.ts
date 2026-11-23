@@ -34,6 +34,7 @@ import {
   type UpdateStatus,
   type VersionMismatchDto,
   type WindowCloseBehavior,
+  type WindowFullscreenChangedPayload,
 } from '../../shared/types/ipc'
 import type { GameCode, ScannedEntry } from '../../shared/types/scanner'
 
@@ -517,6 +518,21 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE),
     setFromFile: (filePath: string, sourcePath: string): Promise<SetMediaThumbnailFromFileResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.MEDIA_THUMBNAIL_SET_FROM_FILE, { filePath, sourcePath }),
+  },
+  window: {
+    setFullscreen: (
+      fullscreen: boolean,
+      reason: 'media-toggle' | 'media-release'
+    ): Promise<WindowFullscreenChangedPayload> =>
+      ipcRenderer.invoke(IPC_CHANNELS.WINDOW_SET_FULLSCREEN, { fullscreen, reason }),
+    onFullscreenChanged: (
+      callback: (payload: WindowFullscreenChangedPayload) => void
+    ): (() => void) => {
+      const listener = (_event: unknown, payload: WindowFullscreenChangedPayload): void =>
+        callback(payload)
+      ipcRenderer.on(IPC_CHANNELS.WINDOW_FULLSCREEN_CHANGED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.WINDOW_FULLSCREEN_CHANGED, listener)
+    },
   },
   cache: {
     clear: (deleteSaveBackups: boolean): Promise<void> =>

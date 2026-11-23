@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { IPC_CHANNELS, MediaSyncStateSchema } from '../../../shared/types/ipc'
 import { installZoomInShortcut } from '../zoomShortcuts'
 import { setMediaHardwareKeysActive } from '../mediaHardwareKeys'
+import { attachWindowFullscreen } from './windowFullscreenHandlers'
 
 // Detached video playback lives in its own BrowserWindow (see
 // FullscreenVideoOverlay's "새 창으로 분리" button) - only one at a time; a
@@ -53,6 +54,7 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
       webPreferences: secureWebPreferences(join(__dirname, '../preload/index.js')),
     })
     installZoomInShortcut(win.webContents)
+    attachWindowFullscreen(win)
 
     if (process.env['ELECTRON_RENDERER_URL']) {
       win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/player-window`)

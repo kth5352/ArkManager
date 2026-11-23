@@ -38,6 +38,7 @@ import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
 import { registerMediaPlaylistHandlers } from './ipc/mediaPlaylistHandlers'
 import { registerMediaPlaylistCoverHandlers } from './ipc/mediaPlaylistCoverHandlers'
 import { registerMpvHandlers } from './ipc/mpvHandlers'
+import { attachWindowFullscreen, registerWindowFullscreenHandlers } from './ipc/windowFullscreenHandlers'
 import * as mpv from './media/mpvProcessManager'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
@@ -368,6 +369,7 @@ if (!gotSingleInstanceLock) {
       webPreferences: secureWebPreferences(join(__dirname, '../preload/index.js')),
     })
     installZoomInShortcut(win.webContents)
+    attachWindowFullscreen(win)
 
     win.once('ready-to-show', () => {
       if (mainWindow !== win) return
@@ -520,6 +522,7 @@ if (!gotSingleInstanceLock) {
     registerMediaPlaylistHandlers(db)
     registerMediaPlaylistCoverHandlers(db)
     registerMpvHandlers(db, () => mainWindow)
+    registerWindowFullscreenHandlers()
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a

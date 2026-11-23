@@ -113,6 +113,9 @@ export const IPC_CHANNELS = {
   // Push-only, main -> every window: a track's artwork (filePath) or every
   // work-level cover (filePath: null) changed - consumers refetch cover info.
   MEDIA_ARTWORK_CHANGED: 'media:artwork-changed',
+  WINDOW_SET_FULLSCREEN: 'window:set-fullscreen',
+  // Push-only, main -> the window whose fullscreen state changed.
+  WINDOW_FULLSCREEN_CHANGED: 'window:fullscreen-changed',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',
   GAME_ENTRY_RESTORE: 'game-entry:restore',
   GAME_ENTRY_LIST_EXCLUDED: 'game-entry:list-excluded',
@@ -713,6 +716,17 @@ export interface MediaCoverInfo {
   aspectRatio: number | null
   // `${trackGeneration}-${workCoverGeneration}`: changes whenever the served image may have.
   version: string
+}
+
+export const WindowFullscreenRequestSchema = z.object({
+  fullscreen: z.boolean(),
+  reason: z.enum(['media-toggle', 'media-release']),
+})
+export type WindowFullscreenRequest = z.infer<typeof WindowFullscreenRequestSchema>
+
+export interface WindowFullscreenChangedPayload {
+  fullscreen: boolean
+  owner: 'media' | 'user' | null
 }
 
 export interface MediaArtworkChangedPayload {
