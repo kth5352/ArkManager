@@ -8,6 +8,7 @@ import { useMediaLyrics } from './useMediaLyrics'
 import { isLyricsEnabledForTrack, toggleLyricsDisabledForTrack } from './lyricsToggleState'
 import { useBroadcastActiveSubtitleLine } from '../../hooks/useBroadcastActiveSubtitleLine'
 import { useMediaVolumeQuery, useSetMediaVolumeMutation } from '../../services/settingsService'
+import { useWindowFullscreen } from '../../hooks/useWindowFullscreen'
 
 // Mounted once in AppLayout - renders nothing while the playlist is empty,
 // so most of the app never even has this in the DOM. Playback survives
@@ -155,6 +156,16 @@ export function MediaPlayerHost() {
     setSeekPlayback(playback ? playback.handleSeek : () => {})
   }, [playback, setSeekPlayback])
 
+  // Monitor fullscreen the media UI turned on (⛶/F/double-click) ends with
+  // the media: when playback empties out here, and on detach below. The
+  // main process ignores release() for fullscreen the user started with F11
+  // (spec §3.8); minimizing releases inside FullscreenPlayerView itself.
+  const { owner: fullscreenOwner, release: releaseFullscreen } = useWindowFullscreen()
+  const hasPlayback = playback !== null
+  useEffect(() => {
+    if (!hasPlayback && fullscreenOwner === 'media') releaseFullscreen()
+  }, [hasPlayback, fullscreenOwner, releaseFullscreen])
+
   // Resets the auto-expand state whenever playback empties out (e.g. the
   // last track gets removed from the playlist via MediaPlaylistPanel's
   // remove button, reachable from inside FullscreenMediaOverlay itself
@@ -174,6 +185,9 @@ export function MediaPlayerHost() {
   }
 
   const handleDetach = (): void => {
+    // The new player window opens windowed; this window leaves media-owned
+    // fullscreen rather than staying fullscreen behind it.
+    releaseFullscreen()
     setDetached(true)
     // Reads the store fresh (not the stale closure this render captured)
     // since setDetached above just changed it - the new player window's
