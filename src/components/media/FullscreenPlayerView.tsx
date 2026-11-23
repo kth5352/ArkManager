@@ -103,13 +103,19 @@ export function FullscreenPlayerView({
     popoverOpen,
     focusInControls: focusIn.top || focusIn.bottom,
   })
-  const { visible } = useAutoHideControls({ enabled: active, hold, rootRef })
+  const { visible, bumpActivity } = useAutoHideControls({ enabled: active, hold, rootRef })
 
   useFullscreenKeys(
     { overlayVisible: active, windowFullscreen: active && fullscreen },
     {
-      toggleFullscreen: toggle,
+      // useFullscreenKeys consumes F/Escape in the capture phase, so the
+      // auto-hide keydown listener never sees them - count them here.
+      toggleFullscreen: () => {
+        bumpActivity()
+        toggle()
+      },
       exitFullscreen: () => {
+        bumpActivity()
         if (fullscreen) toggle()
       },
     }
@@ -152,6 +158,12 @@ export function FullscreenPlayerView({
 
   const onPointerOverChange = (band: ControlBand, over: boolean): void =>
     setPointerOver((prev) => (prev[band] === over ? prev : { ...prev, [band]: over }))
+  // The EQ popover is portaled: if it unmounts under the cursor no
+  // pointerleave may reach the bottom band, which would pin the hover hold.
+  const onPopoverOpenChange = (open: boolean): void => {
+    setPopoverOpen(open)
+    if (!open) setPointerOver((prev) => (prev.bottom ? { ...prev, bottom: false } : prev))
+  }
   const onFocusInChange = (band: ControlBand, focused: boolean): void =>
     setFocusIn((prev) => (prev[band] === focused ? prev : { ...prev, [band]: focused }))
 
@@ -239,7 +251,7 @@ export function FullscreenPlayerView({
         onPointerOverChange={onPointerOverChange}
         onFocusInChange={onFocusInChange}
         onDraggingChange={setDragging}
-        onPopoverOpenChange={setPopoverOpen}
+        onPopoverOpenChange={onPopoverOpenChange}
       />
 
       {sidePanelShown && (

@@ -255,6 +255,60 @@ describe('FullscreenPlayerView', () => {
     expect(order).toEqual(['release', 'minimize'])
   })
 
+  it('F and Escape (consumed in the capture phase) still reveal hidden bands', () => {
+    render()
+    idle()
+    expect(bandsHidden()).toBe(true)
+    press('f')
+    expect(bandsHidden()).toBe(false)
+    idle()
+    expect(bandsHidden()).toBe(true)
+    fs.state = { fullscreen: true, owner: 'media' }
+    render()
+    idle()
+    expect(bandsHidden()).toBe(true)
+    press('Escape')
+    expect(bandsHidden()).toBe(false)
+  })
+
+  it('closing the EQ popover clears a hover hold whose leave never arrived', () => {
+    render()
+    act(() => {
+      band('bottom').dispatchEvent(new MouseEvent('pointerover', { bubbles: true }))
+    })
+    click('eq-open')
+    // The portaled popover unmounts under the cursor: no pointerout.
+    click('eq-close')
+    idle()
+    expect(bandsHidden()).toBe(true)
+  })
+
+  it('never remounts the canvas across minimize/restore and band hide/show', () => {
+    render()
+    const canvas = container.querySelector('canvas')
+    render({ active: false })
+    render({ active: true })
+    expect(container.querySelector('canvas')).toBe(canvas)
+    idle()
+    expect(bandsHidden()).toBe(true)
+    act(() => {
+      container.firstElementChild!.dispatchEvent(
+        new MouseEvent('pointermove', { clientX: 40, clientY: 40 })
+      )
+    })
+    expect(bandsHidden()).toBe(false)
+    expect(container.querySelector('canvas')).toBe(canvas)
+  })
+
+  it('the fullscreen button uses a changing label, not aria-pressed', () => {
+    render()
+    const enter = container.querySelector('[aria-label="media.enterFullscreen"]') as HTMLElement
+    expect(enter.hasAttribute('aria-pressed')).toBe(false)
+    fs.state = { fullscreen: true, owner: 'media' }
+    render()
+    expect(container.querySelector('[aria-label="media.exitFullscreen"]')).not.toBeNull()
+  })
+
   it('reports the bottom band layout height even while hidden', () => {
     const onHeight = vi.fn()
     render({ onBottomBandHeightChange: onHeight })

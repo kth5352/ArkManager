@@ -197,7 +197,6 @@ export function PlayerControlBands({
                   size="icon"
                   onClick={onToggleFullscreen}
                   aria-label={fullscreenLabel}
-                  aria-pressed={fullscreen}
                   className={iconButton}
                 >
                   {fullscreen ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}

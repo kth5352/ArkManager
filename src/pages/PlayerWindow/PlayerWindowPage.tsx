@@ -7,6 +7,7 @@ import { useTranslation } from '../../i18n/useTranslation'
 import { parseLyrics } from '../../lib/parseLyrics'
 import { useMediaLyrics } from '../../components/media/useMediaLyrics'
 import { useBroadcastActiveSubtitleLine } from '../../hooks/useBroadcastActiveSubtitleLine'
+import { useWindowFullscreen } from '../../hooks/useWindowFullscreen'
 
 // The entire content of the detached player window (see
 // electron/main/ipc/mediaWindowHandlers.ts, loaded at the #/player-window
@@ -40,6 +41,15 @@ export function PlayerWindowPage() {
   const [subtitlePipOpen, setSubtitlePipOpen] = useState(false)
   useEffect(() => window.api.media.onSubtitlePipOpened(() => setSubtitlePipOpen(true)), [])
   useEffect(() => window.api.media.onSubtitlePipClosed(() => setSubtitlePipOpen(false)), [])
+
+  // The view (and its ⛶/F/Escape) unmounts with the "nothing playing"
+  // screen below, so playback ending must release media-owned fullscreen
+  // here - same guard as MediaPlayerHost (spec §3.6/§3.8). F11 stays.
+  const { owner: fullscreenOwner, release: releaseFullscreen } = useWindowFullscreen()
+  const hasPlayback = playback !== null
+  useEffect(() => {
+    if (!hasPlayback && fullscreenOwner === 'media') releaseFullscreen()
+  }, [hasPlayback, fullscreenOwner, releaseFullscreen])
 
   if (!playback) {
     return (
