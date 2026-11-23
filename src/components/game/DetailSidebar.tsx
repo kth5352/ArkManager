@@ -18,6 +18,8 @@ import { useLaunchGame } from '../../services/launchService'
 import { useConfirmedPulse } from '../../hooks/useConfirmedPulse'
 import { appToast } from '../../lib/appToast'
 import { cn } from '../../lib/utils'
+import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
+import { shouldYieldKeyToMediaOverlay } from '../media/mediaKeyboard'
 import { UI_MOTION } from '../../lib/motion'
 import {
   useGameUserData,
@@ -124,6 +126,7 @@ export function DetailSidebar({
     if (!game) return
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
+      if (shouldYieldKeyToMediaOverlay(event, useMediaPlayerStore.getState())) return
       const target = event.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return // 입력 중엔 무시
       onClose()

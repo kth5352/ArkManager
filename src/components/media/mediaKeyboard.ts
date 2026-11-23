@@ -70,6 +70,18 @@ export interface ShortcutFocusTarget {
   type?: string
 }
 
+function isTextInputTarget(focused: ShortcutFocusTarget | null): boolean {
+  if (!focused) return false
+  const tag = focused.tagName
+  // A range input (the seek bar / volume slider) is NOT a text field: its
+  // native arrow handling moved the seek bar by 1s (step=1) and swallowed
+  // Space, so the shortcuts silently changed meaning after the user merely
+  // clicked a slider. The caller preventDefaults, so the native step does
+  // not also run.
+  const isRange = tag === 'INPUT' && focused.type === 'range'
+  return (!isRange && ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) || focused.isContentEditable
+}
+
 export function getMediaShortcut(
   event: ShortcutKeyEvent,
   focused: ShortcutFocusTarget | null
@@ -78,18 +90,7 @@ export function getMediaShortcut(
   // "move" shortcut), or a modified chord that belongs to someone else.
   if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return null
 
-  if (focused) {
-    const tag = focused.tagName
-    // A range input (the seek bar / volume slider) is NOT a text field: its
-    // native arrow handling moved the seek bar by 1s (step=1) and swallowed
-    // Space, so the shortcuts silently changed meaning after the user merely
-    // clicked a slider. The caller preventDefaults, so the native step does
-    // not also run.
-    const isRange = tag === 'INPUT' && focused.type === 'range'
-    const isTextInput =
-      (!isRange && ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) || focused.isContentEditable
-    if (isTextInput) return null
-  }
+  if (isTextInputTarget(focused)) return null
 
   switch (event.key) {
     case 'ArrowLeft':
@@ -108,4 +109,35 @@ export function getMediaShortcut(
     default:
       return null
   }
+}
+
+export type FullscreenKeyAction = 'toggleFullscreen' | 'exitFullscreen'
+
+/**
+ * F toggles window fullscreen while the media overlay is visible; Escape
+ * leaves it, and only while fullscreen (otherwise Escape belongs to whatever
+ * else closes on it). Range inputs stay allowed, like the other shortcuts.
+ */
+export function getFullscreenKeyAction(
+  event: ShortcutKeyEvent,
+  focused: ShortcutFocusTarget | null,
+  state: { overlayVisible: boolean; windowFullscreen: boolean }
+): FullscreenKeyAction | null {
+  if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return null
+  if (isTextInputTarget(focused)) return null
+  if (event.key === 'Escape') return state.windowFullscreen ? 'exitFullscreen' : null
+  if (event.key.toLowerCase() === 'f') return state.overlayVisible ? 'toggleFullscreen' : null
+  return null
+}
+
+/**
+ * Page-level handlers (DetailSidebar's Escape, the favorite F) must step aside
+ * when the key was already consumed or when the attached media overlay is
+ * covering the page they belong to.
+ */
+export function shouldYieldKeyToMediaOverlay(
+  event: Pick<ShortcutKeyEvent, 'defaultPrevented'>,
+  media: { mediaExpanded: boolean; isDetached: boolean }
+): boolean {
+  return event.defaultPrevented || (media.mediaExpanded && !media.isDetached)
 }

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   acceptReportedTime,
+  getFullscreenKeyAction,
   getMediaShortcut,
   nextSeekTarget,
   seekBase,
+  shouldYieldKeyToMediaOverlay,
   SEEK_SETTLE_TIMEOUT_MS,
   startPendingSeek,
   type ShortcutKeyEvent,
@@ -94,5 +96,69 @@ describe('getMediaShortcut', () => {
     expect(
       getMediaShortcut(key('ArrowLeft'), { tagName: 'BUTTON', isContentEditable: false })
     ).toBe('seekBack')
+  })
+})
+
+describe('getFullscreenKeyAction', () => {
+  const states = [
+    { overlayVisible: true, windowFullscreen: true },
+    { overlayVisible: true, windowFullscreen: false },
+    { overlayVisible: false, windowFullscreen: true },
+    { overlayVisible: false, windowFullscreen: false },
+  ]
+
+  it.each(states)('decision table for %j', (state) => {
+    const toggle = state.overlayVisible ? 'toggleFullscreen' : null
+    const exit = state.windowFullscreen ? 'exitFullscreen' : null
+    expect(getFullscreenKeyAction(key('F'), null, state)).toBe(toggle)
+    expect(getFullscreenKeyAction(key('f'), null, state)).toBe(toggle)
+    expect(getFullscreenKeyAction(key('Escape'), null, state)).toBe(exit)
+    expect(getFullscreenKeyAction(key('f', { ctrlKey: true }), null, state)).toBeNull()
+    expect(getFullscreenKeyAction(key('f', { altKey: true }), null, state)).toBeNull()
+    expect(getFullscreenKeyAction(key('f', { metaKey: true }), null, state)).toBeNull()
+    expect(getFullscreenKeyAction(key('a'), null, state)).toBeNull()
+    expect(getFullscreenKeyAction(key('Enter'), null, state)).toBeNull()
+  })
+
+  const both = { overlayVisible: true, windowFullscreen: true }
+
+  it('ignores F while typing in a text field but not on a range input', () => {
+    for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) {
+      expect(
+        getFullscreenKeyAction(key('f'), { tagName, isContentEditable: false }, both)
+      ).toBeNull()
+    }
+    expect(
+      getFullscreenKeyAction(key('f'), { tagName: 'DIV', isContentEditable: true }, both)
+    ).toBeNull()
+    expect(
+      getFullscreenKeyAction(
+        key('f'),
+        { tagName: 'INPUT', type: 'range', isContentEditable: false },
+        both
+      )
+    ).toBe('toggleFullscreen')
+  })
+
+  it('ignores already-handled events', () => {
+    expect(getFullscreenKeyAction(key('f', { defaultPrevented: true }), null, both)).toBeNull()
+    expect(getFullscreenKeyAction(key('Escape', { defaultPrevented: true }), null, both)).toBeNull()
+  })
+})
+
+describe('shouldYieldKeyToMediaOverlay', () => {
+  const idle = { mediaExpanded: false, isDetached: false }
+  it('yields when already handled or when the attached overlay covers the page', () => {
+    expect(shouldYieldKeyToMediaOverlay(key('f'), idle)).toBe(false)
+    expect(shouldYieldKeyToMediaOverlay(key('f', { defaultPrevented: true }), idle)).toBe(true)
+    expect(shouldYieldKeyToMediaOverlay(key('f'), { mediaExpanded: true, isDetached: false })).toBe(
+      true
+    )
+    expect(shouldYieldKeyToMediaOverlay(key('f'), { mediaExpanded: true, isDetached: true })).toBe(
+      false
+    )
+    expect(shouldYieldKeyToMediaOverlay(key('f'), { mediaExpanded: false, isDetached: true })).toBe(
+      false
+    )
   })
 })

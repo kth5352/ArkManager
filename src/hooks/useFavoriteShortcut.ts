@@ -1,6 +1,8 @@
 import { useEffect, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useToggleFavorite, userDataQueryKey } from '../services/gameUserDataService'
+import { useMediaPlayerStore } from '../stores/mediaPlayerStore'
+import { shouldYieldKeyToMediaOverlay } from '../components/media/mediaKeyboard'
 import type { ScannedEntry } from '../../shared/types/scanner'
 import type { GameUserDataDto } from '../../shared/types/ipc'
 
@@ -23,6 +25,7 @@ export function useFavoriteShortcut(hoveredEntryRef: RefObject<ScannedEntry | nu
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key.toLowerCase() !== 'f' || event.ctrlKey || event.altKey) return
+      if (shouldYieldKeyToMediaOverlay(event, useMediaPlayerStore.getState())) return
       const hoveredEntry = hoveredEntryRef.current
       if (!hoveredEntry) return
       const target = event.target as HTMLElement
