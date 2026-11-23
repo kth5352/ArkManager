@@ -517,6 +517,33 @@ describe('resolveMediaArtwork', () => {
     expect(result?.info.source).toBe('work-cover')
   })
 
+  it('a work-cover bump keeps a video notfound valid but stales an audio one', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const video = join(dir, 'clip.mp4')
+    const audio = join(dir, 'song.mp3')
+    let videoExtractions = 0
+    let audioExtractions = 0
+    const deps = noDeps({
+      extractVideoFrame: async () => {
+        videoExtractions++
+        return false
+      },
+      extractAudioArt: async () => {
+        audioExtractions++
+        return false
+      },
+    })
+    expect(await resolveMediaArtwork(cache, video, true, deps, new Map())).toBeNull()
+    expect(await resolveMediaArtwork(cache, audio, false, deps, new Map())).toBeNull()
+
+    await cache.bumpWorkCoverGeneration()
+    expect(await resolveMediaArtwork(cache, video, true, deps, new Map())).toBeNull()
+    expect(await resolveMediaArtwork(cache, audio, false, deps, new Map())).toBeNull()
+    // The video answer came from its still-valid marker; the audio one was redone.
+    expect(videoExtractions).toBe(1)
+    expect(audioExtractions).toBe(2)
+  })
+
   it('invalidation during extraction leaves no cache and next call regenerates', async () => {
     const cache = createArtworkCache({ thumbDir, coverDir })
     const audio = join(dir, 'song.mp3')

@@ -101,6 +101,23 @@ describe('buildMediaThumbnailResponse', () => {
     expect(response.status).toBe(404)
   })
 
+  it.each(['thumbnail', 'cover'] as const)(
+    'returns 404 when resolve() rejects (%s)',
+    async (kind) => {
+      const response = await buildMediaThumbnailResponse(
+        filePath,
+        [libraryDir],
+        [],
+        () => null,
+        async () => {
+          throw new Error('ENOENT: cache dir removed')
+        },
+        kind
+      )
+      expect(response.status).toBe(404)
+    }
+  )
+
   it('returns 404 when the resolved path cannot actually be read', async () => {
     const resolve = async () => join(libraryDir, 'does-not-exist.webp')
     const response = await buildMediaThumbnailResponse(

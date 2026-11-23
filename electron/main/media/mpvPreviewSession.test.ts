@@ -296,8 +296,8 @@ describe('createPreviewSession', () => {
     old.getMediaTitle = undefined
     const log = vi.fn()
     const session = createPreviewSession(old, { ...options, log })
-    await expect(session.requestFrame('D:\v.mp4', 1)).resolves.toBeNull()
-    await expect(session.requestFrame('D:\v.mp4', 2)).resolves.toBeNull()
+    await expect(session.requestFrame('D:\\v.mp4', 1)).resolves.toBeNull()
+    await expect(session.requestFrame('D:\\v.mp4', 2)).resolves.toBeNull()
     expect(old.init).not.toHaveBeenCalled()
     expect(old.seek).not.toHaveBeenCalled()
     expect(log).toHaveBeenCalledTimes(1)

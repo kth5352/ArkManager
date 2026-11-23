@@ -270,6 +270,15 @@ describe('MEDIA_THUMBNAIL_SET_FROM_FILE', () => {
     expect(info).toEqual({ hasCover: false, accent: null, aspectRatio: null, version: '0-1' })
   })
 
+  it('MEDIA_GET_COVER_INFO answers the no-cover shape when resolve rejects', async () => {
+    vi.mocked(artworkStub.resolve).mockRejectedValueOnce(new Error('cache dir removed'))
+    const info = await registeredHandler(IPC_CHANNELS.MEDIA_GET_COVER_INFO)(
+      {},
+      { filePath: 'D:\\Music\\Song.mp3' }
+    )
+    expect(info).toEqual({ hasCover: false, accent: null, aspectRatio: null, version: '0-1' })
+  })
+
   it('sanitizes a fatal restore failure before rejecting the renderer request', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'ark-manager-thumbnail-'))
     const sourcePath = join(directory, 'cover.jpg')

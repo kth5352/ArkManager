@@ -65,6 +65,11 @@ export function createBulkCrawlQueue(
   let completed = 0
   let total = 0
   let reportProgress: ((progress: BulkCrawlProgressDto) => void) | null = null
+  // Whether this run saved at least one cover. onCoverSaved (the work-cover
+  // generation bump) fires ONCE when the queue drains, not per item: every
+  // bump refetches the fullscreen cover and stales every cached `.notfound`,
+  // so a bulk run of N codes would otherwise repeat that N times.
+  let coverSavedThisRun = false
 
   async function processNext(): Promise<void> {
     const code = pending.shift()
@@ -72,6 +77,14 @@ export function createBulkCrawlQueue(
       processing = false
       completed = 0
       total = 0
+      if (coverSavedThisRun) {
+        coverSavedThisRun = false
+        try {
+          await onCoverSaved?.()
+        } catch {
+          // Best-effort - the covers themselves are already saved.
+        }
+      }
       return
     }
 
@@ -92,7 +105,7 @@ export function createBulkCrawlQueue(
           const coverPath = await cacheCoverImage(cacheDir, code.value, metadata.coverImageUrl)
           if (coverPath) {
             setGameMetadataCoverPath(db, code.value, coverPath)
-            await onCoverSaved?.()
+            coverSavedThisRun = true
           }
         }
       } else {

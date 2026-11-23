@@ -72,7 +72,17 @@ export async function buildMediaThumbnailResponse(
     const large = largeOverridePath(overridePath)
     if (await pathExists(large)) overridePath = large
   }
-  const resolvedPath = overridePath ?? (await resolve(filePath))
+  let resolvedPath = overridePath
+  if (!resolvedPath) {
+    // Resolution can reject (an encode I/O error, or the cache directory
+    // removed by clear-cache mid-flight) - that is a missing image, not a
+    // protocol failure.
+    try {
+      resolvedPath = await resolve(filePath)
+    } catch {
+      resolvedPath = null
+    }
+  }
   if (!resolvedPath) return new Response(null, { status: 404 })
 
   try {

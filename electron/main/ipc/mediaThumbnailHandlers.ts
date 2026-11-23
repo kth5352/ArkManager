@@ -57,7 +57,15 @@ export function registerMediaThumbnailHandlers(
       const overrideInfo = await readOverrideCoverInfo(overridePath)
       if (overrideInfo) return { hasCover: true, version, ...overrideInfo }
     }
-    const art = await artwork.resolve(filePath)
+    // A rejected resolve (encode I/O error, cache directory removed by
+    // clear-cache mid-flight) answers "no cover" instead of failing the query,
+    // which the renderer would otherwise keep showing as pending.
+    let art: Awaited<ReturnType<typeof artwork.resolve>>
+    try {
+      art = await artwork.resolve(filePath)
+    } catch {
+      return none
+    }
     const info: MediaCoverInfo = art
       ? { hasCover: true, accent: art.info.accent, aspectRatio: art.info.aspectRatio, version }
       : none

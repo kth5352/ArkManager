@@ -295,4 +295,31 @@ describe('createBulkCrawlQueue', () => {
     await vi.advanceTimersByTimeAsync(1000)
     expect(crawlGameMetadataWithTraceMock).toHaveBeenCalledTimes(2)
   })
+
+  it('bumps the work cover once when a bulk run that saved covers drains, not per item', async () => {
+    crawlGameMetadataWithTraceMock.mockImplementation(async (c) => ({
+      ...successTrace(c.value),
+      metadata: { ...metadataFor(c.value), coverImageUrl: `https://example.test/${c.value}.jpg` },
+    }))
+    cacheCoverImageMock.mockImplementation(async () => '/cache/covers/x.jpg')
+    const onCoverSaved = vi.fn()
+    const queue = createBulkCrawlQueue(db, '/cache/covers', undefined, onCoverSaved)
+
+    queue.enqueue([code('RJ01111111'), code('RJ02222222'), code('RJ03333333')], vi.fn())
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(crawlGameMetadataWithTraceMock).toHaveBeenCalledTimes(3)
+    expect(onCoverSaved).not.toHaveBeenCalled()
+
+    // The drain tick after the last item.
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(onCoverSaved).toHaveBeenCalledTimes(1)
+
+    // A later run with no saved cover does not bump again.
+    crawlGameMetadataWithTraceMock.mockImplementation(async (c) => successTrace(c.value))
+    queue.enqueue([code('RJ04444444')], vi.fn())
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(onCoverSaved).toHaveBeenCalledTimes(1)
+  })
 })

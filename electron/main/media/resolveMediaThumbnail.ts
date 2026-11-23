@@ -94,13 +94,21 @@ async function readCached(cache: ArtworkCache, filePath: string) {
   return null
 }
 
-async function hasValidNotFound(cache: ArtworkCache, notFoundPath: string): Promise<boolean> {
+async function hasValidNotFound(
+  cache: ArtworkCache,
+  notFoundPath: string,
+  isVideo: boolean
+): Promise<boolean> {
   let raw: string
   try {
     raw = await readFile(notFoundPath, 'utf8')
   } catch {
     return false
   }
+  // Video never uses the work-cover tier (see resolveOnce), so a work-cover
+  // bump cannot change its answer: the marker stays valid until the track
+  // itself is invalidated (which removes it).
+  if (isVideo) return true
   let generation = 0
   try {
     const parsed = JSON.parse(raw) as { workCoverGeneration?: unknown }
@@ -285,7 +293,7 @@ export async function resolveMediaArtwork(
 ): Promise<MediaArtwork | null> {
   const cached = await readCached(cache, filePath)
   if (cached) return cached
-  if (await hasValidNotFound(cache, cache.paths(filePath).notFound)) {
+  if (await hasValidNotFound(cache, cache.paths(filePath).notFound, isVideo)) {
     return null
   }
 
