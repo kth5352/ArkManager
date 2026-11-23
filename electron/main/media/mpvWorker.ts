@@ -4,6 +4,7 @@
 // the whole app (concretely validated via a deliberate crash test in
 // today's feasibility spikes).
 import { join } from 'node:path'
+import { buildStateUpdate, NO_LOAD_IDENTITY, type WorkerLoadIdentity } from './workerStateMessage'
 
 // The addon now loads libmpv-2.dll by absolute path (<addonDir>/libmpv-2.dll,
 // derived from its own module location - see LoadLibmpvNextToAddon in
@@ -45,8 +46,16 @@ const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as {
 
 type WorkerMessage =
   | { type: 'port' }
-  | { type: 'init'; filePath: string; width: number; height: number; isVideo: boolean }
-  | { type: 'load'; filePath: string; isVideo: boolean }
+  | {
+      type: 'init'
+      filePath: string
+      width: number
+      height: number
+      isVideo: boolean
+      generation: number
+      requestedPath: string
+    }
+  | { type: 'load'; filePath: string; isVideo: boolean; generation: number; requestedPath: string }
   | { type: 'play' }
   | { type: 'pause' }
   | { type: 'seek'; seconds: number }
@@ -124,15 +133,20 @@ function log(msg: string): void {
   process.parentPort.postMessage({ type: 'log', msg })
 }
 
+// Identity of the load this worker is currently serving, taken from the latest
+// init/load message and stamped on every state-update (see workerStateMessage.ts).
+let loadIdentity: WorkerLoadIdentity = NO_LOAD_IDENTITY
+
 function pushStateUpdate(isPlaying: boolean): void {
-  process.parentPort.postMessage({
-    type: 'state-update',
-    isPlaying,
-    currentTime: addon.getTimePos() ?? 0,
-    duration: addon.getDuration(),
-    error: null,
-    mediaTitle: addon.getMediaTitle(),
-  })
+  process.parentPort.postMessage(
+    buildStateUpdate(loadIdentity, {
+      isPlaying,
+      currentTime: addon.getTimePos() ?? 0,
+      duration: addon.getDuration(),
+      error: null,
+      mediaTitle: addon.getMediaTitle(),
+    })
+  )
 }
 
 function pollAndForwardEvents(): void {
@@ -144,14 +158,15 @@ function pollAndForwardEvents(): void {
     const ev = addon.pollEvent()
     if (!ev) return
     if (ev.error) {
-      process.parentPort.postMessage({
-        type: 'state-update',
-        isPlaying: isPlayingState,
-        currentTime: addon.getTimePos() ?? 0,
-        duration: addon.getDuration(),
-        error: ev.error,
-        mediaTitle: addon.getMediaTitle(),
-      })
+      process.parentPort.postMessage(
+        buildStateUpdate(loadIdentity, {
+          isPlaying: isPlayingState,
+          currentTime: addon.getTimePos() ?? 0,
+          duration: addon.getDuration(),
+          error: ev.error,
+          mediaTitle: addon.getMediaTitle(),
+        })
+      )
     }
     // Only 'end-file'/'file-loaded' are logged: they're real, current
     // libmpv events. Deliberately NOT keyed on for end-of-track detection -
@@ -277,6 +292,7 @@ process.parentPort.on('message', (e) => {
   }
 
   if (msg.type === 'init') {
+    loadIdentity = { loadGeneration: msg.generation, loadedPath: msg.requestedPath }
     currentWidth = msg.width
     currentHeight = msg.height
     pendingWidth = msg.width
@@ -285,7 +301,12 @@ process.parentPort.on('message', (e) => {
     const result = addon.init(msg.filePath, currentWidth, currentHeight)
     log(`init result: ${result}`)
     if (result !== 'OK') {
-      process.parentPort.postMessage({ type: 'init-failed', result })
+      process.parentPort.postMessage({
+        type: 'init-failed',
+        result,
+        loadGeneration: loadIdentity.loadGeneration,
+        loadedPath: loadIdentity.loadedPath,
+      })
       return
     }
     isPlayingState = true
@@ -298,6 +319,7 @@ process.parentPort.on('message', (e) => {
   }
 
   if (msg.type === 'load') {
+    loadIdentity = { loadGeneration: msg.generation, loadedPath: msg.requestedPath }
     currentIsVideo = msg.isVideo
     const result = addon.loadFile(msg.filePath)
     log(`loadFile result: ${result}`)
@@ -315,13 +337,15 @@ process.parentPort.on('message', (e) => {
       // here purely so this flag never carries a stale `true` value across
       // an unrelated later run for someone reading/debugging worker state.
       suppressPeriodicStateUpdates = false
-      process.parentPort.postMessage({
-        type: 'state-update',
-        isPlaying: false,
-        currentTime: 0,
-        duration: null,
-        error: result,
-      })
+      process.parentPort.postMessage(
+        buildStateUpdate(loadIdentity, {
+          isPlaying: false,
+          currentTime: 0,
+          duration: null,
+          error: result,
+          mediaTitle: null,
+        })
+      )
       return
     }
     // mpv's `pause` property is global, not per-file, and loadfile does not

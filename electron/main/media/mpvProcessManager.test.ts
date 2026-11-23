@@ -48,6 +48,15 @@ describe('mpvProcessManager load generation', () => {
     expect(types).toEqual(['init', 'load'])
   })
 
+  it('posts the generation and requested path with init and load', () => {
+    mpv.loadFile('C:\\d.mp3', 1, 1, false, 'C:/d.mp3')
+    mpv.loadFile('C:\\e.mp3', 1, 1, false, 'C:/e.mp3')
+    const g = mpv.getLoadState().generation
+    const [init, load] = lastProc().postMessage.mock.calls.map((c) => c[0])
+    expect(init).toMatchObject({ type: 'init', generation: g - 1, requestedPath: 'C:/d.mp3' })
+    expect(load).toMatchObject({ type: 'load', generation: g, requestedPath: 'C:/e.mp3' })
+  })
+
   it('reports the requested path and video flag of the loaded file', () => {
     mpv.loadFile('C:\\v.mp4', 1, 1, true, 'C:/v.mp4')
     expect(mpv.getLoadState()).toMatchObject({ requestedPath: 'C:/v.mp4', isVideo: true })

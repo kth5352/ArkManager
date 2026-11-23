@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { displayTitle } from './trackTitle'
+import { displayTitle, shouldAdoptLoadIdentity } from './trackTitle'
 
 describe('displayTitle', () => {
   it('uses the media title tag when present and different from the file name', () => {
@@ -25,5 +25,19 @@ describe('displayTitle', () => {
 
   it('compares case-sensitively', () => {
     expect(displayTitle('TRACK01.MP3', 'track01.mp3')).toBe('TRACK01.MP3')
+  })
+})
+
+describe('shouldAdoptLoadIdentity', () => {
+  it('adopts an update for the current track path', () => {
+    expect(shouldAdoptLoadIdentity('D:/a.mp3', 'D:/a.mp3')).toBe(true)
+  })
+
+  it('ignores an update for another path', () => {
+    expect(shouldAdoptLoadIdentity('D:/old.mp3', 'D:/a.mp3')).toBe(false)
+  })
+
+  it('ignores an update without a loaded path', () => {
+    expect(shouldAdoptLoadIdentity(null, 'D:/a.mp3')).toBe(false)
   })
 })

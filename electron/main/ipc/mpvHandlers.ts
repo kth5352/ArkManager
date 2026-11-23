@@ -112,6 +112,8 @@ export function registerMpvHandlers(
       error?: string | null
       result?: string
       mediaTitle?: string | null
+      loadGeneration?: number
+      loadedPath?: string | null
     }
     if (m.type === 'state-update') {
       const win = mpv.getCurrentHostWindow()
@@ -119,7 +121,6 @@ export function registerMpvHandlers(
       // the worker's ~4x/sec state push is still in flight - sending to a
       // destroyed window's webContents throws.
       if (!win || win.isDestroyed()) return
-      const load = mpv.getLoadState()
       win.webContents.send(IPC_CHANNELS.MPV_STATE_UPDATE, {
         isPlaying: m.isPlaying,
         currentTime: m.currentTime,
@@ -129,8 +130,11 @@ export function registerMpvHandlers(
         // the only way the renderer ever learns a track failed to open.
         error: m.error ?? null,
         mediaTitle: m.mediaTitle ?? null,
-        loadGeneration: load.generation,
-        loadedPath: load.requestedPath,
+        // Echoed by the worker with the update itself (never mpv.getLoadState(),
+        // which may already describe a newer load). A message without them has
+        // no load context: generation 0 / null path, which the renderer ignores.
+        loadGeneration: m.loadGeneration ?? 0,
+        loadedPath: m.loadedPath ?? null,
       })
       return
     }
@@ -144,15 +148,17 @@ export function registerMpvHandlers(
     if (m.type === 'init-failed') {
       const win = mpv.getCurrentHostWindow()
       if (!win || win.isDestroyed()) return
-      const load = mpv.getLoadState()
       win.webContents.send(IPC_CHANNELS.MPV_STATE_UPDATE, {
         isPlaying: false,
         currentTime: 0,
         duration: null,
         error: m.result ?? 'mpv init failed',
         mediaTitle: null,
-        loadGeneration: load.generation,
-        loadedPath: load.requestedPath,
+        // Echoed by the worker with the update itself (never mpv.getLoadState(),
+        // which may already describe a newer load). A message without them has
+        // no load context: generation 0 / null path, which the renderer ignores.
+        loadGeneration: m.loadGeneration ?? 0,
+        loadedPath: m.loadedPath ?? null,
       })
       return
     }

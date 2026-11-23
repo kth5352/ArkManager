@@ -3,7 +3,7 @@ import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerSt
 import { isVideoFile } from '../../../shared/isMediaFile'
 import { computeMpvRenderSize } from '../../lib/computeMpvRenderSize'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
-import { displayTitle } from './trackTitle'
+import { displayTitle, shouldAdoptLoadIdentity } from './trackTitle'
 import {
   acceptReportedTime,
   getMediaShortcut,
@@ -74,6 +74,7 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   const [resetForPath, setResetForPath] = useState<string | null>(null)
 
   const track = currentIndex !== null ? (playlist[currentIndex] ?? null) : null
+  const trackPath = track ? track.path : null
   const isVideo = track ? isVideoFile(track.name) : false
 
   // Resets displayed time/duration/error when the track changes - adjusted
@@ -240,11 +241,16 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
       if (state.duration !== null) setDuration(state.duration)
       setPlaying(state.isPlaying)
       setError(state.error)
-      setMediaTitle(state.mediaTitle)
-      setLoadGeneration(state.loadGeneration)
-      setLoadedPath(state.loadedPath)
+      // Title/identity only from an update of the CURRENT track: a late update
+      // of the previous one must not repopulate what the track-change reset
+      // cleared (time/duration/isPlaying above keep their existing behavior).
+      if (trackPath !== null && shouldAdoptLoadIdentity(state.loadedPath, trackPath)) {
+        setMediaTitle(state.mediaTitle)
+        setLoadGeneration(state.loadGeneration)
+        setLoadedPath(state.loadedPath)
+      }
     })
-  }, [isHost, setPlaying])
+  }, [isHost, setPlaying, trackPath])
 
   // Track finished naturally (mpv's keep-open pause, surfaced by mpvWorker.ts
   // as an 'ended' message) - this is the mpv-IPC replacement for the old DOM

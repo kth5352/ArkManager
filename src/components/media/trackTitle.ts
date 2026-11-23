@@ -6,3 +6,14 @@ export function displayTitle(mediaTitle: string | null, fileName: string): strin
   const dot = fileName.lastIndexOf('.')
   return dot > 0 ? fileName.slice(0, dot) : fileName
 }
+
+// A state update describes the track the worker had loaded when it was
+// produced. After a track change a late update of the previous track can still
+// arrive, so its title/identity may only be adopted when its loadedPath is the
+// exact string the renderer sent for the CURRENT track.
+export function shouldAdoptLoadIdentity(
+  updateLoadedPath: string | null,
+  currentTrackPath: string
+): boolean {
+  return updateLoadedPath !== null && updateLoadedPath === currentTrackPath
+}

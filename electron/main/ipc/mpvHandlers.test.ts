@@ -15,6 +15,8 @@ const mpvProcessManagerMocks = vi.hoisted(() => ({
   setHostWindow: vi.fn(),
   loadFile: vi.fn(),
   onWorkerMessage: vi.fn(),
+  getCurrentHostWindow: vi.fn(),
+  getLoadState: vi.fn(),
 }))
 
 vi.mock('electron', () => ({
@@ -153,5 +155,65 @@ describe('MPV_BECOME_HOST', () => {
       /no window available/i
     )
     expect(mpvProcessManagerMocks.setHostWindow).not.toHaveBeenCalled()
+  })
+})
+
+describe('worker state-update relay', () => {
+  const send = vi.fn()
+
+  function relay(msg: unknown): void {
+    const db = createDbClient(':memory:')
+    mpvProcessManagerMocks.onWorkerMessage.mockClear()
+    registerMpvHandlers(db, () => null)
+    const listener = mpvProcessManagerMocks.onWorkerMessage.mock.calls[0][0] as (m: unknown) => void
+    listener(msg)
+    db.$client.close()
+  }
+
+  beforeEach(() => {
+    send.mockClear()
+    mpvProcessManagerMocks.getCurrentHostWindow.mockReturnValue({
+      isDestroyed: () => false,
+      webContents: { send },
+    })
+    // main has already moved on to generation B
+    mpvProcessManagerMocks.getLoadState.mockReturnValue({
+      generation: 9,
+      requestedPath: 'B',
+      isVideo: false,
+    })
+  })
+
+  it('relays the identity carried by the state-update, not main current load state', () => {
+    relay({
+      type: 'state-update',
+      isPlaying: true,
+      currentTime: 3,
+      duration: 10,
+      error: null,
+      mediaTitle: 'Title A',
+      loadGeneration: 8,
+      loadedPath: 'A',
+    })
+    expect(send).toHaveBeenCalledWith(
+      IPC_CHANNELS.MPV_STATE_UPDATE,
+      expect.objectContaining({ mediaTitle: 'Title A', loadGeneration: 8, loadedPath: 'A' })
+    )
+  })
+
+  it('gives a message without load context a non-adoptable identity', () => {
+    relay({ type: 'state-update', isPlaying: false, currentTime: 0, duration: null })
+    expect(send).toHaveBeenCalledWith(
+      IPC_CHANNELS.MPV_STATE_UPDATE,
+      expect.objectContaining({ mediaTitle: null, loadGeneration: 0, loadedPath: null })
+    )
+  })
+
+  it('relays the identity carried by init-failed', () => {
+    relay({ type: 'init-failed', result: 'ERR', loadGeneration: 8, loadedPath: 'A' })
+    expect(send).toHaveBeenCalledWith(
+      IPC_CHANNELS.MPV_STATE_UPDATE,
+      expect.objectContaining({ error: 'ERR', mediaTitle: null, loadGeneration: 8, loadedPath: 'A' })
+    )
   })
 })

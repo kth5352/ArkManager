@@ -131,10 +131,24 @@ export function loadFile(
   loadedIsVideo = isVideo
   loadGeneration += 1
   if (hasInitializedCurrentChild) {
-    proc.postMessage({ type: 'load', filePath, isVideo })
+    proc.postMessage({
+      type: 'load',
+      filePath,
+      isVideo,
+      generation: loadGeneration,
+      requestedPath,
+    })
     return
   }
-  proc.postMessage({ type: 'init', filePath, width, height, isVideo })
+  proc.postMessage({
+    type: 'init',
+    filePath,
+    width,
+    height,
+    isVideo,
+    generation: loadGeneration,
+    requestedPath,
+  })
   hasInitializedCurrentChild = true
 }
 
