@@ -1,43 +1,54 @@
-import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rm } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
-import { keyToSafeDirName } from '../save/keyToSafeDirName'
-import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
+import { openRasterImage } from '../net/rasterImage'
 import { extractVideoFrame as defaultExtractVideoFrame } from './extractVideoFrame'
 import { extractAudioArt as defaultExtractAudioArt } from './extractAudioArt'
 import { findThumbnailPath as defaultFindThumbnailPath } from '../scanner/thumbnail'
 import { createConcurrencyLimiter } from '../scanner/concurrencyLimiter'
+import { adjustAccent } from './accentColor'
+import { createArtworkCache } from './mediaArtworkCache'
+import type { ArtworkCache, GenerationSnapshot } from './mediaArtworkCache'
 
 export interface ResolveMediaThumbnailDeps {
   extractVideoFrame: (videoPath: string, outputPath: string) => Promise<boolean>
   extractAudioArt: (audioPath: string, outputPath: string) => Promise<boolean>
   findThumbnailPath: (folderPath: string) => Promise<string | null>
+  findWorkCover?: (filePath: string) => Promise<string | null>
+}
+
+export interface ArtworkInfo {
+  source: 'embedded' | 'folder' | 'work-cover'
+  workCoverGeneration: number
+  accent: string
+  aspectRatio: number
+}
+
+export interface MediaArtwork {
+  thumb: string
+  cover: string
+  info: ArtworkInfo
 }
 
 const defaultDeps: ResolveMediaThumbnailDeps = {
   extractVideoFrame: defaultExtractVideoFrame,
   extractAudioArt: defaultExtractAudioArt,
   findThumbnailPath: defaultFindThumbnailPath,
+  findWorkCover: async () => null,
 }
 
-// Module-level singleton for real production use (mediaThumbnailProtocol.ts
-// never passes its own) - every uncached-file request in the running app
-// funnels through this one Map, so a Media-page row and the fullscreen
-// overlay resolving the same uncached track around the same time genuinely
-// share one extraction+save instead of racing. Tests that need to control
-// in-flight state independently pass their own Map (see
-// resolveMediaThumbnail.test.ts) so they never share this process-lifetime
-// singleton with each other or with production code.
-const defaultInFlight = new Map<string, Promise<string | null>>()
+const THUMB_PX = 512
+const COVER_PX = 2048
+
+// Module-level singleton for real production use: every uncached-file request
+// in the running app funnels through this one Map, so a Media-page row and the
+// fullscreen overlay resolving the same uncached track share one extraction.
+// Tests pass their own Map so they never share this process-lifetime state.
+const defaultInFlight = new Map<string, Promise<MediaArtwork | null>>()
 
 // Each extractVideoFrame/extractAudioArt call spawns a real ffmpeg child
-// process (execFile, up to a 15s timeout) - in-flight merging above only
-// dedupes repeat requests for the SAME file; scrolling a Media page with
-// many DIFFERENT uncached tracks visible at once could still spawn one
-// ffmpeg process per track simultaneously with no cap at all. 2 is the
-// plan's own starting point for this limiter; module-level so the cap
-// holds across concurrent resolveMediaThumbnail calls for different files,
-// not just within one.
+// process; in-flight merging only dedupes the SAME file, so this caps the
+// number of simultaneous ffmpeg processes across different files.
 const extractionLimiter = createConcurrencyLimiter(2)
 
 async function pathExists(path: string): Promise<boolean> {
@@ -49,136 +60,277 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-// The actual resolution work, run at most once per in-flight key at a time
-// (see the wrapper below) - a synthetic benchmark measured that WITHOUT
-// merging, two concurrent requests for the same uncached file didn't just
-// waste a duplicate ffmpeg extraction: both also called saveCustomCoverImage
-// (sharp().toFile()) against the SAME destination path concurrently, and one
-// of the two calls failed outright (returning null - a thumbnail that should
-// have resolved successfully silently didn't). Merging closes both the
-// wasted-work and the correctness problem at once, since only one
-// saveCustomCoverImage call for a given file ever runs at a time now.
-async function resolveMediaThumbnailUncached(
-  cacheDir: string,
-  filePath: string,
-  isVideo: boolean,
-  deps: ResolveMediaThumbnailDeps,
-  notFoundMarkerPath: string
-): Promise<string | null> {
-  await mkdir(cacheDir, { recursive: true })
-  // Unique per call (not just per filePath) so two concurrent requests for
-  // DIFFERENT files never share one temp filename. (Two concurrent requests
-  // for the SAME file no longer reach here independently at all - see the
-  // in-flight merge below - but this still matters across different files
-  // resolving at the same time.)
-  const tempPath = join(cacheDir, `${keyToSafeDirName(filePath)}-${randomUUID()}.jpg`)
-
-  const extracted = await extractionLimiter(() =>
-    isVideo ? deps.extractVideoFrame(filePath, tempPath) : deps.extractAudioArt(filePath, tempPath)
-  )
-
-  if (extracted) {
-    try {
-      const buffer = await readFile(tempPath)
-      return await saveCustomCoverImage(cacheDir, filePath, buffer)
-    } catch {
-      return null
-    } finally {
-      await rm(tempPath, { force: true })
+function parseInfo(raw: string): ArtworkInfo | null {
+  try {
+    const value = JSON.parse(raw) as Partial<ArtworkInfo>
+    if (
+      (value.source === 'embedded' || value.source === 'folder' || value.source === 'work-cover') &&
+      typeof value.workCoverGeneration === 'number' &&
+      typeof value.accent === 'string' &&
+      typeof value.aspectRatio === 'number'
+    ) {
+      return value as ArtworkInfo
     }
+  } catch {
+    // fall through
   }
-
-  // Video has no directory-image tier - a frame from the video itself is
-  // always the more relevant thumbnail when available, and a stray folder
-  // image next to a video file is far less likely to actually be "this
-  // video's cover" than the same is for a music folder (see spec section 1).
-  //
-  // The found image is read and re-saved through saveCustomCoverImage (same
-  // as the extraction tier above) rather than returned as-is - it's an
-  // arbitrary file the user dropped in their media folder, not something
-  // this app generated, so nothing bounds its size. A real folder in this
-  // app's own test data turned out to have a 7.5MB PNG next to it, served
-  // uncached and unresized to every track in that folder on every single
-  // visit (readFile + IPC transfer + Chromium decode, repeated per track,
-  // forever - live-reported as "the whole Media tab feels heavy"). Caching
-  // it under the requesting track's own key means only the FIRST request
-  // per track pays this cost - resolveMediaThumbnail's own top-of-function
-  // pathExists(cachePath) check short-circuits every later request for the
-  // same track, same as the extraction tier.
-  if (!isVideo) {
-    const directoryImage = await deps.findThumbnailPath(dirname(filePath))
-    if (directoryImage) {
-      try {
-        const buffer = await readFile(directoryImage)
-        return await saveCustomCoverImage(cacheDir, filePath, buffer)
-      } catch {
-        return null
-      }
-    }
-  }
-
-  // Every tier was tried and genuinely found nothing (as opposed to the
-  // catch blocks above, which are transient read/save failures - those must
-  // NOT be cached negatively, since retrying could succeed once whatever
-  // went wrong clears up).
-  await writeFile(notFoundMarkerPath, '')
   return null
 }
 
-// Auto-extraction tier of the media-thumbnail priority chain (see
-// docs/superpowers/specs/2026-08-03-media-thumbnails-design.md section 2) -
-// the manual-override tier is checked by the protocol handler BEFORE this
-// ever runs (mediaThumbnailProtocol.ts), not here. Caches to
-// {cacheDir}/{hash of filePath}.webp via saveCustomCoverImage (the exact
-// same cache-write helper game covers already use) - file existence on disk
-// IS the cache, same design as thumb://'s own findThumbnailPath, so a
-// second request for the same file skips straight past ffmpeg entirely.
+async function readCached(cache: ArtworkCache, filePath: string) {
+  const paths = cache.paths(filePath)
+  try {
+    if ((await pathExists(paths.thumb)) && (await pathExists(paths.cover))) {
+      const info = parseInfo(await readFile(paths.info, 'utf8'))
+      if (
+        info &&
+        (info.source !== 'work-cover' || info.workCoverGeneration >= cache.workCoverGeneration())
+      ) {
+        return { thumb: paths.thumb, cover: paths.cover, info } satisfies MediaArtwork
+      }
+    }
+  } catch {
+    // missing/unreadable info: treat as a miss
+  }
+  return null
+}
+
+async function hasValidNotFound(cache: ArtworkCache, notFoundPath: string): Promise<boolean> {
+  let raw: string
+  try {
+    raw = await readFile(notFoundPath, 'utf8')
+  } catch {
+    return false
+  }
+  let generation = 0
+  try {
+    const parsed = JSON.parse(raw) as { workCoverGeneration?: unknown }
+    if (typeof parsed.workCoverGeneration === 'number') generation = parsed.workCoverGeneration
+  } catch {
+    // empty/unparseable: generation 0
+  }
+  return generation >= cache.workCoverGeneration()
+}
+
+interface EncodedArtwork {
+  accent: string
+  aspectRatio: number
+}
+
+// One decode, two outputs. Throws if the image cannot be decoded or encoded -
+// the caller then falls through to the next source.
+async function encodeArtwork(
+  buffer: Buffer,
+  thumbTemp: string,
+  coverTemp: string
+): Promise<EncodedArtwork> {
+  const image = await openRasterImage(buffer)
+  const resizeOpts = { fit: 'inside' as const, withoutEnlargement: true }
+  const [, cover, stats] = await Promise.all([
+    image.clone().resize(THUMB_PX, THUMB_PX, resizeOpts).webp().toFile(thumbTemp),
+    image.clone().resize(COVER_PX, COVER_PX, resizeOpts).webp().toFile(coverTemp),
+    image.clone().stats(),
+  ])
+  const { r, g, b } = stats.dominant
+  const hex = (v: number): string => v.toString(16).padStart(2, '0')
+  return {
+    accent: adjustAccent(`#${hex(r)}${hex(g)}${hex(b)}`),
+    aspectRatio: cover.width / cover.height,
+  }
+}
+
+type Attempt = MediaArtwork | null | 'stale'
+
+async function resolveOnce(
+  cache: ArtworkCache,
+  filePath: string,
+  isVideo: boolean,
+  deps: ResolveMediaThumbnailDeps,
+  snapshot: GenerationSnapshot
+): Promise<Attempt> {
+  const paths = cache.paths(filePath)
+  const thumbDir = dirname(paths.thumb)
+  const coverDir = dirname(paths.cover)
+  await Promise.all([mkdir(thumbDir, { recursive: true }), mkdir(coverDir, { recursive: true })])
+  const id = randomUUID()
+  const thumbTemp = join(thumbDir, `${id}.thumb.tmp.webp`)
+  const coverTemp = join(coverDir, `${id}.cover.tmp.webp`)
+  const frameTemp = join(thumbDir, `${id}.jpg`)
+
+  // Transient failures (unreadable file) must not be cached as "no artwork".
+  let transientFailure = false
+
+  const sources: Array<{
+    source: ArtworkInfo['source']
+    load: () => Promise<Buffer | null>
+  }> = [
+    {
+      source: 'embedded',
+      load: async () => {
+        const extracted = await extractionLimiter(() =>
+          isVideo
+            ? deps.extractVideoFrame(filePath, frameTemp)
+            : deps.extractAudioArt(filePath, frameTemp)
+        )
+        if (!extracted) return null
+        try {
+          return await readFile(frameTemp)
+        } finally {
+          await rm(frameTemp, { force: true })
+        }
+      },
+    },
+  ]
+  // Video has no directory-image or work-cover tier: a stray folder image next
+  // to a video is far less likely to be "this video's cover" than for music.
+  if (!isVideo) {
+    sources.push(
+      {
+        source: 'folder',
+        load: async () => {
+          const found = await deps.findThumbnailPath(dirname(filePath))
+          return found ? readFile(found) : null
+        },
+      },
+      {
+        source: 'work-cover',
+        load: async () => {
+          const found = deps.findWorkCover ? await deps.findWorkCover(filePath) : null
+          return found ? readFile(found) : null
+        },
+      }
+    )
+  }
+
+  try {
+    for (const { source, load } of sources) {
+      let buffer: Buffer | null
+      try {
+        buffer = await load()
+      } catch {
+        transientFailure = true
+        continue
+      }
+      if (!buffer) continue
+
+      let encoded: EncodedArtwork
+      try {
+        encoded = await encodeArtwork(buffer, thumbTemp, coverTemp)
+      } catch {
+        await Promise.all([rm(thumbTemp, { force: true }), rm(coverTemp, { force: true })])
+        continue
+      }
+
+      const info: ArtworkInfo = {
+        source,
+        workCoverGeneration: snapshot.workCover,
+        accent: encoded.accent,
+        aspectRatio: encoded.aspectRatio,
+      }
+      const outcome = await cache.commit(
+        filePath,
+        snapshot,
+        [
+          { temp: thumbTemp, final: paths.thumb },
+          { temp: coverTemp, final: paths.cover },
+        ],
+        [{ path: paths.info, content: JSON.stringify(info) }]
+      )
+      if (outcome === 'stale') return 'stale'
+      await rm(paths.notFound, { force: true })
+      return { thumb: paths.thumb, cover: paths.cover, info }
+    }
+  } finally {
+    await rm(frameTemp, { force: true })
+  }
+
+  if (transientFailure) return null
+  const outcome = await cache.commit(
+    filePath,
+    snapshot,
+    [],
+    [
+      {
+        path: paths.notFound,
+        content: JSON.stringify({ workCoverGeneration: snapshot.workCover }),
+      },
+    ]
+  )
+  return outcome === 'stale' ? 'stale' : null
+}
+
+async function resolveWithRetry(
+  cache: ArtworkCache,
+  filePath: string,
+  isVideo: boolean,
+  deps: ResolveMediaThumbnailDeps,
+  firstSnapshot: GenerationSnapshot
+): Promise<MediaArtwork | null> {
+  let snapshot = firstSnapshot
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await resolveOnce(cache, filePath, isVideo, deps, snapshot)
+    if (result !== 'stale') return result
+    snapshot = { track: cache.trackGeneration(filePath), workCover: cache.workCoverGeneration() }
+  }
+  return null
+}
+
+// Resolves both artwork sizes plus accent/aspect info for a media file,
+// caching them through the artwork cache (file existence is the cache).
+export async function resolveMediaArtwork(
+  cache: ArtworkCache,
+  filePath: string,
+  isVideo: boolean,
+  deps: ResolveMediaThumbnailDeps = defaultDeps,
+  inFlight: Map<string, Promise<MediaArtwork | null>> = defaultInFlight
+): Promise<MediaArtwork | null> {
+  const cached = await readCached(cache, filePath)
+  if (cached) return cached
+  if (await hasValidNotFound(cache, cache.paths(filePath).notFound)) {
+    return null
+  }
+
+  const snapshot: GenerationSnapshot = {
+    track: cache.trackGeneration(filePath),
+    workCover: cache.workCoverGeneration(),
+  }
+  // Pipe-joined: | can never appear in a Windows path.
+  const key = [filePath, isVideo, snapshot.track, snapshot.workCover].join('|')
+  const existing = inFlight.get(key)
+  if (existing) return existing
+
+  const promise = resolveWithRetry(cache, filePath, isVideo, deps, snapshot).finally(() => {
+    inFlight.delete(key)
+  })
+  inFlight.set(key, promise)
+  return promise
+}
+
+// Legacy entry point (single-size thumbnail path) kept until the protocol is
+// rewired onto resolveMediaArtwork. One cache per cacheDir for the process.
+const legacyCaches = new Map<string, ArtworkCache>()
+
 export async function resolveMediaThumbnail(
   cacheDir: string,
   filePath: string,
   isVideo: boolean,
   deps: ResolveMediaThumbnailDeps = defaultDeps,
-  inFlight: Map<string, Promise<string | null>> = defaultInFlight
+  inFlight: Map<string, Promise<unknown>> = defaultInFlight
 ): Promise<string | null> {
-  const cachePath = join(cacheDir, `${keyToSafeDirName(filePath)}.webp`)
-  if (await pathExists(cachePath)) return cachePath
-  // A prior call already tried every tier below (ffmpeg extraction, then the
-  // directory-image fallback for audio) and genuinely found nothing - without
-  // this, a track with no embedded art and no folder image (a corrupted
-  // file, an unsupported codec, or just a track that never had cover art)
-  // re-pays the full extraction cost - including ffmpeg's up-to-15s timeout
-  // on a file it can't read - on every single request, forever. This was a
-  // real, live-reported cause of the Media tab "feeling heavy" on repeat
-  // visits. Cleared the same way as the positive cache above: deleting
-  // cache/media-thumbnails (see clearCache.ts) removes this marker too, so a
-  // user can force a re-attempt if the underlying file ever changes.
-  const notFoundMarkerPath = `${cachePath}.notfound`
-  if (await pathExists(notFoundMarkerPath)) return null
-
-  // Merge concurrent requests for the exact same (cacheDir, filePath,
-  // isVideo) - isVideo is part of the key even though it's derivable from
-  // filePath alone in practice, since nothing here enforces that invariant
-  // and a mismatched isVideo for the same path would otherwise silently
-  // share the wrong in-flight promise. Pipe-joined (not space-joined) so a
-  // cacheDir/filePath boundary is never ambiguous - a space is a valid
-  // Windows path character, but | is reserved and can never appear in one.
-  const inFlightKey = [cacheDir, filePath, isVideo].join('|')
-  const existing = inFlight.get(inFlightKey)
-  if (existing) return existing
-
-  const promise = resolveMediaThumbnailUncached(
-    cacheDir,
+  let cache = legacyCaches.get(cacheDir)
+  if (!cache) {
+    cache = createArtworkCache({
+      thumbDir: cacheDir,
+      coverDir: join(cacheDir, '..', 'media-covers'),
+    })
+    legacyCaches.set(cacheDir, cache)
+  }
+  const result = await resolveMediaArtwork(
+    cache,
     filePath,
     isVideo,
     deps,
-    notFoundMarkerPath
-  ).finally(() => {
-    // Removed once settled (success OR failure) regardless - a later,
-    // non-concurrent request for the same file starts its own fresh
-    // pathExists(cachePath)/pathExists(notFoundMarkerPath) check rather than
-    // being stuck sharing a long-finished promise.
-    inFlight.delete(inFlightKey)
-  })
-  inFlight.set(inFlightKey, promise)
-  return promise
+    inFlight as Map<string, Promise<MediaArtwork | null>>
+  )
+  return result?.thumb ?? null
 }

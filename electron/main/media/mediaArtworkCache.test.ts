@@ -34,6 +34,11 @@ function gate(): { promise: Promise<void>; open: () => void } {
 const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 20))
 
 describe('mediaArtworkCache', () => {
+  it('paths returns the four cache locations for a track', () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    expect(cache.paths('/a/b.mp3')).toEqual(artworkPaths(thumbDir, coverDir, '/a/b.mp3'))
+  })
+
   it('invalidate removes all four files and bumps track generation', async () => {
     const cache = createArtworkCache({ thumbDir, coverDir })
     const p = artworkPaths(thumbDir, coverDir, track)

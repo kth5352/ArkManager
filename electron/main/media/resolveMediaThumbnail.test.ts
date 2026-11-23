@@ -3,7 +3,10 @@ import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { extname, join } from 'node:path'
 import sharp from 'sharp'
-import { resolveMediaThumbnail } from './resolveMediaThumbnail'
+import { readFile } from 'node:fs/promises'
+import { resolveMediaThumbnail, resolveMediaArtwork } from './resolveMediaThumbnail'
+import type { ResolveMediaThumbnailDeps } from './resolveMediaThumbnail'
+import { createArtworkCache, artworkPaths } from './mediaArtworkCache'
 
 async function writeFakeFrame(outputPath: string): Promise<void> {
   await sharp({ create: { width: 2, height: 2, channels: 3, background: 'red' } })
@@ -302,7 +305,7 @@ describe('resolveMediaThumbnail', () => {
       extractAudioArt: async () => false,
       findThumbnailPath: async () => null,
     }
-    const inFlight = new Map<string, Promise<string | null>>()
+    const inFlight = new Map<string, Promise<unknown>>()
 
     const first = await resolveMediaThumbnail(cacheDir, videoPath, true, deps, inFlight)
     expect(inFlight.size).toBe(0)
@@ -326,7 +329,7 @@ describe('resolveMediaThumbnail', () => {
       extractAudioArt: async () => false,
       findThumbnailPath: async () => null,
     }
-    const ownInFlight = new Map<string, Promise<string | null>>()
+    const ownInFlight = new Map<string, Promise<unknown>>()
 
     const result = await resolveMediaThumbnail(cacheDir, videoPath, true, deps, ownInFlight)
 
@@ -356,5 +359,200 @@ describe('resolveMediaThumbnail', () => {
     await Promise.all(paths.map((p) => resolveMediaThumbnail(cacheDir, p, true, deps)))
 
     expect(peak).toBeLessThanOrEqual(2)
+  })
+})
+
+describe('resolveMediaArtwork', () => {
+  let dir: string
+  let thumbDir: string
+  let coverDir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-artwork-'))
+    thumbDir = join(dir, 'thumbs')
+    coverDir = join(dir, 'covers')
+  })
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  const png = (width: number, height: number, background: string): Promise<Buffer> =>
+    sharp({ create: { width, height, channels: 3, background } })
+      .png()
+      .toBuffer()
+
+  const noDeps = (over: Partial<ResolveMediaThumbnailDeps> = {}): ResolveMediaThumbnailDeps => ({
+    extractVideoFrame: async () => false,
+    extractAudioArt: async () => false,
+    findThumbnailPath: async () => null,
+    findWorkCover: async () => null,
+    ...over,
+  })
+
+  it('writes thumb, cover and info with accent and aspect ratio', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const audio = join(dir, 'song.mp3')
+    const source = await png(800, 600, '#3366cc')
+    const result = await resolveMediaArtwork(
+      cache,
+      audio,
+      false,
+      noDeps({
+        extractAudioArt: async (_a, out) => {
+          await writeFile(out, source)
+          return true
+        },
+      }),
+      new Map()
+    )
+    expect(result).not.toBeNull()
+    expect(result!.info.source).toBe('embedded')
+    expect(result!.info.aspectRatio).toBeCloseTo(1.333, 2)
+    expect(result!.info.accent).toMatch(/^#[0-9a-f]{6}$/)
+    await expect(access(result!.thumb)).resolves.toBeUndefined()
+    await expect(access(result!.cover)).resolves.toBeUndefined()
+    const meta = await sharp(await readFile(result!.cover)).metadata()
+    expect(Math.max(meta.width!, meta.height!)).toBeLessThanOrEqual(2048)
+    const onDisk = JSON.parse(await readFile(artworkPaths(thumbDir, coverDir, audio).info, 'utf8'))
+    expect(onDisk.accent).toBe(result!.info.accent)
+  })
+
+  it('corrupt source falls through to the next source', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const audio = join(dir, 'song.mp3')
+    const folderImage = join(dir, 'cover.png')
+    await writeFile(folderImage, await png(100, 100, 'green'))
+    const result = await resolveMediaArtwork(
+      cache,
+      audio,
+      false,
+      noDeps({
+        extractAudioArt: async (_a, out) => {
+          await writeFile(out, Buffer.from('not an image at all'))
+          return true
+        },
+        findThumbnailPath: async () => folderImage,
+      }),
+      new Map()
+    )
+    expect(result?.info.source).toBe('folder')
+  })
+
+  it('uses work cover after folder image and records its generation', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const audio = join(dir, 'song.mp3')
+    const workCover = join(dir, 'work.png')
+    await writeFile(workCover, await png(100, 100, 'purple'))
+    const result = await resolveMediaArtwork(
+      cache,
+      audio,
+      false,
+      noDeps({ findWorkCover: async () => workCover }),
+      new Map()
+    )
+    expect(result?.info.source).toBe('work-cover')
+    expect(result?.info.workCoverGeneration).toBe(cache.workCoverGeneration())
+  })
+
+  it('does not use a work cover for video', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const workCover = join(dir, 'work.png')
+    await writeFile(workCover, await png(100, 100, 'purple'))
+    const result = await resolveMediaArtwork(
+      cache,
+      join(dir, 'clip.mp4'),
+      true,
+      noDeps({ findWorkCover: async () => workCover }),
+      new Map()
+    )
+    expect(result).toBeNull()
+  })
+
+  it('stale notfound from an older work-cover generation is re-resolved', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const audio = join(dir, 'song.mp3')
+    const workCover = join(dir, 'work.png')
+    await writeFile(workCover, await png(100, 100, 'purple'))
+    let hasWorkCover = false
+    const deps = noDeps({ findWorkCover: async () => (hasWorkCover ? workCover : null) })
+
+    expect(await resolveMediaArtwork(cache, audio, false, deps, new Map())).toBeNull()
+    // Still negative while the generation has not moved.
+    hasWorkCover = true
+    expect(await resolveMediaArtwork(cache, audio, false, deps, new Map())).toBeNull()
+
+    await cache.bumpWorkCoverGeneration()
+    const result = await resolveMediaArtwork(cache, audio, false, deps, new Map())
+    expect(result?.info.source).toBe('work-cover')
+  })
+
+  it('invalidation during extraction leaves no cache and next call regenerates', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const audio = join(dir, 'song.mp3')
+    const oldImage = await png(100, 100, 'red')
+    const newImage = await png(200, 100, 'blue')
+    let calls = 0
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    const deps = noDeps({
+      extractAudioArt: async (_a, out) => {
+        calls++
+        const mine = calls
+        if (mine === 1) await gate
+        await writeFile(out, mine === 1 ? oldImage : newImage)
+        return true
+      },
+    })
+
+    const first = resolveMediaArtwork(cache, audio, false, deps, new Map())
+    await new Promise((r) => setTimeout(r, 20))
+    await cache.invalidate(audio)
+    release()
+    const result = await first
+
+    expect(calls).toBe(2)
+    expect(result?.info.aspectRatio).toBeCloseTo(2, 2)
+    const meta = await sharp(await readFile(result!.cover)).metadata()
+    expect(meta.width).toBe(200)
+  })
+
+  it('work-cover generation bump during extraction makes the result stale on next read', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const audio = join(dir, 'song.mp3')
+    const workCover = join(dir, 'work.png')
+    await writeFile(workCover, await png(100, 100, 'purple'))
+    let bumped = false
+    const deps = noDeps({
+      findThumbnailPath: async () => {
+        if (!bumped) {
+          bumped = true
+          await cache.bumpWorkCoverGeneration()
+        }
+        return null
+      },
+      findWorkCover: async () => workCover,
+    })
+
+    const result = await resolveMediaArtwork(cache, audio, false, deps, new Map())
+
+    // The first attempt was stale (generation moved mid-flight); the retry used the new one.
+    expect(result?.info.workCoverGeneration).toBe(cache.workCoverGeneration())
+    await cache.bumpWorkCoverGeneration()
+    let lookups = 0
+    const again = await resolveMediaArtwork(
+      cache,
+      audio,
+      false,
+      noDeps({
+        findWorkCover: async () => {
+          lookups++
+          return workCover
+        },
+      }),
+      new Map()
+    )
+    expect(lookups).toBe(1)
+    expect(again?.info.workCoverGeneration).toBe(cache.workCoverGeneration())
   })
 })

@@ -13,6 +13,7 @@ export interface ArtworkFsOps {
 }
 
 export interface ArtworkCache {
+  paths(filePath: string): { thumb: string; notFound: string; cover: string; info: string }
   trackGeneration(filePath: string): number
   workCoverGeneration(): number
   bumpWorkCoverGeneration(): Promise<void>
@@ -89,6 +90,7 @@ export function createArtworkCache(opts: {
   }
 
   return {
+    paths: (filePath) => artworkPaths(thumbDir, coverDir, filePath),
     trackGeneration,
     workCoverGeneration: () => workCover,
     withTrackLock,
