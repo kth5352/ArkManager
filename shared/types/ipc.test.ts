@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   GetSettingRequestSchema,
   GameCodeSchema,
+  MpvPreviewFrameRequestSchema,
   RestoreSaveSnapshotRequestSchema,
   SaveDiffRequestSchema,
   SetSettingRequestSchema,
@@ -141,5 +142,40 @@ describe('SettingKeySchema', () => {
     expect(SettingKeySchema.parse('external-metadata-provider-api-key')).toBe(
       'external-metadata-provider-api-key'
     )
+  })
+})
+
+describe('MpvPreviewFrameRequestSchema', () => {
+  const valid = { seconds: 12.5, generation: 3, requestId: 7 }
+
+  it('accepts a finite non-negative time with integer generation and request id', () => {
+    expect(MpvPreviewFrameRequestSchema.parse(valid)).toEqual(valid)
+    expect(MpvPreviewFrameRequestSchema.parse({ seconds: 0, generation: 0, requestId: 0 })).toEqual(
+      { seconds: 0, generation: 0, requestId: 0 }
+    )
+  })
+
+  it('rejects negative, NaN and infinite seconds', () => {
+    for (const seconds of [-1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(() => MpvPreviewFrameRequestSchema.parse({ ...valid, seconds })).toThrow()
+    }
+  })
+
+  it('rejects non-integer or negative generation and request id', () => {
+    expect(() => MpvPreviewFrameRequestSchema.parse({ ...valid, generation: 1.5 })).toThrow()
+    expect(() => MpvPreviewFrameRequestSchema.parse({ ...valid, generation: -1 })).toThrow()
+    expect(() => MpvPreviewFrameRequestSchema.parse({ ...valid, requestId: 0.5 })).toThrow()
+    expect(() => MpvPreviewFrameRequestSchema.parse({ ...valid, requestId: -2 })).toThrow()
+  })
+
+  it('rejects a smuggled file path instead of stripping it', () => {
+    expect(() => MpvPreviewFrameRequestSchema.parse({ ...valid, path: 'C:/evil.mp4' })).toThrow()
+    expect(() =>
+      MpvPreviewFrameRequestSchema.parse({ ...valid, filePath: 'C:/evil.mp4' })
+    ).toThrow()
+  })
+
+  it('rejects a missing field', () => {
+    expect(() => MpvPreviewFrameRequestSchema.parse({ seconds: 1, generation: 1 })).toThrow()
   })
 })

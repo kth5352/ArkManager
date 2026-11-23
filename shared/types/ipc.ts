@@ -107,6 +107,9 @@ export const IPC_CHANNELS = {
   // see pollAndForwardEvents there). Drives auto-advance / repeat-one in
   // useMediaPlayback.ts.
   MPV_ENDED: 'mpv:ended',
+  // invoke: one 240x135 scene-preview frame of the file the MAIN mpv is
+  // playing (mpvPreviewManager.ts). The request carries no path.
+  MPV_PREVIEW_FRAME: 'mpv:preview-frame',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
   MEDIA_GET_COVER_INFO: 'media:get-cover-info',
@@ -664,6 +667,43 @@ export const MpvSetEqBandRequestSchema = z.object({
   gainDb: z.number().min(-12).max(12),
 })
 export type MpvSetEqBandRequest = z.infer<typeof MpvSetEqBandRequestSchema>
+
+// Scene preview (spec §4.5). The request deliberately has NO file path - main
+// previews only the file its own mpv already has loaded - and `.strict()`
+// rejects a smuggled `path`/`filePath` field outright instead of stripping it.
+// `generation` is the renderer's copy of MpvStateUpdate.loadGeneration.
+export const MpvPreviewFrameRequestSchema = z
+  .object({
+    seconds: z.number().finite().min(0),
+    generation: z.number().int().min(0),
+    requestId: z.number().int().min(0),
+  })
+  .strict()
+export type MpvPreviewFrameRequest = z.infer<typeof MpvPreviewFrameRequestSchema>
+
+export const MPV_PREVIEW_FRAME_WIDTH = 240
+export const MPV_PREVIEW_FRAME_HEIGHT = 135
+
+// Response (or null). `data` is RGBA, width*height*4 bytes, alpha always 255.
+export const MpvPreviewFrameSchema = z.object({
+  generation: z.number().int(),
+  requestId: z.number().int(),
+  seconds: z.number(),
+  width: z.literal(MPV_PREVIEW_FRAME_WIDTH),
+  height: z.literal(MPV_PREVIEW_FRAME_HEIGHT),
+  data: z.instanceof(Uint8Array),
+})
+// Spelled out rather than inferred: z.instanceof narrows `data` to
+// Uint8Array<ArrayBuffer>, while frames cloned across processes are typed with
+// the default ArrayBufferLike backing.
+export interface MpvPreviewFrame {
+  generation: number
+  requestId: number
+  seconds: number
+  width: typeof MPV_PREVIEW_FRAME_WIDTH
+  height: typeof MPV_PREVIEW_FRAME_HEIGHT
+  data: Uint8Array
+}
 
 // Pushed from main to whichever window(s) need to know playback state
 // without hosting the video themselves (e.g. the sidebar's lyrics tab, the

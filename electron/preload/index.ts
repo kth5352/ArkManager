@@ -20,6 +20,8 @@ import {
   type MetadataSearchSource,
   type MetadataFailureDto,
   type MoveResultDto,
+  type MpvPreviewFrame,
+  type MpvPreviewFrameRequest,
   type MpvStateUpdate,
   type PersistedExplorerTab,
   type RenameResultDto,
@@ -475,6 +477,10 @@ const api = {
     // same shape as resize/seek's treatment of high-frequency calls.
     setEqualizerBandGain: (bandIndex: number, gainDb: number): void =>
       ipcRenderer.send(IPC_CHANNELS.MPV_SET_EQ_BAND, { bandIndex, gainDb }),
+    // One 240x135 RGBA scene-preview frame of the file currently playing, or
+    // null (stale generation, not a video, preview off). No path is sent.
+    previewFrame: (request: MpvPreviewFrameRequest): Promise<MpvPreviewFrame | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPV_PREVIEW_FRAME, request),
     onStateUpdate: (callback: (state: MpvStateUpdate) => void): (() => void) => {
       const listener = (_event: unknown, state: MpvStateUpdate): void => callback(state)
       ipcRenderer.on(IPC_CHANNELS.MPV_STATE_UPDATE, listener)

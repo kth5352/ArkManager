@@ -38,8 +38,10 @@ import { registerExcludedEntriesHandlers } from './ipc/excludedEntriesHandlers'
 import { registerMediaPlaylistHandlers } from './ipc/mediaPlaylistHandlers'
 import { registerMediaPlaylistCoverHandlers } from './ipc/mediaPlaylistCoverHandlers'
 import { registerMpvHandlers } from './ipc/mpvHandlers'
+import { registerMpvPreviewHandlers } from './ipc/mpvPreviewHandlers'
 import { attachWindowFullscreen, registerWindowFullscreenHandlers } from './ipc/windowFullscreenHandlers'
 import * as mpv from './media/mpvProcessManager'
+import { shutdownPreview } from './media/mpvPreviewManager'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
 import { recordPlaySession } from './database/gameUserDataRepository'
@@ -522,6 +524,7 @@ if (!gotSingleInstanceLock) {
     registerMediaPlaylistHandlers(db)
     registerMediaPlaylistCoverHandlers(db)
     registerMpvHandlers(db, () => mainWindow)
+    registerMpvPreviewHandlers()
     registerWindowFullscreenHandlers()
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
@@ -543,6 +546,8 @@ if (!gotSingleInstanceLock) {
       // before - the export and its worker-message handler existed but had
       // no caller anywhere in the app.
       mpv.shutdown()
+      // Same for the scene-preview mpv (a second utility process, if running).
+      shutdownPreview()
       const now = Date.now()
       for (const session of getActiveSessions()) {
         recordPlaySession(db, session.key, session.keyType, now - session.startedAt)

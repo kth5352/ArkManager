@@ -54,7 +54,8 @@ const workerMessageListeners: Array<(msg: unknown) => void> = []
 // build output and DLL are copied via electron-builder's `extraResources`
 // (see package.json) into resources/mpv-addon/, which process.resourcesPath
 // points at directly.
-function resolveAddonDir(): string {
+// Exported for mpvPreviewManager.ts, whose preview worker loads the same addon.
+export function resolveAddonDir(): string {
   if (app.isPackaged) return join(process.resourcesPath, 'mpv-addon')
   return join(__dirname, '../../electron/native/mpv-addon')
 }
@@ -158,6 +159,13 @@ export function getLoadState(): {
   isVideo: boolean
 } {
   return { generation: loadGeneration, requestedPath: loadedRequestedPath, isVideo: loadedIsVideo }
+}
+
+// The resolved path of the file the main mpv has loaded right now (null when
+// nothing is loaded or the child exited). The scene preview opens ONLY this
+// path - never one sent by a renderer (mpvPreviewManager.ts).
+export function getCurrentLoadedPath(): string | null {
+  return currentLoadedPath
 }
 
 export function play(): void {

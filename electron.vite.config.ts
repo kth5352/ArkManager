@@ -46,8 +46,13 @@ export default defineConfig({
         // nothing pulls it into index.js's module graph and a single-entry
         // build silently emits no worker at all. utilityProcess.fork() on a
         // missing script fails at runtime, not build time, so this has to be
-        // an explicit second entry.
-        entry: ['electron/main/index.ts', 'electron/main/media/mpvWorker.ts'],
+        // an explicit second entry. mpvPreviewWorker.ts (the scene-preview
+        // mpv, forked by mpvPreviewManager) is a third entry for the same reason.
+        entry: [
+          'electron/main/index.ts',
+          'electron/main/media/mpvWorker.ts',
+          'electron/main/media/mpvPreviewWorker.ts',
+        ],
       },
     },
     plugins: [externalizeDepsPlugin()],
