@@ -98,12 +98,34 @@ describe('attachFullscreenController', () => {
     c.request(true, 'media-toggle')
     expect(w.setFullScreen).not.toHaveBeenCalled()
   })
-  it('a rejected enter (no event) does not leak pending to a later F11', () => {
+  it('a refused enter (no-op setFullScreen) does not claim the next F11 for media', () => {
     const w = new FakeWin()
-    w.auto = false
+    w.setFullScreen.mockImplementation(() => undefined)
     const c = attachFullscreenController(w)
     c.request(true, 'media-toggle')
-    expect(c.owner()).toBeNull()
+    w.fire(true)
+    expect(c.owner()).toBe('user')
+    c.request(false, 'media-release')
+    expect(w.setFullScreen).toHaveBeenCalledTimes(1)
+  })
+  it('an enter whose event never arrives times out before a later F11', () => {
+    vi.useFakeTimers()
+    try {
+      const w = new FakeWin()
+      w.setFullScreen.mockImplementation((v: boolean) => {
+        w.full = v
+      })
+      const c = attachFullscreenController(w, {
+        set: (fn, ms) => setTimeout(fn, ms),
+        clear: (h) => clearTimeout(h as never),
+      })
+      c.request(true, 'media-toggle')
+      vi.advanceTimersByTime(1500)
+      w.fire(true)
+      expect(c.owner()).toBe('user')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

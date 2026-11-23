@@ -41,11 +41,28 @@ export interface FullscreenController {
   owner: () => FullscreenOwner
 }
 
-export function attachFullscreenController(win: FullscreenWindowLike): FullscreenController {
+export interface FullscreenTimers {
+  set: (fn: () => void, ms: number) => unknown
+  clear: (handle: unknown) => void
+}
+
+const PENDING_TIMEOUT_MS = 1000
+
+export function attachFullscreenController(
+  win: FullscreenWindowLike,
+  timers: FullscreenTimers = { set: setTimeout, clear: (h) => clearTimeout(h as never) }
+): FullscreenController {
   const owner = createFullscreenOwner()
   // Set when our own setFullScreen(true) is in flight, so the resulting
   // enter-full-screen event is attributed to media rather than the user.
   let pendingMedia = false
+  let pendingTimer: unknown = null
+
+  const clearPending = (): void => {
+    pendingMedia = false
+    if (pendingTimer !== null) timers.clear(pendingTimer)
+    pendingTimer = null
+  }
 
   const state = (): WindowFullscreenChangedPayload => ({
     fullscreen: win.isDestroyed() ? false : win.isFullScreen(),
@@ -54,12 +71,12 @@ export function attachFullscreenController(win: FullscreenWindowLike): Fullscree
 
   win.on('enter-full-screen', () => {
     owner.onEnter(pendingMedia)
-    pendingMedia = false
+    clearPending()
     if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.WINDOW_FULLSCREEN_CHANGED, state())
   })
   win.on('leave-full-screen', () => {
     owner.onLeave()
-    pendingMedia = false
+    clearPending()
     if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.WINDOW_FULLSCREEN_CHANGED, state())
   })
 
@@ -71,6 +88,14 @@ export function attachFullscreenController(win: FullscreenWindowLike): Fullscree
         if (!win.isFullScreen()) {
           pendingMedia = true
           win.setFullScreen(true)
+          if (!win.isFullScreen()) {
+            // Refused: no enter event will ever arrive, so a stale flag must
+            // not claim the user's next F11 for media.
+            clearPending()
+          } else if (pendingMedia && pendingTimer === null) {
+            // Entered but the event has not been delivered yet: bound the wait.
+            pendingTimer = timers.set(clearPending, PENDING_TIMEOUT_MS)
+          }
         }
       } else if (win.isFullScreen()) {
         if (reason === 'media-toggle' || owner.shouldRelease()) win.setFullScreen(false)
