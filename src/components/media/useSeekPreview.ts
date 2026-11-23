@@ -1,6 +1,11 @@
 import { useCallback, useLayoutEffect, useState } from 'react'
 import type { MpvPreviewFrame } from '../../../shared/types/ipc'
-import { bucketFor, createPreviewCache, shouldDisplayPreview } from './seekPreview'
+import {
+  bucketFor,
+  createPreviewCache,
+  isWellFormedPreviewFrame,
+  shouldDisplayPreview,
+} from './seekPreview'
 
 export interface SeekPreviewFrame {
   bucket: number
@@ -58,6 +63,9 @@ class SeekPreviewController {
   sync(trackPath: string | null, generation: number | null, isVideo: boolean, duration: number) {
     if (trackPath !== this.trackPath || generation !== this.generation) {
       this.invalidate()
+      // A new track starts un-hovered: the old bucket means nothing on it, and
+      // keeping it would make the first hover of that same bucket a no-op.
+      if (trackPath !== this.trackPath) this.hovered = null
       this.trackPath = trackPath
       this.generation = generation
     }
@@ -122,7 +130,12 @@ class SeekPreviewController {
         hoveredBucket: this.hovered,
         lastDrawnRequestId: this.lastDrawnRequestId,
       })
-      if (decision.cache && this.trackPath !== null && this.generation !== null) {
+      if (
+        decision.cache &&
+        isWellFormedPreviewFrame(res) &&
+        this.trackPath !== null &&
+        this.generation !== null
+      ) {
         const frame: StoredFrame = {
           bucket: res.seconds,
           // A copy: the cloned IPC buffer is typed ArrayBufferLike, ImageData needs ArrayBuffer.

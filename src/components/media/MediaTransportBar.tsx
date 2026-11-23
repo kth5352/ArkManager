@@ -129,6 +129,13 @@ export function MediaTransportBar({
     generation: playback.loadGeneration,
   })
   const [seekHover, setSeekHover] = useState<SeekPreviewHover | null>(null)
+  // A track change clears the hover card (its time belonged to the old
+  // track); the next pointer move shows it again. Adjusted during render.
+  const [seekHoverTrack, setSeekHoverTrack] = useState(playback.track.path)
+  if (seekHoverTrack !== playback.track.path) {
+    setSeekHoverTrack(playback.track.path)
+    setSeekHover(null)
+  }
   const seekWrapperRef = useRef<HTMLDivElement | null>(null)
   // Non-null while a seek-thumb drag is being followed on window, so the
   // preview keeps tracking the pointer even outside the bar.

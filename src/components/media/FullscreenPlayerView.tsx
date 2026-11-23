@@ -108,7 +108,10 @@ export function FullscreenPlayerView({
   const { visible, bumpActivity } = useAutoHideControls({ enabled: active, hold, rootRef })
 
   useFullscreenKeys(
-    { overlayVisible: active, windowFullscreen: active && fullscreen },
+    // While the EQ popover (or the Select inside it) is open, Escape belongs to
+    // that innermost layer: Radix closes it, and only the next Escape leaves
+    // fullscreen. Consuming it here in the capture phase would starve Radix.
+    { overlayVisible: active, windowFullscreen: active && fullscreen && !popoverOpen },
     {
       // useFullscreenKeys consumes F/Escape in the capture phase, so the
       // auto-hide keydown listener never sees them - count them here.

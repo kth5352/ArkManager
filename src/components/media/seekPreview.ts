@@ -56,6 +56,23 @@ export function shouldDisplayPreview(
   }
 }
 
+// Defense in depth: main already drops frames that aren't exactly 240x135x4,
+// but `new ImageData` throws on a length mismatch, so a malformed frame is
+// dropped here before it can reach the cache or a draw.
+export function isWellFormedPreviewFrame(frame: {
+  data: { length: number }
+  width: number
+  height: number
+}): boolean {
+  return (
+    Number.isInteger(frame.width) &&
+    Number.isInteger(frame.height) &&
+    frame.width > 0 &&
+    frame.height > 0 &&
+    frame.data.length === frame.width * frame.height * 4
+  )
+}
+
 export interface PreviewCache<T> {
   get(key: number): T | undefined
   has(key: number): boolean

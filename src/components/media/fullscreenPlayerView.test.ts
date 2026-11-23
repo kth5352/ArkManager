@@ -251,6 +251,28 @@ describe('FullscreenPlayerView', () => {
     expect(fs.toggle).toHaveBeenCalledTimes(2)
   })
 
+  it('Escape with the EQ popover open is left to the popover and keeps fullscreen', () => {
+    fs.state = { fullscreen: true, owner: 'user' }
+    render()
+    click('eq-open')
+    const bubble = vi.fn()
+    window.addEventListener('keydown', bubble)
+    try {
+      const event = press('Escape')
+      // Not consumed: a bubble listener (Radix's dismissable layer) still sees it.
+      expect(event.defaultPrevented).toBe(false)
+      expect(bubble).toHaveBeenCalledTimes(1)
+      expect(fs.toggle).not.toHaveBeenCalled()
+      // Once the popover reports closed, Escape leaves fullscreen again.
+      click('eq-close')
+      expect(press('Escape').defaultPrevented).toBe(true)
+      expect(fs.toggle).toHaveBeenCalledTimes(1)
+      expect(bubble).toHaveBeenCalledTimes(1)
+    } finally {
+      window.removeEventListener('keydown', bubble)
+    }
+  })
+
   it('ignores F and Escape while the overlay is minimized', () => {
     fs.state = { fullscreen: true, owner: 'user' }
     render({ active: false })

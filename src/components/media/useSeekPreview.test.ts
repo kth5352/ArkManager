@@ -194,6 +194,33 @@ describe('useSeekPreview', () => {
     expect(previewFrame).not.toHaveBeenCalled()
   })
 
+  it('drops a frame whose data length does not match its size, without throwing', async () => {
+    mount()
+    hover(10)
+    await answer(0, frameFor(pending[0].request, { data: new Uint8Array(16) }))
+    expect(latest.frame).toBeNull()
+    expect(errors).not.toHaveBeenCalled()
+    // Not cached and not retried in place; hovering away and back asks again.
+    hover(20)
+    await answer(1)
+    hover(10)
+    expect(previewFrame).toHaveBeenCalledTimes(3)
+    expect(pending[2].request.seconds).toBe(10)
+  })
+
+  it('a track change resets the hovered bucket, so the same bucket is requested anew', async () => {
+    mount()
+    hover(10)
+    await answer(0)
+    // Straight to the new track's generation, pointer still at the same spot.
+    mount({ trackPath: 'D:/v/b.mp4', generation: 2 })
+    expect(latest.frame).toBeNull()
+    expect(previewFrame).toHaveBeenCalledTimes(1)
+    hover(10)
+    expect(previewFrame).toHaveBeenCalledTimes(2)
+    expect(pending[1].request).toEqual({ seconds: 10, generation: 2, requestId: 2 })
+  })
+
   it('does not update state after unmount', async () => {
     mount()
     hover(10)

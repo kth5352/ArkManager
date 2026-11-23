@@ -29,7 +29,12 @@ export function SeekPreviewCard({ hover, frame }: SeekPreviewCardProps) {
     if (canvas.height !== frame.height) canvas.height = frame.height
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.putImageData(new ImageData(frame.data, frame.width, frame.height), 0, 0)
+    try {
+      ctx.putImageData(new ImageData(frame.data, frame.width, frame.height), 0, 0)
+    } catch {
+      // Defense in depth (useSeekPreview already drops malformed frames): a
+      // throw here would otherwise take the whole player down with it.
+    }
   }, [frame])
 
   if (!hover) return null

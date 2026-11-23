@@ -108,6 +108,33 @@ describe('SeekPreviewCard', () => {
     expect(card()!.style.left).toBe('-32px')
     vi.unstubAllGlobals()
   })
+
+  it('a frame whose length does not match its size does not throw out of the draw', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D)
+    vi.stubGlobal(
+      'ImageData',
+      class {
+        constructor(data: Uint8ClampedArray, width: number, height: number) {
+          if (data.length !== width * height * 4) throw new Error('length mismatch')
+        }
+      }
+    )
+    const bad = { bucket: 10, data: new Uint8ClampedArray(16), width: 240, height: 135 }
+    expect(() =>
+      act(() =>
+        root.render(
+          createElement(SeekPreviewCard, {
+            hover: { seconds: 10, clientX: 500, wrapperLeft: 0, viewportWidth: 1920 },
+            frame: bad,
+          })
+        )
+      )
+    ).not.toThrow()
+    expect(card()).not.toBeNull()
+    vi.unstubAllGlobals()
+  })
 })
 
 describe('MediaTransportBar seek preview', () => {
@@ -179,6 +206,14 @@ describe('MediaTransportBar seek preview', () => {
     expect(card()).toBeNull()
     renderBar(makePlayback({ duration: Infinity }))
     hoverSeek(200)
+    expect(card()).toBeNull()
+  })
+
+  it('a track change clears the hover card', () => {
+    renderBar(makePlayback())
+    hoverSeek(200)
+    expect(card()).not.toBeNull()
+    renderBar(makePlayback({ track: { path: 'D:/v/b.mp4', name: 'b.mp4' } }))
     expect(card()).toBeNull()
   })
 
