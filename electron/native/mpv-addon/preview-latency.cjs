@@ -39,10 +39,17 @@ const interval = setInterval(() => {
       }
       if (event.name === 'playback-restart' && pending) pending.restarted = true
     }
-    if (pending && pending.restarted && addon.renderFrame(W, H)) {
-      samples.push(performance.now() - pending.start)
-      pending = null
-      nextSeekAt = performance.now() + 50
+    // CONTRACT (preview worker must follow): keep calling renderFrame on every
+    // tick while a seek is pending. With the libmpv render API a paused seek's
+    // playback-restart waits for the VO to render a frame; if rendering only
+    // starts after playback-restart, mpv sits on its internal timeout (~220ms).
+    if (pending) {
+      const frame = addon.renderFrame(W, H)
+      if (pending.restarted && frame) {
+        samples.push(performance.now() - pending.start)
+        pending = null
+        nextSeekAt = performance.now() + 50
+      }
     }
     if (loaded && !pending && samples.length < COUNT && performance.now() >= nextSeekAt) {
       const duration = addon.getDuration()
