@@ -4,7 +4,7 @@
 
 개인 게임/미디어 라이브러리를 관리하는 Windows용 Electron 데스크톱 애플리케이션의 설계와 구현을 정리한 문서입니다. 폴더 단위로 등록한 라이브러리를 스캔해 식별 코드를 인식하고, 여러 외부 소스에서 메타데이터(표지, 제목, 제작사, 발매일, 태그)를 가져와 붙여주며, 파일 탐색기·미디어 플레이어·세이브 데이터 관리 기능을 하나의 앱 안에 통합합니다.
 
-**규모** (2026-11-23, `security/hardening` `aa51de8` 기준): 714개 커밋, 테스트 제외 약 31,000줄의 TypeScript/TSX, IPC 채널 106개, 테스트 파일 141개(렌더러 54·메인 83·shared 4) / 테스트 1009개.
+**규모** (2026-11-23, `security/hardening` 기준): 테스트 제외 약 31,000줄의 TypeScript/TSX, IPC 채널 106개, 테스트 파일 146개(렌더러 55·메인 87·shared 4) / 테스트 1043개.
 
 **기술 스택**: Electron 43 + electron-vite · React 19 + TypeScript(strict) · Tailwind CSS v4 + shadcn/ui(Radix) · Zustand + TanStack Query v5 + TanStack Router · Drizzle ORM + better-sqlite3 · dnd-kit · react-window(가상 스크롤) · libmpv(N-API 애드온, utilityProcess) · sharp · ffmpeg-static · Vitest
 
@@ -124,15 +124,15 @@ export function legacyVndbCodeToCanonical(value: string): string | null {
 
 코드의 종류(`code.type`)에 따라 완전히 다른 조회 전략을 씁니다.
 
-- **ST(Steam)**: Steam 단일 소스
+- **ST(Steam)**: Steam 공개 스토어 API(`IStoreBrowseService/GetItems` + `IStoreService/GetTagList`), API 장애 시에만 HTML 상점 페이지로 폴백
 - **VNV/VNR(VNDB)**: VNDB 공식 Kana API 단일 소스 (스크래핑이 아닌 정식 API)
 - **GC(Getchu)**: Getchu 단일 소스
 - **RJ/VJ**: **DLsite HTML 페이지 → DLsite JSON 폴백 → 사용자 설정 외부 API** 순서로 시도하는 다단계 폴백 체인. 각 단계는 순서대로 시도되고, 실패 사유(`not_found`/`blocked`/`network`/`parse`/`provider_error`)를 `metadata_failures` 테이블에 남겨 "왜 정보가 없는지"를 UI에서 설명할 수 있게 합니다.
 
 ### 소스별로 다른 기술적 처리
 
-- **DLsite**: 실제 작품 페이지를 cheerio로 파싱. 1차 실패 시 별도 내부 JSON 엔드포인트로 재시도.
-- **Steam**: 연령 확인 페이지를 실제로 거치지 않고, Steam이 그 확인 절차에서 자체적으로 설정하는 쿠키를 요청 시점에 미리 실어 보내 상점 페이지를 바로 가져옵니다.
+- **DLsite**: 실제 작품 페이지를 cheerio로 파싱. 2026-11에 페이지가 Nuxt 마크업(`.c-productInfo__item` dt/dd)으로 바뀌었는데 제목·표지만 살아남아, 옛 파서는 장르·서클이 빈 결과를 "성공"으로 저장했습니다. 그래서 파서가 옛 표와 새 dt/dd를 같은 "라벨 → 값 셀" 맵으로 읽고, **HTML 결과가 불완전하면(장르나 서클이 빔) JSON 소스(`api/=/product.json`)로 빈 필드만 채웁니다.** 스크래핑은 언젠가 다시 깨질 것이므로, "제목만 있어도 성공"이 아니라 "핵심 필드가 비면 다음 소스로 보충"을 원칙으로 삼은 것입니다. HTML이 아예 실패하면 같은 JSON 소스로 폴백합니다.
+- **Steam**: 처음에는 연령 확인 절차에서 Steam이 설정하는 쿠키를 미리 실어 HTML 상점 페이지를 가져왔습니다. 하지만 "성인 전용" 등급은 연령 확인이 **로그인**을 요구하고, 한국에서 판매하지 않는 타이틀은 "지역 제한" 오류 페이지가 와서, 이 앱이 주로 다루는 타이틀이 대부분 실패했습니다(2026-11 실측). 그래서 Steam 클라이언트가 쓰는 공개 스토어 API를 국가 `US`로 호출하는 방식으로 바꿨습니다(로그인·쿠키 불필요, 사용자 태그 포함). HTML 파서는 API 장애 시 폴백으로만 남겼습니다.
 - **Getchu**: 응답을 `arrayBuffer()`로 받아 `TextDecoder('euc-jp')`로 직접 디코딩합니다 — 기본 `response.text()`는 UTF-8을 가정해 일본어 텍스트를 깨뜨리기 때문에, 실제 응답의 인코딩을 확인해 맞춘 처리입니다. 상대 경로 이미지 URL 보정, 전각 콜론(`：`) 접미사가 붙은 스펙 표 라벨, `YYYY/MM/DD` 날짜 형식 등 사이트 고유의 마크업 특성도 별도로 처리합니다.
 - **표지 이미지 다운로드 공통 처리**: 일부 호스트가 리퍼러 없는 이미지 요청을 403으로 차단하는 것을 확인해, 실제 브라우저가 그 작품 페이지에서 이미지를 보여줄 때 보내는 것과 동일한 same-origin `Referer` 헤더를 함께 보냅니다. 다운로드한 이미지는 `sharp`로 webp로 변환해 캐시합니다.
 - **외부 메타데이터 API**: 설정에서 URL/사용 여부/Bearer 토큰을 구성할 수 있는 커스텀 프로바이더. HTTPS가 아니면(로컬 개발용 loopback 주소 제외) 거부하고, 응답은 Zod 스키마로 검증한 뒤에만 신뢰합니다.
@@ -141,7 +141,7 @@ export function legacyVndbCodeToCanonical(value: string): string | null {
 
 캐시에 없는 코드들을 한꺼번에 조회할 때, 병렬이 아니라 **1초 간격으로 하나씩 순차 처리**하도록 명시적으로 설계했습니다. DLsite에 문서화된 요청 제한은 없지만, 동시에 여러 요청을 몰아서 보내면 이 앱의 IP가 차단될 위험이 있다고 판단한 결정입니다. 세션 내에서 이미 시도한 코드는 `Set`으로 추적해 여러 페이지에서 중복 요청되지 않도록 하고, 개별 코드 실패는 전체 큐를 막지 않고 건너뜁니다.
 
-실패는 `metadata_failures`에 **영속**되고, 자동 큐는 실패 기록이 있는 코드를 다시 넣지 않습니다(1.2.1 — 그 전에는 인메모리 `Set`이 재시작마다 초기화되어 실패 코드가 매 실행 재크롤됐음). 실패 코드를 다시 시도하는 방법은 단건 새로고침과 File 메뉴의 "전체 메타데이터 새로고침"(`forceEnqueue`, 캐시된 코드 + 실패 코드 전부)뿐입니다. 참고: 일괄 큐는 기본 deps로 크롤하므로 외부 메타데이터 프로바이더는 단건 크롤에서만 체인에 들어갑니다.
+실패는 `metadata_failures`에 **영속**되고, 자동 큐는 실패 기록이 있는 코드를 다시 넣지 않습니다(1.2.1 — 그 전에는 인메모리 `Set`이 재시작마다 초기화되어 실패 코드가 매 실행 재크롤됐음). 실패 코드를 다시 시도하는 방법은 단건 새로고침과 File 메뉴의 "전체 메타데이터 새로고침"(`forceEnqueue`, 캐시된 코드 + 실패 코드 전부)뿐입니다. 일괄 큐와 단건 크롤은 같은 설정 기반 deps(외부 프로바이더 포함)를 쓰며, 큐는 코드마다 deps를 새로 읽어 설정 변경이 즉시 반영됩니다.
 
 모든 외부 요청은 `net/safeFetch.ts`를 거칩니다(https만, 사설/루프백 대역 차단, 리다이렉트 수동 재검증, 응답 크기 상한). 크롤 대상 HTML/JSON이 주는 표지 URL은 제3자가 통제하는 값이라 SSRF 경로가 될 수 있기 때문입니다.
 
@@ -252,7 +252,9 @@ TypeScript의 구조적 타이핑 덕분에 한국어 쪽에 새 문자열 키�
 - **해석기 제거**: 신뢰할 수 없는 문자열이 셸·스크립트 텍스트에 끼어들지 않도록 데이터와 코드의 경로를 분리합니다(`readExeFileVersion`은 셸 없이 실행하고 경로는 환경변수로만 전달). 디코더 공격면은 허용 목록으로 좁힙니다(이미지는 jpeg/png/webp/gif만, mpv는 재생목록 참조·ytdl·스크립트 off).
 - **공급망·패키징**: Electron Fuses로 `ELECTRON_RUN_AS_NODE`/`NODE_OPTIONS`/`--inspect` 진입점을 막고, 소스 없이 동봉하는 `libmpv-2.dll`은 SHA-256을 기록해 빌드 전에 검증합니다.
 
-남은 위험(렌더러 `file://` 로드, `SETTINGS_SET` 값 무검증, `realpath` 미사용 등)과 후속 작업은 `docs/SECURITY.md` §3과 `docs/FEATURES.md` §20에 정리되어 있습니다.
+- **값 저장과 선택창이 다른 핸들러일 때**: 예를 들어 LE 경로는 `launch:pick-locale-emulator-path`가 선택창을 열고 `settings:set`이 저장합니다. 이런 경우를 위해 `ipc/pickedPaths.ts`의 1회용 슬롯으로 "방금 고른 경로"를 두 핸들러가 공유합니다.
+
+남은 위험(렌더러 `file://` 로드, `realpath` 미사용 등)과 후속 작업은 `docs/SECURITY.md` §3과 `docs/FEATURES.md` §20에 정리되어 있습니다.
 
 ---
 

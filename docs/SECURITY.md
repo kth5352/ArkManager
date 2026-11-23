@@ -69,9 +69,12 @@
 | 낮음 | 프로덕션에서 DevTools 메뉴 노출 | "콘솔에 붙여넣으세요" 류 사회공학에 노출. 필요 시 패키징 빌드에서 `toggleDevTools` 제거 |
 | 낮음 | `SHELL_SHOW_ITEM_IN_FOLDER` 등은 경로 존재 확인 없이 호출 | 라이브러리 경계 검증은 있음. 영향 미미 |
 | 낮음 | Explorer 얕은 스캔은 라이브러리 밖 폴더도 나열 | 파일 탐색기 기능의 일부(읽기 전용 목록). 변경 작업은 모두 라이브러리 안으로 제한됨 |
+| 정보 | 외부 접속 호스트 추가 | Steam 크롤이 스토어 API(`api.steampowered.com`)로 바뀌어 외부 접속 호스트가 하나 늘었음. `safeFetch` 경유이며 쿠키/자격 증명은 보내지 않음 |
 | 정보 | DNS 리바인딩 | `safeFetch`는 요청 직전 DNS를 검사하지만 Node `fetch`가 따로 재해석하므로 이론상 TOCTOU가 남음. 크롤 대상 도메인이 고정이라 실질 위험은 낮음 |
 
 ### 3.1 2026-11-23 재검증에서 추가로 확인한 잔여 위험
+
+> **2026-11-23 조치 완료**: 아래 표의 높음·중간·낮음 4개 항목(설정값 검증 2건, libmpv 절대경로 로드, `detectGameVersion` 경계)과 lint는 같은 날 수정했습니다. 구현은 `ipc/pickedPaths.ts`·`settingsHandlers.ts`(`assertSettingWriteAllowed`), `mpv_addon.cc`(`LoadLibmpvNextToAddon`), `saveHandlers.ts`(`detectVersionWithinLibraries`)에 있고, 각각 회귀 테스트가 있습니다(libmpv는 빌드 후 수동 확인). 아래 표는 발견 당시 기록입니다.
 
 | 우선순위 | 항목 | 설명 |
 |---|---|---|

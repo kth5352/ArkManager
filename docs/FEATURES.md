@@ -21,12 +21,15 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 
 | 항목 | 상태 |
 | --- | --- |
-| 브랜치 | `security/hardening` (master `012713b`에서 분기, 보안 커밋 6개). **아직 master 미병합·미릴리스** |
-| 작업 트리 | `docs/SECURITY.md` 수정, `docs/SECURITY_FIXES.md` 신규 — 미커밋 |
-| `npm test` | ✅ 141 파일 / 1009 테스트 통과 (hover-tooltip `act(...)` 경고 4건, §20) |
+| 브랜치 | `security/hardening` (master `012713b`에서 분기). **아직 master 미병합·미릴리스** |
+| 최근 작업 | 2026-11-23: Steam/DLsite 크롤 수정 + §20의 보안·기능 결함 수정(§20.0) |
+| `npm test` | ✅ 146 파일 / 1043 테스트 통과 (hover-tooltip `act(...)` 경고, §20) |
 | `npm run typecheck` | ✅ 통과 |
-| `npm run lint` | ❌ **오류 5건** — `scripts/verify-native-binaries.mjs`에 Node 전역(`console`, `process`)이 ESLint 설정에 없음. 경고 1건(`button.tsx` react-refresh, 기존) |
-| 실앱(GUI) 검증 | 보안 변경 이후 **미실시** (CSP, mpv 애드온 재빌드, 설치본 Fuses/자동 업데이트). UI 개편 U1~U8도 시각 검증 미실시 |
+| `npm run lint` | ✅ 오류 0 (경고 1건 `button.tsx` react-refresh, 기존) |
+| `electron-vite build` | ✅ 성공, 빌드 `index.html`에 CSP 삽입 확인 |
+| mpv 애드온 | ✅ 이 PC에서 `build:mpv-addon` 컴파일 + `rebuild:mpv-addon`(Electron ABI) 완료. 새 DLL 로딩은 Node에서 `init()`으로 확인 |
+| 실앱(GUI) 검증 | **미실시** (CSP, 미디어 재생, 설치본 Fuses/자동 업데이트, 미디어 탭 임시 루트 버튼). UI 개편 U1~U8도 시각 검증 미실시 |
+| 로컬 환경 주의 | `node_modules/ffmpeg-static/ffmpeg.exe` 없음(과거 `--ignore-scripts` 설치) → 미디어 썸네일 추출 불가. `npm ci`로 복구 |
 
 ---
 
@@ -143,12 +146,15 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 
 | 코드 | 방식 |
 | --- | --- |
-| `ST` | Steam 스토어 페이지 HTML 파싱(cheerio). 연령 확인 쿠키(birthtime 등)를 미리 실어 성인 인터스티셜 우회(일부 "성인 전용" 티어는 불가). |
+| `ST` | **Steam 공개 스토어 API**(`steamStoreApi.ts`): `IStoreBrowseService/GetItems`(국가 `US`, 영어) → 제목·개발사(없으면 퍼블리셔)·발매일(`steam_release_date`)·표지(`header.jpg`)·사용자 태그(가중치 상위 10개, 이름은 `IStoreService/GetTagList`를 프로세스당 1회 받아 캐시). API 자체가 실패할 때만 기존 HTML 상점 페이지 파싱(연령 쿠키 포함)으로 폴백. API가 "없는 앱"이라고 답하면 그대로 `not_found`. |
 | `VNV` | VNDB Kana API `POST https://api.vndb.org/kana/vn` — 제목, 개발사 첫 번째, 발매일, 이미지, 태그(스포일러 0, rating 내림차순 상위 10개)를 장르로 사용 |
 | `VNR` | VNDB Kana API `/kana/release` — 제목(없으면 VN 제목), 개발사(producer.developer 우선), 표지는 연결된 VN 이미지, 장르 없음 |
 | `GC` | getchu.com 작품 페이지 (`?gc=gc`로 연령 게이트 우회), 응답을 `TextDecoder('euc-jp')`로 디코딩 |
-| `RJ/VJ` | **폴백 체인**: ① `dlsite-html`(작품 페이지 파싱: `#work_name`, `#work_maker`, 販売日, ジャンル, 作品形式) → ② `dlsite-json`(내부 JSON 엔드포인트) → ③ `external`(사용자 설정 외부 API, **단건 크롤에서만**, §5.3) |
+| `RJ/VJ` | **폴백 체인**: ① `dlsite-html`(작품 페이지 파싱) → ② `dlsite-json` → ③ `external`(사용자 설정 외부 API, 활성화 시). ①이 제목은 얻었지만 **장르가 비었거나 서클이 비면** ②로 빈 필드만 채움(`enrichFromJson`). |
 
+- **Steam이 HTML로 안 되는 이유**(2026-11 한국 IP에서 실측): "성인 전용(Adult Only Sexual Content)" 등급은 `/agecheck/app/<id>`로 302 → 다시 **Steam 로그인 페이지**로 보내므로 쿠키로 통과 불가. 한국에서 판매하지 않는 타이틀은 200 "Site Error — This item is currently unavailable in your region". 스토어 API는 국가를 `US`로 지정하면 두 경우 모두 익명으로 응답한다. 일반 "성인/폭력" 등급(Senren＊Banka, DOOM Eternal 등)은 HTML+쿠키로도 됐었음.
+- **DLsite 페이지 구조** [확인, 2026-11]: 작품 페이지가 Nuxt 마크업으로 바뀌어 옛 `#work_outline` 표(`th`/`td`)와 `#work_maker`가 사라지고 `.c-productInfo__item`(`dt.c-productInfo__key` / `dd.c-productInfo__value`)이 됨. 제목(`#work_name`)과 `og:image`는 남아 있어서 옛 파서는 **제목·표지만 있고 장르·서클·발매일·작품형식이 빈 결과를 "성공"으로 저장**했음(→ ASMR 판정도 실패). 파서는 두 구조를 모두 읽고(`collectSpecRows`), 서클은 `サークル名`(maniax) 또는 `ブランド名`(pro) 행에서 읽는다.
+- **DLsite JSON 소스**: ① `/{maniax|pro}/api/=/product.json?workno=` (전체 레코드: maker_name, genres, custom_genres, work_type, regist_date, image_main 객체) → ② `/product/info/ajax?product_id=` (제목·날짜·work_type만). 예전 ①자리의 `/product.json?workno=`는 404였고, ②가 먼저 시도되어 장르 없는 결과로 끝났음. `custom_genres`는 `lang=ja_JP && is_active=1`인 것만(페이지에 실제 표시되는 것, 예: `Vtuber本人出演作品`).
 - **모든 외부 요청은 `electron/main/net/safeFetch.ts`** 경유 [확인]: https·443만, URL 내 자격 증명 금지, 사설/루프백/링크로컬/CGNAT/멀티캐스트/IPv6 내부 대역 및 `localhost`·`*.local`·`*.internal`·단일 라벨 호스트 거부(DNS 결과 전체 검사), 리다이렉트는 수동 최대 **3홉**(매 홉 재검증, 교차 출처 시 `Authorization`/`Cookie` 제거), 응답 크기 기본 상한 **5MB**(표지는 15MB), 타임아웃 **15초**.
 - UA: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0`.
 - 결과 구조 `CrawledGameMetadata`: `{title, circle, releaseDate('YYYY-MM-DD'|''), genres[], coverImageUrl, workType}`.
@@ -168,11 +174,12 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 | 트리거 | 동작 |
 | --- | --- |
 | 라이브러리 탐색 중 자동(`useBulkCrawlMissingMetadata`) | 캐시·실패 기록이 **모두 없는** 코드만 `metadata:crawl-missing`으로 큐잉. **1초 간격 순차 처리**. 세션 내 시도한 코드는 `Set`으로 중복 방지. 진행률 배너(`BulkCrawlProgressBanner`). |
-| 상세 사이드바 "메타데이터 새로고침" | 단건 `metadata:crawl-and-save` (실패 기록 지우고 재시도). **외부 프로바이더가 체인에 포함되는 유일한 경로.** |
+| 상세 사이드바 "메타데이터 새로고침" | 단건 `metadata:crawl-and-save` (실패 기록 지우고 재시도). |
 | 메뉴 `File > Refresh All Metadata` | `game_metadata`에 있는 코드 **+ `metadata_failures`에만 있는 코드**(실패 코드를 재시도하는 유일한 방법)를 강제 재크롤(확인 다이얼로그에 개수 표시 + 진행률). `forceEnqueue` |
 | 게임 검색 결과 선택 / 코드 수동 연동 | 해당 코드 단건 크롤 후 상세 표시 |
 
-> ⚠ 일괄 큐(`bulkCrawlQueue.ts`)는 `crawlGameMetadataWithTrace(code)`를 **기본 deps(외부 프로바이더 비활성)**로 호출한다. 그래서 자동 크롤·전체 새로고침에서는 외부 프로바이더가 쓰이지 않는다. 의도인지 누락인지 기록이 없음 → §20.
+- 모든 트리거가 같은 deps(`metadataHandlers.ts`의 `crawlDepsFromSettings`)로 크롤한다. 외부 프로바이더 설정은 코드마다 새로 읽으므로, 일괄 큐가 도는 중에 설정을 바꿔도 남은 코드부터 반영된다. (이전에는 일괄 큐가 기본 deps를 써서 외부 프로바이더를 전혀 쓰지 않았음.)
+- ⚠ **기존 DB의 잘못된 결과는 자동으로 다시 받지 않는다**: 이번 수정 전에 받은 DLsite 항목(장르·서클 빈 행)은 `game_metadata`에 이미 있어서 자동 큐가 건너뛰고, Steam 실패 코드는 `metadata_failures` 때문에 건너뛴다. **File > 전체 메타데이터 새로고침**(또는 항목별 새로고침)을 한 번 실행해야 갱신된다.
 
 ### 5.4 통합 검색 (`/game-search`)
 
@@ -212,7 +219,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 ### 6.4 제외 목록 (Excluded Entries)
 - "보기에서 제외"로 **특정 경로만** 숨김 (코드가 아니라 **경로 기준** — 같은 코드의 다른 복사본은 영향 없음).
 - 관리: 메뉴 `View > Manage Excluded Items`(메인 창에만 다이얼로그가 있으므로 항상 메인 창으로 전송)에서 복원.
-- ⚠ 제외한 항목을 이동/이름변경하면 제외 기록은 옛 경로에 남는다(재키 대상 아님, §20).
+- 제외한 항목(또는 그 상위 폴더)을 앱에서 이동/이름변경하면 제외 기록도 새 경로로 따라간다(§10.1 재키).
 
 ---
 
@@ -234,7 +241,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 ### 7.2 커스텀 표지
 - 소스: 파일 선택(**"방금 고른 경로"만 허용** — 렌더러가 임의 경로를 읽을 수 없도록), **클립보드 이미지**(PNG로 변환), 해제(캐시 파일 삭제 + DB null).
 - 저장: `cache/custom-covers/<safeKey>.webp`, 긴 변 **512px**로 축소(확대 없음). 디코딩은 `openRasterImage` 경유 → **jpeg/png/webp/gif만** 허용.
-- ⚠ 선택창 필터에는 `bmp`가 있지만 디코더 허용 목록에 없어 BMP 선택 시 저장 실패(재생목록 표지·미디어 썸네일도 동일, §20).
+- 선택창 필터는 `COVER_IMAGE_EXTENSIONS`(`rasterImage.ts`, png/jpg/jpeg/webp/gif) 한 곳에서 관리(게임 표지·재생목록 표지·미디어 썸네일 공통). 예전에는 `bmp`도 보였지만 sharp가 BMP를 디코딩하지 못해 항상 실패했음 → 제거. (폴더 썸네일 `thumb://`은 디코딩 없이 원본을 보내므로 BMP도 표시됨)
 - 코드가 연결된 작품도 변경 가능(1.2.0). 코드 없는 항목은 경로 키로 저장.
 
 ---
@@ -243,8 +250,8 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 
 - **실행 설정** (`game_user_data.launch_config` JSON): `{ executablePath, launchMode: 'normal' | 'locale-emulator' }`.
   - 실행 파일 후보는 폴더 내 `.exe` 목록(`launch:list-executables`, 라이브러리 밖 폴더는 빈 목록)에서 선택.
-  - **Locale Emulator**: `LEProc.exe`를 `ProgramFiles`, `ProgramFiles(x86)`, `%LOCALAPPDATA%\Programs` 아래 깊이 4까지 탐색해 자동 감지. 수동 경로 지정 가능(`locale-emulator-path`, 파일 선택창 필터 `exe`). 미설치 시 에러. LE에 대상 exe 경로를 인자로 넘기는 사용법은 공식 문서로 검증되지 않은 가정(코드 주석) [미검증].
-  - 실행: `spawn(command, args, { windowsHide: false })` — **셸 없음, `cwd` 미지정**(게임 작업 폴더가 exe 폴더가 아님 → 상대 경로에 의존하는 게임 확인 필요, §20). 프로세스 `exit` 시점에 `sessionMs` 기록.
+  - **Locale Emulator**: `LEProc.exe`를 `ProgramFiles`, `ProgramFiles(x86)`, `%LOCALAPPDATA%\Programs` 아래 깊이 4까지 탐색해 자동 감지. 수동 경로 지정 가능(`locale-emulator-path`): **파일 선택창으로 방금 고른 `.exe`만 저장 가능**(§12.1). 저장된 값이 `.exe`가 아니면 무시하고 자동 감지로 폴백. 미설치 시 에러. LE에 대상 exe 경로를 인자로 넘기는 사용법은 공식 문서로 검증되지 않은 가정(코드 주석) [미검증].
+  - 실행: `spawn(command, args, { windowsHide: false, cwd: dirname(executablePath) })` — 셸 없음, **작업 폴더 = 게임 exe 폴더**(바로가기/탐색기 실행과 같음, LE 모드도 동일하게 지정). 프로세스 `exit` 시점에 `sessionMs` 기록.
 - **실행 허용 조건** [확인]: 저장 시(`LAUNCH_SET_CONFIG`)와 **실행 시(`LAUNCH_GAME`) 두 번 모두** `executablePath`가 ① 확장자 `.exe`(NUL 바이트 없음) ② 등록 라이브러리 아래인지 재검증. 실패 시 저장은 "허용되지 않은 실행 파일 경로입니다." 오류, 실행은 "실행 설정 없음" 오류로 처리되어 재설정 흐름으로 이어짐.
 - 설정이 없는 게임을 실행하면 **실행 설정 창이 자동으로 뜨고**, 저장하면 닫히고 토스트 + 조건부 자동 실행.
 - **플레이타임**: 세션 종료 시 `total_playtime_ms` 누적 + `last_played_at` 갱신 (`recordPlaySession`). 실행 중인 세션은 `activeSessions`에 보관되어 **앱 종료 시 그 시점까지의 시간을 기록**(`createQuitLifecycle`). 단 앱을 먼저 끄면 게임 프로세스도 같이 종료될 수 있음(README 주의사항).
@@ -293,8 +300,11 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - **이동**: 같은 이름 존재 시 거부. 같은 볼륨은 `rename`, 다른 볼륨(`EXDEV`)은 `cp`+삭제, 복사 실패 시 부분 복사본 정리. 목적지(`destDir`)는 백엔드에서 제한하지 않음(선택창으로 라이브러리 밖 이동 허용, DnD만 렌더러에서 경계 체크).
 - **삭제**: 항상 **휴지통**(`shell.trashItem`).
 - **열기**(`shell:open-path`): 라이브러리 안 + NUL 없음 + 실제 존재해야 함. 폴더·일반 문서는 바로 열고, **실행 가능 형식**(실행 파일·스크립트·바로가기·설치 파일·디스크 이미지·매크로 문서 등, `shell/openPathPolicy.ts`) 또는 **확장자 없음**은 메인 프로세스 **네이티브 경고창**(기본 버튼 "취소"). `evil.exe.`(끝 점/공백)·`file.txt:evil.exe`(ADS) 위장도 처리.
-- **키 재매핑**: 이름변경/이동이 성공하면 `game_user_data`(path 키)와 `path_code_overrides`의 키를 새 경로로 `rekeyPath`/`rekeyPathCodeOverride`.
-  - ⚠ **한계** [확인]: 대상 경로와 **정확히 같은** 행만 옮긴다. ① 폴더를 옮기면 그 **하위 항목**의 path 키 데이터·override는 옛 경로에 남음 ② `launch_config.executablePath`, `save_path`(게임 폴더 안일 때), `excluded_entries`, 재생목록 트랙·좋아요·미디어 썸네일 override의 경로는 **갱신되지 않음** → 코드가 있는 게임도 폴더를 옮기면 실행 설정이 깨져 재설정 창이 뜸. §20.
+- **키 재매핑** (`database/rekeyMovedPath.ts`, 한 트랜잭션): 이름변경/이동이 성공하면 옮긴 경로 **자신과 그 하위 전체**(대소문자·구분자 무시, `Circle2`처럼 접두 문자열만 같은 형제는 제외)에 대해
+  - 키로 쓰는 경로: `game_user_data`(path 키), `path_code_overrides`, `excluded_entries`(정규화 키), `media_playlist_tracks`, `media_track_likes`, `media_thumbnail_overrides`(원본 경로)
+  - 행 안에 저장된 절대경로: **모든** `game_user_data` 행(코드 키 포함)의 `launch_config.executablePath`와 `save_path`
+  를 새 위치로 바꾼다. 목적지에 같은 키가 이미 있으면 덮어씀. (예전 `rekeyPath`/`rekeyPathCodeOverride`는 정확히 같은 경로의 행만 옮겨, 폴더 이동 시 하위 데이터가 남고 코드 게임의 실행 설정이 깨졌음 — 제거됨)
+  - 앱 밖(Windows 탐색기 등)에서 옮긴 경우는 감지하지 않는다.
 - 경계 검증: 이름변경/이동/삭제/썸네일/실행/열기는 메인에서 **등록 라이브러리 아래인지** 확인(`isPathWithinAnyLibrary`, 위치는 `electron/main/thumbnailProtocol.ts`; `path.resolve`로 `..` 정리 후 비교; 라이브러리 밖이면 "허용되지 않은 경로입니다."). `realpath`는 쓰지 않음(정션 우회 가능성, §16).
 
 ---
@@ -305,7 +315,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - **미디어 페이지**(`/media`): 설정된 미디어 폴더(`media-folder`) 탐색 — 폴더별 보기, 브레드크럼, 뒤로/앞으로(`mediaBrowseHistory`), 목록/그리드 전환(`media-view-mode`) + 줌 슬라이더, 썸네일 지연 로딩.
 - **재생 엔진**: **libmpv 네이티브 애드온**(`electron/native/mpv-addon`, N-API) 을 Electron **utilityProcess**(`mpvWorker.ts`, 빌드 시 별도 엔트리로 출력)에서 실행 → 크래시가 앱 전체로 번지지 않음, 크래시 시 재생성. 비디오는 **SW 렌더 프레임을 MessagePort로 렌더러 `<canvas>`에 전달**(영상일 때만 프레임 루프, 오디오는 250ms 이벤트 폴링), 오디오는 워커 안에서 직접 출력. 상태(`mpv:state-update`: isPlaying/currentTime/duration/error)와 `mpv:ended`(keep-open 일시정지 감지)를 메인이 호스트 창으로 중계. `hwdec=auto`.
 - **mpv 보안 옵션**(보안 브랜치, **애드온 재빌드 필요**): `access-references/load-unsafe-playlists/ytdl/load-scripts/config/audio-file-auto/input-default-bindings/input-vo-keyboard/osc = no`. 앱이 자막을 직접 그리므로 `sub-auto=no`, `sid=no`. `MPV_LOAD`는 경계 검증 후 **`path.resolve`한 절대경로**만 mpv에 전달.
-- DLL 로딩: 워커가 애드온 폴더를 `PATH` 앞에 붙인 뒤 애드온이 `LoadLibraryA("libmpv-2.dll")`(상대 이름) 호출. 패키징 시 `resources/mpv-addon/`. `libmpv-2.dll`은 `CHECKSUMS.sha256`로 빌드 전 검증.
+- DLL 로딩: 애드온이 자기 `.node` 위치에서 `<addonDir>/libmpv-2.dll` **절대경로**를 계산해 `LoadLibraryExW(..., LOAD_WITH_ALTERED_SEARCH_PATH)`로 로드(`LoadLibmpvNextToAddon`, dev·패키징 레이아웃 동일: `mpv-addon/libmpv-2.dll` + `mpv-addon/build/Release/mpv_addon.node`). 작업 폴더에 심은 동명 DLL이 먼저 로드되는 검색 순서 문제를 막음. 워커의 `PATH` 추가는 구버전 애드온용 폴백으로만 남김. `libmpv-2.dll`은 `CHECKSUMS.sha256`로 빌드 전 검증.
 - **UI 형태 3가지**: ① 하단 도킹 바(2단: 곡 정보 / 조작부) ② 전체화면 오버레이(영상은 사이드바와 화면 분할) ③ **별도 플레이어 창**(`#/player-window`). 창 간 상태는 메인 프로세스를 중계자로 한 `media:state-broadcast`/`media:state-sync`(변경된 상태만, `currentTime`/`duration`은 제외) + 새 창의 pull(`media:request-state-sync`). 호스트 전환은 `mpv:become-host`(재생 중단 없이 프레임 수신 창만 변경).
 - **재생 기능**: 재생/일시정지, 시크, 볼륨(영속 `media-volume`), 음소거, 반복 모드(끔/전체/한 곡), **셔플**(켜는 시점에 Fisher-Yates로 1회 순서 생성, 이후 포인터만 이동; 재생목록 길이가 바뀌면 재생성), 큐 관리, 단일 파일 재생은 **큐를 지우지 않고 추가**.
 - **5밴드 EQ**: 60/230/910/3000/14000Hz, ±12dB, 프리셋(Flat / Bass boost[6,4,0,0,0] / Vocal boost[-2,0,4,3,0] / Treble boost[0,0,0,3,6]), 설정 영속(`media-equalizer-bands`, JSON 길이 5·범위 검증, 손상 시 무시). 재적용은 메인이 워커의 `init-ok` 시점에 수행(콜드 스타트·크래시 재생성·분리 창 모두 커버). 밴드 수 5는 `settingsHandlers.ts`·`equalizerPresets.ts`·`mpv_addon.cc` 세 곳이 **수동 동기화**.
@@ -335,7 +345,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 
 ### 11.6 ASMR/음성/음악/영상 작품 연동
 - 크롤된 `work_type`이 `SOU`/`MOV`/`MUS`이고 **폴더**이며 코드가 있으면(`isAsmrPlayableFolder`) → "실행" 대신 **"재생"** 버튼, 실행 설정·세이브 UI 숨김. 라이브러리/탐색기/상세 어디서든 진입(`usePlayAsmrFolder`).
-- 동작: 그 폴더를 **`media-folder` 설정으로 덮어쓴 뒤**(사용자가 지정했던 미디어 폴더가 바뀜) 루트에 미디어 파일이 있으면 즉시 재생, 하위 폴더뿐이면 `/media`로 이동만.
+- 동작 (`usePlayAsmrFolder` + `src/lib/mediaBrowseRoot.ts`): **저장된 `media-folder` 설정은 바꾸지 않는다.** 작품 폴더가 저장된 미디어 폴더 안이면 그 루트에서 해당 폴더로 이동만 하고, 밖이면 **세션 전용 임시 루트**(`mediaPlayerStore.temporaryMediaRoot`, 미저장)로 연다. 미디어 탭에 "저장된 미디어 폴더로"/"이 폴더를 미디어 폴더로 저장" 버튼이 나타나고, 폴더 선택으로 새 폴더를 고르면 임시 루트는 해제. 미디어 페이지와 사이드바 폴더 트리는 `useMediaBrowseRoot()`로 같은 루트를 본다. 이후 루트에 미디어 파일이 있으면 즉시 재생, 하위 폴더뿐이면 `/media`로 이동만. (예전에는 재생할 때마다 사용자가 고른 미디어 폴더를 덮어썼음)
 
 ---
 
@@ -353,7 +363,10 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 
 - **읽기(`SETTINGS_GET`) 시 키별 검증**하는 키: theme, sidebar-width, locale, explorer-tree-width/open, external-provider-enabled, window-close-behavior, media-sidebar-open/width, media-view-mode, media-volume, media-equalizer-bands → 잘못된 값은 null.
 - 검증 없이 원문 반환: `locale-emulator-path`, `external-metadata-provider-url/api-key`, `media-folder`, `subtitle-pip-*`(PIP 창 핸들러가 직접 숫자 변환·클램프).
-- **쓰기(`SETTINGS_SET`)는 키만 검증하고 값은 임의 문자열**을 그대로 저장한다. 이 중 `locale-emulator-path`(실행 경로)와 `media-folder`(미디어 신뢰 루트)는 보안상 의미가 있는 값 → §16, §20.
+- **쓰기(`SETTINGS_SET`)**: 대부분 키는 값 그대로 저장. 권한이 걸린 두 키만 `assertSettingWriteAllowed`로 검증(빈 문자열 = 초기화는 항상 허용):
+  - `locale-emulator-path`: `.exe`이고 **`launch:pick-locale-emulator-path`가 방금 반환한 경로**일 때만(1회용).
+  - `media-folder`: 등록 라이브러리 하위이거나 **`libraries:pick-folder`가 방금 반환한 경로**일 때만(1회용).
+  - 1회용 슬롯은 `electron/main/ipc/pickedPaths.ts`(선택창을 여는 핸들러와 값을 저장하는 핸들러가 다를 때 공유).
 - `settings:get-sync`는 첫 페인트 전 테마 적용용으로 `theme`만 동기 반환.
 
 ---
@@ -451,10 +464,9 @@ JSON 컬럼(`genres`, `launch_config`)은 손상돼도 전체 읽기가 실패�
 | 패키징 | `package.json build.electronFuses`: runAsNode off, NODE_OPTIONS off, `--inspect` off, cookie 암호화 on, asar에서만 로드 [미검증: 설치본] |
 | 공급망 | `CHECKSUMS.sha256` + `npm run verify:binaries`(build/release 선행), `.npmrc audit-level=high`, `npm run audit:prod` |
 
-**아직 막히지 않은 경로(코드 확인)** — §20에 작업으로 정리:
-- `SETTINGS_SET`이 값 검증 없이 `locale-emulator-path`를 저장 → 장악된 렌더러가 임의 파일 경로를 넣고 LE 모드 게임을 실행하면 그 파일이 `spawn`됨(`.exe`·라이브러리 검사 우회).
-- 같은 이유로 `media-folder`를 임의 경로(예: `C:\`)로 바꾸면 미디어 신뢰 루트가 넓어짐 → 그 아래 파일을 mpv/ffmpeg로 열거나, MP3/FLAC/M4A에 표지 삽입(파일 쓰기) 가능.
-- 렌더러가 `file://`로 로드됨, DevTools 메뉴가 프로덕션에도 노출, 경계 검사에 `realpath` 미사용(정션), 스캐너(얕은/재귀)는 경계 검사 없이 임의 폴더 목록을 반환, `detectGameVersion`이 렌더러가 보낸 `identifier.path`로 exe를 탐색(읽기 전용), `libmpv-2.dll`을 상대 이름으로 로드(DLL 검색 순서), 설치 파일 미서명.
+**2026-11-23에 막은 경로**: `SETTINGS_SET`의 `locale-emulator-path`/`media-folder` 무검증(§12.1), `libmpv-2.dll` 상대 이름 로드(§11.1), `detectGameVersion`이 라이브러리 밖 폴더를 탐색하던 것(이제 라이브러리 안일 때만, 아니면 버전 null), `MPV_RESIZE`의 `parse`(→ `safeParse`).
+
+**아직 막히지 않은 경로** — §20.2: 렌더러가 `file://`로 로드됨, DevTools 메뉴가 프로덕션에도 노출, 경계 검사에 `realpath` 미사용(정션), 스캐너(얕은/재귀)는 경계 검사 없이 임의 폴더 목록을 반환(읽기 전용, 의도), 설치 파일 미서명. 기존에 저장된 `media-folder` 값(검증 도입 전 저장)은 그대로 신뢰됨.
 
 ---
 
@@ -505,7 +517,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 | `npm run dev` | electron-vite 개발 모드 (CSP 미적용) |
 | `npm run build` | `verify:binaries` → electron-vite build → electron-builder (NSIS, `dist/`) |
 | `npm run release` | 위와 같고 GitHub에 즉시 발행 (`--publish always`, `GH_TOKEN` 필요) |
-| `npm test` | Vitest, node 환경. **141 파일 / 1009 테스트** (src 54, electron 83, shared 4). 렌더러는 순수 함수 위주 + jsdom 렌더 테스트 9개 파일(별점·메모, 세이브 다이얼로그, 툴팁, 일부 훅/서비스). 그 외 UI 변경은 수동 확인 필요 |
+| `npm test` | Vitest, node 환경. **146 파일 / 1043 테스트** (src 55, electron 87, shared 4). 렌더러는 순수 함수 위주 + jsdom 렌더 테스트 9개 파일(별점·메모, 세이브 다이얼로그, 툴팁, 일부 훅/서비스). 그 외 UI 변경은 수동 확인 필요 |
 | `npm run typecheck` / `lint` / `format:check` | tsc build / ESLint(flat) / Prettier |
 | `npm run build:mpv-addon`, `rebuild:mpv-addon` | libmpv 네이티브 애드온 빌드 / Electron ABI 리빌드 — `mpv_addon.cc` 변경 시 필수 |
 | `npm run verify:binaries` | `libmpv-2.dll` SHA-256 검증 |
@@ -531,44 +543,56 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 | 1.2.2 | 2026-09-12 | VNDB 미평가 항목 메타데이터가 매 실행 삭제되던 문제 수정 |
 | 1.2.3 | 2026-09-15 | libmpv 전환 후 먹통이던 하드웨어 미디어 키 복구 |
 | (미출시) | 2026-11-05 | `security/hardening`: 명령 인젝션 구조 제거, Electron/의존성 상향, 창·IPC·권한 잠금+CSP, SSRF 방지 fetch, 이미지 형식 제한, 위험 파일 열기 확인, 라이브러리 루트 검증, exe 전용 실행, mpv 옵션 강화, API 키 암호화, Fuses, DLL 체크섬. 버전 번호는 아직 1.2.3 |
+| (미출시) | 2026-11-23 | 같은 브랜치: Steam 스토어 API 전환, DLsite 새 마크업·JSON 폴백 수정, 설정값 쓰기 검증, 이동 재키 확장, 실행 cwd, ASMR 임시 루트, libmpv 절대경로 로드 등(§20.0) |
 
 ---
 
 ## 20. 앞으로 할 일 (코드 기준 정리, 2026-11-23)
 
+### 20.0 2026-11-23에 완료한 것
+| 항목 | 위치 |
+| --- | --- |
+| Steam: 성인 전용·지역 제한 타이틀 크롤 실패 → 스토어 API로 전환(HTML 폴백 유지) | §5.1, `metadata/steamStoreApi.ts` |
+| DLsite: 새 Nuxt 마크업 파싱, JSON 폴백 URL·스키마 수정, HTML 누락 필드를 JSON으로 보충 | §5.1, `dlsiteParser.ts`, `dlsiteJsonFallback.ts`, `crawlGameMetadata.ts` |
+| 일괄/자동 크롤도 외부 프로바이더 사용 | §5.3 |
+| `SETTINGS_SET`의 `locale-emulator-path`·`media-folder` 쓰기 검증 | §12.1, `ipc/pickedPaths.ts` |
+| 이동/이름변경 재키를 하위 항목·행 내부 경로·미디어 테이블까지 확장 | §10.1, `database/rekeyMovedPath.ts` |
+| BMP 선택창 필터 제거 | §7.2 |
+| 게임 실행 `cwd` = exe 폴더 | §8 |
+| ASMR 재생이 미디어 폴더 설정을 덮어쓰지 않음(임시 루트) | §11.6 |
+| libmpv 절대경로 로드 | §11.1 |
+| `detectGameVersion` 라이브러리 경계, `MPV_RESIZE` safeParse | §16 |
+| lint 오류(`scripts/*.mjs` Node globals) | `eslint.config.js` |
+
 ### 20.1 보안 브랜치 마무리 (릴리스 전 필수)
-1. **lint 오류 수정**: `eslint.config.js`에 `scripts/**/*.mjs`용 Node globals 추가(현재 `npm run lint` 실패 → SECURITY_FIXES.md "ESLint 오류 0" 기록과 불일치).
-2. 미커밋 문서(`docs/SECURITY.md`, `docs/SECURITY_FIXES.md`, 이 문서 등) 커밋.
-3. `npm ci` 후 **mpv 애드온 재빌드**(`build:mpv-addon` + `rebuild:mpv-addon`) — 보안 옵션은 재빌드해야 반영.
-4. **실앱 수동 점검**(SECURITY.md §2 체크리스트): `npm run dev`에서 동작, `npm run build` 산출물에서 CSP 위반 없음(표지/아이콘/미디어 썸네일/폰트/테마), 라이브러리 추가 3경로(선택창 무확인/입력 확인창/`C:\` 거부), `.exe` 열기 확인창, 미디어 재생·EQ·미디어 키·분리 창·PIP, 클립보드 복사, 설치본의 Fuses·자동 업데이트·mpv 유틸리티 프로세스.
-5. 버전 번호 결정(1.2.4 또는 1.3.0), README 업데이트 내역 작성, master 병합.
-6. 계정·배포 보호(SECURITY.md §2-3): 2FA, 토큰 재발급, fine-grained `GH_TOKEN`, 가능하면 CI 릴리스. `libmpv-2.dll` 해시를 공식 배포본과 대조.
+1. `npm ci`(ffmpeg 바이너리 복구 포함) 후 mpv 애드온 재빌드 확인. (이 PC에서는 2026-11-23에 `build:mpv-addon` + `rebuild:mpv-addon` 완료)
+2. **실앱 수동 점검**(SECURITY.md §2 체크리스트): `npm run dev`에서 동작, `npm run build` 산출물에서 CSP 위반 없음(표지/아이콘/미디어 썸네일/폰트/테마), 라이브러리 추가 3경로(선택창 무확인/입력 확인창/`C:\` 거부), `.exe` 열기 확인창, 미디어 재생·EQ·미디어 키·분리 창·PIP, 클립보드 복사, 설치본의 Fuses·자동 업데이트·mpv 유틸리티 프로세스.
+3. **이번 수정분 실앱 점검**: Steam/DLsite 항목 "전체 메타데이터 새로고침" 후 장르·서클 표시와 ASMR "재생" 버튼 판정 / 설정에서 LE 경로 지정·초기화 / 미디어 탭 폴더 선택·ASMR 재생 후 임시 루트 버튼 2개 / 게임 폴더를 탐색기 탭에서 이동한 뒤 실행 설정·즐겨찾기 유지 / LE 모드 게임 실행.
+4. 버전 번호 결정(1.2.4 또는 1.3.0), README 업데이트 내역 작성(**업데이트 후 "전체 메타데이터 새로고침" 1회 안내** 포함, §5.3), master 병합.
+5. 계정·배포 보호(SECURITY.md §2-3): 2FA, 토큰 재발급, fine-grained `GH_TOKEN`, 가능하면 CI 릴리스. `libmpv-2.dll` 해시를 공식 배포본과 대조.
 
 ### 20.2 보안 후속 (코드로 해결 가능)
 | 우선 | 작업 | 근거 |
 | --- | --- | --- |
-| 높음 | `SETTINGS_SET`에 키별 쓰기 검증: `locale-emulator-path`는 picker로 고른 경로만(또는 `LEProc.exe` 파일명 + 존재 확인), `media-folder`는 라이브러리 하위 또는 picker 경로만(ASMR 재생 경로 고려) | §16 |
 | 높음 | 렌더러를 `app://` 커스텀 프로토콜로 서빙 + Fuse `grantFileProtocolExtraPrivileges` off | SECURITY.md §3 |
 | 중간 | ASAR 무결성 Fuse(설치본으로 `asarUnpack` 상호작용 확인 후) | SECURITY.md §3 |
 | 중간 | 경계 검사에 `realpath` 적용(정션/심볼릭 링크 우회) | SECURITY.md §3 |
 | 중간 | `ffmpeg-static` 설치 시 다운로드 통제(CI에서 `--ignore-scripts` + 해시 고정) | SECURITY.md §3 |
 | 낮음 | 패키징 빌드에서 `toggleDevTools` 메뉴 제거 | SECURITY.md §3 |
-| 낮음 | `LoadLibraryA("libmpv-2.dll")` → 전체 경로 + `LoadLibraryExW(LOAD_LIBRARY_SEARCH_*)` | §11.1 |
-| 낮음 | `detectGameVersion`의 `identifier.path` 경계 검증, `MPV_RESIZE`의 `parse` → `safeParse` | §15 |
+| 낮음 | 검증 도입 전에 저장된 `media-folder`/`locale-emulator-path` 값 재검증(현재 `locale-emulator-path`는 사용 시 `.exe` 확인만) | §16 |
 | 외부 | 코드 서명 인증서 확보 후 `win.signtoolOptions`/`publisherName` | SECURITY.md §2-4 |
 
-### 20.3 기능 결함 · 확인 필요 (코드로 확인된 것)
-1. **이동/이름변경 시 경로 재키 범위 부족**(§10.1): 하위 항목의 path 키 데이터·override, `launch_config.executablePath`, 게임 폴더 내부 `save_path`, `excluded_entries`, 재생목록 트랙/좋아요/썸네일 override 경로를 접두사 기준으로 함께 갱신해야 함.
-2. **일괄 크롤이 외부 프로바이더를 쓰지 않음**(§5.3): `bulkCrawlQueue`에 설정 기반 deps를 넘길지 결정.
-3. **BMP 표지 선택 실패**(§7.2): 선택창 필터에서 `bmp` 제거하거나 BMP를 별도 변환. (sharp는 BMP 입력을 지원하지 않음)
-4. 게임 `spawn`에 `cwd` 미지정(§8): 작업 폴더를 exe 폴더로 지정해야 하는 게임이 있는지 확인 [추정: 상대 경로 리소스를 쓰는 구형 게임에서 실패 가능].
-5. ASMR "재생"이 사용자의 `media-folder`를 덮어씀(§11.6) — 의도된 동작인지 UX 확인.
-6. 코드 연동 해제 시 code 키로 옮겨진 데이터는 되돌아오지 않음(§7.1) — 오타 연동 후 해제하면 데이터가 잘못된 코드에 남음.
-7. hover-tooltip 테스트의 `act(...)` 경고(통과는 함) 원인 조사.
-8. Locale Emulator 인자 사용법 실기 검증.
+### 20.3 기능 결함 · 확인 필요
+1. 코드 연동 해제 시 code 키로 옮겨진 데이터는 되돌아오지 않음(§7.1) — 오타 연동 후 해제하면 데이터가 잘못된 코드에 남음. (같은 코드를 파일명으로 가진 항목이 있을 수 있어 자동으로 되돌리기 어려움 → UI에서 "데이터도 되돌리기" 선택지를 주는 방식 검토)
+2. 기존 DB의 불완전한 DLsite/실패한 Steam 메타데이터를 업데이트 후 자동으로 다시 받게 할지(현재는 수동 "전체 메타데이터 새로고침" 필요, §5.3).
+3. Steam 스토어 API의 요청 한도는 공개 문서가 없음 — 대량 전체 새로고침 시 실패(`network`)가 늘면 간격 조정 검토.
+4. hover-tooltip 테스트의 `act(...)` 경고(통과는 함) 원인 조사.
+5. Locale Emulator 인자 사용법·`cwd` 전달 여부 실기 검증.
+6. 앱 밖(Windows 탐색기)에서 폴더를 옮기면 재키되지 않음 — 필요 시 "경로 다시 연결" 기능.
 
 ### 20.4 정리 작업
 - `package.json` `description`을 현재 기능에 맞게 수정.
+- Prettier: 작업 트리가 CRLF(git autocrlf)라 `npm run format:check`가 거의 모든 파일에서 실패함(Prettier 기본 `endOfLine: lf`). `.prettierrc.json`에 `endOfLine: auto` 추가 또는 `.gitattributes`로 LF 고정 결정 필요. 별개로 `librariesHandlers.ts`·`dlsiteParser.ts`·`FolderTreeTab.tsx`·`translations.ts`·`MediaPage.tsx`·`mediaPlayerStore.ts`는 줄 끝과 무관하게 HEAD부터 포맷이 맞지 않음.
 - `/detail` 라우트(`DetailPage`) 제거 여부 결정, `src/pages/DlsiteSearch/` → `GameSearch/`로 이동.
 - 코드 주석에 남은 `media://` 프로토콜 언급(제거된 프로토콜) 정리, 존재하지 않는 `docs/superpowers/...` 경로 인용 정리.
 - 트레이 메뉴(Open/Exit)·메인 오류 메시지·선택창 필터명 다국어화.
