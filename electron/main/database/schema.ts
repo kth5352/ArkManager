@@ -35,7 +35,7 @@ export const gameMetadata = sqliteTable('game_metadata', {
   circle: text('circle'),
   releaseDate: text('release_date'),
   genres: text('genres'), // JSON 배열 문자열로 저장
-  coverImagePath: text('cover_image_path'), // Task 3에서 채움, 지금은 항상 null
+  coverImagePath: text('cover_image_path'), // 크롤러가 저장한 표지 이미지의 캐시 파일 경로(없으면 null)
   workType: text('work_type'), // DLsite work_type 코드 원문 (예: 'SOU', 'MOV', 'RPG'), nullable
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

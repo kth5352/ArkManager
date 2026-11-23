@@ -1,5 +1,5 @@
 // Pure rules for the seek-bar scene preview (spec §3.7, §4.5). The hook
-// (useSeekPreview.ts) and the card (SeekPreview.tsx) only wire these up.
+// (useSeekPreview.ts) and the card (SeekPreviewCard.tsx) only wire these up.
 
 // Requests are made for the START of a bucket, so the response's echoed
 // `seconds` doubles as the cache key.

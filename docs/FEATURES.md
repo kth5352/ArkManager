@@ -22,13 +22,13 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 | 항목 | 상태 |
 | --- | --- |
 | 브랜치 | `security/hardening` (master `012713b`에서 분기). **아직 master 미병합·미릴리스** |
-| 최근 작업 | 2026-11-23: Steam/DLsite 크롤 수정 + §20의 보안·기능 결함 수정(§20.0) |
-| `npm test` | ✅ 146 파일 / 1043 테스트 통과 (hover-tooltip `act(...)` 경고, §20) |
+| 최근 작업 | 2026-11-23: Steam/DLsite 크롤 수정 + §20의 보안·기능 결함 수정(§20.0), 미디어 전체 화면·표지 파이프라인·장면 미리보기 개편(§11.7~11.13, §20.0) |
+| `npm test` | ✅ 170 파일 / 1324 테스트 통과 (hover-tooltip `act(...)` 경고, §20) |
 | `npm run typecheck` | ✅ 통과 |
 | `npm run lint` | ✅ 오류 0 (경고 1건 `button.tsx` react-refresh, 기존) |
-| `electron-vite build` | ✅ 성공, 빌드 `index.html`에 CSP 삽입 확인 |
+| `electron-vite build` | ✅ 성공(`out/main/mpvPreviewWorker.js` 포함), 빌드 `index.html`에 CSP 삽입 확인 |
 | mpv 애드온 | ✅ 이 PC에서 `build:mpv-addon` 컴파일 + `rebuild:mpv-addon`(Electron ABI) 완료. 새 DLL 로딩은 Node에서 `init()`으로 확인 |
-| 실앱(GUI) 검증 | **미실시** (CSP, 미디어 재생, 설치본 Fuses/자동 업데이트, 미디어 탭 임시 루트 버튼). UI 개편 U1~U8도 시각 검증 미실시 |
+| 실앱(GUI) 검증 | **미실시** (CSP, 미디어 재생, 설치본 Fuses/자동 업데이트, 미디어 탭 임시 루트 버튼). UI 개편 U1~U8, 미디어 전체 화면·음성 화면·장면 미리보기(§20.1 체크리스트)도 시각 검증 미실시 |
 | 로컬 환경 주의 | `node_modules/ffmpeg-static/ffmpeg.exe` 없음(과거 `--ignore-scripts` 설치) → 미디어 썸네일 추출 불가. `npm ci`로 복구 |
 
 ---
@@ -316,10 +316,10 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - **재생 엔진**: **libmpv 네이티브 애드온**(`electron/native/mpv-addon`, N-API) 을 Electron **utilityProcess**(`mpvWorker.ts`, 빌드 시 별도 엔트리로 출력)에서 실행 → 크래시가 앱 전체로 번지지 않음, 크래시 시 재생성. 비디오는 **SW 렌더 프레임을 MessagePort로 렌더러 `<canvas>`에 전달**(영상일 때만 프레임 루프, 오디오는 250ms 이벤트 폴링), 오디오는 워커 안에서 직접 출력. 상태(`mpv:state-update`: isPlaying/currentTime/duration/error)와 `mpv:ended`(keep-open 일시정지 감지)를 메인이 호스트 창으로 중계. `hwdec=auto`.
 - **mpv 보안 옵션**(보안 브랜치, **애드온 재빌드 필요**): `access-references/load-unsafe-playlists/ytdl/load-scripts/config/audio-file-auto/input-default-bindings/input-vo-keyboard/osc = no`. 앱이 자막을 직접 그리므로 `sub-auto=no`, `sid=no`. `MPV_LOAD`는 경계 검증 후 **`path.resolve`한 절대경로**만 mpv에 전달.
 - DLL 로딩: 애드온이 자기 `.node` 위치에서 `<addonDir>/libmpv-2.dll` **절대경로**를 계산해 `LoadLibraryExW(..., LOAD_WITH_ALTERED_SEARCH_PATH)`로 로드(`LoadLibmpvNextToAddon`, dev·패키징 레이아웃 동일: `mpv-addon/libmpv-2.dll` + `mpv-addon/build/Release/mpv_addon.node`). 작업 폴더에 심은 동명 DLL이 먼저 로드되는 검색 순서 문제를 막음. 워커의 `PATH` 추가는 구버전 애드온용 폴백으로만 남김. `libmpv-2.dll`은 `CHECKSUMS.sha256`로 빌드 전 검증.
-- **UI 형태 3가지**: ① 하단 도킹 바(2단: 곡 정보 / 조작부) ② 전체화면 오버레이(영상은 사이드바와 화면 분할) ③ **별도 플레이어 창**(`#/player-window`). 창 간 상태는 메인 프로세스를 중계자로 한 `media:state-broadcast`/`media:state-sync`(변경된 상태만, `currentTime`/`duration`은 제외) + 새 창의 pull(`media:request-state-sync`). 호스트 전환은 `mpv:become-host`(재생 중단 없이 프레임 수신 창만 변경).
+- **UI 형태 3가지**: ① 하단 도킹 바(2단: 곡 정보 / 조작부, `MediaTransportBar` `variant: 'default'`) ② 전체화면 오버레이(`FullscreenMediaOverlay`, 메인 창 위에 `fixed inset-0`; 열린 미디어 사이드바와 화면 분할) ③ **별도 플레이어 창**(`#/player-window`, `PlayerWindowPage`). ②와 ③은 **같은 공용 화면 `FullscreenPlayerView` + 위/아래 조작 띠 `PlayerControlBands`**를 쓴다(§11.7). 창 간 상태는 메인 프로세스를 중계자로 한 `media:state-broadcast`/`media:state-sync`(변경된 상태만, `currentTime`/`duration`은 제외) + 새 창의 pull(`media:request-state-sync`). 호스트 전환은 `mpv:become-host`(재생 중단 없이 프레임 수신 창만 변경).
 - **재생 기능**: 재생/일시정지, 시크, 볼륨(영속 `media-volume`), 음소거, 반복 모드(끔/전체/한 곡), **셔플**(켜는 시점에 Fisher-Yates로 1회 순서 생성, 이후 포인터만 이동; 재생목록 길이가 바뀌면 재생성), 큐 관리, 단일 파일 재생은 **큐를 지우지 않고 추가**.
 - **5밴드 EQ**: 60/230/910/3000/14000Hz, ±12dB, 프리셋(Flat / Bass boost[6,4,0,0,0] / Vocal boost[-2,0,4,3,0] / Treble boost[0,0,0,3,6]), 설정 영속(`media-equalizer-bands`, JSON 길이 5·범위 검증, 손상 시 무시). 재적용은 메인이 워커의 `init-ok` 시점에 수행(콜드 스타트·크래시 재생성·분리 창 모두 커버). 밴드 수 5는 `settingsHandlers.ts`·`equalizerPresets.ts`·`mpv_addon.cc` 세 곳이 **수동 동기화**.
-- **키보드 단축키**(`useMediaPlayback.ts`, 판정은 `mediaKeyboard.ts`): `←/→` 5초 시크(호스트 창만), `↑/↓` 볼륨 ±5%, `Space` 재생/일시정지(버튼 포커스 중엔 제외). 텍스트 입력 중, `Ctrl/Alt/Meta` 조합, 다른 핸들러가 이미 `preventDefault`한 키는 무시. 시크바·볼륨 슬라이더(`input[type=range]`)에 포커스가 있어도 같은 단축키로 동작(예전엔 슬라이더 클릭 후 `←/→`가 1초 이동·`Space` 무반응으로 바뀌었음).
+- **키보드 단축키**(판정은 `mediaKeyboard.ts`): `←/→` 5초 시크(호스트 창만), `↑/↓` 볼륨 ±5%, `Space` 재생/일시정지(버튼 포커스 중엔 제외) — `useMediaPlayback.ts`에서 **bubble 단계**로 처리(요소 핸들러의 `defaultPrevented`를 존중하기 위해). 전체 화면용 `F`/`Esc`는 별도로 **capture 단계**(`useFullscreenKeys`, §11.9). 텍스트 입력 중, `Ctrl/Alt/Meta` 조합, 다른 핸들러가 이미 `preventDefault`한 키는 무시. 시크바·볼륨 슬라이더(`input[type=range]`)에 포커스가 있어도 같은 단축키로 동작(예전엔 슬라이더 클릭 후 `←/→`가 1초 이동·`Space` 무반응으로 바뀌었음).
 - **시크 대기**: mpv 시크는 비동기라 워커가 착지 전까지 옛 위치를 보고함 → 시크 목표를 `pendingSeek`로 기억하고, 보고 위치가 목표 ±1초 안에 들거나 1.5초가 지날 때까지 옛 위치 보고를 무시. 연속 `←/→`는 대기 중인 목표에서 이어서 계산(예전엔 빠르게/길게 누르면 뒤로 튀거나 제자리였음).
 - **하드웨어 미디어 키**: 재생 중일 때만 `globalShortcut`으로 `MediaPlayPause/NextTrack/PreviousTrack` 등록, **300ms 디바운스**, 모든 창에 브로드캐스트. 재생 큐가 비면 해제. Web Media Session API도 병행.
 - **새로고침 보호**: 재생 중 Ctrl+R/Ctrl+Shift+R 시 확인 다이얼로그.
@@ -338,15 +338,64 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - ASS 도형 그리기(drawing) 명령은 로그에서 제거.
 - **자막 PIP 창**(`#/subtitle-pip`): 현재 구절만 보여주는 테두리 없는 투명 창(기본 360×90), `setAlwaysOnTop(true, 'screen-saver')`로 전체화면 게임 위에도 표시, 위치/크기 영속(`subtitle-pip-x/y/width/height`), 화면 안으로 클램프(`subtitlePipBounds.ts`). 표시할 줄은 호스트 창이 계산해 `subtitle-pip:line-update`(`line | no-active-line | no-lyrics | no-track`, 메인이 Zod 검증)로 보냄.
 
-### 11.5 미디어 썸네일 (`mediathumb://`)
-- 해결 순서: 수동 override(`media_thumbnail_overrides`, 파일은 `cache/media-thumbnail-overrides/`) → 자동 캐시(`cache/media-thumbnails/<safe>.webp`) → **ffmpeg-static**으로 영상 프레임/오디오 앨범아트 추출(`execFile`+인자 배열, 동시 **2개** 제한, 같은 파일 요청 병합, 15초 타임아웃) → 오디오는 같은 폴더 이미지로 폴백 → 없으면 `.notfound` 마커로 **네거티브 캐시**.
-- 모든 결과 이미지는 `saveCustomCoverImage`(`openRasterImage` + 512px webp)로 재인코딩.
-- 캐시 초기화는 `covers`·`media-thumbnails`·(레거시)`media-remux`만 지움. `custom-covers`·`media-thumbnail-overrides`·`playlist-covers`는 사용자 선택이라 유지.
-- **오디오 표지 삽입**(MP3/FLAC/M4A, `audioCover.ts`): 백업(고유명, exclusive) → 임시 파일에 삽입 → 재생 가능·디코딩 검증 → 원본 교체 → 재검증 → 둘 다 통과해야 백업 삭제. 실패 시 복원하고 SHA-256 일치할 때만 백업 삭제. 실패한 복구 백업은 UI에 노출. 삽입 성공 시 해당 파일의 자동 썸네일 캐시 무효화. WAV 등 삽입 불가 형식은 앱 내부 override로 저장.
+### 11.5 미디어 썸네일·표지 (`mediathumb://`)
+- 호스트 3개: `thumbnail`(긴 변 **512px**, 목록·그리드·대기열), `cover`(긴 변 **2048px**, 전체 화면 음성 화면), `playlist-cover`. 그 밖의 호스트는 404. 경로는 URL의 pathname만 해석하고 `?v=<version>`(캐시 무효화용 쿼리)은 무시. `thumbnail`/`cover`는 같은 신뢰 경계(§11.3)를 적용해 경계 밖이면 404.
+- 해결 순서(`resolveMediaArtwork`, `media/resolveMediaThumbnail.ts`): 수동 override(`media_thumbnail_overrides`, 파일은 `cache/media-thumbnail-overrides/`; `cover` 호스트는 옆의 `<key>.large.webp`가 있으면 그것, 없으면 512px 파일) → 자동 캐시 → **소스 탐색**. 소스 탐색은 **오디오**: 내장 표지(ffmpeg-static 추출) → 같은 폴더 이미지 → **작품 표지**(§11.11); **영상**: 프레임 추출만(폴더 이미지·작품 표지 단계 없음). ffmpeg는 `execFile`+인자 배열, 동시 **2개** 제한, 같은 파일 요청 병합, 15초 타임아웃. 없으면 `.notfound` 마커로 **네거티브 캐시**(영구 오류가 아닌 일시 실패는 기록하지 않음).
+- 한 번의 디코딩(`openRasterImage`)으로 512px·2048px webp와 강조색·비율 JSON을 함께 만든다. 이미지 디코딩은 항상 `rasterImage.ts` 경유.
+- 캐시 초기화는 `covers`·`media-thumbnails`·**`media-covers`**·(레거시)`media-remux`만 지움(초기화 직후 작품 표지 세대를 올려 열려 있는 화면이 다시 받게 함). `custom-covers`·`media-thumbnail-overrides`·`playlist-covers`는 사용자 선택이라 유지.
+- **오디오 표지 삽입**(MP3/FLAC/M4A, `audioCover.ts`): 백업(고유명, exclusive) → 임시 파일에 삽입 → 재생 가능·디코딩 검증 → 원본 교체 → 재검증 → 둘 다 통과해야 백업 삭제. 실패 시 복원하고 SHA-256 일치할 때만 백업 삭제. 실패한 복구 백업은 UI에 노출. 삽입 성공 시 해당 곡의 표지 캐시 4종(512px·`.notfound`·2048px·JSON)을 함께 무효화(§11.11; 예전엔 `.webp`만 지워 `.notfound`가 남았음). WAV 등 삽입 불가 형식은 앱 내부 override로 저장.
 
 ### 11.6 ASMR/음성/음악/영상 작품 연동
 - 크롤된 `work_type`이 `SOU`/`MOV`/`MUS`이고 **폴더**이며 코드가 있으면(`isAsmrPlayableFolder`) → "실행" 대신 **"재생"** 버튼, 실행 설정·세이브 UI 숨김. 라이브러리/탐색기/상세 어디서든 진입(`usePlayAsmrFolder`).
 - 동작 (`usePlayAsmrFolder` + `src/lib/mediaBrowseRoot.ts`): **저장된 `media-folder` 설정은 바꾸지 않는다.** 작품 폴더가 저장된 미디어 폴더 안이면 그 루트에서 해당 폴더로 이동만 하고, 밖이면 **세션 전용 임시 루트**(`mediaPlayerStore.temporaryMediaRoot`, 미저장)로 연다. 미디어 탭에 "저장된 미디어 폴더로"/"이 폴더를 미디어 폴더로 저장" 버튼이 나타나고, 폴더 선택으로 새 폴더를 고르면 임시 루트는 해제. 미디어 페이지와 사이드바 폴더 트리는 `useMediaBrowseRoot()`로 같은 루트를 본다. 이후 루트에 미디어 파일이 있으면 즉시 재생, 하위 폴더뿐이면 `/media`로 이동만. (예전에는 재생할 때마다 사용자가 고른 미디어 폴더를 덮어썼음)
+
+### 11.7 전체 화면 구조 (오버레이 · 분리 창 공용)
+- `FullscreenPlayerView`(`src/components/media/`)가 영상/음성 화면과 조작 띠를 모두 그린다. `FullscreenMediaOverlay`는 얇은 래퍼(사이드바 분할·큐 탭 ☰·`mediaFullscreenBarHeight` 보고만 담당), `PlayerWindowPage`는 `mode="detached"`로 쓴다. 루트는 `useRef`로 항상 렌더되고 오버레이는 CSS `hidden`으로만 숨김(`<canvas>` 노드가 바뀌면 프레임 수신이 끊기므로).
+- **영상**: `<canvas>`가 화면 전체(띠가 캔버스 위에 겹침, 예전엔 캔버스가 바 위에서 끝났음). 캔버스 **더블클릭 = 모니터 전체 화면 토글**.
+- **위 띠**: 제목(`playback.title || track.name`, §11.12). 오버레이에서만 분리(⤡)·최소화(⊟) 버튼. 분리 창에는 둘 다 없음.
+- **아래 띠**(`PlayerControlBands`, 위/아래 그라데이션): 좌측 재생(강조색 원형)·이전·다음·음소거+볼륨·`현재 / 전체`, 우측 반복·셔플·가사·EQ·좋아요·자막 PIP·☰·⛶. 분리 창에도 좋아요·자막 PIP 버튼이 있다(PIP 열림 상태는 창 로컬이고 메인이 다시 방송하면 보정). 조작부 마크업은 `MediaTransportBar`와 공유(`variant: 'band'`, 로직은 갈라지지 않음).
+- **☰**: 오버레이에서는 메인 창 미디어 사이드바(큐 탭)를 여닫고, **분리 창에서는 오른쪽 288px 패널**(`MediaPlaylistPanel`)을 여닫는다. 예전 분리 창은 재생목록이 하단에 항상 붙어 있었지만 지금은 **기본 닫힘**이고, 열려 있는 동안 띠를 숨기지 않는다. 사이드바는 하단 띠의 측정된 높이(숨겨도 레이아웃은 그대로라 변하지 않음) 위에 붙는다.
+- **가사 오버레이**: 띠가 보이면 띠 바로 위, 숨으면 하단 24px로 내려온다(200ms 전환).
+- 메인 창이 모니터 전체 화면이어도 사이드바 등은 오버레이 밑에 그대로 있다(별도 레이아웃 변경 없음).
+
+### 11.8 자동 숨김 (`useAutoHideControls` + 순수 판정 `autoHide.ts`/`playerView.ts`)
+- 영상·음성 공통, 오버레이·분리 창 모두. **2초** 동안 활동이 없으면 위/아래 띠가 fade out(200ms, `opacity-0 pointer-events-none` — 숨은 띠가 포인터를 가로채지 않음)하고 **커서도 숨김**(루트 `cursor: none`). 숨는 동안 하단에 **2px 진행선**(`--media-accent`, 기본 `hsl(var(--primary))`)이 남는다.
+- **활동**: 루트의 `pointermove`(좌표가 직전과 **다를 때만** — 띠가 사라지거나 커서 스타일이 바뀔 때 Chromium이 제자리에 쏘는 합성 `pointermove`는 무시)·`pointerdown`·`wheel`, 창의 `keydown`(`F`/`Esc` 포함).
+- **띠를 숨기지 않는 경우(hold)**: 일시정지 중 / 포인터가 띠 위 / 시크·볼륨 슬라이더 드래그 중 / EQ 팝오버 열림 / 사이드바(메인 미디어 사이드바 또는 분리 창 ☰ 패널) 열림 / **키보드 포커스**가 띠 안(`:focus-visible`만 인정 — 마우스 클릭 뒤 남은 포커스가 띠를 영구히 붙잡지 않도록. `:focus-visible` 미지원이면 키보드 포커스로 간주). 마지막 hold가 풀리면 그 순간부터 2초를 다시 센다. 오버레이가 비활성(숨김)이 되면 hover/focus/드래그 hold를 초기화한다(`display:none`은 pointerleave/blur를 쏘지 않으므로).
+- 훅 시그니처는 `useAutoHideControls({ enabled, hold, rootRef })`. `rootRef`는 `enabled`가 true가 되기 전에 마운트돼 있어야 하고 안정적인 `useRef`여야 한다(리스너 effect가 `rootRef` 정체성에 의존).
+
+### 11.9 모니터 전체 화면 · 키 우선순위
+- **진입/해제**: ⛶ 버튼 / `F` / 영상 더블클릭이 토글, `Esc`가 해제(**모니터 전체 화면일 때만** 처리하고 아니면 소비하지 않음). `F`는 오버레이가 보이는 동안만. 텍스트 입력 중·`Ctrl/Alt/Meta` 조합은 제외하고 슬라이더 포커스에서는 동작. 키 자동 반복은 소비하되 동작하지 않음(`F` 길게 눌러도 깜빡이지 않음).
+- **IPC**: `window:set-fullscreen`(invoke, `{fullscreen, reason: 'media-toggle' | 'media-release'}` → `{fullscreen, owner}`) → 호출한 창(`BrowserWindow.fromWebContents`)의 `setFullScreen`. 상태 변화는 `enter-full-screen`/`leave-full-screen` 이벤트로 그 창에 `window:fullscreen-changed`(`{fullscreen, owner}`)를 push(F11·OS 등 다른 경로도 반영). 창마다 컨트롤러 하나(`windowFullscreenOwner.ts`; 메인 창은 `index.ts`, 분리 창은 `mediaWindowHandlers.ts`에서 부착). 렌더러는 `useWindowFullscreen()`(`fullscreen`, `owner`, `toggle`, `release`).
+- **소유자 추적** `owner: 'media' | 'user' | null`: 미디어가 `setFullScreen(true)`를 요청한 직후의 enter 이벤트만 `media`로 귀속(요청이 거부되면 즉시, 이벤트가 안 오면 1초 뒤 대기 플래그 해제 — 이후 사용자의 F11이 media로 오귀속되지 않도록). 메뉴의 F11(`togglefullscreen`)로 켠 것은 `user`.
+- **해제 규칙**: `media-release`는 `owner === 'media'`일 때만 실제로 끈다 — ⊟ 최소화(해제 후 최소화), 분리(⤡), 재생 중단·재생목록 비움(`MediaPlayerHost`와 `PlayerWindowPage`의 effect). 사용자가 F11로 켠 것은 이 셋에서 유지된다. 반대로 `media-toggle`(⛶/`F`/`Esc`/더블클릭)은 누가 켰든 끈다. 분리 시 새 창은 창 모드로 열리고, 분리 창이 전체 화면인 채 닫혀도 메인 창 상태는 바뀌지 않는다. 훅은 마운트 시점의 초기 상태를 모른다 — F11 상태에서 오버레이를 열면 첫 ⛶이 반영 안 된 것처럼 보일 수 있어, 응답이 요청 전 상태와 같으면 한 번 반대로 재시도한다(그 전까지 ⛶ 아이콘은 "진입" 표시이고 `Esc`는 가로채지 않음).
+- **키 우선순위**: `F`/`Esc`는 `window`에 **capture 단계**로 등록한 `useFullscreenKeys`가 먼저 받아 `preventDefault()` + `stopImmediatePropagation()`으로 소비 → 이후 bubble 리스너(`DetailSidebar`의 `Esc` 닫기, `useFavoriteShortcut`의 `F`)에 도달하지 않는다. 방어로 두 핸들러도 `shouldYieldKeyToMediaOverlay`로 `defaultPrevented`이거나 미디어 오버레이가 보이는 중(`mediaExpanded && !isDetached`)이면 무시. 화살표·`Space`는 bubble 유지. 최소화(도킹 바) 상태에서는 `F`/`Esc`를 가져가지 않는다.
+
+### 11.10 음성 화면 (`AudioArtworkView`)
+- **기본 배치(시안 C)**: 배경은 같은 곡의 512px 썸네일을 `blur(40px)`로 깔고 어둡게 덮은 것. 띠 위 영역에 왼쪽 표지 + 오른쪽 `NOW PLAYING` 라벨·제목(최대 3줄)·파일명(최대 2줄). 표지는 **원래 비율**(`coverBoxSize`: 높이 ≤ 화면의 2/3, 너비 ≤ 45%; 창 폭 520px 미만이면 세로로 쌓고 한도 0.5/0.8)이고 2048px 이미지를 쓴다. 표지 상자는 하단 띠 위 영역 기준으로 맞춘다.
+- **확대**: 표지 버튼(`aria-label` = 확대/축소, 줌 커서 — 띠가 숨으면 `cursor-none`)을 누르면 표지가 화면에 꽉 맞게(잘림 없음) 커지고, 제목·파일명은 어두운 반투명 하단 띠 안으로 옮겨진다. 포커스는 바뀐 버튼으로 이어진다. 상태 `coverExpanded`는 `mediaPlayerStore`에 있으며 **창 로컬**(`mediaSyncState`의 허용 목록에 없어 창 간 동기화되지 않음)이고 곡이 바뀌어도 유지된다(표지 없는 곡에서는 무시하되 값은 보존).
+- **표지 없음**: 남색 라디얼 배경 + 음표 아이콘 사각형(클릭 불가), 강조색은 앱 primary. 표지 정보 조회 중(pending)에는 직전 곡의 배치·강조색·띠 높이를 유지해 화면이 흔들리지 않고(이미지는 현재 곡 것만 표시), 이미지 로딩 오류는 표지 없음으로 처리하며 곡/버전이 바뀌면 재시도.
+- **강조색**: 표지에서 뽑은 색을 `--media-accent`로 루트에 설정(재생 버튼·슬라이더·2px 진행선에 적용), 밝은 색이면 재생 아이콘을 어두운 색으로(`--media-accent-foreground`, `accentForeground` 상대 휘도 0.4 기준). 영상·표지 없는 곡은 앱 primary.
+
+### 11.11 표지 파이프라인 (메인 `electron/main/media/`)
+- **캐시 파일(곡당 4개)**: `cache/media-thumbnails/<key>.webp`(512px) + `<key>.webp.notfound`, `cache/media-covers/<key>.webp`(2048px) + `<key>.json`(`source: embedded|folder|work-cover`, `workCoverGeneration`, `accent`, `aspectRatio`). 강조색은 sharp `stats().dominant`를 HSL로 보정(명도 0.45~0.70, 채도 최소 0.35 — `accentColor.ts`). 작품 표지 세대는 `cache/media-covers/work-cover-generation.json`(`{generation}`, 없거나 손상 시 1)에 저장(설계 스펙은 settings 테이블을 말했지만 코드는 파일).
+- **무효화**: 곡 단위(표지 삽입 성공, 미디어 썸네일 override 설정/해제) → `invalidateTrack` = 곡별 세대 +1 후 4개 파일 삭제. 작품 단위(크롤로 `cover_image_path` 저장[단건·일괄], 게임 사용자 표지 설정/해제, 코드 수동 연동/해제, 캐시 초기화) → `bumpWorkCover` = 작품 표지 세대 +1(파일은 안 지움; `.notfound`·`work-cover` 출처 캐시는 기록된 세대가 현재보다 작으면 없는 것으로 보고 다시 해결). 둘 다 `mediaArtworkServices.ts`가 유일한 진입점이며 영속 실패해도 알림은 항상 보낸다(이미 커밋된 작업이 실패처럼 보이지 않도록).
+- **경쟁 방지**: 비동기 해결(ffmpeg·sharp)이 무효화와 겹쳐도 옛 결과를 되살리지 못하게 해결 작업이 시작 시 `(곡 세대, 작품 세대)` 스냅샷을 잡고, **곡별 직렬 잠금** 안에서 세대를 다시 비교한 뒤 임시 파일을 rename으로 커밋한다(다르면 임시 파일만 지우고 'stale' → 현재 세대로 다시 해결). 무효화도 같은 잠금 안에서 세대 증가+삭제를 끝낸다. 4개 파일은 한 묶음으로 커밋/롤백. 진행 중 요청 공유 키에도 두 세대가 들어간다. 곡별 잠금 키는 `filePath` 문자열 그대로라 호출자는 같은 경로 문자열을 써야 한다.
+- **작품 표지 대체**(오디오만, `workCoverLookup.ts`): 파일의 부모 폴더부터 **파일을 포함하는 가장 바깥 허용 루트(그 루트 폴더 자신 포함, 그 위로는 안 올라감)**까지, 가까운 폴더부터: 코드 = `path_code_overrides` → 폴더명 `extractCode`. 폴더마다 ① 사용자 지정 게임 표지(`game_user_data.custom_cover_path`, 키는 `resolveGameEntryKey` 규칙 — 코드가 없어도 항상 확인) → ② 코드가 있을 때만 크롤 표지(`game_metadata.cover_image_path`). 파일이 실제로 있을 때만 채택. 허용 루트에 속하지 않고 정확한 경로로만 신뢰되는 트랙(재생목록/좋아요)은 이 단계가 null. 코드 종류는 RJ/VJ에 한정하지 않음. 조회 실패(reject)는 "표지 없음".
+- **사용자 override**: 새로 지정하면 512px 파일 옆에 `<key>.large.webp`(2048px, 최선 노력)도 저장하고 이전 것은 먼저 지운다. 예전 override는 512px뿐이라 `cover`/`get-cover-info`가 그것을 그대로 쓴다(흐림). `get-cover-info`는 override가 있으면 그 파일에서 강조색·비율을 읽는다.
+- **렌더러 조회**: `media:get-cover-info`(경로 → `{hasCover, accent, aspectRatio, version}`, `version = "<곡 세대>-<작품 세대>"`). 신뢰 경계 밖이면 던지지 않고 **트랙이 신뢰되지만 표지 없는 경우와 같은 모양**(`hasCover:false`, `accent`/`aspectRatio` null)으로 응답. 렌더러는 `buildMediaThumbnailUrl(path, version)`/`buildMediaCoverUrl(path, version)`으로 `?v=`를 붙여 브라우저 이미지 캐시를 깬다. 변경은 `media:artwork-changed`(`{filePath | null}`; null = 모든 작품 표지) push로 알리고 `useMediaCoverInfo`가 쿼리를 무효화한다(훅마다 리스너 1개).
+
+### 11.12 재생 상태 필드 (제목 · 세대 · 로드된 경로)
+- `mpv:state-update`에 `mediaTitle`(mpv `media-title`, 애드온이 observe로 캐시한 값 — 렌더 스레드 제약상 동기 `get_property` 금지), `loadGeneration`(메인 `mpvProcessManager`가 `loadFile`마다 +1), `loadedPath`(그 로드의 요청 경로)가 추가됐다. 세대/경로는 **메인이 로드 때 워커에 넘기고 워커가 모든 상태 메시지에 그대로 실어** 보낸다(릴레이 시점에 붙이면 "새 세대 + 옛 제목" 조합이 생기므로). 식별 정보가 없는 메시지는 0/null(채택 불가).
+- 렌더러(`useMediaPlayback`)는 `state.loadedPath === 현재 곡 경로`일 때만 `mediaTitle`/`loadGeneration`/`loadedPath`를 채택하고(`shouldAdoptLoadIdentity`), 곡이 바뀌면 즉시 null로 되돌린다. 표시 제목은 `displayTitle`: `mediaTitle`이 파일명과 같으면(태그 없음) 확장자 뺀 파일명. 알려진 한계: `mpv:ended`에는 식별 정보가 없어 늦게 도착한 이전 곡의 `ended`가 다음 곡/한 곡 반복을 잘못 트리거할 수 있다.
+
+### 11.13 재생 바 장면 미리보기 (영상)
+- 영상 시크바에 마우스를 올리면 해당 시각의 장면(240×135)과 시간을 카드(`SeekPreviewCard`, `pointer-events: none`, 창 가장자리 8px 안으로 클램프, 640px 미만 창은 192px)로 표시. 도킹 바·전체 화면 띠·분리 창 공통. 시크 thumb 드래그 중에는 바 밖으로 나가도 따라간다. 오디오나 길이를 모르는 영상은 카드 없음.
+- **렌더러**(`seekPreview.ts`, `useSeekPreview.ts`): 시각을 버킷(`max(1초, 길이/200)`)으로 양자화, 곡별 LRU 캐시(최대 300장, 곡이 바뀌면 비움), 동시 요청 1개(응답이 오면 가장 최근 호버 버킷 요청). **미리보기 세대**는 위 `loadGeneration`을 채택 규칙대로 받은 값이고 곡이 바뀌면 `null` — `null`인 동안은 요청도 표시도 없이 시간 알약만 보인다. 그리는 것은 저장된 프레임의 버킷·곡 경로·세대가 모두 현재 호버와 같을 때만. 응답이 `null`/오류면 그 버킷은 포인터가 다른 버킷으로 갈 때까지 재시도하지 않으므로 **`null` = 미리보기 없음**(시간 툴팁만, 루프 없음). 분리 창이 열려 있을 때 메인 창의 도킹 바는 호스트가 아니라 세대가 null이어서 시간 알약만 나온다.
+- **IPC** `mpv:preview-frame`(invoke): 요청 `{seconds, generation, requestId}`(Zod `.strict()` — `path`를 끼워 넣으면 **거부**), 응답 `{generation, requestId, seconds, width: 240, height: 135, data: Uint8Array(RGBA 129,600B)} | null`(`seconds`는 요청 값 그대로 = 버킷 시작). **경로는 IPC에 실리지 않는다** — 메인이 `mpvProcessManager.getCurrentLoadedPath()`(이미 경계 검증·resolve된 현재 재생 파일)에서 얻고, 요청 `generation`이 `getLoadState().generation`과 다르거나 현재 파일이 영상이 아니거나 로드된 게 없으면 `null`(큐에서 나올 때와 워커 응답 뒤에도 다시 검사).
+- **두 번째 mpv**(`mpvPreviewWorker.ts` utilityProcess + `mpvPreviewManager.ts` + 순수 상태기계 `mpvPreviewSession.ts` + `previewQueue.ts`): 같은 애드온을 `init(path, 240, 135, 'no', {preview: true})`로 — `ao=null, aid=no, pause=yes, hr-seek=no, cache=no, demuxer-readahead-secs=0, hwdec=no, vd-lavc-threads=2`(애드온은 이 5번째 인자에서 `preview === true`만 읽고 임의 옵션 통로 없음). 요청 흐름: 로드(`file-loaded` + 초기 `playback-restart` 대기, 3초) → `seek(t, 'keyframes')` → **대기 중 4ms마다 `renderFrame`을 호출**하고 `playback-restart` 이후 첫 성공 프레임을 반환(800ms 초과 시 `null`). 실측 **중앙값 약 27ms**(`playback-restart` 뒤에만 렌더하면 약 230ms — 시크 대기 중 렌더가 계약).
+- **큐/수명**: 진행 1 + 대기 1(새 요청이 대기 중인 것을 `null`로 교체, 진행 중인 것은 중단 안 함). 첫 요청에 지연 생성, 요청 없이 **60초**면 종료(`shutdown` 후 2초 유예 뒤 kill; 워커는 `process.exit(0)`), 앱 종료 시 정리. 작업 6초 무응답이면 kill(크래시로 계산, 대기 작업은 새 워커로), **60초 안에 3회 비정상 종료면 이번 실행 동안 끔**(`null`). 시크 실패/타임아웃 뒤에는 `loadedPath`를 비워 다음 요청이 `loadFile`로 재로드(늦게 온 `playback-restart`가 다음 요청에 섞이지 않도록). 크기가 240×135×4가 아닌 프레임은 폐기. 본 mpv 크래시 시 현재 경로가 비워져 다음 로드까지 `null`. 워커는 `setPause`/`setVolume`을 호출하지 않아 소리가 나지 않는다.
+- 패키징은 기존 `files: out/**/*` + `extraResources`가 그대로 포함(`MPV_ADDON_DIR` 해석이 본 워커와 같음). 빌드 엔트리는 `electron.vite.config.ts`의 세 번째 main 엔트리.
 
 ---
 
@@ -417,10 +466,11 @@ JSON 컬럼(`genres`, `launch_config`)은 손상돼도 전체 읽기가 실패�
   ark-manager.db (+ -wal, -shm)
   cache/
     covers/                    크롤 표지 (재생성 가능, 캐시 초기화 대상)
-    media-thumbnails/          미디어 자동 썸네일 + *.notfound (캐시 초기화 대상)
+    media-thumbnails/          미디어 자동 썸네일 512px + *.notfound (캐시 초기화 대상)
+    media-covers/              미디어 큰 표지 2048px + 강조색·비율 JSON + work-cover-generation.json (캐시 초기화 대상)
     media-remux/               레거시, 캐시 초기화 시 정리만
     custom-covers/             사용자 지정 게임 표지 (유지)
-    media-thumbnail-overrides/ 사용자 지정 미디어 썸네일 (유지)
+    media-thumbnail-overrides/ 사용자 지정 미디어 썸네일 512px + <key>.large.webp 2048px 사본(새 지정분) (유지)
     playlist-covers/           재생목록 표지 (유지)
   saves/<safeKey>/<timestamp>/ 세이브 스냅샷 (선택적으로만 삭제)
 ```
@@ -430,13 +480,13 @@ JSON 컬럼(`genres`, `launch_config`)은 손상돼도 전체 읽기가 실패�
 
 ## 15. IPC · 신뢰 경계 규칙 (작업 시 반드시 지킬 것)
 
-1. **채널 정의는 `shared/types/ipc.ts` 한 곳**(`IPC_CHANNELS` **106개** 상수 + Zod 요청 스키마). 새 채널 = 상수 + 스키마 → `electron/main/ipc/*Handlers.ts` 핸들러 → `electron/preload/index.ts` 타입 지정 래퍼 → `src/services/*Service.ts`(TanStack Query 훅) 순.
-2. 핸들러는 `payload: unknown` → `Schema.parse(payload)`. 푸시 전용 채널(`scanner:scan-progress`, `metadata:bulk-crawl-progress`, `update:status`, `mpv:state-update`, `mpv:ended`, `media:hardware-key`, `menu:open-excluded-entries-dialog` 등)은 `webContents.send`. `ipcMain.on` 리스너는 `safeParse`(예외로 메인이 죽지 않도록) — 단 `MPV_RESIZE`는 현재 `parse`를 씀.
+1. **채널 정의는 `shared/types/ipc.ts` 한 곳**(`IPC_CHANNELS` **111개** 상수 + Zod 요청 스키마). 새 채널 = 상수 + 스키마 → `electron/main/ipc/*Handlers.ts` 핸들러 → `electron/preload/index.ts` 타입 지정 래퍼 → `src/services/*Service.ts`(TanStack Query 훅) 순. (실제로는 mpv·창 전체 화면 채널처럼 이벤트/명령성인 것은 서비스 래퍼 없이 `window.api.mpv.*`/`window.api.window.*`를 훅·스토어·컴포넌트에서 직접 호출한다 — `useMediaPlayback`, `useWindowFullscreen`, `useSeekPreview` 등.)
+2. 핸들러는 `payload: unknown` → `Schema.parse(payload)`. 푸시 전용 채널(`scanner:scan-progress`, `metadata:bulk-crawl-progress`, `update:status`, `mpv:state-update`, `mpv:ended`, `media:hardware-key`, `media:artwork-changed`, `window:fullscreen-changed`, `menu:open-excluded-entries-dialog` 등)은 `webContents.send`. `ipcMain.on` 리스너는 `safeParse`(예외로 메인이 죽지 않도록) — 단 `MPV_RESIZE`는 현재 `parse`를 씀.
 3. **모든 `ipcMain.handle/on`은 `installTrustedIpcGuard()`가 감싸** 발신 프레임이 앱 자신의 최상위 프레임(패키징 시 정확히 `out/renderer/index.html`, 개발 시 dev 서버 출처)인지 검사. 위반 시 handle은 throw, on은 `returnValue = null`. 새 핸들러도 자동 적용되지만 가드 설치 전에 등록하면 안 됨.
 4. 파일 시스템에 닿는 모든 핸들러는 `isPathWithinAnyLibrary` 검증(미디어는 `computeMediaAllowedRoots` + `computeMediaTrustedPaths`). 사용자가 고른 임의 위치(세이브 폴더·표지 원본 등)는 **"방금 고른 경로"** 패턴.
 5. 파일을 **실행**하는 동작은 `.exe` 한정(실행 설정) 또는 메인 프로세스 네이티브 확인창(`shell:open-path`). 렌더러가 확인을 대신 누를 수 없게 확인창은 항상 메인에서 띄움.
 6. 렌더러는 `window.api.*`만 사용(contextBridge 한 줄, `export type Api = typeof api`). 프리로드는 샌드박스라 런타임 의존성은 번들해야 함(`zod`는 `externalizeDepsPlugin({ exclude: ['zod'] })` — 흰 화면 버그 이력).
-7. 커스텀 프로토콜: `thumb://`(폴더 썸네일), `mediathumb://`(미디어/재생목록 썸네일). 경로 `..`는 resolve 후 비교. CSP의 `img-src`/`connect-src`에 두 스킴이 들어 있으므로 새 스킴 추가 시 CSP도 수정.
+7. 커스텀 프로토콜: `thumb://`(폴더 썸네일), `mediathumb://`(호스트 `thumbnail` 512px / `cover` 2048px / `playlist-cover`; 앞의 둘은 미디어 신뢰 경계 적용). 경로 `..`는 resolve 후 비교. CSP의 `img-src`/`connect-src`에 두 스킴이 들어 있으므로 새 스킴 추가 시 CSP도 수정.
 8. 메인 프로세스의 외부 요청은 `safeFetch`, 받은/고른 이미지 디코딩은 `openRasterImage`(또는 이를 쓰는 `saveCustomCoverImage`)만. 외부 프로세스는 `shell: true` 금지, 인자 배열/환경변수로만 데이터 전달.
 9. 새 `BrowserWindow`는 `secureWebPreferences(preloadPath)` 사용, 원격 URL 로드 금지. 새 비밀값 설정은 `SECRET_KEYS`에 추가.
 10. 상태 관리 분담: **영속/OS/네트워크 유래 데이터 = TanStack Query**, **일시적 UI 상태 = Zustand**(`src/stores/`: explorer 탭·선택·미디어 플레이어·셔플 순서·되돌리기·라이브러리 표시·제외 다이얼로그·갤러리 딥링크). Explorer 탭만 Zustand + 디바운스 저장 훅으로 SQLite 동기화.
@@ -462,6 +512,7 @@ JSON 컬럼(`genres`, `launch_config`)은 손상돼도 전체 읽기가 실패�
 | 파일 열기 | `shell/openPathPolicy.ts` + 네이티브 확인창 |
 | 라이브러리 루트 | `libraries/libraryPathPolicy.ts` + 확인창 |
 | 비밀값 | `database/secretStore.ts` (DPAPI) |
+| 장면 미리보기 | `mpv:preview-frame`은 `.strict()` 스키마로 경로 필드 거부, 경로는 메인이 현재 재생 파일에서만 얻음, 미리보기 mpv는 `ao=null`·일시정지(§11.13) |
 | 패키징 | `package.json build.electronFuses`: runAsNode off, NODE_OPTIONS off, `--inspect` off, cookie 암호화 on, asar에서만 로드 [미검증: 설치본] |
 | 공급망 | `CHECKSUMS.sha256` + `npm run verify:binaries`(build/release 선행), `.npmrc audit-level=high`, `npm run audit:prod` |
 
@@ -485,12 +536,12 @@ electron/main/
   launch/                  launchGame, localeEmulator, activeSessions, listExecutables
   save/                    snapshot 생성/목록/복원/diff, 버전 감지/비교, readExeFileVersion
   fileOps/                 rename/move/delete
-  media/                   mpvWorker/mpvProcessManager, resolveMediaThumbnail, extract*, lyrics, audioCover, mediaTrustBoundary
+  media/                   mpvWorker/mpvProcessManager, mpvPreviewWorker/Manager/Session/previewQueue(장면 미리보기), resolveMediaThumbnail(resolveMediaArtwork)/mediaArtworkCache/mediaArtworkServices/workCoverLookup/accentColor/overrideCoverInfo/saveLargeOverride(표지 파이프라인), extract*, lyrics, audioCover, mediaTrustBoundary
   libraries/               libraryPathPolicy
   shell/                   buildExternalUrl, openPathPolicy
   customCover/ cache/
   thumbnailProtocol.ts(isPathWithinAnyLibrary 포함) mediaThumbnailProtocol.ts mediaHardwareKeys.ts
-  windowCloseBehavior.ts updater.ts menuLocalization.ts zoomShortcuts.ts subtitlePipBounds.ts
+  windowFullscreenOwner.ts(창 전체 화면 소유자 추적) windowCloseBehavior.ts updater.ts menuLocalization.ts zoomShortcuts.ts subtitlePipBounds.ts
   migrateUserDataFolder.ts normalizeReleaseNotes.ts
 electron/preload/index.ts  window.api 정의
 electron/native/mpv-addon/ libmpv N-API 애드온 (mpv_addon.cc, libmpv-2.dll + CHECKSUMS.sha256, binding.gyp, TESTING.md, 벤치 스크립트 *.cjs)
@@ -500,7 +551,7 @@ src/
   main.tsx                 진입점 (창 종류 분기, 테마 선적용)
   router.tsx               라우트
   pages/                   라우트 단위 화면 (+ PlayerWindow, SubtitlePip)
-  components/{game,layout,media,ui}/
+  components/{game,layout,media,ui}/  (media: FullscreenPlayerView/PlayerControlBands/AudioArtworkView/useAutoHideControls/useFullscreenKeys/useSeekPreview/SeekPreviewCard 등)
   services/                window.api 래핑 + React Query 훅
   stores/                  Zustand 스토어
   hooks/ lib/              순수 로직 (filterEntries, sortEntries, groupDuplicatesByCode, buildRenamePlan, lrc/vtt/ass 파서 ...)
@@ -518,7 +569,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 | `npm run dev` | electron-vite 개발 모드 (CSP 미적용) |
 | `npm run build` | `verify:binaries` → electron-vite build → electron-builder (NSIS, `dist/`) |
 | `npm run release` | 위와 같고 GitHub에 즉시 발행 (`--publish always`, `GH_TOKEN` 필요) |
-| `npm test` | Vitest, node 환경. **146 파일 / 1043 테스트** (src 55, electron 87, shared 4). 렌더러는 순수 함수 위주 + jsdom 렌더 테스트 9개 파일(별점·메모, 세이브 다이얼로그, 툴팁, 일부 훅/서비스). 그 외 UI 변경은 수동 확인 필요 |
+| `npm test` | Vitest, node 환경. **170 파일 / 1324 테스트**(2026-11-23 미디어 전체 화면 작업 후 합계; 폴더별 분포는 재집계하지 않음). 렌더러는 순수 함수 위주 + jsdom 렌더 테스트 9개 파일(별점·메모, 세이브 다이얼로그, 툴팁, 일부 훅/서비스). 그 외 UI 변경은 수동 확인 필요 |
 | `npm run typecheck` / `lint` / `format:check` | tsc build / ESLint(flat) / Prettier |
 | `npm run build:mpv-addon`, `rebuild:mpv-addon` | libmpv 네이티브 애드온 빌드 / Electron ABI 리빌드 — `mpv_addon.cc` 변경 시 필수 |
 | `npm run verify:binaries` | `libmpv-2.dll` SHA-256 검증 |
@@ -527,8 +578,8 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 - Node 버전: `.nvmrc` = 20.
 - 스택: Electron 43.8.7, electron-vite 5, Vite 7.3, React 19.2, TypeScript 6(strict), Tailwind v4 + shadcn/ui(Radix), Zustand 5, TanStack Query 5 / Router 1, Drizzle 0.45 + better-sqlite3 13, dnd-kit, react-window 2, framer-motion 12, cheerio, sharp 0.35.5, ffmpeg-static, iconv-lite, electron-updater, zod 4.6.7, sonner, Pretendard 번들 폰트. `overrides`로 undici/seroval/js-yaml 등 하위 의존성 고정.
 - 패키징: `extraResources`로 `LOGO.png`, `mpv_addon.node`, `libmpv-2.dll` 동봉, `asarUnpack` 사용. 앱 ID `com.arkmanager.app`.
-- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 106개, preload API 함수 약 140개, 번역 키 354개.
-- 설계 스펙·구현 계획(`docs/superpowers/`, `.superpowers/`)은 gitignore 대상이고 **현재 작업 폴더에도 없음**. 코드 주석이 이 경로의 문서를 여러 번 인용하지만 열람 불가 → 주석 자체가 유일한 근거.
+- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 111개, preload API 함수 약 140개(미디어 전체 화면 작업으로 몇 개 늘었으나 재집계하지 않음), 번역 키 362개.
+- 설계 스펙·구현 계획(`docs/superpowers/`, `.superpowers/`)은 gitignore 대상이라 **저장소에는 없음**(2026-11-23 미디어 전체 화면 작업의 스펙·계획은 이 PC 작업 폴더에만 남아 있고 커밋되지 않음). 그 외 코드 주석이 인용하는 이 경로의 문서는 대부분 열람 불가 → 주석 자체가 유일한 근거.
 
 ---
 
@@ -564,13 +615,24 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 | libmpv 절대경로 로드 | §11.1 |
 | `detectGameVersion` 라이브러리 경계, `MPV_RESIZE` safeParse | §16 |
 | lint 오류(`scripts/*.mjs` Node globals) | `eslint.config.js` |
+| 미디어 전체 화면 개편: 오버레이·분리 창 공용 `FullscreenPlayerView`/`PlayerControlBands`, 2초 자동 숨김(커서 포함), 모니터 전체 화면(⛶/`F`/더블클릭/`Esc`)과 소유자 추적, capture 단계 키 우선순위 | §11.7~11.9, `window:set-fullscreen` |
+| 음성 화면(표지 중심·확대·표지 없음·강조색) + 표지 파이프라인(2048px 큰 표지, 곡/작품 세대 + 곡별 잠금 무효화, RJ 작품 표지 대체, `.notfound` 잔존 버그 수정) | §11.10~11.11, `media:get-cover-info` |
+| 곡 제목(`media-title`)·`loadGeneration`/`loadedPath` 식별 정보 | §11.12 |
+| 시크바 장면 미리보기(두 번째 mpv utilityProcess, 중앙값 약 27ms) | §11.13, `mpv:preview-frame` |
 
 ### 20.1 보안 브랜치 마무리 (릴리스 전 필수)
 1. `npm ci`(ffmpeg 바이너리 복구 포함) 후 mpv 애드온 재빌드 확인. (이 PC에서는 2026-11-23에 `build:mpv-addon` + `rebuild:mpv-addon` 완료)
 2. **실앱 수동 점검**(SECURITY.md §2 체크리스트): `npm run dev`에서 동작, `npm run build` 산출물에서 CSP 위반 없음(표지/아이콘/미디어 썸네일/폰트/테마), 라이브러리 추가 3경로(선택창 무확인/입력 확인창/`C:\` 거부), `.exe` 열기 확인창, 미디어 재생·EQ·미디어 키·분리 창·PIP, 클립보드 복사, 설치본의 Fuses·자동 업데이트·mpv 유틸리티 프로세스.
 3. **이번 수정분 실앱 점검**: Steam/DLsite 항목 "전체 메타데이터 새로고침" 후 장르·서클 표시와 ASMR "재생" 버튼 판정 / 설정에서 LE 경로 지정·초기화 / 미디어 탭 폴더 선택·ASMR 재생 후 임시 루트 버튼 2개 / 게임 폴더를 탐색기 탭에서 이동한 뒤 실행 설정·즐겨찾기 유지 / LE 모드 게임 실행.
-4. 버전 번호 결정(1.2.4 또는 1.3.0), README 업데이트 내역 작성(**업데이트 후 "전체 메타데이터 새로고침" 1회 안내** 포함, §5.3), master 병합.
-5. 계정·배포 보호(SECURITY.md §2-3): 2FA, 토큰 재발급, fine-grained `GH_TOKEN`, 가능하면 CI 릴리스. `libmpv-2.dll` 해시를 공식 배포본과 대조.
+4. **미디어 전체 화면 실앱 점검**(`npm run dev`, 단위 테스트가 닿지 않는 시각·동작; 애드온 재빌드 후 앱 재시작 필요):
+   - 자동 숨김: 영상에서 마우스를 2초 두면 띠가 fade out(약 200ms)되고 커서가 사라지며 하단 2px 진행선이 남는다 / 움직이면 즉시 복귀 / 숨긴 뒤 마우스를 가만히 두면 띠가 다시 깜빡이지 않는다 / 띠 위 포인터·일시정지·슬라이더 드래그·EQ 팝오버(프리셋 드롭다운 포함)·미디어 사이드바 열림 중엔 숨지 않는다 / 키보드 Tab 포커스 중에는 유지되고 마우스 클릭 뒤에는 다시 숨는다.
+   - 레이아웃: 사이드바 하단이 띠 바로 위에 붙고 띠가 숨어도 튀지 않는다 / 가사 줄이 띠 위에 있다가 띠가 숨으면 하단 24px로 내려온다 / 도킹 `MediaPlayerBar`는 예전과 같다.
+   - 모니터 전체 화면: ⛶·`F`·영상 더블클릭이 토글(`F` 길게 눌러도 깜빡임 없음), `Esc`는 해제만 하고 뒤의 상세 사이드바를 닫지 않으며 전체 화면이 아닐 땐 예전처럼 동작 / 미디어가 켠 전체 화면은 ⊟·분리(⤡)·재생 종료/재생목록 비움에서 풀리고 사용자가 F11로 켠 것은 유지 / F11 상태에서 오버레이를 열고 ⛶ 한 번에 해제되는지(아이콘이 잠시 "진입"으로 보일 수 있음) / 도킹(최소화) 상태에서 F11 중 `F`·`Esc`를 미디어가 가져가지 않는다.
+   - 분리 창: 같은 띠·자동 숨김·⛶/`F`/더블클릭/`Esc`, 분리·최소화 버튼 없음, ☰가 오른쪽 재생목록 패널을 열고(기본 닫힘, 열려 있는 동안 띠 유지), 좋아요·자막 PIP 버튼 동작.
+   - 음성 화면: 내장 표지 / 폴더 이미지 `cover.jpg` / 표지 없는 RJ 작품 폴더 안 곡(작품 표지 표시)에서 흐린 배경·원 비율 표지·강조색(재생 버튼·슬라이더·진행선) / 표지 없는 곡(남색 배경·음표 사각형·클릭 무반응·primary 강조색) / 표지 클릭·Tab+Enter/Space로 확대·축소(재생/일시정지가 같이 토글되지 않음, 곡이 바뀌어도 유지, 분리 창은 독립) / 긴 일본어 제목 3줄 말줄임·파일명 2줄 / 4:3 가로 표지(너비 45% 한도)와 세로·정사각 표지(높이 2/3 한도), 창 크기 변경 시 띠와 겹치지 않음 / 표지 교체 후 곡을 바꾸지 않아도 이미지·강조색 갱신 / 표지가 매우 밝거나 어두울 때 재생 아이콘·제목 가독성 / 곡 전환 중 확대 상태에서 화면이 navy·기본 배치로 번쩍이지 않음 / 폭 520px 미만 분리 창의 세로 배치 / 4K·최대화에서 블러 배경의 GPU 부하와 자동 숨김 fade 부드러움.
+   - 장면 미리보기: 1시간 이상 영상에서 새 지점은 약 0.1초 안에, 본 지점은 즉시 카드가 뜬다 / 빠르게 왕복해도 마지막 지점 장면만 남는다 / 곡 전환 직전·직후 호버에서 이전 곡 장면이 나오지 않는다 / 도킹 바·전체 화면 띠·분리 창에서 확인(분리 중 메인 창 도킹 바는 시간 알약만) / 오디오·길이 모르는 영상은 카드 없음 / 좌우 끝과 640px 미만 창에서 카드가 창 안에 머문다 / thumb 드래그 중 바 밖에서도 따라가고 바 밖에서 놓으면 사라진다 / 미리보기 소리가 나지 않고 격렬한 스크럽에도 본 재생이 끊기지 않는다 / 숨은 띠와 함께 카드가 사라지고 클릭을 막지 않는다.
+5. 버전 번호 결정(1.2.4 또는 1.3.0), README 업데이트 내역 작성(**업데이트 후 "전체 메타데이터 새로고침" 1회 안내** 포함, §5.3), master 병합.
+6. 계정·배포 보호(SECURITY.md §2-3): 2FA, 토큰 재발급, fine-grained `GH_TOKEN`, 가능하면 CI 릴리스. `libmpv-2.dll` 해시를 공식 배포본과 대조.
 
 ### 20.2 보안 후속 (코드로 해결 가능)
 | 우선 | 작업 | 근거 |
@@ -602,13 +664,39 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 ### 20.5 README "추후 개발 예정" (사용자 공개 로드맵)
 지역 제한 게임 메타데이터 조회 개선 / 미디어 재생기와 Explorer 연동 강화 / 파일명 일괄 변경에 AI 탑재 검토 / Steam API 연동(실행·다운로드·조회, 시기 미정).
 
+### 20.6 미디어 전체 화면 후속 (리뷰에서 보류한 작은 문제)
+**표지 파이프라인**
+- 인코딩 I/O 오류(디스크 가득 등)도 디코딩 오류처럼 다음 소스로 넘어가 영구 `.notfound`가 기록될 수 있음 → 디코딩 오류만 "손상"으로 취급.
+- 내장 표지 추출의 일시 실패가 폴더 이미지 성공에 가려짐. 영상의 `.notfound`는 작품 표지 세대가 오를 때마다 ffmpeg를 다시 돌림(영상엔 작품 표지 단계가 없음).
+- 커밋이 예외로 끝나면 썸네일/표지 임시 파일이 `finally`에서 안 지워질 수 있음, `.notfound` 삭제는 곡 잠금 밖(아주 작은 경쟁), 부분 커밋 실패 뒤 옛/새 캐시 혼재 가능(재생성되어 무해).
+- 손상된 `.large.webp`는 512px override로 폴백하지 않고 resolve로 빠짐. `overrideCoverInfo.ts`(손상/누락 폴백)·손상된 세대 파일 리셋, 핸들러 수준의 작품 표지 세대 bump(LINK/UNLINK/커스텀 표지/크롤/일괄) 테스트 없음. 캐시 초기화가 진행 중 해결과 겹치면 방금 만든 파일이 남을 수 있음(허용). `mediathumb://` 응답에 `Cache-Control` 없음.
+- `workCoverLookup` 테스트 공백: 드라이브 루트/UNC/`D:Lib` vs `D:Library` 접두/혼합 구분자·대소문자.
+- `useMediaCoverInfo`가 훅마다 IPC 리스너 1개(곡 N개면 N개) → 앱 단위 구독 1개로. 강조색 `MAX_LIGHTNESS` 0.70 하향 검토, `accentForeground` 임계 0.4(WCAG 교차점 약 0.18) 가독성 조정.
+
+**재생 상태 · 미리보기 메인/애드온**
+- `mpv:ended`에 식별 정보가 없어 늦은 `ended`가 `next()`/한 곡 반복을 트리거할 수 있음. `onStateUpdate` effect가 곡이 바뀔 때마다 재구독(짧은 공백). 곡 변경 시 상태 초기화의 훅 단위 테스트 없음, init 실패의 `loadedPath`는 실패한 파일.
+- 미리보기 워커: 초기 `playback-restart`를 내지 않는 파일은 요청마다 3초(실패 경로 메모이즈 필요), 미사용 `MpvPreviewFrameSchema` export, drain이 `end-file`을 버림, 이미 종료된 프로세스에 kill 유예.
+- 애드온 스파이크/옵션: `preview-latency.cjs`의 랜덤 시드, `set_option` 반환값 무시, restart-id 가드, 4ms 간격 지터, getter throw 처리.
+
+**전체 화면 · 자동 숨김**
+- `useWindowFullscreen`이 마운트 시 초기 상태를 모름(각 인스턴스가 false로 시작) → F11 상태에서 오버레이를 열면 첫 push 전까지 `Esc`를 가로채지 못하고 ⛶ 아이콘이 "진입"으로 보임(`shouldRetryToggle` 재시도는 거의 쓰이지 않음). 초기 상태 조회 또는 마운트 시 push로 해결.
+- 숨은 뒤 첫 합성 `pointermove`는 걸러지지 않아 한 번 깜빡일 수 있음. 훅 테스트 공백(`removeEventListener`, disable→enable, wheel/pointerdown, 숨은 중 hold true), 이벤트마다 타이머 clear/set 반복.
+- 분리 창 자막 PIP 버튼이 이미 PIP가 열려 있어도 "닫힘"으로 시작(메인이 재방송하면 보정), ☰ 레이블 불일치(`media.playlist` vs `media.showPlaylist`), `MediaSidebar`가 24px 그라데이션 패딩 위에서 멈춤(화면 확인 필요). `windowFullscreenHandlers`의 null/destroyed 조기 반환과 `useWindowFullscreen` 훅 자체 테스트 부족.
+
+**음성 화면**
+- 표지 한도를 viewport가 아닌 행 기준으로 측정(1080p에서 약 653px vs 720px, 스펙은 "약"), 레터박스 클릭이 확대를 접음, 동기 가사가 표지와 겹칠 수 있음, 좁은 레이아웃 임계가 실제로는 컨테이너 약 620px(안쪽 행 84%), 정보 조회 중 빈 테두리 버튼, `restoreAllMocks`를 `afterEach`로 옮길 것(테스트 스파이 누수).
+
+**장면 미리보기 렌더러**
+- 호버 상태(`hovered`/`hoveredBucket`/`seekHover`)가 곡 전환 뒤 다음 포인터 이동까지 남아 낡은 버킷/시간 표시. `new ImageData` 전에 프레임 길이(w×h×4) 검사가 없어 어긋나면 effect에서 throw → 플레이어 트리 언마운트 가능(방어 필요). 프레임당 130KB 추가 복사.
+- 비호스트 도킹 바가 낡은 duration/generation 유지(무해), `setSeekHover`가 이동마다 바 전체를 리렌더하고 드래그 중 이중 처리, `nextPreviewGeneration`은 테스트만 있고 프로덕션 미사용(실제는 `shouldAdoptLoadIdentity`), 드래그 중 duration이 바뀌면 옛 값 사용, 시크 비율이 thumb inset을 무시(끝에서 수 px 차이), 매우 짧은 분리 창에서 카드 위쪽 잘림(세로 클램프 없음).
+
 ---
 
 ## 21. 이번 재검증에서 정정한 내용 (구버전 문서 → 코드)
 
 | 구버전 서술 | 실제 코드 |
 | --- | --- |
-| IPC 채널 약 100개(FEATURES) / 77개(ARCHITECTURE) | **106개** |
+| IPC 채널 약 100개(FEATURES) / 77개(ARCHITECTURE) | **106개**(2026-11-23 미디어 전체 화면 작업 뒤 111개) |
 | 테스트 파일 약 134개 | **141개 / 1009 테스트** |
 | 전체 새로고침 = `game_metadata`에 있는 모든 코드 | + `metadata_failures`에만 있는 코드 |
 | RJ/VJ 폴백 체인 ③ external(활성화 시) | 단건 크롤에서만. 일괄/전체 새로고침은 external 미사용 |

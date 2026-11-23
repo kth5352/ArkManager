@@ -85,6 +85,18 @@
 | 낮음 | 재귀 스캔도 경계 검사 없음 | 얕은 스캔과 같이 읽기 전용 목록. 의도된 동작 |
 | 정보 | lint 실패 | `scripts/verify-native-binaries.mjs`가 ESLint Node globals 설정 밖이라 `npm run lint`가 오류 5건으로 실패(§15의 "ESLint 오류 0"은 이 스크립트 추가 전 결과) |
 
+### 3.2 2026-11-23 미디어 전체 화면 작업에서 추가된 표면
+
+새 코드가 만든 입력 경로와 그 방어입니다(상세 원리는 SECURITY_FIXES.md §16). 새로 열린 위험은 없고, 아래는 모두 기존 규칙을 그대로 적용한 결과입니다.
+
+| 표면 | 방어 | 잔여 |
+|---|---|---|
+| `media:get-cover-info`(경로 → 표지 유무·강조색·비율·버전) | Zod 검증 + 미디어 신뢰 경계(`mediaTrustBoundary`). 경계 밖이면 던지지 않고 **신뢰되지만 표지 없는 트랙과 같은 모양**(`hasCover:false`)으로 응답 → 파일 존재 여부를 알아내는 신호가 되지 않음 | 없음 |
+| `mediathumb://cover/<경로>`(2048px) | `thumbnail` 호스트와 같은 경계 검사(밖이면 404), 알 수 없는 호스트 404, 경로는 pathname만 해석(`?v=` 쿼리 무시), 이미지는 `rasterImage.ts`로만 디코딩해 webp로 재인코딩. CSP는 기존 `mediathumb:` 허용 그대로 | 응답에 `Cache-Control` 없음(성능 문제일 뿐) |
+| `mpv:preview-frame`(장면 미리보기) | 요청 스키마 `{seconds, generation, requestId}`가 `.strict()`라 **`path` 필드를 끼워 넣으면 거부**. 경로는 IPC에 없고 메인이 `getCurrentLoadedPath()`(이미 경계 검증·resolve된 현재 재생 파일)에서만 얻으며, 현재 파일이 영상이고 세대가 일치할 때만 처리 → 렌더러가 미리보기로 다른 파일을 열 수 없음. 응답은 240×135×4 바이트가 아니면 폐기 | 미리보기 mpv도 본 mpv와 같은 보안 옵션(참조·ytdl·스크립트 off)에 더해 `ao=null`·일시정지·`aid=no`로 소리/출력 없이 동작. 신뢰할 수 없는 영상을 디코딩하는 프로세스가 하나 더 생기지만 별도 utilityProcess라 크래시가 격리됨(60초 안 3회 비정상 종료면 이번 실행 동안 비활성) |
+| `window:set-fullscreen` | Zod(`{fullscreen: boolean, reason}`), 호출한 창(`BrowserWindow.fromWebContents`)에만 작용, 경로·파일 접근 없음 | 렌더러가 장악되면 전체 화면 토글은 가능(영향 미미) |
+| 애드온 `init` 5번째 인자 | `{preview: true}`의 `preview` 키 하나만 읽고 임의 mpv 옵션 통로 없음 | 없음 |
+
 ---
 
 ## 4. 이후 작업 시 지킬 보안 규칙

@@ -7,7 +7,7 @@ import { setMediaHardwareKeysActive } from '../mediaHardwareKeys'
 import { attachWindowFullscreen } from './windowFullscreenHandlers'
 
 // Detached video playback lives in its own BrowserWindow (see
-// FullscreenVideoOverlay's "새 창으로 분리" button) - only one at a time; a
+// FullscreenMediaOverlay's "새 창으로 분리" button) - only one at a time; a
 // second detach request just focuses the existing one instead of opening a
 // duplicate.
 let playerWindow: BrowserWindow | null = null
