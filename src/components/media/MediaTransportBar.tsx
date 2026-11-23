@@ -18,7 +18,7 @@ import type { MediaPlaybackState } from './useMediaPlayback'
 import { Button } from '../ui/button'
 import { HoverTooltip } from '../ui/hover-tooltip'
 import { EqualizerPopover } from './EqualizerPopover'
-import { MEDIA_ACCENT } from './playerView'
+import { MEDIA_ACCENT, MEDIA_ACCENT_FOREGROUND } from './playerView'
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -147,7 +147,7 @@ export function MediaTransportBar({
             ? 'rounded-full text-primary-foreground transition-[filter] hover:text-primary-foreground hover:brightness-110'
             : mainText
         )}
-        style={band ? { background: MEDIA_ACCENT } : undefined}
+        style={band ? { background: MEDIA_ACCENT, color: MEDIA_ACCENT_FOREGROUND } : undefined}
       >
         {playback.isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
       </Button>

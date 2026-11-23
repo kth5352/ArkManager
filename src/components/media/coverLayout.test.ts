@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ACCENT_FOREGROUND_DARK,
+  ACCENT_FOREGROUND_LIGHT,
   COVER_MAX_HEIGHT_SHARE,
   COVER_MAX_WIDTH_SHARE,
+  STACKED_CAPS,
+  accentForeground,
   coverBoxSize,
   coverDisplay,
+  isNarrowCoverLayout,
 } from './coverLayout'
 
 describe('coverDisplay', () => {
@@ -87,5 +92,51 @@ describe('coverBoxSize', () => {
     expect(coverBoxSize({ width: 0, height: 0 }, 1)).toEqual({ width: 0, height: 0 })
     expect(coverBoxSize({ width: Number.NaN, height: 500 }, 1)).toEqual({ width: 0, height: 0 })
     expect(coverBoxSize({ width: -10, height: 500 }, 1)).toEqual({ width: 0, height: 0 })
+  })
+})
+
+describe('coverBoxSize with the stacked (narrow) caps', () => {
+  it('lets the cover use 80% of the width but only half the height', () => {
+    // 400×700: height cap 350, width cap 320; square → 320.
+    expect(coverBoxSize({ width: 400, height: 700 }, 1, STACKED_CAPS)).toEqual({
+      width: 320,
+      height: 320,
+    })
+    // 4:3 in 400×300: height cap 150 → 200×150 (width cap 320 not reached).
+    const box = coverBoxSize({ width: 400, height: 300 }, 4 / 3, STACKED_CAPS)
+    expect(box.width).toBeCloseTo(200, 6)
+    expect(box.height).toBeCloseTo(150, 6)
+  })
+})
+
+describe('isNarrowCoverLayout', () => {
+  it.each([
+    [0, false],
+    [400, true],
+    [519, true],
+    [520, false],
+    [1600, false],
+  ])('%s px → %s', (width, narrow) => {
+    expect(isNarrowCoverLayout(width)).toBe(narrow)
+  })
+})
+
+describe('accentForeground', () => {
+  it.each([
+    ['#f2c36b', ACCENT_FOREGROUND_DARK], // yellow
+    ['#5ce65c', ACCENT_FOREGROUND_DARK], // green
+    ['#f0f0f0', ACCENT_FOREGROUND_DARK], // white-ish
+    ['#e6d84a', ACCENT_FOREGROUND_DARK], // lemon
+    ['#3b82f6', ACCENT_FOREGROUND_LIGHT], // blue
+    ['#9c4dcc', ACCENT_FOREGROUND_LIGHT], // purple
+    ['#e53935', ACCENT_FOREGROUND_LIGHT], // red
+    ['#2f6fb3', ACCENT_FOREGROUND_LIGHT], // dark blue
+  ])('%s → %s', (accent, expected) => {
+    expect(accentForeground(accent)).toBe(expected)
+  })
+
+  it('falls back to the light foreground for anything that is not #rrggbb', () => {
+    expect(accentForeground('hsl(200 50% 50%)')).toBe(ACCENT_FOREGROUND_LIGHT)
+    expect(accentForeground('#fff')).toBe(ACCENT_FOREGROUND_LIGHT)
   })
 })

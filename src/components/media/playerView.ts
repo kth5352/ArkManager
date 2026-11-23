@@ -6,6 +6,11 @@ import type { HoldReasons } from './autoHide'
 // view may set --media-accent (e.g. from the cover colour); otherwise the
 // app primary.
 export const MEDIA_ACCENT = 'var(--media-accent, hsl(var(--primary)))'
+// Icon colour on the accent (the play button): a view that sets a cover
+// accent also sets --media-accent-foreground (dark on light accents);
+// otherwise the primary foreground, exactly as before.
+export const MEDIA_ACCENT_FOREGROUND =
+  'var(--media-accent-foreground, hsl(var(--primary-foreground)))'
 
 export interface HoldInputs {
   pointerOverControls: boolean

@@ -406,10 +406,113 @@ describe('FullscreenPlayerView', () => {
       expect(q('[data-testid="audio-artwork"]')!.getAttribute('style')).toContain('radial-gradient')
     })
 
-    it('pending cover info shows an empty slot (no icon flash)', () => {
+    it('first track pending: neutral shell - empty slot, no icon, no navy background', () => {
       render({ playback: audio() })
       expect(q('[data-testid="audio-cover-placeholder"]')).not.toBeNull()
       expect(q('[data-testid="audio-cover-placeholder"] svg')).toBeNull()
+      expect(q('[data-testid="audio-artwork"]')!.getAttribute('style') ?? '').not.toContain(
+        'radial-gradient'
+      )
+    })
+
+    it('a track change while info is pending keeps the enlarged shell, then updates', () => {
+      useMediaPlayerStore.setState({ coverExpanded: true })
+      cover.info = withCover
+      render({ playback: audio() })
+      const root = container.firstElementChild as HTMLElement
+      expect(q('button[aria-label="media.collapseCover"]')).not.toBeNull()
+
+      cover.info = undefined
+      render({ playback: audio('D:/a/04_next.flac', 'Next') })
+      // Same layout and band structure, accent kept, no navy flash ...
+      const collapse = q('button[aria-label="media.collapseCover"]')!
+      expect(collapse).not.toBeNull()
+      expect(band('bottom').className).toContain('backdrop-blur')
+      expect(band('bottom').querySelector('[data-testid="audio-title"]')!.textContent).toBe('Next')
+      expect(root.style.getPropertyValue('--media-accent')).toBe('#d9825b')
+      expect(q('[data-testid="audio-artwork"]')!.getAttribute('style') ?? '').not.toContain(
+        'radial-gradient'
+      )
+      // ... but never the previous track's images under the new path.
+      expect(container.querySelectorAll('[data-testid="audio-artwork"] img')).toHaveLength(0)
+
+      cover.info = { hasCover: true, accent: '#3b82f6', aspectRatio: 1, version: '5-1' }
+      render({ playback: audio('D:/a/04_next.flac', 'Next') })
+      expect(root.style.getPropertyValue('--media-accent')).toBe('#3b82f6')
+      expect(q('button[aria-label="media.collapseCover"] img')!.getAttribute('src')).toBe(
+        `mediathumb://cover/${encodeURIComponent('D:/a/04_next.flac')}?v=5-1`
+      )
+    })
+
+    it('the zoom cursors give way to the hidden cursor while the controls are hidden', () => {
+      cover.info = withCover
+      render({ playback: audio() })
+      const expand = (): HTMLElement => q('button[aria-label="media.expandCover"]')!
+      expect(expand().className).toContain('cursor-zoom-in')
+      idle()
+      expect(bandsHidden()).toBe(true)
+      expect(expand().className).toContain('cursor-none')
+      expect(expand().className).not.toContain('cursor-zoom-in')
+      act(() => {
+        container.firstElementChild!.dispatchEvent(
+          new MouseEvent('pointermove', { clientX: 10, clientY: 10 })
+        )
+      })
+      act(() => expand().click())
+      const collapse = q('button[aria-label="media.collapseCover"]')!
+      expect(collapse.className).toContain('cursor-zoom-out')
+      idle()
+      expect(collapse.className).toContain('cursor-none')
+      expect(collapse.className).not.toContain('cursor-zoom-out')
+    })
+
+    it('keyboard focus follows the cover button across expand and collapse', () => {
+      cover.info = withCover
+      render({ playback: audio() })
+      const expand = q<HTMLButtonElement>('button[aria-label="media.expandCover"]')!
+      act(() => expand.focus())
+      act(() => expand.click())
+      expect(document.activeElement?.getAttribute('aria-label')).toBe('media.collapseCover')
+      act(() => (document.activeElement as HTMLElement).click())
+      expect(document.activeElement?.getAttribute('aria-label')).toBe('media.expandCover')
+    })
+
+    it('a cover accent sets a matching icon colour for the play button', () => {
+      cover.info = { ...withCover, accent: '#f2c36b' }
+      render({ playback: audio() })
+      const root = container.firstElementChild as HTMLElement
+      expect(root.style.getPropertyValue('--media-accent-foreground')).toBe('#14121a')
+      cover.info = { ...withCover, accent: '#3b82f6' }
+      render({ playback: audio('D:/a/05.flac') })
+      expect(root.style.getPropertyValue('--media-accent-foreground')).toBe('#ffffff')
+      render()
+      expect(root.style.getPropertyValue('--media-accent-foreground')).toBe('')
+    })
+
+    it('narrow windows stack the cover above centred text', () => {
+      const rect = (width: number, height: number): DOMRect => ({ width, height }) as DOMRect
+      let areaWidth = 400
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: HTMLElement
+      ) {
+        return this.dataset.testid === 'audio-cover-area' ? rect(areaWidth, 600) : rect(0, 0)
+      })
+      cover.info = { ...withCover, aspectRatio: 1 }
+      render({ playback: audio() })
+      const areaEl = q('[data-testid="audio-cover-area"]')!
+      expect(areaEl.getAttribute('data-layout')).toBe('stacked')
+      expect(areaEl.className).toContain('flex-col')
+      // Stacked caps: min(600·0.5, 400·0.8) = 300 - measured before paint.
+      expect(q('button[aria-label="media.expandCover"]')!.style.width).toBe('300px')
+      expect(q('[data-testid="audio-title"]')!.className).toContain('text-xl')
+
+      areaWidth = 1200
+      act(() => resizeCallbacks.forEach((cb) => cb()))
+      expect(areaEl.getAttribute('data-layout')).toBe('side-by-side')
+      // Side-by-side caps: min(600·2/3, 1200·0.45) = 400.
+      expect(q('button[aria-label="media.expandCover"]')!.style.width).toBe('400px')
+      expect(q('[data-testid="audio-title"]')!.className).toContain('text-3xl')
+      vi.restoreAllMocks()
     })
 
     it('clicking the cover toggles the enlarged view; it survives a track change', () => {

@@ -5,8 +5,8 @@ import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import { cn } from '../../lib/utils'
 import { useWindowFullscreen } from '../../hooks/useWindowFullscreen'
 import { PlayerControlBands, type ControlBand } from './PlayerControlBands'
-import { AudioArtworkView, AudioTrackHeading } from './AudioArtworkView'
-import { coverDisplay } from './coverLayout'
+import { AudioArtworkView, AudioTrackHeading, type AudioShell } from './AudioArtworkView'
+import { accentForeground, coverDisplay } from './coverLayout'
 import { useAutoHideControls } from './useAutoHideControls'
 import { useFullscreenKeys } from './useFullscreenKeys'
 import { deriveHoldReasons, lyricsBottomPx } from './playerView'
@@ -150,11 +150,37 @@ export function FullscreenPlayerView({
   const [coverFailedKey, setCoverFailedKey] = useState<string | null>(null)
   const coverKey = `${playback.track.path}\n${coverInfo?.version ?? ''}`
   const display = coverDisplay(coverInfo, coverFailedKey === coverKey)
-  const audioExpanded = isAudio && display === 'cover' && coverExpanded
+  // While a new track's cover info loads (display 'pending'), keep the last
+  // resolved track's look - layout, accent, enlarged band - instead of
+  // dropping to the no-cover screen and back. Adjusted during render.
+  const resolvedShell: AudioShell | null =
+    display === 'pending'
+      ? null
+      : {
+          kind: display,
+          accent: display === 'cover' ? (coverInfo?.accent ?? null) : null,
+          aspectRatio: display === 'cover' ? (coverInfo?.aspectRatio ?? null) : null,
+        }
+  const [keptShell, setKeptShell] = useState<AudioShell | null>(null)
+  if (
+    resolvedShell &&
+    (keptShell?.kind !== resolvedShell.kind ||
+      keptShell.accent !== resolvedShell.accent ||
+      keptShell.aspectRatio !== resolvedShell.aspectRatio)
+  ) {
+    setKeptShell(resolvedShell)
+  }
+  const shell = isAudio ? (resolvedShell ?? keptShell) : null
+  const audioExpanded = shell?.kind === 'cover' && coverExpanded
   // Cover accent for the play button, sliders and progress line
   // (MEDIA_ACCENT); without a cover the app primary stays (spec §3.3).
-  const accent = isAudio && display === 'cover' ? (coverInfo?.accent ?? null) : null
-  const rootStyle = accent ? ({ '--media-accent': accent } as CSSProperties) : undefined
+  const accent = shell?.accent ?? null
+  const rootStyle = accent
+    ? ({
+        '--media-accent': accent,
+        '--media-accent-foreground': accentForeground(accent),
+      } as CSSProperties)
+    : undefined
 
   const handleMinimize =
     mode === 'overlay' && onMinimize
@@ -209,7 +235,9 @@ export function FullscreenPlayerView({
             fileName={playback.track.name}
             display={display}
             coverInfo={coverInfo}
+            shell={shell}
             expanded={coverExpanded}
+            controlsVisible={visible}
             onToggleExpanded={() => setCoverExpanded(!coverExpanded)}
             onCoverError={() => setCoverFailedKey(coverKey)}
             bottomInset={bandHeight}
