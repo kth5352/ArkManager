@@ -1,0 +1,104 @@
+[
+  {
+    "workno": "RJ299717",
+    "work_name": "【寝落ちASMR】悪魔娘が最高に癒すのでものすごく眠れる(耳かき・囁き・マッサージ・泡オイル)",
+    "maker_name": "周防パトラ",
+    "regist_date": "2020-10-05 00:00:00",
+    "work_type": "SOU",
+    "genres": [
+      {
+        "name": "ASMR",
+        "id": 497,
+        "search_val": "497",
+        "name_base": "ASMR"
+      },
+      {
+        "name": "癒し",
+        "id": 56,
+        "search_val": "056",
+        "name_base": "癒し"
+      },
+      {
+        "name": "健全",
+        "id": 53,
+        "search_val": "053",
+        "name_base": "健全"
+      },
+      {
+        "name": "バイノーラル/ダミヘ",
+        "id": 496,
+        "search_val": "496",
+        "name_base": "バイノーラル/ダミヘ"
+      },
+      {
+        "name": "萌え",
+        "id": 51,
+        "search_val": "051",
+        "name_base": "萌え"
+      },
+      {
+        "name": "耳かき",
+        "id": 442,
+        "search_val": "442",
+        "name_base": "耳かき"
+      },
+      {
+        "name": "ささやき",
+        "id": 503,
+        "search_val": "503",
+        "name_base": "ささやき"
+      }
+    ],
+    "image_main": {
+      "workno": "RJ299717",
+      "type": "image_main",
+      "file_name": "RJ299717_img_main.jpg",
+      "file_size": "178782",
+      "file_size_unit": "174.59KB",
+      "width": "560",
+      "height": "420",
+      "hash": null,
+      "display_mode": "",
+      "update_date": "2026-07-18 12:00:40",
+      "id": "34470715",
+      "upper(work_files.type)": "IMAGE_MAIN",
+      "extension": "jpg",
+      "relative_url": "modpub/images2/work/doujin/RJ300000/RJ299717_img_main.jpg",
+      "path_short": "doujin/RJ300000/RJ299717_img_main.jpg",
+      "url": "//img.dlsite.jp/modpub/images2/work/doujin/RJ300000/RJ299717_img_main.jpg",
+      "resize_url": "resize/images2/work/doujin/RJ300000/RJ299717_img_main"
+    },
+    "custom_genres": [
+      {
+        "genre_key": "Vtuber本人出演作品",
+        "lang": "ja_JP",
+        "name": "Vtuber本人出演作品",
+        "layout": null,
+        "status": "active",
+        "is_active": 1,
+        "start_date": "2020-09-30 14:00:00",
+        "end_date": "2199-01-01 00:00:00"
+      },
+      {
+        "genre_key": "Vtuber本人出演作品（home）",
+        "lang": "ja_JP",
+        "name": "Vtuber本人出演作品",
+        "layout": null,
+        "status": "active",
+        "is_active": 0,
+        "start_date": "2020-09-29 16:00:00",
+        "end_date": "2199-01-01 00:00:00"
+      },
+      {
+        "genre_key": "Sasayaki",
+        "lang": "ja_JP",
+        "name": "「ささやき」音声作品はこちら！",
+        "layout": null,
+        "status": "active",
+        "is_active": 0,
+        "start_date": "2020-10-05 13:00:00",
+        "end_date": "2199-01-01 00:00:00"
+      }
+    ]
+  }
+]

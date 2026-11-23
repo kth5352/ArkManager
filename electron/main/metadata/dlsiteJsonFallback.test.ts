@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { crawlDlsiteJsonFallback, mapDlsiteJsonToMetadata } from './dlsiteJsonFallback'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import {
+  crawlDlsiteJsonFallback,
+  dlsiteJsonUrls,
+  mapDlsiteJsonToMetadata,
+} from './dlsiteJsonFallback'
 
 describe('mapDlsiteJsonToMetadata', () => {
   it('maps product JSON data to CrawledGameMetadata', () => {
@@ -19,6 +25,40 @@ describe('mapDlsiteJsonToMetadata', () => {
       coverImageUrl: 'https://img.dlsite.jp/modpub/images2/work/doujin/RJ000/RJ000001_img_main.jpg',
       workType: null,
     })
+  })
+
+  it('maps the live api/=/product.json shape (object image_main, datetime, work_type, custom genres)', async () => {
+    const payload = JSON.parse(
+      await readFile(join(__dirname, '__fixtures__', 'dlsite-product-api-response.json'), 'utf-8')
+    )
+    expect(mapDlsiteJsonToMetadata(payload[0])).toEqual({
+      title:
+        '【寝落ちASMR】悪魔娘が最高に癒すのでものすごく眠れる(耳かき・囁き・マッサージ・泡オイル)',
+      circle: '周防パトラ',
+      releaseDate: '2020-10-05',
+      genres: [
+        'ASMR',
+        '癒し',
+        '健全',
+        'バイノーラル/ダミヘ',
+        '萌え',
+        '耳かき',
+        'ささやき',
+        'Vtuber本人出演作品',
+      ],
+      coverImageUrl:
+        'https://img.dlsite.jp/modpub/images2/work/doujin/RJ300000/RJ299717_img_main.jpg',
+      workType: 'SOU',
+    })
+  })
+
+  it('requests the real api/=/product.json endpoint first', () => {
+    expect(dlsiteJsonUrls({ type: 'RJ', value: 'RJ299717' })[0]).toBe(
+      'https://www.dlsite.com/maniax/api/=/product.json?workno=RJ299717'
+    )
+    expect(dlsiteJsonUrls({ type: 'VJ', value: 'VJ01000460' })[0]).toBe(
+      'https://www.dlsite.com/pro/api/=/product.json?workno=VJ01000460'
+    )
   })
 
   it('rejects a payload without a product title', () => {

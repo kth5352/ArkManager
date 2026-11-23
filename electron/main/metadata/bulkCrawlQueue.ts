@@ -1,4 +1,4 @@
-import { crawlGameMetadataWithTrace } from './crawlGameMetadata'
+import { crawlGameMetadataWithTrace, type CrawlGameMetadataDeps } from './crawlGameMetadata'
 import { cacheCoverImage } from './cacheCoverImage'
 import {
   getGameMetadata,
@@ -50,7 +50,14 @@ export interface BulkCrawlQueue {
   forceEnqueue(codes: GameCode[], onProgress: (progress: BulkCrawlProgressDto) => void): void
 }
 
-export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCrawlQueue {
+// getCrawlDeps is read once per processed code (not once at creation) so a
+// change to the external-provider settings applies to the rest of a running
+// queue. Omitted = crawlGameMetadataWithTrace's defaults (provider disabled).
+export function createBulkCrawlQueue(
+  db: AppDatabase,
+  cacheDir: string,
+  getCrawlDeps?: () => CrawlGameMetadataDeps
+): BulkCrawlQueue {
   const attempted = new Set<string>()
   const pending: GameCode[] = []
   let processing = false
@@ -68,7 +75,10 @@ export function createBulkCrawlQueue(db: AppDatabase, cacheDir: string): BulkCra
     }
 
     try {
-      const { metadata, attemptedSources, reason } = await crawlGameMetadataWithTrace(code)
+      const { metadata, attemptedSources, reason } = await crawlGameMetadataWithTrace(
+        code,
+        getCrawlDeps?.()
+      )
       if (metadata) {
         saveGameMetadata(db, code.value, metadata)
         // Clears any stale failure from an earlier attempt - only reachable

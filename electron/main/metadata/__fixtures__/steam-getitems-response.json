@@ -1,0 +1,174 @@
+{
+  "response": {
+    "store_items": [
+      {
+        "item_type": 0,
+        "id": 1754870,
+        "success": 1,
+        "visible": true,
+        "name": "Lust Theory Season 2",
+        "store_url_path": "app/1754870/Lust_Theory_Season_2",
+        "store_url_slug": "Lust_Theory_Season_2",
+        "appid": 1754870,
+        "type": 0,
+        "tagids": [
+          12095,
+          6650,
+          9551,
+          6426,
+          9130,
+          4175,
+          5923,
+          11014,
+          9204,
+          4305,
+          21,
+          4486,
+          1742,
+          122,
+          4182,
+          597,
+          599,
+          4085,
+          4191,
+          21978
+        ],
+        "basic_info": {
+          "short_description": "Lust Theory 2 is an adult Visual Novel filled with lust (duhh...), passion, sex, humor, mystery and on top of that the day is repeating until it doesn't.",
+          "publishers": [
+            {
+              "name": "Inceton Games",
+              "creator_clan_account_id": 40147129
+            }
+          ],
+          "developers": [
+            {
+              "name": "Inceton Games",
+              "creator_clan_account_id": 40147129
+            }
+          ],
+          "featured_creator_home_clan_account_ids": [
+            40147129
+          ]
+        },
+        "tags": [
+          {
+            "tagid": 12095,
+            "weight": 836
+          },
+          {
+            "tagid": 6650,
+            "weight": 648
+          },
+          {
+            "tagid": 9551,
+            "weight": 549
+          },
+          {
+            "tagid": 6426,
+            "weight": 538
+          },
+          {
+            "tagid": 9130,
+            "weight": 534
+          },
+          {
+            "tagid": 4175,
+            "weight": 529
+          },
+          {
+            "tagid": 5923,
+            "weight": 529
+          },
+          {
+            "tagid": 11014,
+            "weight": 524
+          },
+          {
+            "tagid": 9204,
+            "weight": 518
+          },
+          {
+            "tagid": 4305,
+            "weight": 508
+          },
+          {
+            "tagid": 21,
+            "weight": 499
+          },
+          {
+            "tagid": 4486,
+            "weight": 486
+          },
+          {
+            "tagid": 1742,
+            "weight": 466
+          },
+          {
+            "tagid": 122,
+            "weight": 446
+          },
+          {
+            "tagid": 4182,
+            "weight": 435
+          },
+          {
+            "tagid": 597,
+            "weight": 418
+          },
+          {
+            "tagid": 599,
+            "weight": 406
+          },
+          {
+            "tagid": 4085,
+            "weight": 400
+          },
+          {
+            "tagid": 4191,
+            "weight": 393
+          },
+          {
+            "tagid": 21978,
+            "weight": 326
+          }
+        ],
+        "assets": {
+          "asset_url_format": "steam/apps/1754870/${FILENAME}?t=1792157155",
+          "main_capsule": "b5f55a06f9e50a36d615e10654c71a2704d9ba32/capsule_616x353.jpg",
+          "main_capsule_2x": "b5f55a06f9e50a36d615e10654c71a2704d9ba32/capsule_616x353_2x.jpg",
+          "small_capsule": "5e3b547920719eeb32ab95fa34ef565550f3fbb9/capsule_231x87.jpg",
+          "small_capsule_2x": "5e3b547920719eeb32ab95fa34ef565550f3fbb9/capsule_231x87_2x.jpg",
+          "header": "header.jpg",
+          "header_2x": "header_2x.jpg",
+          "page_background": "page_bg_generated_v6b.jpg",
+          "hero_capsule": "3adce422fc5576eaa784050e6acffe51cd0cc02e/hero_capsule.jpg",
+          "hero_capsule_2x": "3adce422fc5576eaa784050e6acffe51cd0cc02e/hero_capsule_2x.jpg",
+          "library_capsule": "714e898e916df2f983a9f0647ad1d40856b9a967/library_600x900.jpg",
+          "library_capsule_2x": "714e898e916df2f983a9f0647ad1d40856b9a967/library_600x900_2x.jpg",
+          "library_hero": "a237680545d670561f7e99a1db5062519c2a82ef/library_hero.jpg",
+          "library_hero_2x": "a237680545d670561f7e99a1db5062519c2a82ef/library_hero_2x.jpg",
+          "community_icon": "9a32afdd736f93deb26b8b032e34c436241e5e1d",
+          "page_background_path": "app/1754870?t=1792157155",
+          "raw_page_background": "page_bg_raw.jpg",
+          "last_modified": 1792157155
+        },
+        "release": {
+          "steam_release_date": 1674867885
+        },
+        "best_purchase_option": {
+          "packageid": 629343,
+          "purchase_option_name": "Lust Theory Season 2",
+          "final_price_in_cents": "2999",
+          "formatted_final_price": "$29.99",
+          "user_can_purchase_as_gift": true,
+          "hide_discount_pct_for_compliance": false,
+          "included_game_count": 1,
+          "must_purchase_as_set": false,
+          "package_group": "default",
+          "price_cannot_be_displayed_as_discount": false
+        }
+      }
+    ]
+  }
+}

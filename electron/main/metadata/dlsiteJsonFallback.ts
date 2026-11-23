@@ -7,16 +7,40 @@ import { safeFetch } from '../net/safeFetch'
 const NETWORK_TIMEOUT_MS = 15_000
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ArkManager/1.0'
 
+// Every field but the title is optional and loosely typed: this parses two
+// different DLsite endpoints (api/=/product.json, product/info/ajax) whose
+// shapes have drifted over time. A field with an unexpected type must only
+// drop that field, never the whole record - the live api/=/product.json
+// returns image_main as an object, which previously failed the entire parse.
 const DlsiteProductSchema = z
   .object({
     work_name: z.string().trim().min(1),
-    maker_name: z.string().nullable().optional(),
-    regist_date: z.string().nullable().optional(),
+    maker_name: z.string().nullable().optional().catch(null),
+    regist_date: z.string().nullable().optional().catch(null),
+    work_type: z.string().nullable().optional().catch(null),
     genres: z
       .array(z.object({ name: z.string() }).passthrough())
       .nullable()
-      .optional(),
-    image_main: z.string().nullable().optional(),
+      .optional()
+      .catch(null),
+    custom_genres: z
+      .array(
+        z
+          .object({
+            name: z.string().nullable().optional(),
+            lang: z.string().nullable().optional(),
+            is_active: z.union([z.number(), z.boolean()]).nullable().optional(),
+          })
+          .passthrough()
+      )
+      .nullable()
+      .optional()
+      .catch(null),
+    image_main: z
+      .union([z.string(), z.object({ url: z.string().nullable().optional() }).passthrough()])
+      .nullable()
+      .optional()
+      .catch(null),
   })
   .passthrough()
 
@@ -30,26 +54,49 @@ function normalizeImageUrl(value: string | null | undefined): string | null {
   }
 }
 
+// regist_date comes back as 'YYYY-MM-DD HH:MM:SS'; the app stores 'YYYY-MM-DD'.
+function normalizeDate(value: string | null | undefined): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '')
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : ''
+}
+
 export function mapDlsiteJsonToMetadata(value: unknown): CrawledGameMetadata | null {
   const parsed = DlsiteProductSchema.safeParse(value)
   if (!parsed.success) return null
+  const data = parsed.data
+
+  // custom_genres are DLsite's curated "feature" tags (e.g. Vtuber本人出演作品)
+  // that the work page lists alongside the normal genres; only the active
+  // Japanese entries are what the page actually shows.
+  const customGenres = (data.custom_genres ?? [])
+    .filter((genre) => genre.lang === 'ja_JP' && Number(genre.is_active) === 1)
+    .map((genre) => genre.name?.trim() ?? '')
+  const genres = [
+    ...new Set([...(data.genres ?? []).map((g) => g.name.trim()), ...customGenres]),
+  ].filter((name) => name !== '')
+
+  const image = typeof data.image_main === 'string' ? data.image_main : data.image_main?.url
 
   return {
-    title: parsed.data.work_name,
-    circle: parsed.data.maker_name ?? '',
-    releaseDate: parsed.data.regist_date ?? '',
-    genres: (parsed.data.genres ?? []).map((genre) => genre.name),
-    coverImageUrl: normalizeImageUrl(parsed.data.image_main),
-    workType: null,
+    title: data.work_name,
+    circle: data.maker_name ?? '',
+    releaseDate: normalizeDate(data.regist_date),
+    genres,
+    coverImageUrl: normalizeImageUrl(image),
+    workType: data.work_type ?? null,
   }
 }
 
+// api/=/product.json is the full product record (maker, genres, work_type).
+// product/info/ajax only carries title/date/work_type (no maker, no genres),
+// so it is kept as a last resort - it used to be tried first, which made
+// the fallback "succeed" with no genres at all.
 export function dlsiteJsonUrls(code: GameCode): string[] {
   const category = code.type === 'VJ' ? 'pro' : 'maniax'
   const baseUrl = `https://www.dlsite.com/${category}`
   return [
+    `${baseUrl}/api/=/product.json?workno=${encodeURIComponent(code.value)}`,
     `${baseUrl}/product/info/ajax?product_id=${encodeURIComponent(code.value)}`,
-    `${baseUrl}/product.json?workno=${encodeURIComponent(code.value)}`,
   ]
 }
 

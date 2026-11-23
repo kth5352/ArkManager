@@ -51,7 +51,7 @@ describe('crawlGameMetadata', () => {
     expect(result?.title).toBe('External Title')
   })
 
-  it('stops after the first successful DLsite source', async () => {
+  it('stops after the first complete DLsite source', async () => {
     const crawlDlsiteJson = vi.fn(async () => null)
     const crawlExternal = vi.fn(async () => null)
 
@@ -60,11 +60,11 @@ describe('crawlGameMetadata', () => {
       createDeps({
         crawlDlsiteHtml: async () => ({
           title: 'HTML Title',
-          circle: '',
-          releaseDate: '',
-          genres: [],
+          circle: 'Brand',
+          releaseDate: '2024-01-02',
+          genres: ['ADV'],
           coverImageUrl: null,
-          workType: null,
+          workType: 'ADV',
         }),
         crawlDlsiteJson,
         crawlExternal,
@@ -74,6 +74,63 @@ describe('crawlGameMetadata', () => {
     expect(result?.title).toBe('HTML Title')
     expect(crawlDlsiteJson).not.toHaveBeenCalled()
     expect(crawlExternal).not.toHaveBeenCalled()
+  })
+
+  // A DLsite markup change (2026-11) left the HTML parser returning a title
+  // and cover but no genres/circle/date/workType - and because a title alone
+  // counted as success, the JSON source that still had them was never asked.
+  it('fills fields the HTML page is missing from the DLsite JSON source', async () => {
+    const result = await crawlGameMetadata(
+      { type: 'RJ', value: 'RJ299717' },
+      createDeps({
+        crawlDlsiteHtml: async () => ({
+          title: 'HTML Title',
+          circle: '',
+          releaseDate: '',
+          genres: [],
+          coverImageUrl: 'https://img.dlsite.jp/html.jpg',
+          workType: null,
+        }),
+        crawlDlsiteJson: async () => ({
+          title: 'JSON Title',
+          circle: 'Circle',
+          releaseDate: '2020-10-05',
+          genres: ['ASMR'],
+          coverImageUrl: 'https://img.dlsite.jp/json.jpg',
+          workType: 'SOU',
+        }),
+      })
+    )
+
+    expect(result).toEqual({
+      title: 'HTML Title',
+      circle: 'Circle',
+      releaseDate: '2020-10-05',
+      genres: ['ASMR'],
+      coverImageUrl: 'https://img.dlsite.jp/html.jpg',
+      workType: 'SOU',
+    })
+  })
+
+  it('keeps the HTML result when the JSON enrichment fails', async () => {
+    const html = {
+      title: 'HTML Title',
+      circle: '',
+      releaseDate: '',
+      genres: [],
+      coverImageUrl: null,
+      workType: null,
+    }
+    const result = await crawlGameMetadata(
+      { type: 'RJ', value: 'RJ299717' },
+      createDeps({
+        crawlDlsiteHtml: async () => html,
+        crawlDlsiteJson: async () => {
+          throw new MetadataSourceError('network', 'down')
+        },
+      })
+    )
+    expect(result).toEqual(html)
   })
 })
 

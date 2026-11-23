@@ -1,5 +1,6 @@
 import { parseDlsiteWorkPage, type CrawledGameMetadata } from './dlsiteParser'
 import { parseSteamStorePage } from './steamParser'
+import { crawlSteamStoreApi } from './steamStoreApi'
 import { crawlVndb, type VndbGameCode } from './vndbClient'
 import { parseGetchuWorkPage } from './getchuParser'
 import { crawlDlsiteJsonFallback } from './dlsiteJsonFallback'
@@ -31,15 +32,12 @@ function dlsiteWorkPageUrl(code: GameCode): string {
   return `https://www.dlsite.com/${category}/work/=/product_id/${code.value}.html`
 }
 
-// Steam replaces a mature/violent-content app's real store page with an age
-// interstitial (no #appHubAppName, see steamParser.ts) unless the request
-// already looks like it came from someone past that check - these are the
-// same birthtime/lastagecheckage/wants_mature_content cookies the site's own
-// age-gate form sets on submission, just supplied upfront so this never
-// actually has to see the interstitial for the common "mature content"
-// tier. A stricter "adult only sexual content" tier some titles carry
-// requires an actual logged-in, age-verified Steam account and can't be
-// bypassed this way - those will still come back null here.
+// Only used by the HTML fallback (crawlSteamHtml). Steam replaces a
+// mature/violent-content app's real store page with an age interstitial
+// unless the request carries the cookies the age-gate form itself sets.
+// That covers the "mature content" tier only - "adult only sexual content"
+// requires a logged-in account and region-locked titles return an error
+// page, which is why crawlSteam asks the store API first.
 const STEAM_AGE_CHECK_COOKIE =
   'birthtime=283996801; lastagecheckage=1-0-1979; wants_mature_content=1'
 
@@ -52,8 +50,20 @@ export async function crawlDlsiteHtml(code: GameCode): Promise<CrawledGameMetada
   return parseDlsiteWorkPage(await response.text())
 }
 
+// Store API first (see steamStoreApi.ts for why the HTML page fails for
+// adult-only and region-locked titles). The HTML page stays as a fallback
+// only for when the API itself is down/changed - an API "no such app"
+// answer is final.
 async function crawlSteam(code: GameCode): Promise<CrawledGameMetadata | null> {
   const numericId = code.value.slice(2)
+  try {
+    return await crawlSteamStoreApi(numericId)
+  } catch {
+    return crawlSteamHtml(numericId)
+  }
+}
+
+async function crawlSteamHtml(numericId: string): Promise<CrawledGameMetadata | null> {
   const response = await safeFetch(`https://store.steampowered.com/app/${numericId}`, {
     headers: { 'User-Agent': USER_AGENT, Cookie: STEAM_AGE_CHECK_COOKIE },
     timeoutMs: NETWORK_TIMEOUT_MS,
@@ -175,13 +185,49 @@ export async function crawlGameMetadataWithTrace(
     attemptedSources.push(source.name)
     try {
       const metadata = await source.crawl(code)
-      if (metadata) return { metadata, attemptedSources, reason: null }
+      if (metadata) {
+        if (source.name === 'dlsite-html' && isIncomplete(metadata)) {
+          attemptedSources.push('dlsite-json')
+          const enriched = await enrichFromJson(code, metadata, deps)
+          return { metadata: enriched, attemptedSources, reason: null }
+        }
+        return { metadata, attemptedSources, reason: null }
+      }
     } catch (error) {
       reason = metadataFailureReasonFromError(error, source.failureReason)
     }
   }
 
   return { metadata: null, attemptedSources, reason }
+}
+
+// The HTML page is scraped, so a markup change can quietly drop fields while
+// the title still parses (this happened in 2026-11). Treat "no genres" or
+// "no circle" as a signal to ask the JSON source for the gaps.
+function isIncomplete(metadata: CrawledGameMetadata): boolean {
+  return metadata.genres.length === 0 || metadata.circle === ''
+}
+
+async function enrichFromJson(
+  code: GameCode,
+  html: CrawledGameMetadata,
+  deps: CrawlGameMetadataDeps
+): Promise<CrawledGameMetadata> {
+  let json: CrawledGameMetadata | null
+  try {
+    json = await deps.crawlDlsiteJson(code)
+  } catch {
+    return html // best effort - the HTML result is still a valid record
+  }
+  if (!json) return html
+  return {
+    title: html.title,
+    circle: html.circle || json.circle,
+    releaseDate: html.releaseDate || json.releaseDate,
+    genres: html.genres.length > 0 ? html.genres : json.genres,
+    coverImageUrl: html.coverImageUrl ?? json.coverImageUrl,
+    workType: html.workType ?? json.workType,
+  }
 }
 
 export async function crawlGameMetadata(

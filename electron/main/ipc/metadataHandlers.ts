@@ -92,8 +92,23 @@ export interface MetadataHandlersApi {
   refreshAllMetadata(onProgress: (progress: BulkCrawlProgressDto) => void): void
 }
 
+// Read fresh on every crawl so a Settings change applies immediately - to the
+// single-code refresh AND the background/bulk queue (which used to always
+// run with the provider disabled).
+function crawlDepsFromSettings(db: AppDatabase) {
+  return createCrawlGameMetadataDeps({
+    enabled: getSetting(db, 'external-metadata-provider-enabled') === 'true',
+    endpointUrl: getSetting(db, 'external-metadata-provider-url') ?? '',
+    apiKey: getSetting(db, 'external-metadata-provider-api-key'),
+  })
+}
+
 export function registerMetadataHandlers(db: AppDatabase): MetadataHandlersApi {
-  const bulkCrawlQueue = createBulkCrawlQueue(db, join(app.getPath('userData'), 'cache', 'covers'))
+  const bulkCrawlQueue = createBulkCrawlQueue(
+    db,
+    join(app.getPath('userData'), 'cache', 'covers'),
+    () => crawlDepsFromSettings(db)
+  )
 
   ipcMain.handle(IPC_CHANNELS.METADATA_GET, (_event, payload: unknown) => {
     const { code } = GetMetadataRequestSchema.parse(payload)
@@ -129,12 +144,7 @@ export function registerMetadataHandlers(db: AppDatabase): MetadataHandlersApi {
     clearMetadataFailure(db, code.value)
     let result
     try {
-      const externalConfig = {
-        enabled: getSetting(db, 'external-metadata-provider-enabled') === 'true',
-        endpointUrl: getSetting(db, 'external-metadata-provider-url') ?? '',
-        apiKey: getSetting(db, 'external-metadata-provider-api-key'),
-      }
-      result = await crawlGameMetadataWithTrace(code, createCrawlGameMetadataDeps(externalConfig))
+      result = await crawlGameMetadataWithTrace(code, crawlDepsFromSettings(db))
     } catch (error) {
       saveMetadataFailure(
         db,

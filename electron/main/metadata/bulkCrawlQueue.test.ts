@@ -4,10 +4,15 @@ import { getGameMetadata, saveGameMetadata } from '../database/gameMetadataRepos
 import { getMetadataFailure, saveMetadataFailure } from '../database/metadataFailuresRepository'
 import { createBulkCrawlQueue } from './bulkCrawlQueue'
 import type { GameCode } from '../../../shared/types/scanner'
-import type { CrawledGameMetadata, CrawlTraceResult } from './crawlGameMetadata'
+import type {
+  CrawledGameMetadata,
+  CrawlGameMetadataDeps,
+  CrawlTraceResult,
+} from './crawlGameMetadata'
 
 const { crawlGameMetadataWithTraceMock } = vi.hoisted(() => ({
-  crawlGameMetadataWithTraceMock: vi.fn<(code: GameCode) => Promise<CrawlTraceResult>>(),
+  crawlGameMetadataWithTraceMock:
+    vi.fn<(code: GameCode, deps?: CrawlGameMetadataDeps) => Promise<CrawlTraceResult>>(),
 }))
 vi.mock('./crawlGameMetadata', () => ({
   crawlGameMetadataWithTrace: crawlGameMetadataWithTraceMock,
@@ -73,6 +78,22 @@ describe('createBulkCrawlQueue', () => {
 
     expect(crawlGameMetadataWithTraceMock).toHaveBeenCalledTimes(2)
     expect(getGameMetadata(db, 'RJ02222222')?.title).toBe('Title RJ02222222')
+  })
+
+  // The queue used to call crawlGameMetadataWithTrace(code) with its default
+  // deps, which hard-disable the user's external metadata provider - so the
+  // provider was only ever consulted by the single-code refresh button.
+  it('crawls with the deps supplied by the caller, read when each code is processed', async () => {
+    crawlGameMetadataWithTraceMock.mockImplementation(async (c) => successTrace(c.value))
+    const deps = { marker: 'deps-1' }
+    const getCrawlDeps = vi.fn(() => deps as unknown as CrawlGameMetadataDeps)
+    const queue = createBulkCrawlQueue(db, '/cache/covers', getCrawlDeps)
+
+    queue.enqueue([code('RJ01111111')], vi.fn())
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(getCrawlDeps).toHaveBeenCalledTimes(1)
+    expect(crawlGameMetadataWithTraceMock).toHaveBeenCalledWith(code('RJ01111111'), deps)
   })
 
   it('reports completed/total progress after each code finishes', async () => {
