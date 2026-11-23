@@ -182,6 +182,13 @@ Napi::String Init(const Napi::CallbackInfo &info) {
   if (info.Length() >= 4 && info[3].IsString()) {
     hwdecMode = info[3].As<Napi::String>().Utf8Value();
   }
+  // Only the `preview` key is read; there is deliberately no generic option
+  // passthrough from JS into mpv.
+  bool preview = false;
+  if (info.Length() >= 5 && info[4].IsObject()) {
+    Napi::Value pv = info[4].As<Napi::Object>().Get("preview");
+    preview = pv.IsBoolean() && pv.As<Napi::Boolean>().Value();
+  }
 
   g_lib = LoadLibmpvNextToAddon();
   if (!g_lib) {
@@ -218,6 +225,19 @@ Napi::String Init(const Napi::CallbackInfo &info) {
   g_p_set_option_string(g_ctx, "input-vo-keyboard", "no");
   g_p_set_option_string(g_ctx, "osc", "no");
   g_p_set_option_string(g_ctx, "hwdec", hwdecMode.c_str());
+  if (preview) {
+    // Thumbnail-scrub session: silent, paused before loadfile, cheapest
+    // possible keyframe seeks. Applied after (and overriding) the generic
+    // hwdec above; the security options above stay in force.
+    g_p_set_option_string(g_ctx, "ao", "null");
+    g_p_set_option_string(g_ctx, "aid", "no");
+    g_p_set_option_string(g_ctx, "pause", "yes");
+    g_p_set_option_string(g_ctx, "hr-seek", "no");
+    g_p_set_option_string(g_ctx, "cache", "no");
+    g_p_set_option_string(g_ctx, "demuxer-readahead-secs", "0");
+    g_p_set_option_string(g_ctx, "hwdec", "no");
+    g_p_set_option_string(g_ctx, "vd-lavc-threads", "2");
+  }
   // libmpv's defaults (sub-auto=exact, sid=auto) would auto-load sidecar
   // subtitle files and auto-select embedded subtitle tracks, burning them into
   // the frames this addon renders. The app draws its own subtitle/lyric
@@ -355,7 +375,11 @@ Napi::String Seek(const Napi::CallbackInfo &info) {
     return Napi::String::New(env, "ERROR expected seconds (number)");
   }
   std::string seconds = std::to_string(info[0].As<Napi::Number>().DoubleValue());
-  const char *cmd[] = {"seek", seconds.c_str(), "absolute", NULL};
+  bool keyframes = false;
+  if (info.Length() >= 2 && info[1].IsString()) {
+    keyframes = info[1].As<Napi::String>().Utf8Value() == "keyframes";
+  }
+  const char *cmd[] = {"seek", seconds.c_str(), keyframes ? "absolute+keyframes" : "absolute", NULL};
   int rc = g_p_command(g_ctx, cmd);
   if (rc < 0) return Napi::String::New(env, std::string("ERROR seek failed: ") + g_p_error_string(rc));
   return Napi::String::New(env, "OK");
