@@ -69,8 +69,12 @@ export function registerMpvHandlers(
   // ipcMain.on, not .handle - the preload side fires this with
   // ipcRenderer.send on every debounced resize tick and never awaits it.
   ipcMain.on(IPC_CHANNELS.MPV_RESIZE, (_event, payload: unknown) => {
-    const { width, height } = MpvResizeRequestSchema.parse(payload)
-    mpv.resize(width, height)
+    // safeParse, same as MPV_SET_EQ_BAND below: a throw in an ipcMain.on
+    // listener is an uncaught main-process exception (no invoke promise to
+    // reject into), so a malformed resize is simply dropped.
+    const result = MpvResizeRequestSchema.safeParse(payload)
+    if (!result.success) return
+    mpv.resize(result.data.width, result.data.height)
   })
 
   ipcMain.handle(IPC_CHANNELS.MPV_PLAY, () => mpv.play())

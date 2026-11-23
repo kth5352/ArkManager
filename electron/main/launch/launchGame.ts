@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { dirname } from 'node:path'
 import { detectLocaleEmulator } from './localeEmulator'
 import type { LaunchConfig } from '../database/gameUserDataRepository'
 
@@ -10,7 +11,14 @@ export async function launchGame(
   const start = Date.now()
 
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { windowsHide: false })
+    // Run with the game's own folder as working directory (like a shortcut
+    // or Explorer double-click would) - many games resolve assets relative
+    // to it. Also set in LE mode, where LEProc starts the game (whether LEProc
+    // forwards its own cwd to the game has not been verified on a real install).
+    const child = spawn(command, args, {
+      windowsHide: false,
+      cwd: dirname(config.executablePath),
+    })
 
     child.once('error', (error) => reject(error))
     child.once('exit', () => resolve({ sessionMs: Date.now() - start }))

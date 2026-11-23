@@ -7,6 +7,7 @@ import { MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE } from '../../..
 import { setMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
 import { computeMediaAllowedRoots, computeMediaTrustedPaths } from '../media/mediaTrustBoundary'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
+import { COVER_IMAGE_EXTENSIONS } from '../net/rasterImage'
 import {
   AudioCoverRestoreError,
   getAudioCoverWriteSupport,
@@ -54,7 +55,7 @@ export function registerMediaThumbnailHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.MEDIA_THUMBNAIL_PICK_FILE, async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{ name: '이미지', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
+      filters: [{ name: '이미지', extensions: COVER_IMAGE_EXTENSIONS }],
     })
     if (result.canceled || result.filePaths.length === 0) return null
     lastPickedThumbnailPath = result.filePaths[0]

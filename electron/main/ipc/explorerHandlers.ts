@@ -8,13 +8,11 @@ import {
   type MoveResultDto,
   type RenameResultDto,
 } from '../../../shared/types/ipc'
-import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 import { loadExplorerTabs, saveExplorerTabs } from '../database/explorerTabsRepository'
 import { renameEntries } from '../fileOps/renameEntries'
 import { deleteEntries } from '../fileOps/deleteEntries'
 import { moveEntries } from '../fileOps/moveEntries'
-import { rekeyPath } from '../database/gameUserDataRepository'
-import { rekeyPathCodeOverride } from '../database/pathCodeOverridesRepository'
+import { rekeyMovedPath } from '../database/rekeyMovedPath'
 import { listLibraries } from '../database/librariesRepository'
 import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
 import type { AppDatabase } from '../database/client'
@@ -49,21 +47,16 @@ function partitionByLibraryRoot<T>(
   return { allowed, denied }
 }
 
-// A manually-linked code (path_code_overrides) and a code-less entry's
-// favorite/rating/memo/playtime/customCoverPath (game_user_data, path-keyed)
-// are both keyed by the exact normalized path they were recorded at - any
-// operation that changes an entry's path (move OR rename) must carry both
-// over to the new path, or they'd silently orphan at a path nothing lives at
-// anymore. A coded entry needs neither: its game_user_data key is the code
-// itself, unaffected by where the file sits.
+// Any operation that changes an entry's path (move OR rename) must carry
+// everything recorded against that location - and, for a folder, against
+// everything inside it - over to the new path: path-keyed user data and
+// code overrides, exclusions, playlist/liked tracks, and absolute paths
+// stored inside rows (a coded game's launch executable and save folder).
+// See rekeyMovedPath.ts; this used to move only the exact-path rows.
 function rekeyPathsForResults(db: AppDatabase, results: (RenameResultDto | MoveResultDto)[]): void {
   for (const result of results) {
     if (!result.success || !result.newPath) continue
-    const oldKey = normalizeLibraryPath(result.path)
-    const newKey = normalizeLibraryPath(result.newPath)
-    if (oldKey === newKey) continue
-    rekeyPathCodeOverride(db, oldKey, newKey)
-    rekeyPath(db, oldKey, newKey)
+    rekeyMovedPath(db, result.path, result.newPath)
   }
 }
 

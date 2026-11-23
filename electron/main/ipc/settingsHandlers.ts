@@ -7,7 +7,11 @@ import {
   ThemeSchema,
   WindowCloseBehaviorSchema,
 } from '../../../shared/types/ipc'
+import { extname } from 'node:path'
 import { getSetting, setSetting } from '../database/settingsRepository'
+import { listLibraries } from '../database/librariesRepository'
+import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
+import { consumePickedPath } from './pickedPaths'
 import type { AppDatabase } from '../database/client'
 
 // Validates a raw DB string against ThemeSchema before it reaches the
@@ -132,6 +136,33 @@ export function parseStoredMediaEqualizerBands(raw: string | undefined): number[
   return parsed as number[]
 }
 
+// Most settings are harmless display preferences, but two carry authority:
+//  - 'locale-emulator-path' is spawn()ed by launchGame in Locale Emulator
+//    mode, bypassing the launch config's own .exe/library checks.
+//  - 'media-folder' is a media trust root (computeMediaAllowedRoots):
+//    playback, thumbnail extraction and cover-art embedding (a file write).
+// So a renderer may only store what the user actually chose: the path the
+// main-process picker just returned, or (media folder) a folder inside an
+// already-trusted library - the latter is how ASMR folder playback
+// (usePlayAsmrFolder) sets it without a picker. Clearing is always allowed.
+function assertSettingWriteAllowed(db: AppDatabase, key: string, value: string): void {
+  if (value === '') return
+  if (key === 'locale-emulator-path') {
+    const isExe = !value.includes('\0') && extname(value).toLowerCase() === '.exe'
+    if (!isExe || !consumePickedPath('locale-emulator', value)) {
+      throw new Error('Locale Emulator path must be chosen with the file picker.')
+    }
+    return
+  }
+  if (key === 'media-folder') {
+    if (value.includes('\0')) throw new Error('Invalid media folder.')
+    const libraryRoots = listLibraries(db).map((library) => library.path)
+    if (isPathWithinAnyLibrary(value, libraryRoots)) return
+    if (consumePickedPath('folder', value)) return
+    throw new Error('Media folder must be inside a library or chosen with the folder picker.')
+  }
+}
+
 export function registerSettingsHandlers(
   db: AppDatabase,
   // Fired synchronously after a setting is persisted, with the exact
@@ -173,6 +204,7 @@ export function registerSettingsHandlers(
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_event, payload: unknown) => {
     const { key, value } = SetSettingRequestSchema.parse(payload)
+    assertSettingWriteAllowed(db, key, value)
     setSetting(db, key, value)
     onSettingChanged?.(key, value)
   })

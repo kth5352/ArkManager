@@ -10,6 +10,13 @@ export const MAX_IMAGE_BYTES = 30 * 1024 * 1024
 export const MAX_IMAGE_PIXELS = 50_000_000
 const ALLOWED_FORMATS = new Set(['jpeg', 'png', 'webp', 'gif'])
 
+/**
+ * File-picker extensions for any image that ends up in openRasterImage.
+ * Keep in sync with ALLOWED_FORMATS - pickers used to also offer .bmp, which
+ * sharp cannot decode at all, so choosing one always failed.
+ */
+export const COVER_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
+
 export class UnsupportedImageError extends Error {
   constructor(message: string) {
     super(message)

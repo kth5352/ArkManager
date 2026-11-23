@@ -11,6 +11,7 @@ import { addLibrary, listLibraries, removeLibrary } from '../database/librariesR
 import { libraryPathRejection } from '../libraries/libraryPathPolicy'
 import { normalizeLibraryPath } from '../../../shared/normalizeLibraryPath'
 import { getSetting } from '../database/settingsRepository'
+import { rememberPickedPath } from './pickedPaths'
 import type { AppDatabase } from '../database/client'
 
 export function registerLibrariesHandlers(db: AppDatabase): void {
@@ -80,6 +81,8 @@ export function registerLibrariesHandlers(db: AppDatabase): void {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
     if (result.canceled || result.filePaths.length === 0) return null
     lastPickedFolder = result.filePaths[0]
+    // The Media page reuses this picker for its media folder (settings:set).
+    rememberPickedPath('folder', lastPickedFolder)
     return lastPickedFolder
   })
 }

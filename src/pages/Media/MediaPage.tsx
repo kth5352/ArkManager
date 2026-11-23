@@ -15,8 +15,8 @@ import { Grid, type CellComponentProps } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { usePickLibraryFolder } from '../../services/librariesService'
 import { useFolderScan } from '../../services/scannerService'
+import { useMediaBrowseRoot } from '../../hooks/useMediaBrowseRoot'
 import {
-  useMediaFolderQuery,
   useMediaSidebarOpenQuery,
   useMediaViewModeQuery,
   useSetMediaFolderMutation,
@@ -285,7 +285,15 @@ function MediaEntryCell({
 export function MediaPage() {
   const { t } = useTranslation()
   const selectedPlaylistId = useMediaPlayerStore((s) => s.selectedPlaylistId)
-  const { data: folder = null, isLoading: isFolderLoading } = useMediaFolderQuery()
+  // `folder` is the effective browse root: a session-only temporary root
+  // (ASMR work played from outside the saved folder) or the saved setting.
+  const {
+    root: folder,
+    savedFolder,
+    isTemporary: isTemporaryRoot,
+    isLoading: isFolderLoading,
+  } = useMediaBrowseRoot()
+  const setTemporaryMediaRoot = useMediaPlayerStore((s) => s.setTemporaryMediaRoot)
   const setMediaFolder = useSetMediaFolderMutation()
   const pickFolder = usePickLibraryFolder()
   const { data: mediaSidebarOpenSetting, isLoading: mediaSidebarOpenLoading } =
@@ -333,7 +341,15 @@ export function MediaPage() {
 
   const handlePickFolder = async (): Promise<void> => {
     const dir = await pickFolder.mutateAsync()
-    if (dir) setMediaFolder.mutate(dir)
+    if (!dir) return
+    setMediaFolder.mutate(dir, { onSuccess: () => setTemporaryMediaRoot(null) })
+  }
+
+  // Temporary root -> make it the saved media folder (it is inside a
+  // library, which settings:set accepts without a picker).
+  const handleSaveTemporaryRoot = (): void => {
+    if (!folder) return
+    setMediaFolder.mutate(folder, { onSuccess: () => setTemporaryMediaRoot(null) })
   }
 
   const canGoBack = mediaBrowseHistoryIndex > 0
@@ -350,6 +366,23 @@ export function MediaPage() {
           <Button size="sm" variant="secondary" onClick={handlePickFolder}>
             {t('settings.pickFolder')}
           </Button>
+          {isTemporaryRoot && (
+            <>
+              {savedFolder && (
+                <Button size="sm" variant="ghost" onClick={() => setTemporaryMediaRoot(null)}>
+                  {t('media.backToSavedFolder')}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={setMediaFolder.isPending}
+                onClick={handleSaveTemporaryRoot}
+              >
+                {t('media.saveAsMediaFolder')}
+              </Button>
+            </>
+          )}
           {folder && (
             <>
               <Button

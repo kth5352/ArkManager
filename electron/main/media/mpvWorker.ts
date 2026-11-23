@@ -5,13 +5,11 @@
 // today's feasibility spikes).
 import { join } from 'node:path'
 
-// The addon loads libmpv-2.dll with a bare `LoadLibraryA("libmpv-2.dll")`,
-// so Windows resolves it through the standard search order - which does NOT
-// include the directory of the .node that called LoadLibrary, only the
-// executable's own directory (electron.exe's) and PATH. The DLL lives next
-// to the addon's .node build output, so that directory has to be on PATH
-// *before* the require() below runs or init() fails with "ERROR
-// LoadLibraryA failed err=126" (proven in Task 2's testing).
+// The addon now loads libmpv-2.dll by absolute path (<addonDir>/libmpv-2.dll,
+// derived from its own module location - see LoadLibmpvNextToAddon in
+// mpv_addon.cc), so it no longer depends on the DLL search order. addonDir
+// is still put on PATH as a harmless fallback for an older, not-yet-rebuilt
+// mpv_addon.node that still uses the bare-name LoadLibraryA.
 //
 // This worker runs inside a utilityProcess, where Electron's `app` module
 // (and therefore `app.isPackaged`/`process.resourcesPath`) is NOT available

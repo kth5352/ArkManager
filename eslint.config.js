@@ -32,6 +32,15 @@ module.exports = [
     },
   },
   {
+    // Build/release helper scripts run directly under Node (ES modules).
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+    },
+  },
+  {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: tsParser,

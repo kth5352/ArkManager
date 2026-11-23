@@ -8,6 +8,7 @@ import {
 } from '../../../shared/types/ipc'
 import { setPlaylistCover, clearPlaylistCover } from '../database/mediaPlaylistsRepository'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
+import { COVER_IMAGE_EXTENSIONS } from '../net/rasterImage'
 import type { AppDatabase } from '../database/client'
 
 function playlistCoverCacheDir(): string {
@@ -25,7 +26,7 @@ export function registerMediaPlaylistCoverHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.MEDIA_PLAYLIST_COVER_PICK_FILE, async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{ name: '이미지', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
+      filters: [{ name: '이미지', extensions: COVER_IMAGE_EXTENSIONS }],
     })
     if (result.canceled || result.filePaths.length === 0) return null
     lastPickedCoverPath = result.filePaths[0]

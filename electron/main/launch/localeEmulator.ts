@@ -1,5 +1,5 @@
 import { access, readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { extname, join } from 'node:path'
 
 const LE_PROC_FILENAME = 'LEProc.exe'
 // A real install doesn't always sit directly under a "Locale Emulator"
@@ -47,7 +47,13 @@ export async function findLocaleEmulatorAt(
 // 사용자별 설치를 위한 경로. 그 외의 임의 경로에 설치한 경우는
 // overridePath(설정에 저장된 수동 지정 경로)로만 찾을 수 있다.
 export async function detectLocaleEmulator(overridePath?: string | null): Promise<string | null> {
-  if (overridePath) {
+  // Defense in depth for values persisted before settings:set validated this
+  // key: only ever hand an .exe to spawn().
+  if (
+    overridePath &&
+    extname(overridePath).toLowerCase() === '.exe' &&
+    !overridePath.includes('\0')
+  ) {
     try {
       await access(overridePath)
       return overridePath

@@ -125,6 +125,12 @@ interface MediaPlayerState {
   mediaBrowsePath: string | null
   mediaBrowseHistory: string[]
   mediaBrowseHistoryIndex: number
+  // Session-only Media-tab root used when an ASMR/voice work outside the
+  // saved media folder is played (usePlayAsmrFolder). Never persisted - the
+  // saved 'media-folder' setting is the user's choice and is not touched.
+  // null = browse from the saved media folder. See useMediaBrowseRoot.
+  temporaryMediaRoot: string | null
+  setTemporaryMediaRoot: (path: string | null) => void
   navigateMediaBrowseTo: (path: string) => void
   mediaBrowseGoBack: () => void
   mediaBrowseGoForward: () => void
@@ -212,6 +218,8 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   mediaBrowsePath: null,
   mediaBrowseHistory: [],
   mediaBrowseHistoryIndex: 0,
+  temporaryMediaRoot: null,
+  setTemporaryMediaRoot: (path) => set({ temporaryMediaRoot: path }),
   navigateMediaBrowseTo: (path) =>
     set((state) => {
       const next = navigateBrowseHistory(

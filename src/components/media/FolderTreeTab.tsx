@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useFolderScanRecursive } from '../../services/scannerService'
-import { useMediaFolderQuery } from '../../services/settingsService'
+import { useMediaBrowseRoot } from '../../hooks/useMediaBrowseRoot'
 import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { useTranslation } from '../../i18n/useTranslation'
 import { Skeleton } from '../ui/skeleton'
@@ -118,7 +118,7 @@ function TreeNodeRow({
 export function FolderTreeTab() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { data: rootPath = null } = useMediaFolderQuery()
+  const { root: rootPath } = useMediaBrowseRoot()
   const mediaBrowsePath = useMediaPlayerStore((s) => s.mediaBrowsePath)
   const navigateMediaBrowseTo = useMediaPlayerStore((s) => s.navigateMediaBrowseTo)
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())

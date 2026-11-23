@@ -37,6 +37,8 @@ import {
   deleteSnapshotLabelsForKey,
 } from '../database/saveSnapshotLabelsRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
+import { listLibraries } from '../database/librariesRepository'
+import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
 import type { AppDatabase } from '../database/client'
 
 // Every snapshot for a game lives under its own backup-root subfolder
@@ -45,6 +47,21 @@ import type { AppDatabase } from '../database/client'
 // directory segment (see keyToSafeDirName).
 function backupRootDir(key: string): string {
   return join(app.getPath('userData'), 'saves', keyToSafeDirName(key))
+}
+
+// detectGameVersion lists every .exe in the folder and runs PowerShell on
+// them. The folder comes from the renderer (identifier.path), so it is only
+// probed when it lies inside a registered library; otherwise "unknown".
+function detectVersionWithinLibraries(
+  db: AppDatabase,
+  entryPath: string,
+  executablePath: string | null
+): Promise<string | null> {
+  const roots = listLibraries(db).map((library) => library.path)
+  if (!isPathWithinAnyLibrary(entryPath, roots)) return Promise.resolve(null)
+  const exe =
+    executablePath && isPathWithinAnyLibrary(executablePath, roots) ? executablePath : null
+  return detectGameVersion(entryPath, exe)
 }
 
 export function registerSaveHandlers(db: AppDatabase): void {
@@ -107,7 +124,8 @@ export function registerSaveHandlers(db: AppDatabase): void {
       throw new Error('백업할 세이브 경로가 지정되어 있지 않습니다.')
     }
     const timestamp = await createSnapshot(userData.savePath, backupRootDir(key))
-    const version = await detectGameVersion(
+    const version = await detectVersionWithinLibraries(
+      db,
       identifier.path,
       userData.launchConfig?.executablePath ?? null
     )
@@ -188,7 +206,8 @@ export function registerSaveHandlers(db: AppDatabase): void {
       const { key } = resolveGameEntryKey(identifier)
       const label = getSnapshotLabel(db, key, timestamp)
       const userData = getGameUserData(db, key)
-      const currentVersion = await detectGameVersion(
+      const currentVersion = await detectVersionWithinLibraries(
+        db,
         identifier.path,
         userData?.launchConfig?.executablePath ?? null
       )

@@ -20,6 +20,7 @@ import { getSetting } from '../database/settingsRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import { listLibraries } from '../database/librariesRepository'
 import { isPathWithinAnyLibrary } from '../thumbnailProtocol'
+import { rememberPickedPath } from './pickedPaths'
 import type { AppDatabase } from '../database/client'
 
 // spawn() is only ever given a real Windows executable. Anything else
@@ -59,6 +60,8 @@ export function registerLaunchHandlers(db: AppDatabase): void {
       filters: [{ name: 'LEProc.exe', extensions: ['exe'] }],
     })
     if (result.canceled || result.filePaths.length === 0) return null
+    // settings:set only stores this value if it is the path just picked here.
+    rememberPickedPath('locale-emulator', result.filePaths[0])
     return result.filePaths[0]
   })
 

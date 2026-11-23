@@ -29,6 +29,7 @@ import {
 import { normalizeLibraryPath } from '../database/librariesRepository'
 import { resolveGameEntryKey } from './resolveGameEntryKey'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
+import { COVER_IMAGE_EXTENSIONS } from '../net/rasterImage'
 import { encodeThumbnail } from './scannerHandlers'
 import type { AppDatabase } from '../database/client'
 
@@ -115,7 +116,7 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_PICK_CUSTOM_COVER_FILE, async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{ name: '이미지', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
+      filters: [{ name: '이미지', extensions: COVER_IMAGE_EXTENSIONS }],
     })
     if (result.canceled || result.filePaths.length === 0) return null
     lastPickedCustomCoverPath = result.filePaths[0]

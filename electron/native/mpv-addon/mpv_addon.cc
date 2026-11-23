@@ -65,6 +65,42 @@ static mpv_render_context_create_fn g_p_render_create = nullptr;
 static mpv_render_context_render_fn g_p_render_render = nullptr;
 static mpv_render_context_free_fn g_p_render_free = nullptr;
 
+// SECURITY: load libmpv by ABSOLUTE path, never by bare name. A bare
+// LoadLibraryA("libmpv-2.dll") goes through the Windows DLL search order,
+// where the process's current working directory comes before PATH - a
+// libmpv-2.dll planted there would be loaded and run instead. Layout is the
+// same in dev and packaged builds (see package.json extraResources):
+//   <addonDir>/libmpv-2.dll
+//   <addonDir>/build/Release/mpv_addon.node   <- this module
+// LOAD_WITH_ALTERED_SEARCH_PATH makes libmpv's own dependencies resolve
+// from its directory too.
+static HMODULE LoadLibmpvNextToAddon() {
+  HMODULE self = nullptr;
+  if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                              GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          reinterpret_cast<LPCWSTR>(&LoadLibmpvNextToAddon), &self)) {
+    return nullptr;
+  }
+  std::wstring path(MAX_PATH, L'\0');
+  for (;;) {
+    DWORD len = GetModuleFileNameW(self, &path[0], static_cast<DWORD>(path.size()));
+    if (len == 0) return nullptr;
+    if (len < path.size()) {
+      path.resize(len);
+      break;
+    }
+    path.resize(path.size() * 2);
+  }
+  // Strip "mpv_addon.node", "Release", "build" -> <addonDir>
+  for (int i = 0; i < 3; ++i) {
+    size_t slash = path.find_last_of(L"\\/");
+    if (slash == std::wstring::npos) return nullptr;
+    path.resize(slash);
+  }
+  path += L"\\libmpv-2.dll";
+  return LoadLibraryExW(path.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+}
+
 static bool LoadAllSymbols() {
   g_p_create = (mpv_create_fn)GetProcAddress(g_lib, "mpv_create");
   g_p_initialize = (mpv_initialize_fn)GetProcAddress(g_lib, "mpv_initialize");
@@ -147,10 +183,10 @@ Napi::String Init(const Napi::CallbackInfo &info) {
     hwdecMode = info[3].As<Napi::String>().Utf8Value();
   }
 
-  g_lib = LoadLibraryA("libmpv-2.dll");
+  g_lib = LoadLibmpvNextToAddon();
   if (!g_lib) {
     char buf[128];
-    snprintf(buf, sizeof(buf), "ERROR LoadLibraryA failed err=%lu", GetLastError());
+    snprintf(buf, sizeof(buf), "ERROR LoadLibraryExW(libmpv-2.dll) failed err=%lu", GetLastError());
     return Napi::String::New(env, buf);
   }
   if (!LoadAllSymbols()) {
