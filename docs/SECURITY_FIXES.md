@@ -213,7 +213,7 @@
 
 ## 15. 검증 현황
 
-- 자동: 단위 테스트 1009개 통과(141개 파일), `tsc --build` 통과, ESLint 오류 0, `electron-vite build` 성공, 빌드된 `index.html`에 CSP 삽입 확인, `npm audit --omit=dev` 0건.
-  - **2026-11-23 재실행**: 테스트 1009/1009·타입체크는 통과. 하지만 `npm run lint`는 **오류 5건으로 실패**합니다. 원인은 마지막 커밋(`aa51de8`)에 추가된 `scripts/verify-native-binaries.mjs`에서 `console`/`process`가 no-undef로 잡히는 것입니다(ESLint 설정에 `.mjs`용 Node globals 없음). 위의 "ESLint 오류 0"은 이 스크립트를 추가하기 전 결과입니다.
+- 자동: 단위 테스트 1009개 통과(141개 파일; 당시 기준 — 2026-11-23 현재 1354개/172 파일 통과), `tsc --build` 통과, ESLint 오류 0, `electron-vite build` 성공, 빌드된 `index.html`에 CSP 삽입 확인, `npm audit --omit=dev` 0건.
+  - **2026-11-23 재실행**: 테스트 1009/1009·타입체크는 통과. 하지만 `npm run lint`는 **오류 5건으로 실패**합니다. 원인은 마지막 커밋(`aa51de8`)에 추가된 `scripts/verify-native-binaries.mjs`에서 `console`/`process`가 no-undef로 잡히는 것입니다(ESLint 설정에 `.mjs`용 Node globals 없음). 위의 "ESLint 오류 0"은 이 스크립트를 추가하기 전 결과입니다. **같은 날 수정됨**(`eslint.config.js`에 `.mjs` Node globals): 현재 `npm run lint`는 오류 0, 경고 1건(`button.tsx` react-refresh, 기존).
 - 재검증에서 새로 확인한 잔여 위험(`SETTINGS_SET` 값 무검증 등)은 `docs/SECURITY.md` §3.1을 참고하세요.
 - 수동 필요: 실제 앱 실행(CSP·표지·미디어 재생·단축키·분리 창), mpv 애드온 재빌드 후 재생, 설치본(Fuses, 자동 업데이트). 체크리스트는 `docs/SECURITY.md` §2.

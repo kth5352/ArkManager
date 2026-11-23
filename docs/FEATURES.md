@@ -14,7 +14,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 
 - 앱 이름: **Ark Manager** (초기 이름 DLibrary → 2026-07-31 리브랜드). `package.json`의 `description`에는 아직 "DLsite game library manager"가 남아 있음.
 - 배포: NSIS 설치 프로그램(경로 지정 가능, `oneClick: false`, `perMachine: false`), GitHub Releases 기반 자동 업데이트(`kth5352/ArkManager`). **설치 파일은 코드 서명되어 있지 않음.**
-- 언어: UI는 한국어(원본)/일본어/영어(번역 키 354개). 문서·주석·커밋 메시지는 한국어+영어 혼용.
+- 언어: UI는 한국어(원본)/일본어/영어(번역 키 364개, 2026-11-23 `ko` 객체 재집계). 문서·주석·커밋 메시지는 한국어+영어 혼용.
 - 사용자 데이터 위치: Electron `userData` (`%APPDATA%/Ark Manager` 계열, 과거 `%APPDATA%/dlibrary`에서 자동 이전). DB 파일명 `ark-manager.db`. 폴더 구조는 §14.1.
 
 ### 1.1 현재 브랜치 상태 (2026-11-23)
@@ -23,7 +23,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 | --- | --- |
 | 브랜치 | `security/hardening` (master `012713b`에서 분기). **아직 master 미병합·미릴리스** |
 | 최근 작업 | 2026-11-23: Steam/DLsite 크롤 수정 + §20의 보안·기능 결함 수정(§20.0), 미디어 전체 화면·표지 파이프라인·장면 미리보기 개편(§11.7~11.13, §20.0) |
-| `npm test` | ✅ 170 파일 / 1324 테스트 통과 (hover-tooltip `act(...)` 경고, §20) |
+| `npm test` | ✅ 172 파일 / 1354 테스트 통과 (2026-11-23 최종 리뷰 수정 후; hover-tooltip `act(...)` 경고, §20) |
 | `npm run typecheck` | ✅ 통과 |
 | `npm run lint` | ✅ 오류 0 (경고 1건 `button.tsx` react-refresh, 기존) |
 | `electron-vite build` | ✅ 성공(`out/main/mpvPreviewWorker.js` 포함), 빌드 `index.html`에 CSP 삽입 확인 |
@@ -383,15 +383,15 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - **경쟁 방지**: 비동기 해결(ffmpeg·sharp)이 무효화와 겹쳐도 옛 결과를 되살리지 못하게 해결 작업이 시작 시 `(곡 세대, 작품 세대)` 스냅샷을 잡고, **곡별 직렬 잠금** 안에서 세대를 다시 비교한 뒤 임시 파일을 rename으로 커밋한다(다르면 임시 파일만 지우고 'stale' → 현재 세대로 다시 해결). 무효화도 같은 잠금 안에서 세대 증가+삭제를 끝낸다. 4개 파일은 한 묶음으로 커밋/롤백. 진행 중 요청 공유 키에도 두 세대가 들어간다. 곡별 잠금 키는 `filePath` 문자열 그대로라 호출자는 같은 경로 문자열을 써야 한다.
 - **작품 표지 대체**(오디오만, `workCoverLookup.ts`): 파일의 부모 폴더부터 **파일을 포함하는 가장 바깥 허용 루트(그 루트 폴더 자신 포함, 그 위로는 안 올라감)**까지, 가까운 폴더부터: 코드 = `path_code_overrides` → 폴더명 `extractCode`. 폴더마다 ① 사용자 지정 게임 표지(`game_user_data.custom_cover_path`, 키는 `resolveGameEntryKey` 규칙 — 코드가 없어도 항상 확인) → ② 코드가 있을 때만 크롤 표지(`game_metadata.cover_image_path`). 파일이 실제로 있을 때만 채택. 허용 루트에 속하지 않고 정확한 경로로만 신뢰되는 트랙(재생목록/좋아요)은 이 단계가 null. 코드 종류는 RJ/VJ에 한정하지 않음. 조회 실패(reject)는 "표지 없음".
 - **사용자 override**: 새로 지정하면 512px 파일 옆에 `<key>.large.webp`(2048px, 최선 노력)도 저장하고 이전 것은 먼저 지운다. 예전 override는 512px뿐이라 `cover`/`get-cover-info`가 그것을 그대로 쓴다(흐림). `get-cover-info`는 override가 있으면 그 파일에서 강조색·비율을 읽는다.
-- **렌더러 조회**: `media:get-cover-info`(경로 → `{hasCover, accent, aspectRatio, version}`, `version = "<곡 세대>-<작품 세대>"`). 신뢰 경계 밖이면 던지지 않고 **트랙이 신뢰되지만 표지 없는 경우와 같은 모양**(`hasCover:false`, `accent`/`aspectRatio` null)으로 응답. 렌더러는 `buildMediaThumbnailUrl(path, version)`/`buildMediaCoverUrl(path, version)`으로 `?v=`를 붙여 브라우저 이미지 캐시를 깬다. 변경은 `media:artwork-changed`(`{filePath | null}`; null = 모든 작품 표지) push로 알리고 `useMediaCoverInfo`가 쿼리를 무효화한다(훅마다 리스너 1개).
+- **렌더러 조회**: `media:get-cover-info`(경로 → `{hasCover, accent, aspectRatio, version}`, `version = "<곡 세대>-<작품 세대>"`). 신뢰 경계 밖이면 던지지 않고 **트랙이 신뢰되지만 표지 없는 경우와 같은 모양**(`hasCover:false`, `accent`/`aspectRatio` null)으로 응답. `AudioArtworkView`(전체 화면 음성 화면)는 `buildMediaThumbnailUrl(path, version)`/`buildMediaCoverUrl(path, version)`으로 `?v=`를 붙여 브라우저 이미지 캐시를 깬다(도킹 바·큐·재생목록 행·MediaSession artwork는 버전 없는 URL — §20.6). 변경은 `media:artwork-changed`(`{filePath | null}`; null = 모든 작품 표지) push로 알리고 `useMediaCoverInfo`가 쿼리를 무효화한다(훅마다 리스너 1개).
 
 ### 11.12 재생 상태 필드 (제목 · 세대 · 로드된 경로)
 - `mpv:state-update`에 `mediaTitle`(mpv `media-title`, 애드온이 observe로 캐시한 값 — 렌더 스레드 제약상 동기 `get_property` 금지), `loadGeneration`(메인 `mpvProcessManager`가 `loadFile`마다 +1), `loadedPath`(그 로드의 요청 경로)가 추가됐다. 세대/경로는 **메인이 로드 때 워커에 넘기고 워커가 모든 상태 메시지에 그대로 실어** 보낸다(릴레이 시점에 붙이면 "새 세대 + 옛 제목" 조합이 생기므로). 식별 정보가 없는 메시지는 0/null(채택 불가).
-- 렌더러(`useMediaPlayback`)는 `state.loadedPath === 현재 곡 경로`일 때만 `mediaTitle`/`loadGeneration`/`loadedPath`를 채택하고(`shouldAdoptLoadIdentity`), 곡이 바뀌면 즉시 null로 되돌린다. 표시 제목은 `displayTitle`: `mediaTitle`이 파일명과 같으면(태그 없음) 확장자 뺀 파일명. 알려진 한계: `mpv:ended`에는 식별 정보가 없어 늦게 도착한 이전 곡의 `ended`가 다음 곡/한 곡 반복을 잘못 트리거할 수 있다.
+- 렌더러(`useMediaPlayback`)는 `state.loadedPath === 현재 곡 경로`일 때만 `mediaTitle`/`loadGeneration`/`loadedPath`를 채택하고(`shouldAdoptLoadIdentity`), 곡이 바뀌면 즉시 null로 되돌린다. 표시 제목은 `displayTitle`: `mediaTitle`이 파일명과 같으면(태그 없음) 확장자 뺀 파일명. `mpv:ended`도 같은 식별 정보(`{loadGeneration, loadedPath}`, `MpvEndedPayload`)를 워커가 싣고 메인이 그대로 릴레이한다. 렌더러는 `loadedPath`가 null이 아니고 현재 곡 경로와 다르면 그 `ended`를 버린다(`shouldHandleEnded`) — 이전 곡이 끝나는 순간 사용자가 다음/이전 곡을 누른 경우 새 곡을 건너뛰거나(한 곡 반복이면 0초로 되감기) 하지 않도록.
 
 ### 11.13 재생 바 장면 미리보기 (영상)
 - 영상 시크바에 마우스를 올리면 해당 시각의 장면(240×135)과 시간을 카드(`SeekPreviewCard`, `pointer-events: none`, 창 가장자리 8px 안으로 클램프, 640px 미만 창은 192px)로 표시. 도킹 바·전체 화면 띠·분리 창 공통. 시크 thumb 드래그 중에는 바 밖으로 나가도 따라간다. 오디오나 길이를 모르는 영상은 카드 없음.
-- **렌더러**(`seekPreview.ts`, `useSeekPreview.ts`): 시각을 버킷(`max(1초, 길이/200)`)으로 양자화, 곡별 LRU 캐시(최대 300장, 곡이 바뀌면 비움), 동시 요청 1개(응답이 오면 가장 최근 호버 버킷 요청). **미리보기 세대**는 위 `loadGeneration`을 채택 규칙대로 받은 값이고 곡이 바뀌면 `null` — `null`인 동안은 요청도 표시도 없이 시간 알약만 보인다. 그리는 것은 저장된 프레임의 버킷·곡 경로·세대가 모두 현재 호버와 같을 때만. 응답이 `null`/오류면 그 버킷은 포인터가 다른 버킷으로 갈 때까지 재시도하지 않으므로 **`null` = 미리보기 없음**(시간 툴팁만, 루프 없음). 분리 창이 열려 있을 때 메인 창의 도킹 바는 호스트가 아니라 세대가 null이어서 시간 알약만 나온다.
+- **렌더러**(`seekPreview.ts`, `useSeekPreview.ts`): 시각을 버킷(`max(1초, 길이/200)`)으로 양자화, 곡별 LRU 캐시(최대 300장, 곡이 바뀌면 비움), 동시 요청 1개(응답이 오면 가장 최근 호버 버킷 요청). **미리보기 세대**는 위 `loadGeneration`을 채택 규칙대로 받은 값이고 곡이 바뀌면 `null` — `null`인 동안은 요청도 표시도 없이 시간 알약만 보인다. 그리는 것은 저장된 프레임의 버킷·곡 경로·세대가 모두 현재 호버와 같을 때만. 응답이 `null`/오류면 그 버킷은 포인터가 다른 버킷으로 갈 때까지 재시도하지 않으므로 **`null` = 미리보기 없음**(시간 툴팁만, 루프 없음). 분리 창이 열려 호스트가 아니게 된 메인 창은 상태 업데이트를 더 받지 않지만, `useMediaPlayback`은 세대를 **곡이 바뀔 때만** null로 되돌리므로(호스트 해제 시에는 아님) 마지막으로 채택한 세대를 그대로 갖고 있다. 분리 창이 같은 파일을 다시 `load`해도 메인은 같은 경로면 세대를 올리지 않으므로, 메인 창 도킹 바도 그 세대가 현재 로드와 같은 동안(다음 곡이 로드될 때까지)은 프레임을 요청·표시한다. 곡이 바뀌면 메인 창은 세대가 null이 되고 호스트가 아니라 새 세대를 받지 못해 시간 알약만 나온다.
 - **IPC** `mpv:preview-frame`(invoke): 요청 `{seconds, generation, requestId}`(Zod `.strict()` — `path`를 끼워 넣으면 **거부**), 응답 `{generation, requestId, seconds, width: 240, height: 135, data: Uint8Array(RGBA 129,600B)} | null`(`seconds`는 요청 값 그대로 = 버킷 시작). **경로는 IPC에 실리지 않는다** — 메인이 `mpvProcessManager.getCurrentLoadedPath()`(이미 경계 검증·resolve된 현재 재생 파일)에서 얻고, 요청 `generation`이 `getLoadState().generation`과 다르거나 현재 파일이 영상이 아니거나 로드된 게 없으면 `null`(큐에서 나올 때와 워커 응답 뒤에도 다시 검사).
 - **두 번째 mpv**(`mpvPreviewWorker.ts` utilityProcess + `mpvPreviewManager.ts` + 순수 상태기계 `mpvPreviewSession.ts` + `previewQueue.ts`): 같은 애드온을 `init(path, 240, 135, 'no', {preview: true})`로 — `ao=null, aid=no, pause=yes, hr-seek=no, cache=no, demuxer-readahead-secs=0, hwdec=no, vd-lavc-threads=2`(애드온은 이 5번째 인자에서 `preview === true`만 읽고 임의 옵션 통로 없음). 요청 흐름: 로드(`file-loaded` + 초기 `playback-restart` 대기, 3초) → `seek(t, 'keyframes')` → **대기 중 4ms마다 `renderFrame`을 호출**하고 `playback-restart` 이후 첫 성공 프레임을 반환(800ms 초과 시 `null`). 실측 **중앙값 약 27ms**(`playback-restart` 뒤에만 렌더하면 약 230ms — 시크 대기 중 렌더가 계약).
 - **큐/수명**: 진행 1 + 대기 1(새 요청이 대기 중인 것을 `null`로 교체, 진행 중인 것은 중단 안 함). 첫 요청에 지연 생성, 요청 없이 **60초**면 종료(`shutdown` 후 2초 유예 뒤 kill; 워커는 `process.exit(0)`), 앱 종료 시 정리. 작업 6초 무응답이면 kill(크래시로 계산, 대기 작업은 새 워커로), **60초 안에 3회 비정상 종료면 이번 실행 동안 끔**(`null`). 시크 실패/타임아웃 뒤에는 `loadedPath`를 비워 다음 요청이 `loadFile`로 재로드(늦게 온 `playback-restart`가 다음 요청에 섞이지 않도록). 크기가 240×135×4가 아닌 프레임은 폐기. 본 mpv 크래시 시 현재 경로가 비워져 다음 로드까지 `null`. 워커는 `setPause`/`setVolume`을 호출하지 않아 소리가 나지 않는다.
@@ -567,9 +567,9 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 | --- | --- |
 | `npm ci` | 설치(권장, lockfile 고정). `postinstall`이 better-sqlite3 리빌드 + mpv 애드온 빌드/리빌드 실행(node-gyp·MSVC 필요) |
 | `npm run dev` | electron-vite 개발 모드 (CSP 미적용) |
-| `npm run build` | `verify:binaries` → electron-vite build → electron-builder (NSIS, `dist/`) |
+| `npm run build` | `verify:binaries` → `build:mpv-addon` → `rebuild:mpv-addon`(postinstall과 같은 애드온 재빌드 — `npm ci` 없이 갱신한 체크아웃의 옛 `mpv_addon.node`가 포장되지 않도록) → electron-vite build → electron-builder (NSIS, `dist/`) |
 | `npm run release` | 위와 같고 GitHub에 즉시 발행 (`--publish always`, `GH_TOKEN` 필요) |
-| `npm test` | Vitest, node 환경. **170 파일 / 1324 테스트**(2026-11-23 미디어 전체 화면 작업 후 합계; 폴더별 분포는 재집계하지 않음). 렌더러는 순수 함수 위주 + jsdom 렌더 테스트 9개 파일(별점·메모, 세이브 다이얼로그, 툴팁, 일부 훅/서비스). 그 외 UI 변경은 수동 확인 필요 |
+| `npm test` | Vitest, node 환경. **172 파일 / 1354 테스트**(2026-11-23 미디어 전체 화면 작업·최종 리뷰 수정 후 합계; 폴더별 분포는 재집계하지 않음). 렌더러는 순수 함수 위주 + jsdom 렌더 테스트 9개 파일(별점·메모, 세이브 다이얼로그, 툴팁, 일부 훅/서비스). 그 외 UI 변경은 수동 확인 필요 |
 | `npm run typecheck` / `lint` / `format:check` | tsc build / ESLint(flat) / Prettier |
 | `npm run build:mpv-addon`, `rebuild:mpv-addon` | libmpv 네이티브 애드온 빌드 / Electron ABI 리빌드 — `mpv_addon.cc` 변경 시 필수 |
 | `npm run verify:binaries` | `libmpv-2.dll` SHA-256 검증 |
@@ -578,7 +578,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 - Node 버전: `.nvmrc` = 20.
 - 스택: Electron 43.8.7, electron-vite 5, Vite 7.3, React 19.2, TypeScript 6(strict), Tailwind v4 + shadcn/ui(Radix), Zustand 5, TanStack Query 5 / Router 1, Drizzle 0.45 + better-sqlite3 13, dnd-kit, react-window 2, framer-motion 12, cheerio, sharp 0.35.5, ffmpeg-static, iconv-lite, electron-updater, zod 4.6.7, sonner, Pretendard 번들 폰트. `overrides`로 undici/seroval/js-yaml 등 하위 의존성 고정.
 - 패키징: `extraResources`로 `LOGO.png`, `mpv_addon.node`, `libmpv-2.dll` 동봉, `asarUnpack` 사용. 앱 ID `com.arkmanager.app`.
-- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 111개, preload API 함수 약 140개(미디어 전체 화면 작업으로 몇 개 늘었으나 재집계하지 않음), 번역 키 362개.
+- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 111개, preload API 함수 약 140개(미디어 전체 화면 작업으로 몇 개 늘었으나 재집계하지 않음), 번역 키 364개(2026-11-23 TypeScript 파서로 `ko` 객체 재집계, ja/en 동일).
 - 설계 스펙·구현 계획(`docs/superpowers/`, `.superpowers/`)은 gitignore 대상이라 **저장소에는 없음**(2026-11-23 미디어 전체 화면 작업의 스펙·계획은 이 PC 작업 폴더에만 남아 있고 커밋되지 않음). 그 외 코드 주석이 인용하는 이 경로의 문서는 대부분 열람 불가 → 주석 자체가 유일한 근거.
 
 ---
@@ -619,6 +619,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 | 음성 화면(표지 중심·확대·표지 없음·강조색) + 표지 파이프라인(2048px 큰 표지, 곡/작품 세대 + 곡별 잠금 무효화, RJ 작품 표지 대체, `.notfound` 잔존 버그 수정) | §11.10~11.11, `media:get-cover-info` |
 | 곡 제목(`media-title`)·`loadGeneration`/`loadedPath` 식별 정보 | §11.12 |
 | 시크바 장면 미리보기(두 번째 mpv utilityProcess, 중앙값 약 27ms) | §11.13, `mpv:preview-frame` |
+| 최종 리뷰 수정: `mpv:ended`에 로드 식별 정보(늦은 `ended` 무시), `build`/`release`가 애드온 재빌드 + 옛 애드온이면 제목 null·미리보기 거부, 전체 화면에서 EQ 팝오버가 열려 있으면 `Esc`는 팝오버만 닫음, `get-cover-info`/`mediathumb://`가 resolve 예외에 "표지 없음"/404, 일괄 크롤의 작품 표지 세대 bump를 실행당 1회로, 영상 `.notfound`는 작품 표지 세대와 무관, 미리보기 프레임 길이 검사(방어 심층) + 곡 전환 시 호버 초기화 | §11.12, §11.13, `package.json` |
 
 ### 20.1 보안 브랜치 마무리 (릴리스 전 필수)
 1. `npm ci`(ffmpeg 바이너리 복구 포함) 후 mpv 애드온 재빌드 확인. (이 PC에서는 2026-11-23에 `build:mpv-addon` + `rebuild:mpv-addon` 완료)
@@ -630,7 +631,8 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
    - 모니터 전체 화면: ⛶·`F`·영상 더블클릭이 토글(`F` 길게 눌러도 깜빡임 없음), `Esc`는 해제만 하고 뒤의 상세 사이드바를 닫지 않으며 전체 화면이 아닐 땐 예전처럼 동작 / 미디어가 켠 전체 화면은 ⊟·분리(⤡)·재생 종료/재생목록 비움에서 풀리고 사용자가 F11로 켠 것은 유지 / F11 상태에서 오버레이를 열고 ⛶ 한 번에 해제되는지(아이콘이 잠시 "진입"으로 보일 수 있음) / 도킹(최소화) 상태에서 F11 중 `F`·`Esc`를 미디어가 가져가지 않는다.
    - 분리 창: 같은 띠·자동 숨김·⛶/`F`/더블클릭/`Esc`, 분리·최소화 버튼 없음, ☰가 오른쪽 재생목록 패널을 열고(기본 닫힘, 열려 있는 동안 띠 유지), 좋아요·자막 PIP 버튼 동작.
    - 음성 화면: 내장 표지 / 폴더 이미지 `cover.jpg` / 표지 없는 RJ 작품 폴더 안 곡(작품 표지 표시)에서 흐린 배경·원 비율 표지·강조색(재생 버튼·슬라이더·진행선) / 표지 없는 곡(남색 배경·음표 사각형·클릭 무반응·primary 강조색) / 표지 클릭·Tab+Enter/Space로 확대·축소(재생/일시정지가 같이 토글되지 않음, 곡이 바뀌어도 유지, 분리 창은 독립) / 긴 일본어 제목 3줄 말줄임·파일명 2줄 / 4:3 가로 표지(너비 45% 한도)와 세로·정사각 표지(높이 2/3 한도), 창 크기 변경 시 띠와 겹치지 않음 / 표지 교체 후 곡을 바꾸지 않아도 이미지·강조색 갱신 / 표지가 매우 밝거나 어두울 때 재생 아이콘·제목 가독성 / 곡 전환 중 확대 상태에서 화면이 navy·기본 배치로 번쩍이지 않음 / 폭 520px 미만 분리 창의 세로 배치 / 4K·최대화에서 블러 배경의 GPU 부하와 자동 숨김 fade 부드러움.
-   - 장면 미리보기: 1시간 이상 영상에서 새 지점은 약 0.1초 안에, 본 지점은 즉시 카드가 뜬다 / 빠르게 왕복해도 마지막 지점 장면만 남는다 / 곡 전환 직전·직후 호버에서 이전 곡 장면이 나오지 않는다 / 도킹 바·전체 화면 띠·분리 창에서 확인(분리 중 메인 창 도킹 바는 시간 알약만) / 오디오·길이 모르는 영상은 카드 없음 / 좌우 끝과 640px 미만 창에서 카드가 창 안에 머문다 / thumb 드래그 중 바 밖에서도 따라가고 바 밖에서 놓으면 사라진다 / 미리보기 소리가 나지 않고 격렬한 스크럽에도 본 재생이 끊기지 않는다 / 숨은 띠와 함께 카드가 사라지고 클릭을 막지 않는다.
+   - 장면 미리보기: 1시간 이상 영상에서 새 지점은 약 0.1초 안에, 본 지점은 즉시 카드가 뜬다 / 빠르게 왕복해도 마지막 지점 장면만 남는다 / 곡 전환 직전·직후 호버에서 이전 곡 장면이 나오지 않는다 / 도킹 바·전체 화면 띠·분리 창에서 확인(분리 중 메인 창 도킹 바는 분리 시점의 곡 동안은 장면이 나오고, 곡이 바뀐 뒤에는 시간 알약만 — §11.13) / 오디오·길이 모르는 영상은 카드 없음 / 좌우 끝과 640px 미만 창에서 카드가 창 안에 머문다 / thumb 드래그 중 바 밖에서도 따라가고 바 밖에서 놓으면 사라진다 / 미리보기 소리가 나지 않고 격렬한 스크럽에도 본 재생이 끊기지 않는다 / 숨은 띠와 함께 카드가 사라지고 클릭을 막지 않는다.
+   - 최종 리뷰 수정분: 전체 화면에서 EQ 팝오버(프리셋 드롭다운 포함)를 연 채 `Esc` → 팝오버만 닫히고 전체 화면 유지(다시 `Esc`로 해제) / 트랙 끝 직전·끝나는 순간에 다음 곡 버튼(또는 큐 항목 클릭) → 누른 곡이 그대로 재생되고 한 곡 더 건너뛰지 않음(한 곡 반복이면 새 곡이 0초로 되감기지 않음).
 5. 버전 번호 결정(1.2.4 또는 1.3.0), README 업데이트 내역 작성(**업데이트 후 "전체 메타데이터 새로고침" 1회 안내** 포함, §5.3), master 병합.
 6. 계정·배포 보호(SECURITY.md §2-3): 2FA, 토큰 재발급, fine-grained `GH_TOKEN`, 가능하면 CI 릴리스. `libmpv-2.dll` 해시를 공식 배포본과 대조.
 
@@ -667,14 +669,15 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 ### 20.6 미디어 전체 화면 후속 (리뷰에서 보류한 작은 문제)
 **표지 파이프라인**
 - 인코딩 I/O 오류(디스크 가득 등)도 디코딩 오류처럼 다음 소스로 넘어가 영구 `.notfound`가 기록될 수 있음 → 디코딩 오류만 "손상"으로 취급.
-- 내장 표지 추출의 일시 실패가 폴더 이미지 성공에 가려짐. 영상의 `.notfound`는 작품 표지 세대가 오를 때마다 ffmpeg를 다시 돌림(영상엔 작품 표지 단계가 없음).
+- 내장 표지 추출의 일시 실패가 폴더 이미지 성공에 가려짐. (영상 `.notfound`가 작품 표지 세대마다 무효화되던 것은 최종 리뷰에서 수정 — §20.0)
+- 버전 없는 썸네일 URL: `?v=<곡 세대>-<작품 세대>`를 붙이는 것은 `AudioArtworkView`(전체 화면 음성 화면)뿐이고, 도킹 바·큐·재생목록 행·MediaSession artwork는 `buildMediaThumbnailUrl(path)`(버전 없음)를 쓴다 → 표지가 바뀌어도 곡이 바뀔 때까지 브라우저 캐시의 옛 이미지가 남을 수 있음.
 - 커밋이 예외로 끝나면 썸네일/표지 임시 파일이 `finally`에서 안 지워질 수 있음, `.notfound` 삭제는 곡 잠금 밖(아주 작은 경쟁), 부분 커밋 실패 뒤 옛/새 캐시 혼재 가능(재생성되어 무해).
 - 손상된 `.large.webp`는 512px override로 폴백하지 않고 resolve로 빠짐. `overrideCoverInfo.ts`(손상/누락 폴백)·손상된 세대 파일 리셋, 핸들러 수준의 작품 표지 세대 bump(LINK/UNLINK/커스텀 표지/크롤/일괄) 테스트 없음. 캐시 초기화가 진행 중 해결과 겹치면 방금 만든 파일이 남을 수 있음(허용). `mediathumb://` 응답에 `Cache-Control` 없음.
 - `workCoverLookup` 테스트 공백: 드라이브 루트/UNC/`D:Lib` vs `D:Library` 접두/혼합 구분자·대소문자.
 - `useMediaCoverInfo`가 훅마다 IPC 리스너 1개(곡 N개면 N개) → 앱 단위 구독 1개로. 강조색 `MAX_LIGHTNESS` 0.70 하향 검토, `accentForeground` 임계 0.4(WCAG 교차점 약 0.18) 가독성 조정.
 
 **재생 상태 · 미리보기 메인/애드온**
-- `mpv:ended`에 식별 정보가 없어 늦은 `ended`가 `next()`/한 곡 반복을 트리거할 수 있음. `onStateUpdate` effect가 곡이 바뀔 때마다 재구독(짧은 공백). 곡 변경 시 상태 초기화의 훅 단위 테스트 없음, init 실패의 `loadedPath`는 실패한 파일.
+- `onStateUpdate` effect가 곡이 바뀔 때마다 재구독(짧은 공백). init 실패의 `loadedPath`는 실패한 파일. (늦은 `ended` 문제와 곡 변경 시 식별 정보 초기화의 훅 단위 테스트는 최종 리뷰에서 해결 — §11.12, `useMediaPlayback.test.ts`)
 - 미리보기 워커: 초기 `playback-restart`를 내지 않는 파일은 요청마다 3초(실패 경로 메모이즈 필요), 미사용 `MpvPreviewFrameSchema` export, drain이 `end-file`을 버림, 이미 종료된 프로세스에 kill 유예.
 - 애드온 스파이크/옵션: `preview-latency.cjs`의 랜덤 시드, `set_option` 반환값 무시, restart-id 가드, 4ms 간격 지터, getter throw 처리.
 
@@ -687,7 +690,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 - 표지 한도를 viewport가 아닌 행 기준으로 측정(1080p에서 약 653px vs 720px, 스펙은 "약"), 레터박스 클릭이 확대를 접음, 동기 가사가 표지와 겹칠 수 있음, 좁은 레이아웃 임계가 실제로는 컨테이너 약 620px(안쪽 행 84%), 정보 조회 중 빈 테두리 버튼, `restoreAllMocks`를 `afterEach`로 옮길 것(테스트 스파이 누수).
 
 **장면 미리보기 렌더러**
-- 호버 상태(`hovered`/`hoveredBucket`/`seekHover`)가 곡 전환 뒤 다음 포인터 이동까지 남아 낡은 버킷/시간 표시. `new ImageData` 전에 프레임 길이(w×h×4) 검사가 없어 어긋나면 effect에서 throw → 플레이어 트리 언마운트 가능(방어 필요). 프레임당 130KB 추가 복사.
+- 프레임당 130KB 추가 복사. (곡 전환 뒤 호버 상태 잔존 — 컨트롤러 `hovered`와 바의 `seekHover`를 곡 변경 시 초기화 — 과 프레임 길이 검사는 최종 리뷰에서 해결. 길이 검사는 **방어 심층**일 뿐: 메인이 240×135×4가 아닌 프레임을 이미 버리므로 IPC 경로로는 길이가 어긋난 프레임이 오지 않는다. 렌더러는 `useSeekPreview`의 `receive`에서 w×h×4가 아닌 프레임을 캐시 전에 버리고 `SeekPreviewCard`의 그리기를 try/catch로 감쌌다.)
 - 비호스트 도킹 바가 낡은 duration/generation 유지(무해), `setSeekHover`가 이동마다 바 전체를 리렌더하고 드래그 중 이중 처리, `nextPreviewGeneration`은 테스트만 있고 프로덕션 미사용(실제는 `shouldAdoptLoadIdentity`), 드래그 중 duration이 바뀌면 옛 값 사용, 시크 비율이 thumb inset을 무시(끝에서 수 px 차이), 매우 짧은 분리 창에서 카드 위쪽 잘림(세로 클램프 없음).
 
 ---

@@ -42,7 +42,7 @@
    npm ci
    npm run build:mpv-addon && npm run rebuild:mpv-addon   # postinstall이 자동 실행
    ```
-2. **실제 앱 실행 점검** (이 세션에서는 GUI를 띄우지 못했습니다. 자동 테스트 1009개·타입체크·린트·빌드는 통과)
+2. **실제 앱 실행 점검** (이 세션에서는 GUI를 띄우지 못했습니다. 자동 테스트 1009개(당시 기준; 2026-11-23 현재 172 파일 / 1354개)·타입체크·린트·빌드는 통과)
    - `npm run dev` 후 콘솔(F12)에 CSP 위반 메시지가 없는지: 갤러리 표지, Explorer 아이콘, 미디어 썸네일, 폰트, 테마 전환
    - 설정 → 라이브러리: 폴더 선택창으로 추가(무확인) / 경로 직접 입력(확인창 뜸) / `C:\` 거부
    - Explorer에서 `.exe` 더블클릭 → 확인창, `.txt` → 바로 열림
@@ -83,11 +83,11 @@
 | 낮음 | `libmpv-2.dll` 상대 이름 로드 | `LoadLibraryA("libmpv-2.dll")` + PATH 앞에 애드온 폴더 추가 방식. Windows 검색 순서상 현재 작업 폴더가 PATH보다 먼저라 DLL 심기 여지가 있음 → 전체 경로 + `LoadLibraryExW` 권장(애드온 재빌드 필요) |
 | 낮음 | `detectGameVersion(identifier.path)` | 세이브 스냅샷/버전 비교 시 렌더러가 보낸 경로로 폴더의 exe를 나열하고 버전을 읽음(읽기 전용, 셸 없음). 라이브러리 경계 검증 추가 권장 |
 | 낮음 | 재귀 스캔도 경계 검사 없음 | 얕은 스캔과 같이 읽기 전용 목록. 의도된 동작 |
-| 정보 | lint 실패 | `scripts/verify-native-binaries.mjs`가 ESLint Node globals 설정 밖이라 `npm run lint`가 오류 5건으로 실패(§15의 "ESLint 오류 0"은 이 스크립트 추가 전 결과) |
+| 정보 | lint 실패 | `scripts/verify-native-binaries.mjs`가 ESLint Node globals 설정 밖이라 `npm run lint`가 오류 5건으로 실패(§15의 "ESLint 오류 0"은 이 스크립트 추가 전 결과). **2026-11-23 수정됨**: 현재 오류 0, 경고 1건(`button.tsx` react-refresh, 기존) |
 
 ### 3.2 2026-11-23 미디어 전체 화면 작업에서 추가된 표면
 
-새 코드가 만든 입력 경로와 그 방어입니다(상세 원리는 SECURITY_FIXES.md §16). 새로 열린 위험은 없고, 아래는 모두 기존 규칙을 그대로 적용한 결과입니다.
+새 코드가 만든 입력 경로와 그 방어입니다(상세 원리는 SECURITY_FIXES.md §13.1). 새로 열린 위험은 없고, 아래는 모두 기존 규칙을 그대로 적용한 결과입니다.
 
 | 표면 | 방어 | 잔여 |
 |---|---|---|
