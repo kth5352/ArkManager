@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Pause,
   MessageSquareText,
@@ -19,13 +19,9 @@ import { Button } from '../ui/button'
 import { HoverTooltip } from '../ui/hover-tooltip'
 import { EqualizerPopover } from './EqualizerPopover'
 import { MEDIA_ACCENT, MEDIA_ACCENT_FOREGROUND } from './playerView'
-
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+import { formatTime, secondsAtPointer } from './seekPreview'
+import { SeekPreviewCard, type SeekPreviewHover } from './SeekPreviewCard'
+import { useSeekPreview } from './useSeekPreview'
 
 interface MediaTransportBarProps {
   playback: MediaPlaybackState
@@ -119,6 +115,67 @@ export function MediaTransportBar({
     window.addEventListener('pointerup', end)
     window.addEventListener('pointercancel', end)
   }
+
+  // Scene preview (spec §3.7): video with a known duration only, in every
+  // place this bar renders (docked bar, fullscreen band, detached window).
+  // A window that isn't hosting mpv never gets a load generation, so there
+  // it shows the time pill only.
+  const previewEnabled =
+    playback.isVideo && Number.isFinite(playback.duration) && playback.duration > 0
+  const { onHover: onPreviewHover, frame: previewFrame } = useSeekPreview({
+    trackPath: playback.track.path,
+    isVideo: playback.isVideo,
+    duration: playback.duration,
+    generation: playback.loadGeneration,
+  })
+  const [seekHover, setSeekHover] = useState<SeekPreviewHover | null>(null)
+  const seekWrapperRef = useRef<HTMLDivElement | null>(null)
+  // Non-null while a seek-thumb drag is being followed on window, so the
+  // preview keeps tracking the pointer even outside the bar.
+  const seekDragCleanupRef = useRef<(() => void) | null>(null)
+
+  const clearSeekHover = (): void => {
+    setSeekHover(null)
+    onPreviewHover(null)
+  }
+  const updateSeekHover = (clientX: number): void => {
+    const el = seekWrapperRef.current
+    const rect = el?.getBoundingClientRect()
+    const seconds =
+      previewEnabled && rect ? secondsAtPointer(clientX, rect, playback.duration) : null
+    if (seconds === null || !rect) {
+      clearSeekHover()
+      return
+    }
+    setSeekHover({ seconds, clientX, wrapperLeft: rect.left, viewportWidth: window.innerWidth })
+    onPreviewHover(seconds)
+  }
+  const beginSeekHoverDrag = (): void => {
+    seekDragCleanupRef.current?.()
+    const move = (event: PointerEvent): void => updateSeekHover(event.clientX)
+    const end = (event: PointerEvent): void => {
+      seekDragCleanupRef.current?.()
+      const rect = seekWrapperRef.current?.getBoundingClientRect()
+      const inside =
+        event.type === 'pointerup' &&
+        rect !== undefined &&
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom
+      if (!inside) clearSeekHover()
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+    seekDragCleanupRef.current = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      seekDragCleanupRef.current = null
+    }
+  }
+  useEffect(() => () => seekDragCleanupRef.current?.(), [])
 
   const prevButton = (
     <HoverTooltip content={t('media.previousTrack')}>
@@ -222,24 +279,38 @@ export function MediaTransportBar({
     <EqualizerPopover dark={dark} compact={compact} onOpenChange={onPopoverOpenChange} />
   )
   const seekInput = (
-    <input
-      type="range"
-      min={0}
-      // `playback.duration || 0` would leave this as Infinity while
-      // the real duration isn't known yet (see useMediaPlayback's
-      // durationchange handling) - a range input with max="Infinity"
-      // doesn't drag correctly, which is what made seeking silently
-      // do nothing until the duration happened to resolve.
-      max={Number.isFinite(playback.duration) ? playback.duration : 0}
-      value={dragValue ?? playback.currentTime}
-      onChange={(e) => setDragValue(Number(e.target.value))}
-      onPointerDown={beginSliderDrag}
-      onPointerUp={commitDrag}
-      onKeyUp={commitDrag}
-      aria-label={band ? t('media.seek') : undefined}
-      className="h-1 w-full"
-      style={band ? { accentColor: MEDIA_ACCENT } : undefined}
-    />
+    <div
+      ref={seekWrapperRef}
+      className="relative flex min-w-0 flex-1 items-center"
+      onPointerEnter={(e) => updateSeekHover(e.clientX)}
+      onPointerMove={(e) => updateSeekHover(e.clientX)}
+      onPointerLeave={() => {
+        if (seekDragCleanupRef.current === null) clearSeekHover()
+      }}
+    >
+      <input
+        type="range"
+        min={0}
+        // `playback.duration || 0` would leave this as Infinity while
+        // the real duration isn't known yet (see useMediaPlayback's
+        // durationchange handling) - a range input with max="Infinity"
+        // doesn't drag correctly, which is what made seeking silently
+        // do nothing until the duration happened to resolve.
+        max={Number.isFinite(playback.duration) ? playback.duration : 0}
+        value={dragValue ?? playback.currentTime}
+        onChange={(e) => setDragValue(Number(e.target.value))}
+        onPointerDown={() => {
+          beginSliderDrag()
+          if (previewEnabled) beginSeekHoverDrag()
+        }}
+        onPointerUp={commitDrag}
+        onKeyUp={commitDrag}
+        aria-label={band ? t('media.seek') : undefined}
+        className="h-1 w-full"
+        style={band ? { accentColor: MEDIA_ACCENT } : undefined}
+      />
+      {previewEnabled && <SeekPreviewCard hover={seekHover} frame={previewFrame} />}
+    </div>
   )
   const errorText = playback.error && (
     <p className="text-[10px] text-destructive">{t('media.playbackError')}</p>
