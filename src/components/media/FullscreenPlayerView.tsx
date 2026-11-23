@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMediaCoverInfo } from '../../services/mediaArtworkService'
+import { useMediaPlayerStore } from '../../stores/mediaPlayerStore'
 import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import { cn } from '../../lib/utils'
 import { useWindowFullscreen } from '../../hooks/useWindowFullscreen'
 import { PlayerControlBands, type ControlBand } from './PlayerControlBands'
+import { AudioArtworkView, AudioTrackHeading } from './AudioArtworkView'
+import { coverDisplay } from './coverLayout'
 import { useAutoHideControls } from './useAutoHideControls'
 import { useFullscreenKeys } from './useFullscreenKeys'
 import { deriveHoldReasons, lyricsBottomPx } from './playerView'
 import type { MediaPlaybackState } from './useMediaPlayback'
-import logoUrl from '../../../LOGO.png'
 
 // Width of the detached window's playlist side panel (opened with ☰).
 const SIDE_PANEL_WIDTH_PX = 288
@@ -48,9 +50,9 @@ type PerBand = Record<ControlBand, boolean>
 const NO_BANDS: PerBand = { top: false, bottom: false }
 
 // Shared by FullscreenMediaOverlay (main window) and PlayerWindowPage
-// (detached window). Video fills the view with mpv's <canvas>; audio keeps
-// the resolved thumbnail (or the logo once that 404s). Control bands sit on
-// top and hide after AUTO_HIDE_DELAY_MS without activity (spec §3.5).
+// (detached window). Video fills the view with mpv's <canvas>; audio shows
+// AudioArtworkView (cover-centric screen, spec §3.1-3.3). Control bands sit
+// on top and hide after AUTO_HIDE_DELAY_MS without activity (spec §3.5).
 export function FullscreenPlayerView({
   canvasRef,
   playback,
@@ -138,9 +140,21 @@ export function FullscreenPlayerView({
     return () => observer.disconnect()
   }, [onBottomBandHeightChange])
 
-  // Tracked by path so a different track doesn't inherit a stale failure.
-  const [thumbFailedPath, setThumbFailedPath] = useState<string | null>(null)
-  const thumbFailed = thumbFailedPath === playback.track.path
+  // Audio only: video never queries cover info (null disables the query).
+  const isAudio = !playback.isVideo
+  const { data: coverInfo } = useMediaCoverInfo(isAudio ? playback.track.path : null)
+  const coverExpanded = useMediaPlayerStore((s) => s.coverExpanded)
+  const setCoverExpanded = useMediaPlayerStore((s) => s.setCoverExpanded)
+  // Tracked by path (and cover version) so neither the next track nor a
+  // replaced cover inherits a stale load failure.
+  const [coverFailedKey, setCoverFailedKey] = useState<string | null>(null)
+  const coverKey = `${playback.track.path}\n${coverInfo?.version ?? ''}`
+  const display = coverDisplay(coverInfo, coverFailedKey === coverKey)
+  const audioExpanded = isAudio && display === 'cover' && coverExpanded
+  // Cover accent for the play button, sliders and progress line
+  // (MEDIA_ACCENT); without a cover the app primary stays (spec §3.3).
+  const accent = isAudio && display === 'cover' ? (coverInfo?.accent ?? null) : null
+  const rootStyle = accent ? ({ '--media-accent': accent } as CSSProperties) : undefined
 
   const handleMinimize =
     mode === 'overlay' && onMinimize
@@ -180,6 +194,7 @@ export function FullscreenPlayerView({
         mode === 'overlay' ? 'fixed inset-0 z-50' : 'relative h-screen',
         active ? 'block' : 'hidden'
       )}
+      style={rootStyle}
     >
       <div
         className="absolute inset-y-0 left-0 flex items-center justify-center"
@@ -187,17 +202,17 @@ export function FullscreenPlayerView({
       >
         {playback.isVideo ? (
           <canvas ref={canvasRef} className="h-full w-full object-contain" onDoubleClick={toggle} />
-        ) : thumbFailed ? (
-          <div className="flex h-32 w-32 items-center justify-center">
-            <img src={logoUrl} alt="" className="h-full w-full object-contain opacity-30" />
-          </div>
         ) : (
-          <img
-            src={buildMediaThumbnailUrl(playback.track.path)}
-            alt=""
-            className="max-h-full max-w-full object-contain"
-            draggable={false}
-            onError={() => setThumbFailedPath(playback.track.path)}
+          <AudioArtworkView
+            path={playback.track.path}
+            title={playback.title}
+            fileName={playback.track.name}
+            display={display}
+            coverInfo={coverInfo}
+            expanded={coverExpanded}
+            onToggleExpanded={() => setCoverExpanded(!coverExpanded)}
+            onCoverError={() => setCoverFailedKey(coverKey)}
+            bottomInset={bandHeight}
           />
         )}
         {lyricsEnabled &&
@@ -248,6 +263,12 @@ export function FullscreenPlayerView({
         topBandExtra={topBandExtra}
         topInsetRight={contentInsetRight}
         bottomBandRef={bottomBandRef}
+        bottomBandHeader={
+          audioExpanded ? (
+            <AudioTrackHeading title={playback.title} fileName={playback.track.name} size="band" />
+          ) : undefined
+        }
+        bottomBandSolid={audioExpanded}
         onPointerOverChange={onPointerOverChange}
         onFocusInChange={onFocusInChange}
         onDraggingChange={setDragging}

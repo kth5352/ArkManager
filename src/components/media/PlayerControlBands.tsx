@@ -34,6 +34,11 @@ interface PlayerControlBandsProps {
   // Right inset of the top band (px) so it ends where an open sidebar starts.
   topInsetRight?: number
   bottomBandRef?: Ref<HTMLDivElement>
+  // Audio with the cover enlarged (spec §3.2): the title block rides in the
+  // bottom band, which then gets an 80%-opaque blurred background instead of
+  // the fade-out gradient so it stays readable over the cover.
+  bottomBandHeader?: ReactNode
+  bottomBandSolid?: boolean
   onPointerOverChange: (band: ControlBand, over: boolean) => void
   onFocusInChange: (band: ControlBand, focused: boolean) => void
   onDraggingChange: (dragging: boolean) => void
@@ -64,6 +69,8 @@ export function PlayerControlBands({
   topBandExtra,
   topInsetRight = 0,
   bottomBandRef,
+  bottomBandHeader,
+  bottomBandSolid = false,
   onPointerOverChange,
   onFocusInChange,
   onDraggingChange,
@@ -146,9 +153,13 @@ export function PlayerControlBands({
         data-control-band="bottom"
         className={cn(
           bandFade,
-          'right-0 bottom-0 bg-gradient-to-b from-transparent to-black/80 px-[3%] pt-6 pb-2.5'
+          'right-0 bottom-0 px-[3%] pb-2.5',
+          bottomBandSolid
+            ? 'bg-[rgba(12,6,12,0.8)] pt-3.5 backdrop-blur-sm'
+            : 'bg-gradient-to-b from-transparent to-black/80 pt-6'
         )}
       >
+        {bottomBandHeader && <div className="mb-2">{bottomBandHeader}</div>}
         <MediaTransportBar
           playback={playback}
           dark

@@ -78,6 +78,12 @@ interface MediaPlayerState {
   // from whatever AppLayout.tsx reserves space for. 0 until first measured.
   mediaFullscreenBarHeight: number
   setMediaFullscreenBarHeight: (height: number) => void
+  // Whether the audio fullscreen view shows its cover enlarged (spec §3.2).
+  // Per-window UI state like mediaExpanded: toMediaSyncState doesn't project
+  // it, so it never crosses windows, and nothing resets it on a track change
+  // (the enlarged view deliberately carries over to the next track).
+  coverExpanded: boolean
+  setCoverExpanded: (expanded: boolean) => void
   // PIP 자막 창이 지금 떠 있는지 - 메인 프로세스가 진실 공급원(항상 최대 1개만
   // 존재 가능, MediaPlayerHost.tsx가 subtitle-pip:opened/closed 알림을 구독해
   // 이 필드에 반영한다)이므로, 도킹바와 자막 로그 탭 두 토글 버튼이 항상 같은
@@ -203,6 +209,8 @@ export const useMediaPlayerStore = create<MediaPlayerState>((set, get) => ({
   setMediaExpanded: (expanded) => set({ mediaExpanded: expanded }),
   mediaFullscreenBarHeight: 0,
   setMediaFullscreenBarHeight: (height) => set({ mediaFullscreenBarHeight: height }),
+  coverExpanded: false,
+  setCoverExpanded: (expanded) => set({ coverExpanded: expanded }),
   subtitlePipOpen: false,
   setSubtitlePipOpen: (open) => set({ subtitlePipOpen: open }),
   sidebarActiveTab: 'playlists',

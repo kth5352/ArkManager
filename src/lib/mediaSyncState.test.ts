@@ -19,7 +19,7 @@ function baseState(): MediaSyncState {
 
 describe('toMediaSyncState', () => {
   it('projects only the 10 sync-relevant fields, dropping anything else on the input object', () => {
-    const withExtra = { ...baseState(), mediaExpanded: true, sidebarActiveTab: 'queue' } as unknown as MediaSyncState
+    const withExtra = { ...baseState(), mediaExpanded: true, sidebarActiveTab: 'queue', coverExpanded: true } as unknown as MediaSyncState
     const projected = toMediaSyncState(withExtra)
     expect(Object.keys(projected).sort()).toEqual(
       [

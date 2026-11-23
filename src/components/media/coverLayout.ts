@@ -10,6 +10,20 @@ export interface BoxSize {
   height: number
 }
 
+// What the audio view shows in the cover slot: 'pending' while the cover
+// info query hasn't answered yet (an empty slot, so neither a placeholder
+// icon nor a broken image flashes), 'cover' when main reports a cover and its
+// image hasn't failed to load for this track, 'none' otherwise (spec §3.3).
+export type CoverDisplay = 'pending' | 'cover' | 'none'
+
+export function coverDisplay(
+  coverInfo: { hasCover: boolean } | undefined,
+  imageFailed: boolean
+): CoverDisplay {
+  if (coverInfo === undefined) return 'pending'
+  return coverInfo.hasCover && !imageFailed ? 'cover' : 'none'
+}
+
 const isPositive = (n: number): boolean => Number.isFinite(n) && n > 0
 
 // `aspectRatio` is width ÷ height (MediaCoverInfo.aspectRatio); anything

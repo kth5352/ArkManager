@@ -55,6 +55,7 @@ beforeEach(() => {
     mediaExpanded: false,
     sidebarActiveTab: 'playlists',
     mediaFullscreenBarHeight: 0,
+    coverExpanded: false,
   })
 })
 
@@ -92,6 +93,7 @@ it('does not broadcast for UI-only state changes not present in the sync DTO', a
     useMediaPlayerStore.getState().setMediaExpanded(true)
     useMediaPlayerStore.getState().setSidebarActiveTab('queue')
     useMediaPlayerStore.getState().setMediaFullscreenBarHeight(64)
+    useMediaPlayerStore.getState().setCoverExpanded(true)
   })
 
   expect(apiMocks.broadcastState).not.toHaveBeenCalled()

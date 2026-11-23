@@ -21,7 +21,7 @@ export function toMediaSyncState(state: MediaSyncState): MediaSyncState {
 
 // Every store mutation - including ones to fields that never appear in
 // MediaSyncState at all (mediaExpanded, sidebarActiveTab,
-// mediaFullscreenBarHeight, ...) - previously triggered a broadcastState
+// mediaFullscreenBarHeight, coverExpanded, ...) - previously triggered a broadcastState
 // IPC call regardless of whether anything a receiving window cares about
 // actually changed. P0's synthetic benchmark measured this directly: a
 // UI-only toggle broadcasts unconditionally, and at a 10,000-track queue

@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { COVER_MAX_HEIGHT_SHARE, COVER_MAX_WIDTH_SHARE, coverBoxSize } from './coverLayout'
+import {
+  COVER_MAX_HEIGHT_SHARE,
+  COVER_MAX_WIDTH_SHARE,
+  coverBoxSize,
+  coverDisplay,
+} from './coverLayout'
+
+describe('coverDisplay', () => {
+  it('is pending until the cover info arrives', () => {
+    expect(coverDisplay(undefined, false)).toBe('pending')
+  })
+  it('shows the cover when main has one and it has not failed to load', () => {
+    expect(coverDisplay({ hasCover: true }, false)).toBe('cover')
+  })
+  it('falls back to the no-cover look when the image failed or there is none', () => {
+    expect(coverDisplay({ hasCover: true }, true)).toBe('none')
+    expect(coverDisplay({ hasCover: false }, false)).toBe('none')
+  })
+})
 
 type Case = [string, { width: number; height: number }, number, { width: number; height: number }]
 
