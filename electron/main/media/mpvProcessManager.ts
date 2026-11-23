@@ -25,6 +25,17 @@ let hasInitializedCurrentChild = false
 // on a fresh spawn and on the child's exit, because a new process's native
 // addon has nothing loaded.
 let currentLoadedPath: string | null = null
+// Bumped ONLY when a load/init is actually posted to the worker (a repeated
+// request for the already-loaded file does not count), so the renderer can
+// tell "this state-update belongs to the load I asked for" from a late one
+// of a previous load. Monotonic for the whole app run: deliberately NOT reset
+// on respawn/exit, or an old and a new process could report the same number.
+let loadGeneration = 0
+// The exact string the renderer sent with MPV_LOAD for the file currently
+// loaded (before main's resolve()), and whether it is a video. Same reset
+// lifecycle as currentLoadedPath.
+let loadedRequestedPath: string | null = null
+let loadedIsVideo = false
 // Kept as a list rather than attached once to a single child: the child is
 // respawned after an unexpected exit (that's the whole point of the crash
 // isolation), and a listener attached only to the dead process would leave
@@ -57,6 +68,8 @@ function ensureChild(): UtilityProcess {
   })
   hasInitializedCurrentChild = false
   currentLoadedPath = null
+  loadedRequestedPath = null
+  loadedIsVideo = false
   proc.stdout?.on('data', (d: Buffer) => process.stdout.write(`[mpv-worker] ${d}`))
   proc.stderr?.on('data', (d: Buffer) => process.stderr.write(`[mpv-worker] ${d}`))
   proc.on('exit', (code) => {
@@ -65,6 +78,8 @@ function ensureChild(): UtilityProcess {
       child = null
       hasInitializedCurrentChild = false
       currentLoadedPath = null
+      loadedRequestedPath = null
+      loadedIsVideo = false
     }
   })
   for (const listener of workerMessageListeners) proc.on('message', listener)
@@ -91,7 +106,13 @@ export function getCurrentHostWindow(): BrowserWindow | null {
 // Decides between `init` (first call for the current child) and the
 // lighter-weight `load` (every call after that) - see
 // `hasInitializedCurrentChild` above for why this distinction matters.
-export function loadFile(filePath: string, width: number, height: number, isVideo: boolean): void {
+export function loadFile(
+  filePath: string,
+  width: number,
+  height: number,
+  isVideo: boolean,
+  requestedPath: string
+): void {
   const proc = ensureChild()
   if (filePath === currentLoadedPath) {
     // Same file is already loaded in this mpv session - a caller can still
@@ -106,12 +127,23 @@ export function loadFile(filePath: string, width: number, height: number, isVide
     return
   }
   currentLoadedPath = filePath
+  loadedRequestedPath = requestedPath
+  loadedIsVideo = isVideo
+  loadGeneration += 1
   if (hasInitializedCurrentChild) {
     proc.postMessage({ type: 'load', filePath, isVideo })
     return
   }
   proc.postMessage({ type: 'init', filePath, width, height, isVideo })
   hasInitializedCurrentChild = true
+}
+
+export function getLoadState(): {
+  generation: number
+  requestedPath: string | null
+  isVideo: boolean
+} {
+  return { generation: loadGeneration, requestedPath: loadedRequestedPath, isVideo: loadedIsVideo }
 }
 
 export function play(): void {

@@ -78,7 +78,8 @@ describe('MPV_LOAD', () => {
       'D:\\Music\\song.mp3',
       1280,
       720,
-      false
+      false,
+      'D:\\Music\\song.mp3'
     )
   })
 
@@ -96,7 +97,8 @@ describe('MPV_LOAD', () => {
       'C:\\Users\\external\\clip.mp4',
       1280,
       720,
-      true
+      true,
+      'C:\\Users\\external\\clip.mp4'
     )
   })
 

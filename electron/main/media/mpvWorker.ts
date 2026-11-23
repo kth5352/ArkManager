@@ -37,6 +37,7 @@ const addon = require(join(addonDir, 'build/Release/mpv_addon.node')) as {
   getTimePos: () => number | null
   getDuration: () => number | null
   getEofReached: () => boolean
+  getMediaTitle: () => string | null
   getHwdecCurrent: () => string
   pollEvent: () => { name: string; error?: string } | null
   shutdown: () => string
@@ -130,6 +131,7 @@ function pushStateUpdate(isPlaying: boolean): void {
     currentTime: addon.getTimePos() ?? 0,
     duration: addon.getDuration(),
     error: null,
+    mediaTitle: addon.getMediaTitle(),
   })
 }
 
@@ -148,6 +150,7 @@ function pollAndForwardEvents(): void {
         currentTime: addon.getTimePos() ?? 0,
         duration: addon.getDuration(),
         error: ev.error,
+        mediaTitle: addon.getMediaTitle(),
       })
     }
     // Only 'end-file'/'file-loaded' are logged: they're real, current

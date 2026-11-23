@@ -53,7 +53,7 @@ export function registerMpvHandlers(
     // Hand mpv the normalized absolute path that was just validated - never the
     // raw renderer string (which could be a URL or an mpv pseudo-protocol such
     // as edl:// or lavfi:// that merely resolves to a harmless-looking path).
-    mpv.loadFile(resolve(filePath), 1280, 720, isVideo)
+    mpv.loadFile(resolve(filePath), 1280, 720, isVideo, filePath)
   })
 
   // Re-points frame delivery at the calling window without touching playback
@@ -111,6 +111,7 @@ export function registerMpvHandlers(
       duration?: number | null
       error?: string | null
       result?: string
+      mediaTitle?: string | null
     }
     if (m.type === 'state-update') {
       const win = mpv.getCurrentHostWindow()
@@ -118,6 +119,7 @@ export function registerMpvHandlers(
       // the worker's ~4x/sec state push is still in flight - sending to a
       // destroyed window's webContents throws.
       if (!win || win.isDestroyed()) return
+      const load = mpv.getLoadState()
       win.webContents.send(IPC_CHANNELS.MPV_STATE_UPDATE, {
         isPlaying: m.isPlaying,
         currentTime: m.currentTime,
@@ -126,6 +128,9 @@ export function registerMpvHandlers(
         // state-update with `error: result` when loadFile fails, and that's
         // the only way the renderer ever learns a track failed to open.
         error: m.error ?? null,
+        mediaTitle: m.mediaTitle ?? null,
+        loadGeneration: load.generation,
+        loadedPath: load.requestedPath,
       })
       return
     }
@@ -139,11 +144,15 @@ export function registerMpvHandlers(
     if (m.type === 'init-failed') {
       const win = mpv.getCurrentHostWindow()
       if (!win || win.isDestroyed()) return
+      const load = mpv.getLoadState()
       win.webContents.send(IPC_CHANNELS.MPV_STATE_UPDATE, {
         isPlaying: false,
         currentTime: 0,
         duration: null,
         error: m.result ?? 'mpv init failed',
+        mediaTitle: null,
+        loadGeneration: load.generation,
+        loadedPath: load.requestedPath,
       })
       return
     }

@@ -46,6 +46,8 @@ static double g_duration = 0;
 static bool g_hasTimePos = false;
 static bool g_hasDuration = false;
 static bool g_eofReached = false;
+static std::string g_mediaTitle;
+static bool g_hasMediaTitle = false;
 static uint64_t g_observationId = 0;
 
 static mpv_create_fn g_p_create = nullptr;
@@ -135,6 +137,8 @@ static void ResetPlaybackProperties() {
   g_hasTimePos = false;
   g_hasDuration = false;
   g_eofReached = false;
+  g_mediaTitle.clear();
+  g_hasMediaTitle = false;
 }
 
 static int ObservePlaybackProperties() {
@@ -143,7 +147,9 @@ static int ObservePlaybackProperties() {
   if (rc < 0) return rc;
   rc = g_p_observe_property(g_ctx, g_observationId, "duration", MPV_FORMAT_DOUBLE);
   if (rc < 0) return rc;
-  return g_p_observe_property(g_ctx, g_observationId, "eof-reached", MPV_FORMAT_FLAG);
+  rc = g_p_observe_property(g_ctx, g_observationId, "eof-reached", MPV_FORMAT_FLAG);
+  if (rc < 0) return rc;
+  return g_p_observe_property(g_ctx, g_observationId, "media-title", MPV_FORMAT_STRING);
 }
 
 static void UpdatePlaybackProperty(const mpv_event *event) {
@@ -159,6 +165,13 @@ static void UpdatePlaybackProperty(const mpv_event *event) {
   } else if (std::strcmp(property->name, "eof-reached") == 0) {
     g_eofReached = property->format == MPV_FORMAT_FLAG && property->data &&
                    *static_cast<int *>(property->data) != 0;
+  } else if (std::strcmp(property->name, "media-title") == 0) {
+    // MPV_FORMAT_STRING event data is a char** owned by the event: copy now.
+    const char *text = nullptr;
+    if (property->format == MPV_FORMAT_STRING && property->data)
+      text = *static_cast<char **>(property->data);
+    g_hasMediaTitle = text != nullptr;
+    g_mediaTitle = text ? text : "";
   }
 }
 
@@ -449,6 +462,12 @@ Napi::Value GetEofReached(const Napi::CallbackInfo &info) {
   return Napi::Boolean::New(env, g_eofReached);
 }
 
+Napi::Value GetMediaTitle(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  if (!g_ctx || !g_hasMediaTitle) return env.Null();
+  return Napi::String::New(env, g_mediaTitle);
+}
+
 Napi::Value GetHwdecCurrent(const Napi::CallbackInfo &info) {
   Napi::Env env = info.Env();
   if (!g_ctx) return env.Null();
@@ -513,6 +532,7 @@ Napi::Object InitModule(Napi::Env env, Napi::Object exports) {
   exports.Set("getTimePos", Napi::Function::New(env, GetTimePos));
   exports.Set("getDuration", Napi::Function::New(env, GetDuration));
   exports.Set("getEofReached", Napi::Function::New(env, GetEofReached));
+  exports.Set("getMediaTitle", Napi::Function::New(env, GetMediaTitle));
   exports.Set("getHwdecCurrent", Napi::Function::New(env, GetHwdecCurrent));
   exports.Set("pollEvent", Napi::Function::New(env, PollEvent));
   exports.Set("shutdown", Napi::Function::New(env, Shutdown));

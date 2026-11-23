@@ -671,6 +671,13 @@ export const MpvStateUpdateSchema = z.object({
   currentTime: z.number(),
   duration: z.number().nullable(),
   error: z.string().nullable(),
+  // mpv's `media-title` (tag title, or the file name when untagged).
+  mediaTitle: z.string().nullable(),
+  // Counts real loads in main (see mpvProcessManager.ts) so a late update of a
+  // previous load can be told apart; loadedPath is the renderer-sent path of
+  // the file currently loaded.
+  loadGeneration: z.number().int(),
+  loadedPath: z.string().nullable(),
 })
 export type MpvStateUpdate = z.infer<typeof MpvStateUpdateSchema>
 

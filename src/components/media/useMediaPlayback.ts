@@ -3,6 +3,7 @@ import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerSt
 import { isVideoFile } from '../../../shared/isMediaFile'
 import { computeMpvRenderSize } from '../../lib/computeMpvRenderSize'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
+import { displayTitle } from './trackTitle'
 import {
   acceptReportedTime,
   getMediaShortcut,
@@ -21,6 +22,12 @@ export interface MediaPlaybackState {
   duration: number
   isPlaying: boolean
   error: string | null
+  // Display title: mpv's media title, or the extension-less file name.
+  title: string
+  // Load generation / path of the last accepted state update for the current
+  // track; null until one arrives (and again after a track change).
+  loadGeneration: number | null
+  loadedPath: string | null
   handleSeek: (value: number) => void
 }
 
@@ -61,6 +68,9 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [mediaTitle, setMediaTitle] = useState<string | null>(null)
+  const [loadGeneration, setLoadGeneration] = useState<number | null>(null)
+  const [loadedPath, setLoadedPath] = useState<string | null>(null)
   const [resetForPath, setResetForPath] = useState<string | null>(null)
 
   const track = currentIndex !== null ? (playlist[currentIndex] ?? null) : null
@@ -74,6 +84,9 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     setCurrentTime(0)
     setDuration(0)
     setError(null)
+    setMediaTitle(null)
+    setLoadGeneration(null)
+    setLoadedPath(null)
   }
 
   // Shared by the Media Session 'seekto' handler below and the returned
@@ -227,6 +240,9 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
       if (state.duration !== null) setDuration(state.duration)
       setPlaying(state.isPlaying)
       setError(state.error)
+      setMediaTitle(state.mediaTitle)
+      setLoadGeneration(state.loadGeneration)
+      setLoadedPath(state.loadedPath)
     })
   }, [isHost, setPlaying])
 
@@ -433,6 +449,9 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
       duration,
       isPlaying,
       error,
+      title: displayTitle(mediaTitle, track.name),
+      loadGeneration,
+      loadedPath,
       handleSeek: seekTo,
     },
   }
