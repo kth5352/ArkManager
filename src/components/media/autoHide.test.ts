@@ -5,6 +5,7 @@ import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AUTO_HIDE_DELAY_MS,
+  isPointerMoveActivity,
   nextHideDelayMs,
   shouldShowControls,
   type HoldReasons,
@@ -43,6 +44,18 @@ describe('nextHideDelayMs', () => {
     expect(nextHideDelayMs(0, 0, NONE)).toBe(2000)
     expect(nextHideDelayMs(2000, 0, NONE)).toBeNull()
     expect(nextHideDelayMs(500, 0, { ...NONE, paused: true })).toBeNull()
+  })
+})
+
+describe('isPointerMoveActivity', () => {
+  it('counts the first move and any move to a new position', () => {
+    expect(isPointerMoveActivity(null, { x: 10, y: 10 })).toBe(true)
+    expect(isPointerMoveActivity({ x: 10, y: 10 }, { x: 11, y: 10 })).toBe(true)
+    expect(isPointerMoveActivity({ x: 10, y: 10 }, { x: 10, y: 9 })).toBe(true)
+  })
+
+  it('ignores a move that reports the last seen position (synthetic move)', () => {
+    expect(isPointerMoveActivity({ x: 10, y: 10 }, { x: 10, y: 10 })).toBe(false)
   })
 })
 
@@ -107,6 +120,24 @@ describe('useAutoHideControls', () => {
     })
     expect(latest.visible).toBe(true)
     expect(el.style.cursor).toBe('crosshair')
+  })
+
+  it('ignores a synthetic pointermove at the last seen position', () => {
+    mount(true)
+    const move = (x: number, y: number): void => {
+      el.dispatchEvent(new MouseEvent('pointermove', { clientX: x, clientY: y }))
+    }
+    act(() => {
+      move(5, 5)
+      vi.advanceTimersByTime(2000)
+    })
+    expect(latest.visible).toBe(false)
+    // Chromium re-dispatches a move at the same spot when the layout under a
+    // still cursor changes (e.g. the bands fading out) - that must not count.
+    act(() => move(5, 5))
+    expect(latest.visible).toBe(false)
+    act(() => move(6, 5))
+    expect(latest.visible).toBe(true)
   })
 
   it('activity postpones hiding', () => {

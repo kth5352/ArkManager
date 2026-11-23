@@ -23,6 +23,9 @@ interface EqualizerPopoverProps {
   // Shrinks the trigger icon to match the repeat/shuffle/lyrics/volume
   // cluster it sits in - see MediaTransportBar's own `compact` prop.
   compact?: boolean
+  // Reports the popover's open state - the fullscreen view keeps its
+  // auto-hiding control bands on screen while it is open (spec §3.5).
+  onOpenChange?: (open: boolean) => void
 }
 
 // Shared by the docked bar, fullscreen overlay, and detached window via
@@ -41,7 +44,7 @@ interface EqualizerPopoverProps {
 // residual window is a window that is visible but unfocused, or one focused
 // while its refetch is still in flight; a real fix would need a main-process
 // broadcast of EQ changes to every renderer.
-export function EqualizerPopover({ dark = false, compact = false }: EqualizerPopoverProps) {
+export function EqualizerPopover({ dark = false, compact = false, onOpenChange }: EqualizerPopoverProps) {
   const { t } = useTranslation()
   const { data: gains } = useMediaEqualizerQuery()
   const setEqualizer = useSetMediaEqualizerMutation()
@@ -119,7 +122,7 @@ export function EqualizerPopover({ dark = false, compact = false }: EqualizerPop
     : 'text-muted-foreground transition-colors hover:text-foreground'
 
   return (
-    <Popover>
+    <Popover onOpenChange={onOpenChange}>
       <HoverTooltip content={t('media.equalizer')}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" aria-label={t('media.equalizer')} className={cn('shrink-0', iconClass)}>

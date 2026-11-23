@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
-import { isHeld, nextHideDelayMs, shouldShowControls, type HoldReasons } from './autoHide'
+import {
+  isHeld,
+  isPointerMoveActivity,
+  nextHideDelayMs,
+  shouldShowControls,
+  type HoldReasons,
+  type PointerPosition,
+} from './autoHide'
 
 interface UseAutoHideControlsOptions {
   enabled: boolean
@@ -19,6 +26,7 @@ export function useAutoHideControls({ enabled, hold, rootRef }: UseAutoHideContr
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const holdRef = useRef(hold)
   const enabledRef = useRef(enabled)
+  const lastPointerRef = useRef<PointerPosition | null>(null)
   const held = isHeld(hold)
 
   // Hold/enabled transitions reveal the controls (adjusted during render).
@@ -64,12 +72,23 @@ export function useAutoHideControls({ enabled, hold, rootRef }: UseAutoHideContr
     if (!enabled) return
     const root = rootRef.current
     const onActivity = (): void => bumpActivity()
-    root?.addEventListener('pointermove', onActivity)
+    const onPointerMove = (event: Event): void => {
+      const { clientX, clientY } = event as MouseEvent
+      // An event without coordinates can't be compared; count it.
+      if (typeof clientX === 'number' && typeof clientY === 'number') {
+        const next = { x: clientX, y: clientY }
+        const real = isPointerMoveActivity(lastPointerRef.current, next)
+        lastPointerRef.current = next
+        if (!real) return
+      }
+      bumpActivity()
+    }
+    root?.addEventListener('pointermove', onPointerMove)
     root?.addEventListener('pointerdown', onActivity)
     root?.addEventListener('wheel', onActivity)
     window.addEventListener('keydown', onActivity)
     return () => {
-      root?.removeEventListener('pointermove', onActivity)
+      root?.removeEventListener('pointermove', onPointerMove)
       root?.removeEventListener('pointerdown', onActivity)
       root?.removeEventListener('wheel', onActivity)
       window.removeEventListener('keydown', onActivity)

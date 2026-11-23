@@ -39,3 +39,18 @@ export function nextHideDelayMs(
   const remaining = AUTO_HIDE_DELAY_MS - (now - lastActivityAt)
   return remaining > 0 ? remaining : null
 }
+
+export interface PointerPosition {
+  x: number
+  y: number
+}
+
+// Chromium dispatches a pointermove at the unchanged cursor position when the
+// layout under a still cursor changes (the bands fading out, the cursor style
+// switching to none). Only a move to a new position is real user activity.
+export function isPointerMoveActivity(
+  last: PointerPosition | null,
+  next: PointerPosition
+): boolean {
+  return last === null || last.x !== next.x || last.y !== next.y
+}

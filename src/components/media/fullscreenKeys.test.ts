@@ -25,8 +25,8 @@ describe('useFullscreenKeys', () => {
     })
   }
 
-  function press(key: string): KeyboardEvent {
-    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+  function press(key: string, repeat = false): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { key, repeat, bubbles: true, cancelable: true })
     window.dispatchEvent(event)
     return event
   }
@@ -59,6 +59,23 @@ describe('useFullscreenKeys', () => {
     const event = press('f')
     expect(toggleFullscreen).toHaveBeenCalledTimes(1)
     expect(event.defaultPrevented).toBe(true)
+    expect(bubble).not.toHaveBeenCalled()
+  })
+
+  it('consumes a held-down (repeated) F without toggling again', () => {
+    mount({ overlayVisible: true, windowFullscreen: false })
+    press('f')
+    const repeated = press('f', true)
+    expect(toggleFullscreen).toHaveBeenCalledTimes(1)
+    expect(repeated.defaultPrevented).toBe(true)
+    expect(bubble).not.toHaveBeenCalled()
+  })
+
+  it('consumes a repeated Escape without acting on it', () => {
+    mount({ overlayVisible: true, windowFullscreen: true })
+    const repeated = press('Escape', true)
+    expect(exitFullscreen).not.toHaveBeenCalled()
+    expect(repeated.defaultPrevented).toBe(true)
     expect(bubble).not.toHaveBeenCalled()
   })
 
