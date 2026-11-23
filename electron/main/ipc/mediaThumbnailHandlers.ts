@@ -9,7 +9,10 @@ import {
 } from '../../../shared/types/ipc'
 import { isAudioFile } from '../../../shared/isMediaFile'
 import { MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE } from '../../../shared/mediaThumbnailErrors'
-import { setMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
+import {
+  getMediaThumbnailOverride,
+  setMediaThumbnailOverride,
+} from '../database/mediaThumbnailOverridesRepository'
 import { computeMediaAllowedRoots, computeMediaTrustedPaths } from '../media/mediaTrustBoundary'
 import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
 import { COVER_IMAGE_EXTENSIONS } from '../net/rasterImage'
@@ -19,6 +22,7 @@ import {
   writeAudioCoverWithBackup,
 } from '../media/audioCover'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from '../thumbnailProtocol'
+import { readOverrideCoverInfo } from '../media/overrideCoverInfo'
 import { saveLargeOverrideCopy } from '../media/saveLargeOverride'
 import type { MediaArtworkServices } from '../media/mediaArtworkServices'
 import type { AppDatabase } from '../database/client'
@@ -39,19 +43,24 @@ export function registerMediaThumbnailHandlers(
 ): void {
   ipcMain.handle(IPC_CHANNELS.MEDIA_GET_COVER_INFO, async (_event, payload: unknown) => {
     const { filePath } = GetMediaCoverInfoRequestSchema.parse(payload)
-    if (
-      !isPathWithinAnyLibrary(filePath, computeMediaAllowedRoots(db)) &&
-      !isPathExactlyTrusted(filePath, computeMediaTrustedPaths(db))
-    ) {
-      throw new Error('Media cover target is outside authorized roots.')
+    // Same shape as a trusted track with no cover, so an out-of-boundary path is
+    // indistinguishable; nothing but the boundary check runs before this.
+    const inBoundary =
+      isPathWithinAnyLibrary(filePath, computeMediaAllowedRoots(db)) ||
+      isPathExactlyTrusted(filePath, computeMediaTrustedPaths(db))
+    const version = `${artwork.cache.trackGeneration(filePath)}-${artwork.cache.workCoverGeneration()}`
+    const none: MediaCoverInfo = { hasCover: false, accent: null, aspectRatio: null, version }
+    if (!inBoundary) return none
+    // A user override is what the protocol serves first, so it wins here too.
+    const overridePath = getMediaThumbnailOverride(db, filePath)
+    if (overridePath) {
+      const overrideInfo = await readOverrideCoverInfo(overridePath)
+      if (overrideInfo) return { hasCover: true, version, ...overrideInfo }
     }
     const art = await artwork.resolve(filePath)
-    const info: MediaCoverInfo = {
-      hasCover: art !== null,
-      accent: art?.info.accent ?? null,
-      aspectRatio: art?.info.aspectRatio ?? null,
-      version: `${artwork.cache.trackGeneration(filePath)}-${artwork.cache.workCoverGeneration()}`,
-    }
+    const info: MediaCoverInfo = art
+      ? { hasCover: true, accent: art.info.accent, aspectRatio: art.info.aspectRatio, version }
+      : none
     return info
   })
 

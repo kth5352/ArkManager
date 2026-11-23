@@ -1,4 +1,4 @@
-// Matches electron/main/mediaThumbnailProtocol.ts's decodeFilePath exactly
+// Matches electron/main/mediaThumbnailProtocol.ts's decodeMediaThumbnailPath exactly
 // (a plain encodeURIComponent of the file's own path) - kept as a pure
 // function rather than a query hook, same reasoning as buildThumbnailUrl:
 // the <img> element loads this directly through Chromium's own network

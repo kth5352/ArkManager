@@ -26,11 +26,25 @@ describe('createMediaArtworkServices', () => {
     expect(notify).toHaveBeenCalledWith(null)
   })
 
-  it('does not notify when invalidation fails', async () => {
+  it('bumpWorkCover still notifies null and resolves when persistence rejects', async () => {
+    const cache = fakeCache()
+    vi.mocked(cache.bumpWorkCoverGeneration).mockRejectedValue(new Error('disk'))
+    const notify = vi.fn()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await expect(createMediaArtworkServices(cache, notify).bumpWorkCover()).resolves.toBeUndefined()
+    expect(notify).toHaveBeenCalledWith(null)
+    spy.mockRestore()
+  })
+
+  it('invalidateTrack still notifies and resolves when invalidation rejects', async () => {
     const cache = fakeCache()
     vi.mocked(cache.invalidate).mockRejectedValue(new Error('disk'))
     const notify = vi.fn()
-    await expect(createMediaArtworkServices(cache, notify).invalidateTrack('x')).rejects.toThrow()
-    expect(notify).not.toHaveBeenCalled()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await expect(
+      createMediaArtworkServices(cache, notify).invalidateTrack('x')
+    ).resolves.toBeUndefined()
+    expect(notify).toHaveBeenCalledWith('x')
+    spy.mockRestore()
   })
 })

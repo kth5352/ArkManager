@@ -1,3 +1,4 @@
+import sharp from 'sharp'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -7,7 +8,10 @@ import { createDbClient, type AppDatabase } from '../database/client'
 import { addLibrary } from '../database/librariesRepository'
 import { createMediaPlaylist, setMediaPlaylistTracks } from '../database/mediaPlaylistsRepository'
 import { toggleTrackLike } from '../database/mediaTrackLikesRepository'
-import { getMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
+import {
+  getMediaThumbnailOverride,
+  setMediaThumbnailOverride,
+} from '../database/mediaThumbnailOverridesRepository'
 import { AudioCoverRestoreError } from '../media/audioCover'
 import { registerMediaThumbnailHandlers } from './mediaThumbnailHandlers'
 
@@ -214,10 +218,48 @@ describe('MEDIA_THUMBNAIL_SET_FROM_FILE', () => {
     }
   })
 
-  it('MEDIA_GET_COVER_INFO rejects a path outside authorized roots', async () => {
-    await expect(
-      registeredHandler(IPC_CHANNELS.MEDIA_GET_COVER_INFO)({}, { filePath: 'C:\\Windows\\a.mp3' })
-    ).rejects.toThrow(/authorized/i)
+  it('MEDIA_GET_COVER_INFO returns the same no-cover shape outside authorized roots', async () => {
+    const outside = await registeredHandler(IPC_CHANNELS.MEDIA_GET_COVER_INFO)(
+      {},
+      { filePath: 'C:\\Windows\\a.mp3' }
+    )
+    const trusted = await registeredHandler(IPC_CHANNELS.MEDIA_GET_COVER_INFO)(
+      {},
+      { filePath: 'D:\\Music\\Song.mp3' }
+    )
+    expect(outside).toEqual(trusted)
+    expect(outside).toEqual({ hasCover: false, accent: null, aspectRatio: null, version: '0-1' })
+  })
+
+  it('MEDIA_GET_COVER_INFO reports an override-only track and prefers it over a resolved cover', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'ark-manager-override-info-'))
+    const overridePath = join(directory, 'key.webp')
+    try {
+      await sharp({ create: { width: 40, height: 20, channels: 3, background: '#cc2222' } })
+        .webp()
+        .toFile(overridePath)
+      setMediaThumbnailOverride(db, 'D:\\Music\\Song.mp3', overridePath)
+      vi.mocked(artworkStub.resolve).mockResolvedValueOnce({
+        thumb: 't',
+        cover: 'c',
+        info: { source: 'embedded', workCoverGeneration: 1, accent: '#00ff00', aspectRatio: 1 },
+      })
+
+      const info = (await registeredHandler(IPC_CHANNELS.MEDIA_GET_COVER_INFO)(
+        {},
+        { filePath: 'D:\\Music\\Song.mp3' }
+      )) as { hasCover: boolean; accent: string; aspectRatio: number }
+
+      expect(info.hasCover).toBe(true)
+      expect(info.accent).toMatch(/^#[0-9a-f]{6}$/)
+      expect(info.accent).not.toBe('#00ff00')
+      expect(info.aspectRatio).toBeCloseTo(2, 5)
+      // The override short-circuits resolve; clear the unconsumed Once value.
+    } finally {
+      vi.mocked(artworkStub.resolve).mockReset()
+      vi.mocked(artworkStub.resolve).mockResolvedValue(null)
+      await rm(directory, { recursive: true, force: true })
+    }
   })
 
   it('MEDIA_GET_COVER_INFO returns version and no cover when nothing resolves', async () => {

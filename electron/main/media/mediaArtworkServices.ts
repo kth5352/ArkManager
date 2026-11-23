@@ -32,11 +32,22 @@ export function createMediaArtworkServices(
     cache,
     resolve: (filePath) => resolveMediaArtwork(cache, filePath, isVideoFile(filePath), deps),
     async invalidateTrack(filePath) {
-      await cache.invalidate(filePath)
+      try {
+        await cache.invalidate(filePath)
+      } catch (error) {
+        console.error('Failed to invalidate media artwork cache:', error)
+      }
       notify(filePath)
     },
     async bumpWorkCover() {
-      await cache.bumpWorkCoverGeneration()
+      // The in-memory generation is already incremented, so views refetch
+      // correctly even when persisting it fails; never make the caller's
+      // (already committed) operation look failed.
+      try {
+        await cache.bumpWorkCoverGeneration()
+      } catch (error) {
+        console.error('Failed to persist work cover generation:', error)
+      }
       notify(null)
     },
   }

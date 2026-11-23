@@ -12,8 +12,11 @@ export function registerCacheHandlers(
   ipcMain.handle(IPC_CHANNELS.CACHE_CLEAR, async (_event, payload: unknown) => {
     const { deleteSaveBackups } = ClearCacheRequestSchema.parse(payload)
     clearAllGameMetadata(db)
-    await clearCache(app.getPath('userData'), { deleteSaveBackups })
-    // Cleared artwork files are gone: new version so open views refetch.
-    await artwork.bumpWorkCover()
+    try {
+      await clearCache(app.getPath('userData'), { deleteSaveBackups })
+    } finally {
+      // Artwork files may be (partly) gone: new version so open views refetch.
+      await artwork.bumpWorkCover()
+    }
   })
 }
