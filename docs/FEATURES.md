@@ -319,7 +319,8 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - **UI 형태 3가지**: ① 하단 도킹 바(2단: 곡 정보 / 조작부) ② 전체화면 오버레이(영상은 사이드바와 화면 분할) ③ **별도 플레이어 창**(`#/player-window`). 창 간 상태는 메인 프로세스를 중계자로 한 `media:state-broadcast`/`media:state-sync`(변경된 상태만, `currentTime`/`duration`은 제외) + 새 창의 pull(`media:request-state-sync`). 호스트 전환은 `mpv:become-host`(재생 중단 없이 프레임 수신 창만 변경).
 - **재생 기능**: 재생/일시정지, 시크, 볼륨(영속 `media-volume`), 음소거, 반복 모드(끔/전체/한 곡), **셔플**(켜는 시점에 Fisher-Yates로 1회 순서 생성, 이후 포인터만 이동; 재생목록 길이가 바뀌면 재생성), 큐 관리, 단일 파일 재생은 **큐를 지우지 않고 추가**.
 - **5밴드 EQ**: 60/230/910/3000/14000Hz, ±12dB, 프리셋(Flat / Bass boost[6,4,0,0,0] / Vocal boost[-2,0,4,3,0] / Treble boost[0,0,0,3,6]), 설정 영속(`media-equalizer-bands`, JSON 길이 5·범위 검증, 손상 시 무시). 재적용은 메인이 워커의 `init-ok` 시점에 수행(콜드 스타트·크래시 재생성·분리 창 모두 커버). 밴드 수 5는 `settingsHandlers.ts`·`equalizerPresets.ts`·`mpv_addon.cc` 세 곳이 **수동 동기화**.
-- **키보드 단축키**(텍스트 입력 중엔 비활성): `←/→` 5초 시크(호스트 창만), `↑/↓` 볼륨 ±5%, `Space` 재생/일시정지(버튼 포커스 중엔 제외).
+- **키보드 단축키**(`useMediaPlayback.ts`, 판정은 `mediaKeyboard.ts`): `←/→` 5초 시크(호스트 창만), `↑/↓` 볼륨 ±5%, `Space` 재생/일시정지(버튼 포커스 중엔 제외). 텍스트 입력 중, `Ctrl/Alt/Meta` 조합, 다른 핸들러가 이미 `preventDefault`한 키는 무시. 시크바·볼륨 슬라이더(`input[type=range]`)에 포커스가 있어도 같은 단축키로 동작(예전엔 슬라이더 클릭 후 `←/→`가 1초 이동·`Space` 무반응으로 바뀌었음).
+- **시크 대기**: mpv 시크는 비동기라 워커가 착지 전까지 옛 위치를 보고함 → 시크 목표를 `pendingSeek`로 기억하고, 보고 위치가 목표 ±1초 안에 들거나 1.5초가 지날 때까지 옛 위치 보고를 무시. 연속 `←/→`는 대기 중인 목표에서 이어서 계산(예전엔 빠르게/길게 누르면 뒤로 튀거나 제자리였음).
 - **하드웨어 미디어 키**: 재생 중일 때만 `globalShortcut`으로 `MediaPlayPause/NextTrack/PreviousTrack` 등록, **300ms 디바운스**, 모든 창에 브로드캐스트. 재생 큐가 비면 해제. Web Media Session API도 병행.
 - **새로고침 보호**: 재생 중 Ctrl+R/Ctrl+Shift+R 시 확인 다이얼로그.
 

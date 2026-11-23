@@ -3,6 +3,16 @@ import { useMediaPlayerStore, type MediaTrack } from '../../stores/mediaPlayerSt
 import { isVideoFile } from '../../../shared/isMediaFile'
 import { computeMpvRenderSize } from '../../lib/computeMpvRenderSize'
 import { buildMediaThumbnailUrl } from '../../services/mediaThumbnailProtocolService'
+import {
+  acceptReportedTime,
+  getMediaShortcut,
+  KEYBOARD_SEEK_STEP_S,
+  KEYBOARD_VOLUME_STEP,
+  nextSeekTarget,
+  seekBase,
+  startPendingSeek,
+  type PendingSeek,
+} from './mediaKeyboard'
 
 export interface MediaPlaybackState {
   track: MediaTrack
@@ -70,7 +80,13 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   // playback.handleSeek - defined here (not inline in the return object,
   // where handleSeek used to live) so an effect declared earlier in this
   // hook can reference the same logic without duplicating it.
+  //
+  // Records the target as a pending seek so mpv's stale pre-seek position
+  // reports can't snap the display (and the next arrow press's base) back -
+  // see mediaKeyboard.ts's acceptReportedTime.
+  const pendingSeekRef = useRef<PendingSeek | null>(null)
   const seekTo = useCallback((value: number) => {
+    pendingSeekRef.current = startPendingSeek(value, Date.now())
     window.api.mpv.seek(value)
     setCurrentTime(value)
   }, [])
@@ -149,6 +165,9 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     if (!isHost || !track) return
     if (track.path === lastLoadedPathRef.current) return
     lastLoadedPathRef.current = track.path
+    // A seek pending on the previous track must not hide the new one's
+    // position reports or offset its first arrow press.
+    pendingSeekRef.current = null
     window.api.mpv.load(track.path, isVideoFile(track.name))
   }, [isHost, track])
 
@@ -202,7 +221,9 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   useEffect(() => {
     if (!isHost) return
     return window.api.mpv.onStateUpdate((state) => {
-      setCurrentTime(state.currentTime)
+      const accepted = acceptReportedTime(state.currentTime, pendingSeekRef.current, Date.now())
+      pendingSeekRef.current = accepted.pending
+      if (accepted.time !== null) setCurrentTime(accepted.time)
       if (state.duration !== null) setDuration(state.duration)
       setPlaying(state.isPlaying)
       setError(state.error)
@@ -219,14 +240,13 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     if (!isHost) return
     return window.api.mpv.onEnded(() => {
       if (repeatMode === 'one') {
-        window.api.mpv.seek(0)
-        setCurrentTime(0)
+        seekTo(0)
         window.api.mpv.play()
         return
       }
       next()
     })
-  }, [isHost, repeatMode, next])
+  }, [isHost, repeatMode, next, seekTo])
 
   // Debounced, DPR-aware resize - observes the canvas element's own CSS box
   // (which fills its flex container via className, see FullscreenMediaOverlay/
@@ -281,43 +301,36 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
     if (!track) return
     const handleKeyDown = (event: KeyboardEvent): void => {
       const active = document.activeElement as HTMLElement | null
-      const isTextInput =
-        !!active &&
-        (['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName) || active.isContentEditable)
-      if (isTextInput) return
+      const shortcut = getMediaShortcut(
+        event,
+        active
+          ? {
+              tagName: active.tagName,
+              isContentEditable: active.isContentEditable,
+              type: active instanceof HTMLInputElement ? active.type : undefined,
+            }
+          : null
+      )
+      if (!shortcut) return
+      // Seeking drives mpv directly, so only the host window may do it.
+      if ((shortcut === 'seekBack' || shortcut === 'seekForward') && !isHost) return
 
-      const isFocusedButtonLike = !!active && ['BUTTON', 'A'].includes(active.tagName)
-
-      if (event.key === 'ArrowLeft' && isHost) {
-        event.preventDefault()
-        const value = Math.max(0, currentTime - 5)
-        window.api.mpv.seek(value)
-        setCurrentTime(value)
-      } else if (event.key === 'ArrowRight' && isHost) {
-        event.preventDefault()
-        // `duration` is 0 both before mpv's async loadfile resolves a real
-        // duration and for a file mpv never reports one for - and 0 is a
-        // finite number, so a Number.isFinite check would clamp every
-        // forward seek to 0 (i.e. rewind to the start). Treat 0 as
-        // "unknown" and let the seek through unclamped.
-        const max = duration > 0 ? duration : Infinity
-        const value = Math.min(max, currentTime + 5)
-        window.api.mpv.seek(value)
-        setCurrentTime(value)
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        setVolume(volume + 0.05)
-      } else if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        setVolume(volume - 0.05)
-      } else if (event.key === ' ' && !isFocusedButtonLike) {
-        event.preventDefault()
+      event.preventDefault()
+      if (shortcut === 'seekBack' || shortcut === 'seekForward') {
+        const delta = shortcut === 'seekBack' ? -KEYBOARD_SEEK_STEP_S : KEYBOARD_SEEK_STEP_S
+        const base = seekBase(currentTime, pendingSeekRef.current, Date.now())
+        seekTo(nextSeekTarget(base, delta, duration))
+      } else if (shortcut === 'volumeUp') {
+        setVolume(volume + KEYBOARD_VOLUME_STEP)
+      } else if (shortcut === 'volumeDown') {
+        setVolume(volume - KEYBOARD_VOLUME_STEP)
+      } else {
         togglePlay()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [track, isHost, volume, setVolume, togglePlay, currentTime, duration])
+  }, [track, isHost, volume, setVolume, togglePlay, currentTime, duration, seekTo])
 
   // Web Media Session API - restores OS-level hardware media key (headset
   // inline buttons, keyboard media keys) and System Media Transport
