@@ -63,6 +63,7 @@ export function createArtworkCache(opts: {
   const trackGenerations = new Map<string, number>()
   const locks = new Map<string, Promise<void>>()
   let workCover = 1
+  let bumpChain: Promise<void> = Promise.resolve()
   const generationFile = join(coverDir, WORK_COVER_GENERATION_FILE)
 
   const trackGeneration = (filePath: string): number => trackGenerations.get(filePath) ?? 0
@@ -109,10 +110,16 @@ export function createArtworkCache(opts: {
       workCover = 1
     },
 
-    async bumpWorkCoverGeneration() {
+    bumpWorkCoverGeneration() {
+      // Memory is updated before disk by design: the in-memory value is always >= disk (safe direction).
       workCover += 1
-      await fs.mkdir(coverDir, { recursive: true })
-      await writeAtomic(generationFile, JSON.stringify({ generation: workCover }))
+      const generation = workCover
+      const run = bumpChain.then(async () => {
+        await fs.mkdir(coverDir, { recursive: true })
+        await writeAtomic(generationFile, JSON.stringify({ generation }))
+      })
+      bumpChain = run.catch(() => undefined)
+      return run
     },
 
     invalidate(filePath) {
@@ -127,12 +134,31 @@ export function createArtworkCache(opts: {
 
     commit(filePath, snapshot, files, writes = []) {
       return withTrackLock(filePath, async () => {
+        const rmQuiet = (f: string): Promise<void> =>
+          fs.rm(f, { force: true }).catch(() => undefined)
         if (snapshot.track !== trackGeneration(filePath) || snapshot.workCover !== workCover) {
-          await Promise.all(files.map((f) => fs.rm(f.temp, { force: true }).catch(() => undefined)))
+          await Promise.all(files.map((f) => rmQuiet(f.temp)))
           return 'stale' as const
         }
-        await Promise.all(writes.map((w) => writeAtomic(w.path, w.content)))
-        await Promise.all(files.map((f) => fs.rename(f.temp, f.final)))
+        const created: string[] = []
+        try {
+          const written = await Promise.allSettled(
+            writes.map((w) => writeAtomic(w.path, w.content).then(() => created.push(w.path)))
+          )
+          const renamed = await Promise.allSettled(
+            files.map((f) => fs.rename(f.temp, f.final).then(() => created.push(f.final)))
+          )
+          const failed = [...written, ...renamed].find((r) => r.status === 'rejected')
+          if (failed) throw (failed as PromiseRejectedResult).reason
+        } catch (err) {
+          // Keep the four files together: undo everything this commit produced.
+          await Promise.all([
+            ...files.map((f) => rmQuiet(f.temp)),
+            ...writes.map((w) => rmQuiet(`${w.path}.tmp`)),
+            ...created.map(rmQuiet),
+          ])
+          throw err
+        }
         return 'committed' as const
       })
     },

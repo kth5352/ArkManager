@@ -148,4 +148,56 @@ describe('mediaArtworkCache', () => {
     await b.loadWorkCoverGeneration()
     expect(b.workCoverGeneration()).toBe(2)
   })
+
+  it('commit failure removes temp files and finals it created and rethrows', async () => {
+    let calls = 0
+    const fsOps: Partial<ArtworkFsOps> = {
+      rename: async (a, b) => {
+        calls += 1
+        if (calls === 2 && !a.endsWith('.json.tmp')) throw new Error('boom')
+        await rename(a, b)
+      },
+    }
+    const cache = createArtworkCache({ thumbDir, coverDir, fsOps })
+    const p = artworkPaths(thumbDir, coverDir, track)
+    await writeFile(p.thumb + '.tmp', 'thumb')
+    await writeFile(p.cover + '.tmp', 'cover')
+    const snap = { track: 0, workCover: cache.workCoverGeneration() }
+    const files = [
+      { temp: p.thumb + '.tmp', final: p.thumb },
+      { temp: p.cover + '.tmp', final: p.cover },
+    ]
+    await expect(
+      cache.commit(track, snap, files, [{ path: p.info, content: '{}' }])
+    ).rejects.toThrow('boom')
+    for (const f of [p.thumb + '.tmp', p.cover + '.tmp', p.info + '.tmp', p.thumb, p.cover, p.info])
+      expect(existsSync(f)).toBe(false)
+    // lock chain is not poisoned
+    await writeFile(p.thumb + '.tmp', 'again')
+    expect(await cache.commit(track, snap, [{ temp: p.thumb + '.tmp', final: p.thumb }])).toBe(
+      'committed'
+    )
+    await cache.invalidate(track)
+    expect(existsSync(p.thumb)).toBe(false)
+  })
+
+  it('commit stale due to work-cover generation mismatch deletes temps', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    const p = artworkPaths(thumbDir, coverDir, track)
+    await writeFile(p.thumb + '.tmp', 'thumb')
+    const snap = { track: 0, workCover: cache.workCoverGeneration() }
+    await cache.bumpWorkCoverGeneration()
+    const res = await cache.commit(track, snap, [{ temp: p.thumb + '.tmp', final: p.thumb }])
+    expect(res).toBe('stale')
+    expect(existsSync(p.thumb + '.tmp')).toBe(false)
+    expect(existsSync(p.thumb)).toBe(false)
+  })
+
+  it('concurrent bumps both persist and end at +2', async () => {
+    const cache = createArtworkCache({ thumbDir, coverDir })
+    await Promise.all([cache.bumpWorkCoverGeneration(), cache.bumpWorkCoverGeneration()])
+    expect(cache.workCoverGeneration()).toBe(3)
+    const raw = JSON.parse(await readFile(join(coverDir, 'work-cover-generation.json'), 'utf8'))
+    expect(raw).toEqual({ generation: 3 })
+  })
 })
