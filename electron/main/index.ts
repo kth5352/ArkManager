@@ -29,6 +29,8 @@ import {
   getIsMediaPlaying,
   clearIsMediaPlaying,
 } from './ipc/mediaWindowHandlers'
+import { createArtworkCache } from './media/mediaArtworkCache'
+import { createMediaArtworkServicesFromDb } from './media/mediaArtworkServices'
 import { registerMediaThumbnailHandlers } from './ipc/mediaThumbnailHandlers'
 import { registerSubtitlePipWindowHandlers } from './ipc/subtitlePipWindowHandlers'
 import { registerMediaLyricsHandlers } from './ipc/mediaLyricsHandlers'
@@ -51,6 +53,8 @@ import {
   registerThumbnailProtocolScheme,
 } from './thumbnailProtocol'
 import {
+  mediaCoverCacheDir,
+  mediaThumbnailCacheDir,
   registerMediaThumbnailProtocolHandler,
   registerMediaThumbnailProtocolScheme,
 } from './mediaThumbnailProtocol'
@@ -484,21 +488,33 @@ if (!gotSingleInstanceLock) {
       currentLocale = parsedLocale.data
       buildApplicationMenu()
     })
+    const artworkCache = createArtworkCache({
+      thumbDir: mediaThumbnailCacheDir(),
+      coverDir: mediaCoverCacheDir(),
+    })
+    await artworkCache.loadWorkCoverGeneration()
+    const artwork = createMediaArtworkServicesFromDb(db, artworkCache, (filePath) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send(IPC_CHANNELS.MEDIA_ARTWORK_CHANGED, { filePath })
+        }
+      }
+    })
     registerLibrariesHandlers(db)
     registerScannerHandlers(db)
     registerExplorerHandlers(db)
     registerSortHandlers(db)
     registerShellHandlers(db)
-    metadataApi = registerMetadataHandlers(db)
-    registerGameUserDataHandlers(db)
+    metadataApi = registerMetadataHandlers(db, artwork)
+    registerGameUserDataHandlers(db, artwork)
     registerLaunchHandlers(db)
     registerSaveHandlers(db)
-    registerCacheHandlers(db)
+    registerCacheHandlers(db, artwork)
     registerThumbnailProtocolHandler(db)
-    registerMediaThumbnailProtocolHandler(db)
+    registerMediaThumbnailProtocolHandler(db, artwork)
     closePlayerWindow = registerMediaWindowHandlers(() => mainWindow).closePlayerWindow
     closeSubtitlePipWindow = registerSubtitlePipWindowHandlers(db, () => mainWindow).closeSubtitlePipWindow
-    registerMediaThumbnailHandlers(db)
+    registerMediaThumbnailHandlers(db, artwork)
     registerMediaLyricsHandlers(db)
     registerExcludedEntriesHandlers(db)
     registerMediaPlaylistHandlers(db)

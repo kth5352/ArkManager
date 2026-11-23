@@ -31,6 +31,7 @@ import {
   listAllGameMetadataCodes,
 } from '../database/gameMetadataRepository'
 import type { AppDatabase } from '../database/client'
+import type { MediaArtworkServices } from '../media/mediaArtworkServices'
 import {
   clearMetadataFailure,
   getMetadataFailure,
@@ -103,11 +104,15 @@ function crawlDepsFromSettings(db: AppDatabase) {
   })
 }
 
-export function registerMetadataHandlers(db: AppDatabase): MetadataHandlersApi {
+export function registerMetadataHandlers(
+  db: AppDatabase,
+  artwork: Pick<MediaArtworkServices, 'bumpWorkCover'>
+): MetadataHandlersApi {
   const bulkCrawlQueue = createBulkCrawlQueue(
     db,
     join(app.getPath('userData'), 'cache', 'covers'),
-    () => crawlDepsFromSettings(db)
+    () => crawlDepsFromSettings(db),
+    () => artwork.bumpWorkCover()
   )
 
   ipcMain.handle(IPC_CHANNELS.METADATA_GET, (_event, payload: unknown) => {
@@ -166,7 +171,10 @@ export function registerMetadataHandlers(db: AppDatabase): MetadataHandlersApi {
     if (crawled.coverImageUrl) {
       const cacheDir = join(app.getPath('userData'), 'cache', 'covers')
       const coverPath = await cacheCoverImage(cacheDir, code.value, crawled.coverImageUrl)
-      if (coverPath) setGameMetadataCoverPath(db, code.value, coverPath)
+      if (coverPath) {
+        setGameMetadataCoverPath(db, code.value, coverPath)
+        await artwork.bumpWorkCover()
+      }
     }
 
     return toDto(getGameMetadata(db, code.value))

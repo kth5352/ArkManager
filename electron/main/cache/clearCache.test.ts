@@ -32,6 +32,16 @@ describe('clearCache', () => {
     expect(existsSync(join(dir, 'cache', 'media-thumbnails'))).toBe(false)
   })
 
+  it('deletes cached media covers', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ark-manager-clearcache-'))
+    await mkdir(join(dir, 'cache', 'media-covers'), { recursive: true })
+    await writeFile(join(dir, 'cache', 'media-covers', 'abc123.webp'), 'image-bytes')
+
+    await clearCache(dir, { deleteSaveBackups: false })
+
+    expect(existsSync(join(dir, 'cache', 'media-covers'))).toBe(false)
+  })
+
   it('deletes leftover media-remux cache from the pre-libmpv MPEG-TS remux feature (now removed)', async () => {
     dir = await mkdtemp(join(tmpdir(), 'ark-manager-clearcache-'))
     await mkdir(join(dir, 'cache', 'media-remux'), { recursive: true })

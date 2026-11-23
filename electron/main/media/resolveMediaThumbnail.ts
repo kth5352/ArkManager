@@ -7,7 +7,6 @@ import { extractAudioArt as defaultExtractAudioArt } from './extractAudioArt'
 import { findThumbnailPath as defaultFindThumbnailPath } from '../scanner/thumbnail'
 import { createConcurrencyLimiter } from '../scanner/concurrencyLimiter'
 import { adjustAccent } from './accentColor'
-import { createArtworkCache } from './mediaArtworkCache'
 import type { ArtworkCache, GenerationSnapshot } from './mediaArtworkCache'
 
 export interface ResolveMediaThumbnailDeps {
@@ -306,31 +305,8 @@ export async function resolveMediaArtwork(
   return promise
 }
 
-// Legacy entry point (single-size thumbnail path) kept until the protocol is
-// rewired onto resolveMediaArtwork. One cache per cacheDir for the process.
-const legacyCaches = new Map<string, ArtworkCache>()
-
-export async function resolveMediaThumbnail(
-  cacheDir: string,
-  filePath: string,
-  isVideo: boolean,
-  deps: ResolveMediaThumbnailDeps = defaultDeps,
-  inFlight: Map<string, Promise<unknown>> = defaultInFlight
-): Promise<string | null> {
-  let cache = legacyCaches.get(cacheDir)
-  if (!cache) {
-    cache = createArtworkCache({
-      thumbDir: cacheDir,
-      coverDir: join(cacheDir, '..', 'media-covers'),
-    })
-    legacyCaches.set(cacheDir, cache)
-  }
-  const result = await resolveMediaArtwork(
-    cache,
-    filePath,
-    isVideo,
-    deps,
-    inFlight as Map<string, Promise<MediaArtwork | null>>
-  )
-  return result?.thumb ?? null
+export function artworkDepsWithWorkCover(
+  findWorkCover: (filePath: string) => Promise<string | null>
+): ResolveMediaThumbnailDeps {
+  return { ...defaultDeps, findWorkCover }
 }

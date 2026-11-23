@@ -109,6 +109,10 @@ export const IPC_CHANNELS = {
   MPV_ENDED: 'mpv:ended',
   MEDIA_THUMBNAIL_PICK_FILE: 'media-thumbnail:pick-file',
   MEDIA_THUMBNAIL_SET_FROM_FILE: 'media-thumbnail:set-from-file',
+  MEDIA_GET_COVER_INFO: 'media:get-cover-info',
+  // Push-only, main -> every window: a track's artwork (filePath) or every
+  // work-level cover (filePath: null) changed - consumers refetch cover info.
+  MEDIA_ARTWORK_CHANGED: 'media:artwork-changed',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',
   GAME_ENTRY_RESTORE: 'game-entry:restore',
   GAME_ENTRY_LIST_EXCLUDED: 'game-entry:list-excluded',
@@ -692,6 +696,21 @@ export const SetMediaThumbnailFromFileRequestSchema = z.object({
 export type SetMediaThumbnailFromFileRequest = z.infer<
   typeof SetMediaThumbnailFromFileRequestSchema
 >
+
+export const GetMediaCoverInfoRequestSchema = z.object({ filePath: z.string() })
+export type GetMediaCoverInfoRequest = z.infer<typeof GetMediaCoverInfoRequestSchema>
+
+export interface MediaCoverInfo {
+  hasCover: boolean
+  accent: string | null
+  aspectRatio: number | null
+  // `${trackGeneration}-${workCoverGeneration}`: changes whenever the served image may have.
+  version: string
+}
+
+export interface MediaArtworkChangedPayload {
+  filePath: string | null
+}
 
 export interface SetMediaThumbnailFromFileResult {
   mode: 'embedded' | 'override'

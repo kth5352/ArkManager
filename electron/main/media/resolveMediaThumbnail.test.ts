@@ -4,9 +4,39 @@ import { tmpdir } from 'node:os'
 import { extname, join } from 'node:path'
 import sharp from 'sharp'
 import { readFile } from 'node:fs/promises'
-import { resolveMediaThumbnail, resolveMediaArtwork } from './resolveMediaThumbnail'
-import type { ResolveMediaThumbnailDeps } from './resolveMediaThumbnail'
+import { resolveMediaArtwork } from './resolveMediaThumbnail'
+import type { MediaArtwork, ResolveMediaThumbnailDeps } from './resolveMediaThumbnail'
 import { createArtworkCache, artworkPaths } from './mediaArtworkCache'
+import type { ArtworkCache } from './mediaArtworkCache'
+
+// One shared cache per cacheDir, like the app's single shared cache (the
+// retired resolveMediaThumbnail wrapper kept the same one-per-dir state).
+const sharedCaches = new Map<string, ArtworkCache>()
+
+async function resolveMediaThumbnail(
+  cacheDir: string,
+  filePath: string,
+  isVideo: boolean,
+  deps: ResolveMediaThumbnailDeps,
+  inFlight?: Map<string, Promise<unknown>>
+): Promise<string | null> {
+  let cache = sharedCaches.get(cacheDir)
+  if (!cache) {
+    cache = createArtworkCache({
+      thumbDir: cacheDir,
+      coverDir: join(cacheDir, '..', 'media-covers'),
+    })
+    sharedCaches.set(cacheDir, cache)
+  }
+  const result = await resolveMediaArtwork(
+    cache,
+    filePath,
+    isVideo,
+    deps,
+    inFlight as Map<string, Promise<MediaArtwork | null>> | undefined
+  )
+  return result?.thumb ?? null
+}
 
 async function writeFakeFrame(outputPath: string): Promise<void> {
   await sharp({ create: { width: 2, height: 2, channels: 3, background: 'red' } })

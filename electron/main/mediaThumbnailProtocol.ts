@@ -1,12 +1,11 @@
-import { readFile } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import { app, protocol } from 'electron'
 import { extname, join } from 'node:path'
-import { isVideoFile } from '../../shared/isMediaFile'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from './thumbnailProtocol'
 import { computeMediaAllowedRoots, computeMediaTrustedPaths } from './media/mediaTrustBoundary'
 import { getMediaThumbnailOverride } from './database/mediaThumbnailOverridesRepository'
 import { getPlaylistCoverPath } from './database/mediaPlaylistsRepository'
-import { resolveMediaThumbnail } from './media/resolveMediaThumbnail'
+import type { MediaArtworkServices } from './media/mediaArtworkServices'
 import type { AppDatabase } from './database/client'
 
 const MEDIA_THUMBNAIL_SCHEME = 'mediathumb'
@@ -20,7 +19,9 @@ const MIME_TYPES: Record<string, string> = {
   '.bmp': 'image/bmp',
 }
 
-function decodeFilePath(url: string): string {
+// pathname only: a "?v=<version>" cache-buster (and any "#"/"?" inside the
+// path, which the renderer percent-encodes) must never leak into the path.
+export function decodeMediaThumbnailPath(url: string): string {
   return decodeURIComponent(new URL(url).pathname.slice(1))
 }
 
@@ -28,20 +29,36 @@ export function mediaThumbnailCacheDir(): string {
   return join(app.getPath('userData'), 'cache', 'media-thumbnails')
 }
 
+export function mediaCoverCacheDir(): string {
+  return join(app.getPath('userData'), 'cache', 'media-covers')
+}
+
+// The user-override 512px file is <key>.webp; its 2048px sibling is
+// <key>.large.webp in the same directory (see mediaThumbnailHandlers).
+export function largeOverridePath(overridePath: string): string {
+  return overridePath.replace(/\.webp$/i, '.large.webp')
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Decoupled from Electron's protocol/Request machinery so a test can
 // exercise the priority order (override wins, then auto-extraction, then
-// 404) without a real database or a real ffmpeg call.
+// 404) without a real database or a real ffmpeg call. `resolve` returns the
+// path for the requested kind (thumbnail 512px / cover 2048px).
 export async function buildMediaThumbnailResponse(
   filePath: string,
   allowedRoots: string[],
   trustedPaths: string[],
-  cacheDir: string,
   getOverride: (filePath: string) => string | null,
-  resolve: (
-    cacheDir: string,
-    filePath: string,
-    isVideo: boolean
-  ) => Promise<string | null> = resolveMediaThumbnail
+  resolve: (filePath: string) => Promise<string | null>,
+  kind: 'thumbnail' | 'cover' = 'thumbnail'
 ): Promise<Response> {
   if (
     !isPathWithinAnyLibrary(filePath, allowedRoots) &&
@@ -50,8 +67,12 @@ export async function buildMediaThumbnailResponse(
     return new Response(null, { status: 404 })
   }
 
-  const overridePath = getOverride(filePath)
-  const resolvedPath = overridePath ?? (await resolve(cacheDir, filePath, isVideoFile(filePath)))
+  let overridePath = getOverride(filePath)
+  if (overridePath && kind === 'cover') {
+    const large = largeOverridePath(overridePath)
+    if (await pathExists(large)) overridePath = large
+  }
+  const resolvedPath = overridePath ?? (await resolve(filePath))
   if (!resolvedPath) return new Response(null, { status: 404 })
 
   try {
@@ -96,19 +117,33 @@ export function registerMediaThumbnailProtocolScheme(): void {
 // media:// would also be willing to serve in the first place (a registered
 // library, the one folder picked via the Media page, or an exact path
 // already saved into a playlist/liked track).
-export function registerMediaThumbnailProtocolHandler(db: AppDatabase): void {
-  const cacheDir = mediaThumbnailCacheDir()
+export function registerMediaThumbnailProtocolHandler(
+  db: AppDatabase,
+  artwork: MediaArtworkServices
+): void {
   protocol.handle(MEDIA_THUMBNAIL_SCHEME, async (request) => {
     const url = new URL(request.url)
     if (url.hostname === 'playlist-cover') {
       const playlistId = decodeURIComponent(url.pathname.slice(1))
       return buildPlaylistCoverResponse(playlistId, (id) => getPlaylistCoverPath(db, id))
     }
-    const filePath = decodeFilePath(request.url)
+    if (url.hostname !== 'thumbnail' && url.hostname !== 'cover') {
+      return new Response(null, { status: 404 })
+    }
+    const kind = url.hostname
+    const filePath = decodeMediaThumbnailPath(request.url)
     const allowedRoots = computeMediaAllowedRoots(db)
     const trustedPaths = computeMediaTrustedPaths(db)
-    return buildMediaThumbnailResponse(filePath, allowedRoots, trustedPaths, cacheDir, (path) =>
-      getMediaThumbnailOverride(db, path)
+    return buildMediaThumbnailResponse(
+      filePath,
+      allowedRoots,
+      trustedPaths,
+      (path) => getMediaThumbnailOverride(db, path),
+      async (path) => {
+        const art = await artwork.resolve(path)
+        return art ? (kind === 'cover' ? art.cover : art.thumb) : null
+      },
+      kind
     )
   })
 }

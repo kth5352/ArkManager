@@ -1,0 +1,36 @@
+import { describe, expect, it, vi } from 'vitest'
+import { createMediaArtworkServices } from './mediaArtworkServices'
+import type { ArtworkCache } from './mediaArtworkCache'
+
+function fakeCache(): ArtworkCache {
+  return {
+    invalidate: vi.fn(async () => undefined),
+    bumpWorkCoverGeneration: vi.fn(async () => undefined),
+  } as unknown as ArtworkCache
+}
+
+describe('createMediaArtworkServices', () => {
+  it('invalidateTrack invalidates that track then notifies with its path', async () => {
+    const cache = fakeCache()
+    const notify = vi.fn()
+    await createMediaArtworkServices(cache, notify).invalidateTrack('D:/a.mp3')
+    expect(cache.invalidate).toHaveBeenCalledWith('D:/a.mp3')
+    expect(notify).toHaveBeenCalledWith('D:/a.mp3')
+  })
+
+  it('bumpWorkCover bumps the generation then notifies with null', async () => {
+    const cache = fakeCache()
+    const notify = vi.fn()
+    await createMediaArtworkServices(cache, notify).bumpWorkCover()
+    expect(cache.bumpWorkCoverGeneration).toHaveBeenCalledOnce()
+    expect(notify).toHaveBeenCalledWith(null)
+  })
+
+  it('does not notify when invalidation fails', async () => {
+    const cache = fakeCache()
+    vi.mocked(cache.invalidate).mockRejectedValue(new Error('disk'))
+    const notify = vi.fn()
+    await expect(createMediaArtworkServices(cache, notify).invalidateTrack('x')).rejects.toThrow()
+    expect(notify).not.toHaveBeenCalled()
+  })
+})

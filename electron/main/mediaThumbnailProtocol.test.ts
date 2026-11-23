@@ -2,18 +2,20 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildMediaThumbnailResponse, buildPlaylistCoverResponse } from './mediaThumbnailProtocol'
+import {
+  buildMediaThumbnailResponse,
+  buildPlaylistCoverResponse,
+  decodeMediaThumbnailPath,
+} from './mediaThumbnailProtocol'
 
 describe('buildMediaThumbnailResponse', () => {
   let libraryDir: string
   let filePath: string
-  let cacheDir: string
 
   beforeEach(async () => {
     libraryDir = await mkdtemp(join(tmpdir(), 'ark-manager-mediathumb-'))
     filePath = join(libraryDir, 'clip.mp4')
     await writeFile(filePath, '')
-    cacheDir = join(libraryDir, 'cache')
   })
 
   afterEach(async () => {
@@ -25,8 +27,8 @@ describe('buildMediaThumbnailResponse', () => {
       filePath,
       ['D:\\SomeOtherLibrary'],
       [],
-      cacheDir,
-      () => null
+      () => null,
+      async () => null
     )
     expect(response.status).toBe(404)
   })
@@ -44,7 +46,6 @@ describe('buildMediaThumbnailResponse', () => {
       filePath,
       [libraryDir],
       [],
-      cacheDir,
       () => overrideImage,
       resolve
     )
@@ -64,7 +65,6 @@ describe('buildMediaThumbnailResponse', () => {
       filePath,
       [libraryDir],
       [],
-      cacheDir,
       () => null,
       resolve
     )
@@ -82,7 +82,6 @@ describe('buildMediaThumbnailResponse', () => {
       filePath,
       [libraryDir],
       [],
-      cacheDir,
       () => null,
       resolve
     )
@@ -96,7 +95,6 @@ describe('buildMediaThumbnailResponse', () => {
       filePath,
       [libraryDir],
       [],
-      cacheDir,
       () => null,
       resolve
     )
@@ -109,7 +107,6 @@ describe('buildMediaThumbnailResponse', () => {
       filePath,
       [libraryDir],
       [],
-      cacheDir,
       () => null,
       resolve
     )
@@ -128,7 +125,6 @@ describe('buildMediaThumbnailResponse', () => {
         outsideFile,
         [libraryDir],
         [outsideFile],
-        cacheDir,
         () => null,
         resolve
       )
@@ -144,10 +140,102 @@ describe('buildMediaThumbnailResponse', () => {
       filePath,
       ['D:\\SomeOtherLibrary'],
       ['D:\\SomeOther\\unrelated-track.mp3'],
-      cacheDir,
-      () => null
+      () => null,
+      async () => null
     )
     expect(response.status).toBe(404)
+  })
+})
+
+describe('decodeMediaThumbnailPath', () => {
+  it('decodes the path ignoring the version query', () => {
+    const original = 'D:\\音声\\#1 ?.flac'
+    const url = `mediathumb://cover/${encodeURIComponent(original)}?v=3-2`
+    expect(decodeMediaThumbnailPath(url)).toBe(original)
+    expect(
+      decodeMediaThumbnailPath(`mediathumb://thumbnail/${encodeURIComponent(original)}?v=1-1`)
+    ).toBe(original)
+    expect(decodeMediaThumbnailPath(`mediathumb://thumbnail/${encodeURIComponent(original)}`)).toBe(
+      original
+    )
+  })
+})
+
+describe('buildMediaThumbnailResponse cover kind', () => {
+  let libraryDir: string
+  let filePath: string
+
+  beforeEach(async () => {
+    libraryDir = await mkdtemp(join(tmpdir(), 'ark-manager-mediacover-'))
+    filePath = join(libraryDir, 'song.mp3')
+    await writeFile(filePath, '')
+  })
+
+  afterEach(async () => {
+    await rm(libraryDir, { recursive: true, force: true })
+  })
+
+  it('serves the 2048px cover file from resolve', async () => {
+    const cover = join(libraryDir, 'cover-2048.webp')
+    await writeFile(cover, 'big-cover')
+    const response = await buildMediaThumbnailResponse(
+      filePath,
+      [libraryDir],
+      [],
+      () => null,
+      async () => cover,
+      'cover'
+    )
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('big-cover')
+  })
+
+  it('returns 404 outside the boundary', async () => {
+    const response = await buildMediaThumbnailResponse(
+      filePath,
+      ['D:\\Other'],
+      [],
+      () => null,
+      async () => filePath,
+      'cover'
+    )
+    expect(response.status).toBe(404)
+  })
+
+  it('prefers the large override, then the 512 override, then the resolved cover', async () => {
+    const override = join(libraryDir, 'key.webp')
+    const large = join(libraryDir, 'key.large.webp')
+    const resolved = join(libraryDir, 'resolved.webp')
+    await writeFile(override, 'small-override')
+    await writeFile(resolved, 'resolved')
+    const call = (getOverride: () => string | null) =>
+      buildMediaThumbnailResponse(
+        filePath,
+        [libraryDir],
+        [],
+        getOverride,
+        async () => resolved,
+        'cover'
+      )
+
+    expect(await (await call(() => override)).text()).toBe('small-override')
+    await writeFile(large, 'large-override')
+    expect(await (await call(() => override)).text()).toBe('large-override')
+    expect(await (await call(() => null)).text()).toBe('resolved')
+  })
+
+  it('thumbnail kind never uses the large override', async () => {
+    const override = join(libraryDir, 'key.webp')
+    await writeFile(override, 'small-override')
+    await writeFile(join(libraryDir, 'key.large.webp'), 'large-override')
+    const response = await buildMediaThumbnailResponse(
+      filePath,
+      [libraryDir],
+      [],
+      () => override,
+      async () => null
+    )
+    expect(await response.text()).toBe('small-override')
   })
 })
 

@@ -5,8 +5,17 @@
 // stack, no IPC round trip. Whether a thumbnail actually exists is only
 // known once that request resolves (onError on the consuming <img>), not
 // upfront - same as thumb://.
-export function buildMediaThumbnailUrl(filePath: string): string {
-  return `mediathumb://thumbnail/${encodeURIComponent(filePath)}`
+//
+// `version` (from MediaCoverInfo.version) is only a cache-buster appended as a
+// query; the main process decodes the path from the pathname alone.
+export function buildMediaThumbnailUrl(filePath: string, version?: string): string {
+  const base = `mediathumb://thumbnail/${encodeURIComponent(filePath)}`
+  return version === undefined ? base : `${base}?v=${encodeURIComponent(version)}`
+}
+
+// The 2048px cover served by the same protocol (host 'cover').
+export function buildMediaCoverUrl(filePath: string, version: string): string {
+  return `mediathumb://cover/${encodeURIComponent(filePath)}?v=${encodeURIComponent(version)}`
 }
 
 // Same hostname-branching contract as electron/main/mediaThumbnailProtocol.ts's

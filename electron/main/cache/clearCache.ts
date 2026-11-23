@@ -5,7 +5,7 @@ export interface ClearCacheOptions {
   deleteSaveBackups: boolean
 }
 
-// Only deletes userData/cache/covers, userData/cache/media-thumbnails, and
+// Only deletes userData/cache/covers, userData/cache/media-thumbnails, userData/cache/media-covers, and
 // userData/cache/media-remux, never the whole userData/cache/ directory -
 // on Windows, that folder is the
 // same physical directory as Chromium's own "Cache" (case-insensitive
@@ -25,6 +25,9 @@ export async function clearCache(userDataPath: string, options: ClearCacheOption
   // cache", the same precedent that already keeps cache/custom-covers (game
   // covers) untouched here.
   await rm(join(userDataPath, 'cache', 'media-thumbnails'), { recursive: true, force: true })
+  // cache/media-covers (2048px covers, accent/aspect info, work-cover generation
+  // counter) is derived from the same sources, so cleared the same way.
+  await rm(join(userDataPath, 'cache', 'media-covers'), { recursive: true, force: true })
   // cache/media-remux is legacy cleanup: back when playback went through a
   // Chromium <video>/<audio> element, raw MPEG-TS files saved under a
   // misleading extension had to be detected and remuxed to a cached .mp4

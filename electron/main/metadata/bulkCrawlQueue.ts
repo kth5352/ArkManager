@@ -56,7 +56,8 @@ export interface BulkCrawlQueue {
 export function createBulkCrawlQueue(
   db: AppDatabase,
   cacheDir: string,
-  getCrawlDeps?: () => CrawlGameMetadataDeps
+  getCrawlDeps?: () => CrawlGameMetadataDeps,
+  onCoverSaved?: () => Promise<void> | void
 ): BulkCrawlQueue {
   const attempted = new Set<string>()
   const pending: GameCode[] = []
@@ -89,7 +90,10 @@ export function createBulkCrawlQueue(
         clearMetadataFailure(db, code.value)
         if (metadata.coverImageUrl) {
           const coverPath = await cacheCoverImage(cacheDir, code.value, metadata.coverImageUrl)
-          if (coverPath) setGameMetadataCoverPath(db, code.value, coverPath)
+          if (coverPath) {
+            setGameMetadataCoverPath(db, code.value, coverPath)
+            await onCoverSaved?.()
+          }
         }
       } else {
         // reason is only null when metadata is non-null (see

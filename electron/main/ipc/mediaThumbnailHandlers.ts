@@ -1,7 +1,12 @@
 import { app, dialog, ipcMain } from 'electron'
-import { readFile, rm } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { IPC_CHANNELS, SetMediaThumbnailFromFileRequestSchema } from '../../../shared/types/ipc'
+import {
+  GetMediaCoverInfoRequestSchema,
+  IPC_CHANNELS,
+  SetMediaThumbnailFromFileRequestSchema,
+  type MediaCoverInfo,
+} from '../../../shared/types/ipc'
 import { isAudioFile } from '../../../shared/isMediaFile'
 import { MEDIA_THUMBNAIL_RECOVERY_BACKUP_RETAINED_ERROR_MESSAGE } from '../../../shared/mediaThumbnailErrors'
 import { setMediaThumbnailOverride } from '../database/mediaThumbnailOverridesRepository'
@@ -14,8 +19,8 @@ import {
   writeAudioCoverWithBackup,
 } from '../media/audioCover'
 import { isPathExactlyTrusted, isPathWithinAnyLibrary } from '../thumbnailProtocol'
-import { mediaThumbnailCacheDir } from '../mediaThumbnailProtocol'
-import { keyToSafeDirName } from '../save/keyToSafeDirName'
+import { saveLargeOverrideCopy } from '../media/saveLargeOverride'
+import type { MediaArtworkServices } from '../media/mediaArtworkServices'
 import type { AppDatabase } from '../database/client'
 
 function mediaThumbnailOverrideCacheDir(): string {
@@ -28,22 +33,28 @@ function toRendererSafeAudioCoverError(error: unknown): unknown {
     : error
 }
 
-// resolveMediaThumbnail.ts's auto-extraction cache is keyed purely by
-// filePath (existence on disk IS the cache - see its own comment), with
-// nothing anywhere that ever invalidates one entry. Embedding a new cover
-// directly into the audio file (below) doesn't touch that cache at all, so
-// a track that already had ANY cached thumbnail - e.g. from the directory-
-// image tier, which populates every track in a folder containing a
-// cover.jpg even before any of them are individually edited - kept showing
-// the stale image forever after an embed, recoverable only via Settings'
-// "clear cache". force: true makes this a harmless no-op when nothing was
-// cached yet for this file.
-async function invalidateMediaThumbnailCache(filePath: string): Promise<void> {
-  const cachePath = join(mediaThumbnailCacheDir(), `${keyToSafeDirName(filePath)}.webp`)
-  await rm(cachePath, { force: true })
-}
+export function registerMediaThumbnailHandlers(
+  db: AppDatabase,
+  artwork: MediaArtworkServices
+): void {
+  ipcMain.handle(IPC_CHANNELS.MEDIA_GET_COVER_INFO, async (_event, payload: unknown) => {
+    const { filePath } = GetMediaCoverInfoRequestSchema.parse(payload)
+    if (
+      !isPathWithinAnyLibrary(filePath, computeMediaAllowedRoots(db)) &&
+      !isPathExactlyTrusted(filePath, computeMediaTrustedPaths(db))
+    ) {
+      throw new Error('Media cover target is outside authorized roots.')
+    }
+    const art = await artwork.resolve(filePath)
+    const info: MediaCoverInfo = {
+      hasCover: art !== null,
+      accent: art?.info.accent ?? null,
+      aspectRatio: art?.info.aspectRatio ?? null,
+      version: `${artwork.cache.trackGeneration(filePath)}-${artwork.cache.workCoverGeneration()}`,
+    }
+    return info
+  })
 
-export function registerMediaThumbnailHandlers(db: AppDatabase): void {
   // Same one-shot trust pattern as GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE
   // (gameUserDataHandlers.ts) - without pinning to whatever the native file
   // picker most recently actually returned, a compromised or buggy renderer
@@ -86,13 +97,15 @@ export function registerMediaThumbnailHandlers(db: AppDatabase): void {
         throw toRendererSafeAudioCoverError(error)
       }
       if (result.ok) {
-        await invalidateMediaThumbnailCache(filePath)
+        await artwork.invalidateTrack(filePath)
         return { mode: 'embedded' as const, warning: result.warning }
       }
       warning = result.warning
     }
     const savedPath = await saveCustomCoverImage(mediaThumbnailOverrideCacheDir(), filePath, buffer)
+    await saveLargeOverrideCopy(savedPath, buffer)
     setMediaThumbnailOverride(db, filePath, savedPath)
+    await artwork.invalidateTrack(filePath)
     return { mode: 'override' as const, warning }
   })
 }

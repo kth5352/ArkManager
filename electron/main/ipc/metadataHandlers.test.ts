@@ -54,7 +54,7 @@ describe('METADATA_CRAWL_AND_SAVE', () => {
     crawlMocks.crawlGameMetadataWithTrace.mockReset()
     crawlMocks.createCrawlGameMetadataDeps.mockClear()
     db = createDbClient(':memory:')
-    registerMetadataHandlers(db)
+    registerMetadataHandlers(db, { bumpWorkCover: async () => undefined })
   })
 
   afterEach(() => {
@@ -191,7 +191,7 @@ describe('refreshAllMetadata', () => {
       attemptedSources: ['dlsite-html'],
       reason: null,
     }))
-    const api = registerMetadataHandlers(db)
+    const api = registerMetadataHandlers(db, { bumpWorkCover: async () => undefined })
     const onProgress = vi.fn()
 
     api.refreshAllMetadata(onProgress)
@@ -205,7 +205,7 @@ describe('refreshAllMetadata', () => {
   })
 
   it('does nothing when nothing has been crawled yet', async () => {
-    const api = registerMetadataHandlers(db)
+    const api = registerMetadataHandlers(db, { bumpWorkCover: async () => undefined })
     const onProgress = vi.fn()
 
     api.refreshAllMetadata(onProgress)

@@ -26,6 +26,8 @@ import {
   type SaveDiffEntryDto,
   type SaveSnapshotDto,
   type SetMediaThumbnailFromFileResult,
+  type MediaCoverInfo,
+  type MediaArtworkChangedPayload,
   type SortPage,
   type SortPreference,
   type Theme,
@@ -393,6 +395,14 @@ const api = {
       const listener = (): void => callback()
       ipcRenderer.on(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED, listener)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_PLAYER_WINDOW_CLOSED, listener)
+    },
+    getCoverInfo: (filePath: string): Promise<MediaCoverInfo> =>
+      ipcRenderer.invoke(IPC_CHANNELS.MEDIA_GET_COVER_INFO, { filePath }),
+    onArtworkChanged: (callback: (payload: MediaArtworkChangedPayload) => void): (() => void) => {
+      const listener = (_event: unknown, payload: MediaArtworkChangedPayload): void =>
+        callback(payload)
+      ipcRenderer.on(IPC_CHANNELS.MEDIA_ARTWORK_CHANGED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_ARTWORK_CHANGED, listener)
     },
     openSubtitlePipWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.SUBTITLE_PIP_OPEN),
     closeSubtitlePipWindow: (): Promise<void> =>

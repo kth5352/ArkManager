@@ -32,6 +32,7 @@ import { saveCustomCoverImage } from '../customCover/saveCustomCoverImage'
 import { COVER_IMAGE_EXTENSIONS } from '../net/rasterImage'
 import { encodeThumbnail } from './scannerHandlers'
 import type { AppDatabase } from '../database/client'
+import type { MediaArtworkServices } from '../media/mediaArtworkServices'
 
 function toDto(row: ReturnType<typeof getGameUserData>): GameUserDataDto | null {
   if (!row) return null
@@ -51,7 +52,10 @@ function customCoverCacheDir(): string {
   return join(app.getPath('userData'), 'cache', 'custom-covers')
 }
 
-export function registerGameUserDataHandlers(db: AppDatabase): void {
+export function registerGameUserDataHandlers(
+  db: AppDatabase,
+  artwork: Pick<MediaArtworkServices, 'bumpWorkCover'>
+): void {
   // GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE trusts this path enough to
   // readFile() it directly (see below) - without pinning it to whatever the
   // native file picker most recently actually returned, a compromised or
@@ -93,7 +97,7 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
     return listRecentlyPlayedKeys(db)
   })
 
-  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LINK_CODE, (_event, payload: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_LINK_CODE, async (_event, payload: unknown) => {
     const { path, code } = LinkCodeRequestSchema.parse(payload)
     const normalizedPath = normalizeLibraryPath(path)
     // Two separate writes (the override record, then migrating/merging the
@@ -105,12 +109,14 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
       setPathCodeOverride(db, normalizedPath, code.value)
       rekeyToCode(db, normalizedPath, code.value)
     })
+    await artwork.bumpWorkCover()
   })
 
-  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_UNLINK_CODE, (_event, payload: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_UNLINK_CODE, async (_event, payload: unknown) => {
     const { path } = UnlinkCodeRequestSchema.parse(payload)
     const normalizedPath = normalizeLibraryPath(path)
     deletePathCodeOverride(db, normalizedPath)
+    await artwork.bumpWorkCover()
   })
 
   ipcMain.handle(IPC_CHANNELS.GAME_USER_DATA_PICK_CUSTOM_COVER_FILE, async () => {
@@ -135,6 +141,7 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
       const buffer = await readFile(path)
       const savedPath = await saveCustomCoverImage(customCoverCacheDir(), key, buffer)
       setCustomCoverPath(db, key, keyType, savedPath)
+      await artwork.bumpWorkCover()
     }
   )
 
@@ -147,6 +154,7 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
       const { key, keyType } = resolveGameEntryKey(identifier)
       const savedPath = await saveCustomCoverImage(customCoverCacheDir(), key, image.toPNG())
       setCustomCoverPath(db, key, keyType, savedPath)
+      await artwork.bumpWorkCover()
     }
   )
 
@@ -162,6 +170,7 @@ export function registerGameUserDataHandlers(db: AppDatabase): void {
         })
       }
       setCustomCoverPath(db, key, keyType, null)
+      await artwork.bumpWorkCover()
     }
   )
 
