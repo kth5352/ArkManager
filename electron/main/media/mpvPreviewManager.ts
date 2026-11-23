@@ -129,8 +129,15 @@ function runJob(job: PreviewJob): Promise<Uint8Array | null> {
     const timer = setTimeout(() => {
       if (!pendingJobs.delete(id)) return
       console.error('[mpvPreviewManager] preview worker did not answer - killing it')
-      resolve(null)
+      // Detach the hung process now so the next job forks a fresh worker
+      // instead of being posted to one that is about to die. The hang is
+      // counted as a crash here, once; marking the exit as expected keeps the
+      // later `exit` event from counting it again.
+      if (child === proc) child = null
+      expectedExits.add(proc)
+      recordCrash()
       proc.kill()
+      resolve(null)
     }, JOB_TIMEOUT_MS)
     pendingJobs.set(id, {
       proc,

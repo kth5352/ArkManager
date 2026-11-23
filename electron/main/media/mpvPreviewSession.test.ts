@@ -107,6 +107,56 @@ describe('createPreviewSession', () => {
     await expect(result).resolves.toBeNull()
   })
 
+  it('reloads the file after a timed-out seek and ignores the abandoned seek’s late restart', async () => {
+    const session = createPreviewSession(addon, options)
+    const timedOut = session.requestFrame('D:\\v.mp4', 5)
+    await primeLoad()
+    await vi.advanceTimersByTimeAsync(820)
+    await expect(timedOut).resolves.toBeNull()
+    expect(addon.seek).toHaveBeenCalledTimes(1)
+
+    const next = session.requestFrame('D:\\v.mp4', 40)
+    // Goes through loadFile (same path), not straight to a seek.
+    expect(addon.loadFile).toHaveBeenCalledWith('D:\\v.mp4')
+    expect(addon.init).toHaveBeenCalledTimes(1)
+    expect(addon.seek).toHaveBeenCalledTimes(1)
+    // The abandoned seek's restart shows up late, after this request drained.
+    addon.push('playback-restart')
+    await tick(3)
+    expect(addon.seek).toHaveBeenCalledTimes(1)
+    let settled = false
+    void next.then(() => (settled = true))
+    await Promise.resolve()
+    expect(settled).toBe(false)
+
+    addon.push('end-file', 'start-file', 'file-loaded', 'playback-restart')
+    await tick()
+    expect(addon.seek).toHaveBeenCalledTimes(2)
+    expect(addon.seek).toHaveBeenLastCalledWith(40, 'keyframes')
+    await tick(2)
+    expect(settled).toBe(false)
+    addon.push('playback-restart')
+    await tick()
+    const frame = await next
+    // The frame is the render of the tick that saw THIS seek's restart.
+    expect(frame![0]).toBe(addon.renderCalls & 0xff)
+  })
+
+  it('reloads the file after a failed seek command', async () => {
+    const session = createPreviewSession(addon, options)
+    const first = session.requestFrame('D:\\v.mp4', 5)
+    addon.seek.mockReturnValueOnce('ERROR seek failed')
+    await primeLoad()
+    await expect(first).resolves.toBeNull()
+    const next = session.requestFrame('D:\\v.mp4', 6)
+    expect(addon.loadFile).toHaveBeenCalledWith('D:\\v.mp4')
+    addon.push('start-file', 'file-loaded', 'playback-restart')
+    await tick()
+    addon.push('playback-restart')
+    await tick()
+    await expect(next).resolves.not.toBeNull()
+  })
+
   it('returns null when no successful render follows playback-restart before the timeout', async () => {
     const session = createPreviewSession(addon, options)
     const result = session.requestFrame('D:\\v.mp4', 5)

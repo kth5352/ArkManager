@@ -131,7 +131,15 @@ export function createPreviewSession(
 
   async function seekAndRender(seconds: number): Promise<Uint8Array | null> {
     drainEvents()
-    if (addon.seek(seconds, 'keyframes') !== 'OK') return null
+    // An abandoned (failed or timed-out) seek can still deliver its frame and
+    // playback-restart later, which the next seek could not tell apart from
+    // its own. Forgetting the loaded file makes the next request reload it,
+    // and the reload's ordered start-file -> file-loaded -> restart wait
+    // ignores any such stray restart. Costs one reload, only after a failure.
+    if (addon.seek(seconds, 'keyframes') !== 'OK') {
+      loadedPath = null
+      return null
+    }
     let restarted = false
     let frame: Buffer | null = null
     // CONTRACT (preview-latency.cjs): render on every tick while the seek is
@@ -152,7 +160,10 @@ export function createPreviewSession(
       }
       return 'pending'
     }, seekTimeoutMs)
-    if (!ok || !frame) return null
+    if (!ok || !frame) {
+      loadedPath = null
+      return null
+    }
     // A fresh, exactly-sized copy (never a view into a shared pool).
     return new Uint8Array(frame as Buffer)
   }

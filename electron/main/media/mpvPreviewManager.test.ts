@@ -224,6 +224,46 @@ describe('mpvPreviewManager', () => {
     expect(proc.kill).toHaveBeenCalled()
   })
 
+  it('replaces a killed hung worker for the next queued job and counts the hang once', async () => {
+    const hung = request(1, 5, 1)
+    const waiting = request(2, 5, 2)
+    const hungProc = procAt(0)
+    await vi.advanceTimersByTimeAsync(6_000)
+    await expect(hung).resolves.toBeNull()
+    expect(hungProc.kill).toHaveBeenCalledTimes(1)
+    // The waiting job goes to a NEW worker, not to the dying one.
+    await vi.waitFor(() => expect(mocks.fork).toHaveBeenCalledTimes(2))
+    expect(hungProc.postMessage.mock.calls.filter((c) => c[0].type === 'frame')).toHaveLength(1)
+    expect(lastFrameMessage(procAt(1)).seconds).toBe(2)
+    // The killed process's exit arrives later and must not count again.
+    hungProc.emit('exit', 1)
+    reply(procAt(1))
+    await expect(waiting).resolves.toMatchObject({ requestId: 2 })
+    // One crash so far: two more within the window disable previews...
+    for (let i = 0; i < 2; i++) {
+      const pending = request()
+      lastProc().emit('exit', 1)
+      await pending
+    }
+    await expect(request()).resolves.toBeNull()
+    expect(mocks.fork).toHaveBeenCalledTimes(3)
+  })
+
+  it('counts a killed hung worker once even after its exit event', async () => {
+    const hung = request()
+    await vi.advanceTimersByTimeAsync(6_000)
+    await hung
+    procAt(0).emit('exit', 1)
+    // Hang = 1 crash; one more crash (2 total) must NOT disable previews.
+    const second = request()
+    lastProc().emit('exit', 1)
+    await second
+    const third = request()
+    expect(mocks.fork).toHaveBeenCalledTimes(3)
+    reply(lastProc())
+    await expect(third).resolves.not.toBeNull()
+  })
+
   it('shutdownPreview posts shutdown to the worker and stops further previews', async () => {
     const pending = request()
     reply(lastProc())
