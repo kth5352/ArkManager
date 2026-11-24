@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import ffmpegPath from 'ffmpeg-static'
+import { requireFfmpegPath } from './ffmpegBinary'
 
 const execFileAsync = promisify(execFile)
 
@@ -12,7 +12,8 @@ const execFileAsync = promisify(execFile)
 // nothing here is vulnerable to shell metacharacter injection from a
 // crafted file path.
 export async function extractVideoFrame(videoPath: string, outputPath: string): Promise<boolean> {
-  if (!ffmpegPath) return false
+  // Throws when the binary is missing (environment problem, not "no art").
+  const ffmpegPath = requireFfmpegPath()
   try {
     await execFileAsync(
       ffmpegPath,

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import ffmpegPath from 'ffmpeg-static'
+import { requireFfmpegPath } from './ffmpegBinary'
 
 const execFileAsync = promisify(execFile)
 
@@ -15,7 +15,8 @@ const execFileAsync = promisify(execFile)
 // isn't guaranteed for embedded art in general, so copy fails far more
 // often than it should.
 export async function extractAudioArt(audioPath: string, outputPath: string): Promise<boolean> {
-  if (!ffmpegPath) return false
+  // Throws when the binary is missing (environment problem, not "no art").
+  const ffmpegPath = requireFfmpegPath()
   try {
     await execFileAsync(
       ffmpegPath,
