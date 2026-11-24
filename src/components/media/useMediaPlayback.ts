@@ -391,11 +391,26 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
   // the OS's actual foreground target for hardware keys at a time.
   useEffect(() => {
     if (!('mediaSession' in navigator) || !track) return
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: track.name,
-      artwork: [{ src: buildMediaThumbnailUrl(track.path) }],
-    })
+    // MediaImage only accepts http/https/data/blob URLs, not our mediathumb://
+    // scheme, so the thumbnail is fetched and handed over as a blob URL. The
+    // title is set first; the artwork joins when (and if) the fetch succeeds.
+    let cancelled = false
+    let blobUrl: string | null = null
+    navigator.mediaSession.metadata = new MediaMetadata({ title: track.name })
+    void fetch(buildMediaThumbnailUrl(track.path))
+      .then((response) => (response.ok ? response.blob() : null))
+      .then((blob) => {
+        if (!blob || cancelled) return
+        blobUrl = URL.createObjectURL(blob)
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.name,
+          artwork: [{ src: blobUrl, type: blob.type || undefined }],
+        })
+      })
+      .catch(() => {})
     return () => {
+      cancelled = true
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
       navigator.mediaSession.metadata = null
     }
   }, [track])

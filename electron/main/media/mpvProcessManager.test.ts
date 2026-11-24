@@ -5,6 +5,7 @@ class FakeProc extends EventEmitter {
   stdout = null
   stderr = null
   postMessage = vi.fn()
+  kill = vi.fn()
 }
 
 const electronMocks = vi.hoisted(() => ({ procs: [] as unknown[] }))
@@ -103,6 +104,19 @@ describe('stopPlaybackWhenRendererResets', () => {
     expect(shutdownCount()).toBe(0)
     handlers['did-start-navigation']({ isMainFrame: true, isSameDocument: false })
     expect(shutdownCount()).toBe(1)
+  })
+
+  it('a play after the reload starts a fresh worker even for the same file', () => {
+    const { win, handlers } = fakeWindow()
+    mpv.setHostWindow(win)
+    mpv.stopPlaybackWhenRendererResets(win)
+    mpv.loadFile('C:\r.mp3', 1, 1, false, 'C:/r.mp3')
+    const old = lastProc()
+    handlers['did-start-navigation']({ isMainFrame: true, isSameDocument: false })
+    expect(mpv.getCurrentLoadedPath()).toBeNull()
+    mpv.loadFile('C:\r.mp3', 1, 1, false, 'C:/r.mp3')
+    expect(lastProc()).not.toBe(old)
+    expect(lastProc().postMessage.mock.calls[0][0]).toMatchObject({ type: 'init' })
   })
 
   it('ignores a window that is not the current host and handles a renderer crash', () => {

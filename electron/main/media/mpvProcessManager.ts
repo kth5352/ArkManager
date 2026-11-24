@@ -112,7 +112,24 @@ export function setHostWindow(win: BrowserWindow): void {
 export function shutdownIfHost(win: BrowserWindow): void {
   if (currentHostWindow !== win) return
   currentHostWindow = null
-  shutdown()
+  endSession()
+}
+
+// The worker's 'shutdown' only tears mpv down - the process itself stays up,
+// so merely posting it would leave a dead mpv behind `currentLoadedPath` and
+// the next play would be skipped as "already loaded". Detach the child (state
+// reset NOW, a later play spawns a fresh worker), let it shut mpv down
+// cleanly, and kill the process shortly after.
+function endSession(): void {
+  const proc = child
+  if (!proc) return
+  child = null
+  hasInitializedCurrentChild = false
+  currentLoadedPath = null
+  loadedRequestedPath = null
+  loadedIsVideo = false
+  proc.postMessage({ type: 'shutdown' })
+  setTimeout(() => proc.kill(), 500).unref?.()
 }
 
 export function stopPlaybackWhenRendererResets(win: BrowserWindow): void {
