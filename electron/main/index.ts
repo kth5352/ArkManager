@@ -372,6 +372,7 @@ if (!gotSingleInstanceLock) {
     })
     installZoomInShortcut(win.webContents)
     attachWindowFullscreen(win)
+    mpv.stopPlaybackWhenRendererResets(win)
 
     win.once('ready-to-show', () => {
       if (mainWindow !== win) return

@@ -72,3 +72,48 @@ describe('mpvProcessManager load generation', () => {
     expect(lastProc().postMessage.mock.calls[0][0]).toMatchObject({ type: 'init' })
   })
 })
+
+describe('stopPlaybackWhenRendererResets', () => {
+  function fakeWindow() {
+    const handlers: Record<string, (arg?: unknown) => void> = {}
+    const win = {
+      webContents: {
+        postMessage: vi.fn(),
+        on: (event: string, fn: (arg?: unknown) => void) => {
+          handlers[event] = fn
+        },
+      },
+    }
+    return { win: win as never, handlers }
+  }
+  const shutdownCount = (): number =>
+    lastProc().postMessage.mock.calls.filter((c) => (c[0] as { type: string }).type === 'shutdown')
+      .length
+
+  beforeEach(() => {
+    if (electronMocks.procs.length) lastProc().emit('exit', 1)
+  })
+
+  it('shuts mpv down when the hosting window reloads, but not on in-page navigation', () => {
+    const { win, handlers } = fakeWindow()
+    mpv.setHostWindow(win)
+    mpv.stopPlaybackWhenRendererResets(win)
+    handlers['did-start-navigation']({ isMainFrame: true, isSameDocument: true })
+    handlers['did-start-navigation']({ isMainFrame: false, isSameDocument: false })
+    expect(shutdownCount()).toBe(0)
+    handlers['did-start-navigation']({ isMainFrame: true, isSameDocument: false })
+    expect(shutdownCount()).toBe(1)
+  })
+
+  it('ignores a window that is not the current host and handles a renderer crash', () => {
+    const other = fakeWindow()
+    const host = fakeWindow()
+    mpv.setHostWindow(host.win)
+    mpv.stopPlaybackWhenRendererResets(other.win)
+    mpv.stopPlaybackWhenRendererResets(host.win)
+    other.handlers['did-start-navigation']({ isMainFrame: true, isSameDocument: false })
+    expect(shutdownCount()).toBe(0)
+    host.handlers['render-process-gone']()
+    expect(shutdownCount()).toBe(1)
+  })
+})

@@ -1,4 +1,10 @@
-import { app, BrowserWindow, MessageChannelMain, utilityProcess, type UtilityProcess } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  MessageChannelMain,
+  utilityProcess,
+  type UtilityProcess,
+} from 'electron'
 import { join } from 'node:path'
 
 // Owns the single mpv-hosting utility process for the whole app - spawned
@@ -98,6 +104,22 @@ export function setHostWindow(win: BrowserWindow): void {
   const { port1, port2 } = new MessageChannelMain()
   proc.postMessage({ type: 'port' }, [port1])
   win.webContents.postMessage('mpv-frame-port', {}, [port2])
+}
+
+// A reload / crash of the window that hosts mpv wipes its renderer (store,
+// transport bar) while the utility process keeps playing with nobody left to
+// control it. Ends the session then; a later play respawns the worker lazily.
+export function shutdownIfHost(win: BrowserWindow): void {
+  if (currentHostWindow !== win) return
+  currentHostWindow = null
+  shutdown()
+}
+
+export function stopPlaybackWhenRendererResets(win: BrowserWindow): void {
+  win.webContents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) shutdownIfHost(win)
+  })
+  win.webContents.on('render-process-gone', () => shutdownIfHost(win))
 }
 
 export function getCurrentHostWindow(): BrowserWindow | null {
