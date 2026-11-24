@@ -39,6 +39,7 @@ export interface FullscreenController {
     reason: 'media-toggle' | 'media-release'
   ) => WindowFullscreenChangedPayload
   owner: () => FullscreenOwner
+  state: () => WindowFullscreenChangedPayload
 }
 
 export interface FullscreenTimers {
@@ -82,6 +83,7 @@ export function attachFullscreenController(
 
   return {
     owner: owner.owner,
+    state,
     request: (fullscreen, reason) => {
       if (win.isDestroyed() || !win.isFullScreenable()) return state()
       if (fullscreen) {

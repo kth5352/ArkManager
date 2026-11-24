@@ -117,6 +117,8 @@ export const IPC_CHANNELS = {
   // work-level cover (filePath: null) changed - consumers refetch cover info.
   MEDIA_ARTWORK_CHANGED: 'media:artwork-changed',
   WINDOW_SET_FULLSCREEN: 'window:set-fullscreen',
+  // Reads the calling window's current fullscreen state + owner (no payload).
+  WINDOW_GET_FULLSCREEN: 'window:get-fullscreen',
   // Push-only, main -> the window whose fullscreen state changed.
   WINDOW_FULLSCREEN_CHANGED: 'window:fullscreen-changed',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',

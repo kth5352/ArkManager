@@ -22,7 +22,23 @@ export function useWindowFullscreen(): {
     owner: null,
   })
 
-  useEffect(() => window.api.window.onFullscreenChanged((next) => setState(next)), [])
+  useEffect(() => {
+    // Subscribe first, then read the real state: a window already fullscreen
+    // via F11 before mount must not start as "not fullscreen". A push that
+    // lands before the read resolves is newer, so the read only fills the gap.
+    let pushed = false
+    const off = window.api.window.onFullscreenChanged((next) => {
+      pushed = true
+      setState(next)
+    })
+    void window.api.window
+      .getFullscreen()
+      .then((initial) => {
+        if (!pushed) setState(initial)
+      })
+      .catch(() => {})
+    return off
+  }, [])
 
   const toggle = useCallback(() => {
     const previous = state.fullscreen

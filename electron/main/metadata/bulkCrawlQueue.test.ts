@@ -296,6 +296,32 @@ describe('createBulkCrawlQueue', () => {
     expect(crawlGameMetadataWithTraceMock).toHaveBeenCalledTimes(2)
   })
 
+  it('persists the generation per saved cover but notifies once when the run drains', async () => {
+    crawlGameMetadataWithTraceMock.mockImplementation(async (c) => ({
+      ...successTrace(c.value),
+      metadata: { ...metadataFor(c.value), coverImageUrl: `https://example.test/${c.value}.jpg` },
+    }))
+    cacheCoverImageMock.mockImplementation(async () => '/cache/covers/x.jpg')
+    const onCoverSaved = vi.fn()
+    const onCoversSettled = vi.fn()
+    const queue = createBulkCrawlQueue(
+      db,
+      '/cache/covers',
+      undefined,
+      onCoverSaved,
+      onCoversSettled
+    )
+
+    queue.enqueue([code('RJ01111111'), code('RJ02222222')], vi.fn())
+    await vi.advanceTimersByTimeAsync(0)
+    // Saved after the first item already - an app quit now keeps the bump.
+    expect(onCoverSaved).toHaveBeenCalledTimes(1)
+    expect(onCoversSettled).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(onCoverSaved).toHaveBeenCalledTimes(2)
+    expect(onCoversSettled).toHaveBeenCalledTimes(1)
+  })
+
   it('bumps the work cover once when a bulk run that saved covers drains, not per item', async () => {
     crawlGameMetadataWithTraceMock.mockImplementation(async (c) => ({
       ...successTrace(c.value),
@@ -303,7 +329,7 @@ describe('createBulkCrawlQueue', () => {
     }))
     cacheCoverImageMock.mockImplementation(async () => '/cache/covers/x.jpg')
     const onCoverSaved = vi.fn()
-    const queue = createBulkCrawlQueue(db, '/cache/covers', undefined, onCoverSaved)
+    const queue = createBulkCrawlQueue(db, '/cache/covers', undefined, undefined, onCoverSaved)
 
     queue.enqueue([code('RJ01111111'), code('RJ02222222'), code('RJ03333333')], vi.fn())
     await vi.advanceTimersByTimeAsync(0)

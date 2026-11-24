@@ -277,6 +277,12 @@ export function useMediaPlayback({ isHost }: UseMediaPlaybackOptions): {
         return
       }
       next()
+      // next() leaves isPlaying false only when the queue ran out (the last
+      // track finished, current track kept). The monitor fullscreen the media
+      // UI turned on ends with it; the main process ignores this for F11.
+      if (!useMediaPlayerStore.getState().isPlaying) {
+        void window.api.window.setFullscreen(false, 'media-release')
+      }
     })
   }, [isHost, repeatMode, next, seekTo])
 

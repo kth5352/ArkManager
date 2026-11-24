@@ -57,7 +57,11 @@ export function createBulkCrawlQueue(
   db: AppDatabase,
   cacheDir: string,
   getCrawlDeps?: () => CrawlGameMetadataDeps,
-  onCoverSaved?: () => Promise<void> | void
+  // Per saved cover: persist the work-cover generation (no notification).
+  onCoverSaved?: () => Promise<void> | void,
+  // Once when a run that saved covers drains: notify the renderers (batched,
+  // since every notification refetches the fullscreen cover).
+  onCoversSettled?: () => Promise<void> | void
 ): BulkCrawlQueue {
   const attempted = new Set<string>()
   const pending: GameCode[] = []
@@ -80,7 +84,7 @@ export function createBulkCrawlQueue(
       if (coverSavedThisRun) {
         coverSavedThisRun = false
         try {
-          await onCoverSaved?.()
+          await onCoversSettled?.()
         } catch {
           // Best-effort - the covers themselves are already saved.
         }
@@ -106,6 +110,14 @@ export function createBulkCrawlQueue(
           if (coverPath) {
             setGameMetadataCoverPath(db, code.value, coverPath)
             coverSavedThisRun = true
+            // The generation is fixed at save time so quitting mid-run cannot
+            // leave a saved cover behind a still-valid `.notfound`; only the
+            // renderer notification waits for the drain.
+            try {
+              await onCoverSaved?.()
+            } catch {
+              // Best-effort - see above.
+            }
           }
         }
       } else {

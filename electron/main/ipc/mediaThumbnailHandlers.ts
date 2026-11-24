@@ -52,11 +52,14 @@ export function registerMediaThumbnailHandlers(
     const none: MediaCoverInfo = { hasCover: false, accent: null, aspectRatio: null, version }
     if (!inBoundary) return none
     // A user override is what the protocol serves first, so it wins here too.
-    const overridePath = getMediaThumbnailOverride(db, filePath)
-    if (overridePath) {
+    const overrideInfoFor = async (v: string): Promise<MediaCoverInfo | null> => {
+      const overridePath = getMediaThumbnailOverride(db, filePath)
+      if (!overridePath) return null
       const overrideInfo = await readOverrideCoverInfo(overridePath)
-      if (overrideInfo) return { hasCover: true, version, ...overrideInfo }
+      return overrideInfo ? { hasCover: true, version: v, ...overrideInfo } : null
     }
+    const early = await overrideInfoFor(version)
+    if (early) return early
     // A rejected resolve (encode I/O error, cache directory removed by
     // clear-cache mid-flight) answers "no cover" instead of failing the query,
     // which the renderer would otherwise keep showing as pending.
@@ -65,6 +68,21 @@ export function registerMediaThumbnailHandlers(
       art = await artwork.resolve(filePath)
     } catch {
       return none
+    }
+    // The resolve can take long; an override set (or any invalidation) while it
+    // ran must not be answered with the stale pre-resolve result.
+    const versionAfter = `${artwork.cache.trackGeneration(filePath)}-${artwork.cache.workCoverGeneration()}`
+    const late = await overrideInfoFor(versionAfter)
+    if (late) return late
+    if (versionAfter !== version) {
+      return art
+        ? {
+            hasCover: true,
+            accent: art.info.accent,
+            aspectRatio: art.info.aspectRatio,
+            version: versionAfter,
+          }
+        : { ...none, version: versionAfter }
     }
     const info: MediaCoverInfo = art
       ? { hasCover: true, accent: art.info.accent, aspectRatio: art.info.aspectRatio, version }

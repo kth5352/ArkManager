@@ -533,6 +533,8 @@ const api = {
       reason: 'media-toggle' | 'media-release'
     ): Promise<WindowFullscreenChangedPayload> =>
       ipcRenderer.invoke(IPC_CHANNELS.WINDOW_SET_FULLSCREEN, { fullscreen, reason }),
+    getFullscreen: (): Promise<WindowFullscreenChangedPayload> =>
+      ipcRenderer.invoke(IPC_CHANNELS.WINDOW_GET_FULLSCREEN),
     onFullscreenChanged: (
       callback: (payload: WindowFullscreenChangedPayload) => void
     ): (() => void) => {

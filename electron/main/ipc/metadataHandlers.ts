@@ -106,13 +106,14 @@ function crawlDepsFromSettings(db: AppDatabase) {
 
 export function registerMetadataHandlers(
   db: AppDatabase,
-  artwork: Pick<MediaArtworkServices, 'bumpWorkCover'>
+  artwork: Pick<MediaArtworkServices, 'bumpWorkCover' | 'bumpWorkCoverQuiet' | 'notifyWorkCover'>
 ): MetadataHandlersApi {
   const bulkCrawlQueue = createBulkCrawlQueue(
     db,
     join(app.getPath('userData'), 'cache', 'covers'),
     () => crawlDepsFromSettings(db),
-    () => artwork.bumpWorkCover()
+    () => artwork.bumpWorkCoverQuiet(),
+    () => artwork.notifyWorkCover()
   )
 
   ipcMain.handle(IPC_CHANNELS.METADATA_GET, (_event, payload: unknown) => {

@@ -14,6 +14,9 @@ export interface MediaArtworkServices {
   invalidateTrack(filePath: string): Promise<void>
   /** Any work-level cover changed (crawl, custom cover, code link): notifies everything. */
   bumpWorkCover(): Promise<void>
+  /** Persist the generation bump without notifying (bulk crawl batches the notification). */
+  bumpWorkCoverQuiet(): Promise<void>
+  notifyWorkCover(): void
 }
 
 export function createMediaArtworkServices(
@@ -28,6 +31,16 @@ export function createMediaArtworkServices(
       return null
     }
   })
+  // The in-memory generation is already incremented, so views refetch
+  // correctly even when persisting it fails; never make the caller's
+  // (already committed) operation look failed.
+  async function bumpWorkCoverQuiet(): Promise<void> {
+    try {
+      await cache.bumpWorkCoverGeneration()
+    } catch (error) {
+      console.error('Failed to persist work cover generation:', error)
+    }
+  }
   return {
     cache,
     resolve: (filePath) => resolveMediaArtwork(cache, filePath, isVideoFile(filePath), deps),
@@ -39,15 +52,10 @@ export function createMediaArtworkServices(
       }
       notify(filePath)
     },
+    bumpWorkCoverQuiet,
+    notifyWorkCover: () => notify(null),
     async bumpWorkCover() {
-      // The in-memory generation is already incremented, so views refetch
-      // correctly even when persisting it fails; never make the caller's
-      // (already committed) operation look failed.
-      try {
-        await cache.bumpWorkCoverGeneration()
-      } catch (error) {
-        console.error('Failed to persist work cover generation:', error)
-      }
+      await bumpWorkCoverQuiet()
       notify(null)
     },
   }

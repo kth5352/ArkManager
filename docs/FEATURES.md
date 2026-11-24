@@ -368,7 +368,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - **진입/해제**: ⛶ 버튼 / `F` / 영상 더블클릭이 토글, `Esc`가 해제(**모니터 전체 화면일 때만** 처리하고 아니면 소비하지 않음). `F`는 오버레이가 보이는 동안만. 텍스트 입력 중·`Ctrl/Alt/Meta` 조합은 제외하고 슬라이더 포커스에서는 동작. 키 자동 반복은 소비하되 동작하지 않음(`F` 길게 눌러도 깜빡이지 않음).
 - **IPC**: `window:set-fullscreen`(invoke, `{fullscreen, reason: 'media-toggle' | 'media-release'}` → `{fullscreen, owner}`) → 호출한 창(`BrowserWindow.fromWebContents`)의 `setFullScreen`. 상태 변화는 `enter-full-screen`/`leave-full-screen` 이벤트로 그 창에 `window:fullscreen-changed`(`{fullscreen, owner}`)를 push(F11·OS 등 다른 경로도 반영). 창마다 컨트롤러 하나(`windowFullscreenOwner.ts`; 메인 창은 `index.ts`, 분리 창은 `mediaWindowHandlers.ts`에서 부착). 렌더러는 `useWindowFullscreen()`(`fullscreen`, `owner`, `toggle`, `release`).
 - **소유자 추적** `owner: 'media' | 'user' | null`: 미디어가 `setFullScreen(true)`를 요청한 직후의 enter 이벤트만 `media`로 귀속(요청이 거부되면 즉시, 이벤트가 안 오면 1초 뒤 대기 플래그 해제 — 이후 사용자의 F11이 media로 오귀속되지 않도록). 메뉴의 F11(`togglefullscreen`)로 켠 것은 `user`.
-- **해제 규칙**: `media-release`는 `owner === 'media'`일 때만 실제로 끈다 — ⊟ 최소화(해제 후 최소화), 분리(⤡), 재생 중단·재생목록 비움(`MediaPlayerHost`와 `PlayerWindowPage`의 effect). 사용자가 F11로 켠 것은 이 셋에서 유지된다. 반대로 `media-toggle`(⛶/`F`/`Esc`/더블클릭)은 누가 켰든 끈다. 분리 시 새 창은 창 모드로 열리고, 분리 창이 전체 화면인 채 닫혀도 메인 창 상태는 바뀌지 않는다. 훅은 마운트 시점의 초기 상태를 모른다 — F11 상태에서 오버레이를 열면 첫 ⛶이 반영 안 된 것처럼 보일 수 있어, 응답이 요청 전 상태와 같으면 한 번 반대로 재시도한다(그 전까지 ⛶ 아이콘은 "진입" 표시이고 `Esc`는 가로채지 않음).
+- **해제 규칙**: `media-release`는 `owner === 'media'`일 때만 실제로 끈다 — ⊟ 최소화(해제 후 최소화), 분리(⤡), 재생 중단·재생목록 비움(`MediaPlayerHost`와 `PlayerWindowPage`의 effect). 사용자가 F11로 켠 것은 이 셋에서 유지된다. 반대로 `media-toggle`(⛶/`F`/`Esc`/더블클릭)은 누가 켰든 끈다. 분리 시 새 창은 창 모드로 열리고, 분리 창이 전체 화면인 채 닫혀도 메인 창 상태는 바뀌지 않는다. 훅은 마운트 시 `window:get-fullscreen`으로 실제 상태·소유자를 읽는다(그 사이 push가 먼저 오면 push가 우선). 그래도 응답이 요청 전 상태와 같으면 한 번 반대로 재시도한다. 마지막 곡이 자연 종료돼 큐가 끝나면(`next()`가 재생을 멈춘 채 현재 곡 유지) `useMediaPlayback`의 `ended` 처리가 `media-release`를 보내 미디어가 켠 전체 화면을 푼다.
 - **키 우선순위**: `F`/`Esc`는 `window`에 **capture 단계**로 등록한 `useFullscreenKeys`가 먼저 받아 `preventDefault()` + `stopImmediatePropagation()`으로 소비 → 이후 bubble 리스너(`DetailSidebar`의 `Esc` 닫기, `useFavoriteShortcut`의 `F`)에 도달하지 않는다. 방어로 두 핸들러도 `shouldYieldKeyToMediaOverlay`로 `defaultPrevented`이거나 미디어 오버레이가 보이는 중(`mediaExpanded && !isDetached`)이면 무시. 화살표·`Space`는 bubble 유지. 최소화(도킹 바) 상태에서는 `F`/`Esc`를 가져가지 않는다.
 
 ### 11.10 음성 화면 (`AudioArtworkView`)
@@ -480,7 +480,7 @@ JSON 컬럼(`genres`, `launch_config`)은 손상돼도 전체 읽기가 실패�
 
 ## 15. IPC · 신뢰 경계 규칙 (작업 시 반드시 지킬 것)
 
-1. **채널 정의는 `shared/types/ipc.ts` 한 곳**(`IPC_CHANNELS` **111개** 상수 + Zod 요청 스키마). 새 채널 = 상수 + 스키마 → `electron/main/ipc/*Handlers.ts` 핸들러 → `electron/preload/index.ts` 타입 지정 래퍼 → `src/services/*Service.ts`(TanStack Query 훅) 순. (실제로는 mpv·창 전체 화면 채널처럼 이벤트/명령성인 것은 서비스 래퍼 없이 `window.api.mpv.*`/`window.api.window.*`를 훅·스토어·컴포넌트에서 직접 호출한다 — `useMediaPlayback`, `useWindowFullscreen`, `useSeekPreview` 등.)
+1. **채널 정의는 `shared/types/ipc.ts` 한 곳**(`IPC_CHANNELS` **112개** 상수 + Zod 요청 스키마). 새 채널 = 상수 + 스키마 → `electron/main/ipc/*Handlers.ts` 핸들러 → `electron/preload/index.ts` 타입 지정 래퍼 → `src/services/*Service.ts`(TanStack Query 훅) 순. (실제로는 mpv·창 전체 화면 채널처럼 이벤트/명령성인 것은 서비스 래퍼 없이 `window.api.mpv.*`/`window.api.window.*`를 훅·스토어·컴포넌트에서 직접 호출한다 — `useMediaPlayback`, `useWindowFullscreen`, `useSeekPreview` 등.)
 2. 핸들러는 `payload: unknown` → `Schema.parse(payload)`. 푸시 전용 채널(`scanner:scan-progress`, `metadata:bulk-crawl-progress`, `update:status`, `mpv:state-update`, `mpv:ended`, `media:hardware-key`, `media:artwork-changed`, `window:fullscreen-changed`, `menu:open-excluded-entries-dialog` 등)은 `webContents.send`. `ipcMain.on` 리스너는 `safeParse`(예외로 메인이 죽지 않도록) — 단 `MPV_RESIZE`는 현재 `parse`를 씀.
 3. **모든 `ipcMain.handle/on`은 `installTrustedIpcGuard()`가 감싸** 발신 프레임이 앱 자신의 최상위 프레임(패키징 시 정확히 `out/renderer/index.html`, 개발 시 dev 서버 출처)인지 검사. 위반 시 handle은 throw, on은 `returnValue = null`. 새 핸들러도 자동 적용되지만 가드 설치 전에 등록하면 안 됨.
 4. 파일 시스템에 닿는 모든 핸들러는 `isPathWithinAnyLibrary` 검증(미디어는 `computeMediaAllowedRoots` + `computeMediaTrustedPaths`). 사용자가 고른 임의 위치(세이브 폴더·표지 원본 등)는 **"방금 고른 경로"** 패턴.
@@ -578,7 +578,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 - Node 버전: `.nvmrc` = 20.
 - 스택: Electron 43.8.7, electron-vite 5, Vite 7.3, React 19.2, TypeScript 6(strict), Tailwind v4 + shadcn/ui(Radix), Zustand 5, TanStack Query 5 / Router 1, Drizzle 0.45 + better-sqlite3 13, dnd-kit, react-window 2, framer-motion 12, cheerio, sharp 0.35.5, ffmpeg-static, iconv-lite, electron-updater, zod 4.6.7, sonner, Pretendard 번들 폰트. `overrides`로 undici/seroval/js-yaml 등 하위 의존성 고정.
 - 패키징: `extraResources`로 `LOGO.png`, `mpv_addon.node`, `libmpv-2.dll` 동봉, `asarUnpack` 사용. 앱 ID `com.arkmanager.app`.
-- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 111개, preload API 함수 약 140개(미디어 전체 화면 작업으로 몇 개 늘었으나 재집계하지 않음), 번역 키 364개(2026-11-23 TypeScript 파서로 `ko` 객체 재집계, ja/en 동일).
+- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 112개, preload API 함수 약 140개(미디어 전체 화면 작업으로 몇 개 늘었으나 재집계하지 않음), 번역 키 364개(2026-11-23 TypeScript 파서로 `ko` 객체 재집계, ja/en 동일).
 - 설계 스펙·구현 계획(`docs/superpowers/`, `.superpowers/`)은 gitignore 대상이라 **저장소에는 없음**(2026-11-23 미디어 전체 화면 작업의 스펙·계획은 이 PC 작업 폴더에만 남아 있고 커밋되지 않음). 그 외 코드 주석이 인용하는 이 경로의 문서는 대부분 열람 불가 → 주석 자체가 유일한 근거.
 
 ---
@@ -619,7 +619,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 | 음성 화면(표지 중심·확대·표지 없음·강조색) + 표지 파이프라인(2048px 큰 표지, 곡/작품 세대 + 곡별 잠금 무효화, RJ 작품 표지 대체, `.notfound` 잔존 버그 수정) | §11.10~11.11, `media:get-cover-info` |
 | 곡 제목(`media-title`)·`loadGeneration`/`loadedPath` 식별 정보 | §11.12 |
 | 시크바 장면 미리보기(두 번째 mpv utilityProcess, 중앙값 약 27ms) | §11.13, `mpv:preview-frame` |
-| 최종 리뷰 수정: `mpv:ended`에 로드 식별 정보(늦은 `ended` 무시), `build`/`release`가 애드온 재빌드 + 옛 애드온이면 제목 null·미리보기 거부, 전체 화면에서 EQ 팝오버가 열려 있으면 `Esc`는 팝오버만 닫음, `get-cover-info`/`mediathumb://`가 resolve 예외에 "표지 없음"/404, 일괄 크롤의 작품 표지 세대 bump를 실행당 1회로, 영상 `.notfound`는 작품 표지 세대와 무관, 미리보기 프레임 길이 검사(방어 심층) + 곡 전환 시 호버 초기화 | §11.12, §11.13, `package.json` |
+| 최종 리뷰 수정: `mpv:ended`에 로드 식별 정보(늦은 `ended` 무시), `build`/`release`가 애드온 재빌드 + 옛 애드온이면 제목 null·미리보기 거부, 전체 화면에서 EQ 팝오버가 열려 있으면 `Esc`는 팝오버만 닫음, `get-cover-info`/`mediathumb://`가 resolve 예외에 "표지 없음"/404, 일괄 크롤의 작품 표지 세대는 표지 저장 시점마다 영속화하고 렌더러 알림만 큐 소진 시 1회로, 영상 `.notfound`는 작품 표지 세대와 무관, 미리보기 프레임 길이 검사(방어 심층) + 곡 전환 시 호버 초기화 | §11.12, §11.13, `package.json` |
 
 ### 20.1 보안 브랜치 마무리 (릴리스 전 필수)
 1. `npm ci`(ffmpeg 바이너리 복구 포함) 후 mpv 애드온 재빌드 확인. (이 PC에서는 2026-11-23에 `build:mpv-addon` + `rebuild:mpv-addon` 완료)
@@ -682,7 +682,6 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 - 애드온 스파이크/옵션: `preview-latency.cjs`의 랜덤 시드, `set_option` 반환값 무시, restart-id 가드, 4ms 간격 지터, getter throw 처리.
 
 **전체 화면 · 자동 숨김**
-- `useWindowFullscreen`이 마운트 시 초기 상태를 모름(각 인스턴스가 false로 시작) → F11 상태에서 오버레이를 열면 첫 push 전까지 `Esc`를 가로채지 못하고 ⛶ 아이콘이 "진입"으로 보임(`shouldRetryToggle` 재시도는 거의 쓰이지 않음). 초기 상태 조회 또는 마운트 시 push로 해결.
 - 숨은 뒤 첫 합성 `pointermove`는 걸러지지 않아 한 번 깜빡일 수 있음. 훅 테스트 공백(`removeEventListener`, disable→enable, wheel/pointerdown, 숨은 중 hold true), 이벤트마다 타이머 clear/set 반복.
 - 분리 창 자막 PIP 버튼이 이미 PIP가 열려 있어도 "닫힘"으로 시작(메인이 재방송하면 보정), ☰ 레이블 불일치(`media.playlist` vs `media.showPlaylist`), `MediaSidebar`가 24px 그라데이션 패딩 위에서 멈춤(화면 확인 필요). `windowFullscreenHandlers`의 null/destroyed 조기 반환과 `useWindowFullscreen` 훅 자체 테스트 부족.
 
@@ -699,7 +698,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 
 | 구버전 서술 | 실제 코드 |
 | --- | --- |
-| IPC 채널 약 100개(FEATURES) / 77개(ARCHITECTURE) | **106개**(2026-11-23 미디어 전체 화면 작업 뒤 111개) |
+| IPC 채널 약 100개(FEATURES) / 77개(ARCHITECTURE) | **106개**(2026-11-23 미디어 전체 화면 작업 뒤 112개) |
 | 테스트 파일 약 134개 | **141개 / 1009 테스트** |
 | 전체 새로고침 = `game_metadata`에 있는 모든 코드 | + `metadata_failures`에만 있는 코드 |
 | RJ/VJ 폴백 체인 ③ external(활성화 시) | 단건 크롤에서만. 일괄/전체 새로고침은 external 미사용 |

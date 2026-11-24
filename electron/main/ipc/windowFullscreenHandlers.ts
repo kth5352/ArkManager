@@ -37,4 +37,10 @@ export function registerWindowFullscreenHandlers(): void {
     attachWindowFullscreen(win)
     return controllers.get(win)!.request(fullscreen, reason)
   })
+  ipcMain.handle(IPC_CHANNELS.WINDOW_GET_FULLSCREEN, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return { fullscreen: false, owner: null }
+    attachWindowFullscreen(win)
+    return controllers.get(win)!.state()
+  })
 }
