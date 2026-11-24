@@ -69,6 +69,13 @@ describe('attachFullscreenController', () => {
     expect(c.request(false, 'media-toggle').fullscreen).toBe(false)
     expect(w.setFullScreen).toHaveBeenCalledWith(false)
   })
+  it('media-flip flips from the real window state, whatever fullscreen value is sent', () => {
+    const w = new FakeWin()
+    const c = attachFullscreenController(w)
+    w.fire(true) // F11 before the renderer knew
+    expect(c.request(true, 'media-flip').fullscreen).toBe(false)
+    expect(w.setFullScreen).toHaveBeenCalledWith(false)
+  })
   it('second enter without a request is user', () => {
     const w = new FakeWin()
     const c = attachFullscreenController(w)

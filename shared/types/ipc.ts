@@ -771,7 +771,7 @@ export interface MediaCoverInfo {
 
 export const WindowFullscreenRequestSchema = z.object({
   fullscreen: z.boolean(),
-  reason: z.enum(['media-toggle', 'media-release']),
+  reason: z.enum(['media-toggle', 'media-flip', 'media-release']),
 })
 export type WindowFullscreenRequest = z.infer<typeof WindowFullscreenRequestSchema>
 

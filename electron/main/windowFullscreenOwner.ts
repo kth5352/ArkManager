@@ -36,7 +36,7 @@ export interface FullscreenWindowLike {
 export interface FullscreenController {
   request: (
     fullscreen: boolean,
-    reason: 'media-toggle' | 'media-release'
+    reason: 'media-toggle' | 'media-flip' | 'media-release'
   ) => WindowFullscreenChangedPayload
   owner: () => FullscreenOwner
   state: () => WindowFullscreenChangedPayload
@@ -86,6 +86,12 @@ export function attachFullscreenController(
     state,
     request: (fullscreen, reason) => {
       if (win.isDestroyed() || !win.isFullScreenable()) return state()
+      // 'media-flip' toggles from the REAL window state, so a renderer whose
+      // view is stale (F11 before mount, getFullscreen not back yet) still flips.
+      if (reason === 'media-flip') {
+        fullscreen = !win.isFullScreen()
+        reason = 'media-toggle'
+      }
       if (fullscreen) {
         if (!win.isFullScreen()) {
           pendingMedia = true

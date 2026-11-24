@@ -48,9 +48,15 @@ export function registerMediaThumbnailHandlers(
     const inBoundary =
       isPathWithinAnyLibrary(filePath, computeMediaAllowedRoots(db)) ||
       isPathExactlyTrusted(filePath, computeMediaTrustedPaths(db))
-    const version = `${artwork.cache.trackGeneration(filePath)}-${artwork.cache.workCoverGeneration()}`
-    const none: MediaCoverInfo = { hasCover: false, accent: null, aspectRatio: null, version }
-    if (!inBoundary) return none
+    const currentVersion = (): string =>
+      `${artwork.cache.trackGeneration(filePath)}-${artwork.cache.workCoverGeneration()}`
+    const noCover = (v: string): MediaCoverInfo => ({
+      hasCover: false,
+      accent: null,
+      aspectRatio: null,
+      version: v,
+    })
+    if (!inBoundary) return noCover(currentVersion())
     // A user override is what the protocol serves first, so it wins here too.
     const overrideInfoFor = async (v: string): Promise<MediaCoverInfo | null> => {
       const overridePath = getMediaThumbnailOverride(db, filePath)
@@ -58,36 +64,32 @@ export function registerMediaThumbnailHandlers(
       const overrideInfo = await readOverrideCoverInfo(overridePath)
       return overrideInfo ? { hasCover: true, version: v, ...overrideInfo } : null
     }
-    const early = await overrideInfoFor(version)
-    if (early) return early
-    // A rejected resolve (encode I/O error, cache directory removed by
-    // clear-cache mid-flight) answers "no cover" instead of failing the query,
-    // which the renderer would otherwise keep showing as pending.
-    let art: Awaited<ReturnType<typeof artwork.resolve>>
-    try {
-      art = await artwork.resolve(filePath)
-    } catch {
-      return none
+    // The resolve can take long, and an override or a generation bump can land
+    // while it runs. A result is only answered under the version it started
+    // from; when the version moved, resolve again (bounded) instead of
+    // wrapping the stale result in the new version.
+    let result: MediaCoverInfo = noCover(currentVersion())
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const version = currentVersion()
+      const early = await overrideInfoFor(version)
+      if (early) return early
+      // A rejected resolve (encode I/O error, cache directory removed by
+      // clear-cache mid-flight) answers "no cover" instead of failing the
+      // query, which the renderer would otherwise keep showing as pending.
+      let art: Awaited<ReturnType<typeof artwork.resolve>>
+      try {
+        art = await artwork.resolve(filePath)
+      } catch {
+        art = null
+      }
+      const late = await overrideInfoFor(currentVersion())
+      if (late) return late
+      result = art
+        ? { hasCover: true, accent: art.info.accent, aspectRatio: art.info.aspectRatio, version }
+        : noCover(version)
+      if (currentVersion() === version) return result
     }
-    // The resolve can take long; an override set (or any invalidation) while it
-    // ran must not be answered with the stale pre-resolve result.
-    const versionAfter = `${artwork.cache.trackGeneration(filePath)}-${artwork.cache.workCoverGeneration()}`
-    const late = await overrideInfoFor(versionAfter)
-    if (late) return late
-    if (versionAfter !== version) {
-      return art
-        ? {
-            hasCover: true,
-            accent: art.info.accent,
-            aspectRatio: art.info.aspectRatio,
-            version: versionAfter,
-          }
-        : { ...none, version: versionAfter }
-    }
-    const info: MediaCoverInfo = art
-      ? { hasCover: true, accent: art.info.accent, aspectRatio: art.info.aspectRatio, version }
-      : none
-    return info
+    return result
   })
 
   // Same one-shot trust pattern as GAME_USER_DATA_SET_CUSTOM_COVER_FROM_FILE

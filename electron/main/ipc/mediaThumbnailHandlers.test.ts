@@ -279,6 +279,62 @@ describe('MEDIA_THUMBNAIL_SET_FROM_FILE', () => {
     expect(info).toEqual({ hasCover: false, accent: null, aspectRatio: null, version: '0-1' })
   })
 
+  it('MEDIA_GET_COVER_INFO resolves again when the generation moves during the resolve', async () => {
+    let gen = 1
+    const spy = vi.spyOn(artworkStub.cache, 'workCoverGeneration').mockImplementation(() => gen)
+    const stale = {
+      thumb: 't',
+      cover: 'c',
+      info: {
+        source: 'embedded' as const,
+        workCoverGeneration: 1,
+        accent: '#111111',
+        aspectRatio: 1,
+      },
+    }
+    const fresh = { ...stale, info: { ...stale.info, accent: '#222222', aspectRatio: 2 } }
+    vi.mocked(artworkStub.resolve)
+      .mockImplementationOnce(async () => {
+        gen = 2 // a crawl lands while the first resolve is running
+        return stale
+      })
+      .mockResolvedValueOnce(fresh)
+    try {
+      const info = await registeredHandler(IPC_CHANNELS.MEDIA_GET_COVER_INFO)(
+        {},
+        { filePath: 'D:\\Music\\Song.mp3' }
+      )
+      expect(info).toEqual({ hasCover: true, accent: '#222222', aspectRatio: 2, version: '0-2' })
+    } finally {
+      spy.mockRestore()
+      vi.mocked(artworkStub.resolve).mockReset()
+      vi.mocked(artworkStub.resolve).mockResolvedValue(null)
+    }
+  })
+
+  it('MEDIA_GET_COVER_INFO rechecks the override when the resolve rejects', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'ark-manager-override-late-'))
+    const overridePath = join(directory, 'key.webp')
+    try {
+      await sharp({ create: { width: 40, height: 20, channels: 3, background: '#cc2222' } })
+        .webp()
+        .toFile(overridePath)
+      vi.mocked(artworkStub.resolve).mockImplementationOnce(async () => {
+        setMediaThumbnailOverride(db, 'D:\\Music\\Song.mp3', overridePath)
+        throw new Error('cache dir removed')
+      })
+      const info = (await registeredHandler(IPC_CHANNELS.MEDIA_GET_COVER_INFO)(
+        {},
+        { filePath: 'D:\\Music\\Song.mp3' }
+      )) as { hasCover: boolean }
+      expect(info.hasCover).toBe(true)
+    } finally {
+      vi.mocked(artworkStub.resolve).mockReset()
+      vi.mocked(artworkStub.resolve).mockResolvedValue(null)
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
   it('sanitizes a fatal restore failure before rejecting the renderer request', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'ark-manager-thumbnail-'))
     const sourcePath = join(directory, 'cover.jpg')

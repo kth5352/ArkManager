@@ -530,7 +530,7 @@ const api = {
   window: {
     setFullscreen: (
       fullscreen: boolean,
-      reason: 'media-toggle' | 'media-release'
+      reason: 'media-toggle' | 'media-flip' | 'media-release'
     ): Promise<WindowFullscreenChangedPayload> =>
       ipcRenderer.invoke(IPC_CHANNELS.WINDOW_SET_FULLSCREEN, { fullscreen, reason }),
     getFullscreen: (): Promise<WindowFullscreenChangedPayload> =>
