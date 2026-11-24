@@ -41,6 +41,7 @@ import { registerMpvHandlers } from './ipc/mpvHandlers'
 import { registerMpvPreviewHandlers } from './ipc/mpvPreviewHandlers'
 import { attachWindowFullscreen, registerWindowFullscreenHandlers } from './ipc/windowFullscreenHandlers'
 import * as mpv from './media/mpvProcessManager'
+import { registerWindowControlHandlers } from './ipc/windowControlHandlers'
 import { shutdownPreview } from './media/mpvPreviewManager'
 import { registerUpdateHandlers, checkForUpdatesOnStartup } from './updater'
 import { getActiveSessions } from './launch/activeSessions'
@@ -527,6 +528,7 @@ if (!gotSingleInstanceLock) {
     registerMpvHandlers(db, () => mainWindow)
     registerMpvPreviewHandlers()
     registerWindowFullscreenHandlers()
+    registerWindowControlHandlers()
 
     // A game launched via LAUNCH_GAME only persists its playtime after the
     // child process exits (see launchHandlers.ts) - if the app quits while a

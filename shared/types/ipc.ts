@@ -119,6 +119,11 @@ export const IPC_CHANNELS = {
   WINDOW_SET_FULLSCREEN: 'window:set-fullscreen',
   // Reads the calling window's current fullscreen state + owner (no payload).
   WINDOW_GET_FULLSCREEN: 'window:get-fullscreen',
+  // Frameless detached player window: minimize / toggle-maximize / close / get-state
+  // for the calling window; answers { maximized }.
+  WINDOW_CONTROL: 'window:control',
+  // Push-only, main -> the window whose maximized state changed (payload: boolean).
+  WINDOW_MAXIMIZED_CHANGED: 'window:maximized-changed',
   // Push-only, main -> the window whose fullscreen state changed.
   WINDOW_FULLSCREEN_CHANGED: 'window:fullscreen-changed',
   GAME_ENTRY_EXCLUDE: 'game-entry:exclude',
@@ -774,6 +779,15 @@ export const WindowFullscreenRequestSchema = z.object({
   reason: z.enum(['media-toggle', 'media-flip', 'media-release']),
 })
 export type WindowFullscreenRequest = z.infer<typeof WindowFullscreenRequestSchema>
+
+export const WindowControlRequestSchema = z.object({
+  action: z.enum(['minimize', 'toggle-maximize', 'close', 'get-state']),
+})
+export type WindowControlAction = z.infer<typeof WindowControlRequestSchema>['action']
+
+export interface WindowControlResult {
+  maximized: boolean
+}
 
 export interface WindowFullscreenChangedPayload {
   fullscreen: boolean

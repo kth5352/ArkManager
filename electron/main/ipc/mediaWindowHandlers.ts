@@ -5,6 +5,7 @@ import { IPC_CHANNELS, MediaSyncStateSchema } from '../../../shared/types/ipc'
 import { installZoomInShortcut } from '../zoomShortcuts'
 import { setMediaHardwareKeysActive } from '../mediaHardwareKeys'
 import { attachWindowFullscreen } from './windowFullscreenHandlers'
+import { attachMaximizedPush } from './windowControlHandlers'
 import { stopPlaybackWhenRendererResets } from '../media/mpvProcessManager'
 
 // Detached video playback lives in its own BrowserWindow (see
@@ -52,11 +53,15 @@ export function registerMediaWindowHandlers(getMainWindow: () => BrowserWindow |
       height: 640,
       minWidth: 480,
       minHeight: 320,
+      // The window draws its own minimize/maximize/close buttons (auto-hiding
+      // like the control bands); a frameless window keeps edge resizing.
+      frame: false,
       webPreferences: secureWebPreferences(join(__dirname, '../preload/index.js')),
     })
     installZoomInShortcut(win.webContents)
     attachWindowFullscreen(win)
     stopPlaybackWhenRendererResets(win)
+    attachMaximizedPush(win)
 
     if (process.env['ELECTRON_RENDERER_URL']) {
       win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/player-window`)

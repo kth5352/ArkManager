@@ -368,6 +368,7 @@ PC에 흩어진 동인 소프트웨어(DLsite·Steam·VNDB·Getchu 게임, ASMR/
 - **진입/해제**: ⛶ 버튼 / `F` / 영상 더블클릭이 토글, `Esc`가 해제(**모니터 전체 화면일 때만** 처리하고 아니면 소비하지 않음). `F`는 오버레이가 보이는 동안만. 텍스트 입력 중·`Ctrl/Alt/Meta` 조합은 제외하고 슬라이더 포커스에서는 동작. 키 자동 반복은 소비하되 동작하지 않음(`F` 길게 눌러도 깜빡이지 않음).
 - **IPC**: `window:set-fullscreen`(invoke, `{fullscreen, reason: 'media-toggle' | 'media-flip' | 'media-release'}` → `{fullscreen, owner}`) → 호출한 창(`BrowserWindow.fromWebContents`)의 `setFullScreen`. 상태 변화는 `enter-full-screen`/`leave-full-screen` 이벤트로 그 창에 `window:fullscreen-changed`(`{fullscreen, owner}`)를 push(F11·OS 등 다른 경로도 반영). 창마다 컨트롤러 하나(`windowFullscreenOwner.ts`; 메인 창은 `index.ts`, 분리 창은 `mediaWindowHandlers.ts`에서 부착). 렌더러는 `useWindowFullscreen()`(`fullscreen`, `owner`, `toggle`, `release`).
 - **소유자 추적** `owner: 'media' | 'user' | null`: 미디어가 `setFullScreen(true)`를 요청한 직후의 enter 이벤트만 `media`로 귀속(요청이 거부되면 즉시, 이벤트가 안 오면 1초 뒤 대기 플래그 해제 — 이후 사용자의 F11이 media로 오귀속되지 않도록). 메뉴의 F11(`togglefullscreen`)로 켠 것은 `user`.
+- **분리 창 프레임 없음**: 분리 플레이어 창은 `frame: false`(OS 제목 표시줄·메뉴 막대 없음, 가장자리 크기 조절은 유지). 우측 상단에 `DetachedWindowControls`(ㅡ ㅁ ✕)를 직접 그리며 띠와 같이 2초 뒤 사라지고 호버·포커스 중엔 유지한다(전체 화면에선 ㅁ 숨김). 제목 줄(띠가 보일 때만)이 드래그 영역이라 더블클릭 최대화도 된다. IPC `window:control`(`minimize`/`toggle-maximize`/`close`/`get-state` → `{maximized}`, 호출한 창에만 작용)과 push `window:maximized-changed`. 메인 창은 영향 없음.
 - **새로고침·렌더러 종료**: mpv를 호스팅하는 창이 새로고침(메인 프레임 이동)되거나 렌더러가 죽으면 `stopPlaybackWhenRendererResets`가 mpv 워커를 종료한다(스토어·재생 바는 초기화되는데 소리만 남는 상태 방지). 다음 재생 때 워커가 다시 뜬다. 분리 창이 호스트면 메인 창 새로고침은 영향 없음.
 - **해제 규칙**: `media-release`는 `owner === 'media'`일 때만 실제로 끈다 — ⊟ 최소화(해제 후 최소화), 분리(⤡), 재생 중단·재생목록 비움(`MediaPlayerHost`와 `PlayerWindowPage`의 effect)·마지막 곡 자연 종료(`useMediaPlayback`의 `ended` 처리). 사용자가 F11로 켠 것은 이 경로들에서 유지된다. 반대로 UI 토글(⛶/`F`/`Esc`/더블클릭)은 `media-flip`으로 보내며 누가 켰든 끈다 — 메인 프로세스가 보낸 `fullscreen` 값을 무시하고 창의 실제 상태를 뒤집는다. `media-toggle`은 `fullscreen` 값을 그대로 따르는 명시적 진입/해제 요청(소유자 무관하게 끔)으로 스키마에 남아 있으나 현재 렌더러는 쓰지 않는다. 분리 시 새 창은 창 모드로 열리고, 분리 창이 전체 화면인 채 닫혀도 메인 창 상태는 바뀌지 않는다. 훅은 마운트 시 `window:get-fullscreen`으로 실제 상태·소유자를 읽는다(그 사이 push가 먼저 오면 push가 우선). 토글(`⛶`/`F`/더블클릭)은 `reason: 'media-flip'`으로 보내 메인 프로세스가 창의 실제 상태를 기준으로 뒤집으므로, 초기 조회가 끝나기 전의 첫 조작도 맞게 동작한다(그 짧은 구간의 `Esc`만 가로채지 않음). `get-cover-info`는 해결 중 버전이 바뀌면(최대 3회) 다시 해결하고, 해결이 실패한 경로에서도 사용자 지정 표지를 다시 확인한다. 마지막 곡이 자연 종료돼 큐가 끝나면(`next()`가 재생을 멈춘 채 현재 곡 유지) `useMediaPlayback`의 `ended` 처리가 `media-release`를 보내 미디어가 켠 전체 화면을 푼다.
 - **키 우선순위**: `F`/`Esc`는 `window`에 **capture 단계**로 등록한 `useFullscreenKeys`가 먼저 받아 `preventDefault()` + `stopImmediatePropagation()`으로 소비 → 이후 bubble 리스너(`DetailSidebar`의 `Esc` 닫기, `useFavoriteShortcut`의 `F`)에 도달하지 않는다. 방어로 두 핸들러도 `shouldYieldKeyToMediaOverlay`로 `defaultPrevented`이거나 미디어 오버레이가 보이는 중(`mediaExpanded && !isDetached`)이면 무시. 화살표·`Space`는 bubble 유지. 최소화(도킹 바) 상태에서는 `F`/`Esc`를 가져가지 않는다.
@@ -481,7 +482,7 @@ JSON 컬럼(`genres`, `launch_config`)은 손상돼도 전체 읽기가 실패�
 
 ## 15. IPC · 신뢰 경계 규칙 (작업 시 반드시 지킬 것)
 
-1. **채널 정의는 `shared/types/ipc.ts` 한 곳**(`IPC_CHANNELS` **112개** 상수 + Zod 요청 스키마). 새 채널 = 상수 + 스키마 → `electron/main/ipc/*Handlers.ts` 핸들러 → `electron/preload/index.ts` 타입 지정 래퍼 → `src/services/*Service.ts`(TanStack Query 훅) 순. (실제로는 mpv·창 전체 화면 채널처럼 이벤트/명령성인 것은 서비스 래퍼 없이 `window.api.mpv.*`/`window.api.window.*`를 훅·스토어·컴포넌트에서 직접 호출한다 — `useMediaPlayback`, `useWindowFullscreen`, `useSeekPreview` 등.)
+1. **채널 정의는 `shared/types/ipc.ts` 한 곳**(`IPC_CHANNELS` **114개** 상수 + Zod 요청 스키마). 새 채널 = 상수 + 스키마 → `electron/main/ipc/*Handlers.ts` 핸들러 → `electron/preload/index.ts` 타입 지정 래퍼 → `src/services/*Service.ts`(TanStack Query 훅) 순. (실제로는 mpv·창 전체 화면 채널처럼 이벤트/명령성인 것은 서비스 래퍼 없이 `window.api.mpv.*`/`window.api.window.*`를 훅·스토어·컴포넌트에서 직접 호출한다 — `useMediaPlayback`, `useWindowFullscreen`, `useSeekPreview` 등.)
 2. 핸들러는 `payload: unknown` → `Schema.parse(payload)`. 푸시 전용 채널(`scanner:scan-progress`, `metadata:bulk-crawl-progress`, `update:status`, `mpv:state-update`, `mpv:ended`, `media:hardware-key`, `media:artwork-changed`, `window:fullscreen-changed`, `menu:open-excluded-entries-dialog` 등)은 `webContents.send`. `ipcMain.on` 리스너는 `safeParse`(예외로 메인이 죽지 않도록) — 단 `MPV_RESIZE`는 현재 `parse`를 씀.
 3. **모든 `ipcMain.handle/on`은 `installTrustedIpcGuard()`가 감싸** 발신 프레임이 앱 자신의 최상위 프레임(패키징 시 정확히 `out/renderer/index.html`, 개발 시 dev 서버 출처)인지 검사. 위반 시 handle은 throw, on은 `returnValue = null`. 새 핸들러도 자동 적용되지만 가드 설치 전에 등록하면 안 됨.
 4. 파일 시스템에 닿는 모든 핸들러는 `isPathWithinAnyLibrary` 검증(미디어는 `computeMediaAllowedRoots` + `computeMediaTrustedPaths`). 사용자가 고른 임의 위치(세이브 폴더·표지 원본 등)는 **"방금 고른 경로"** 패턴.
@@ -579,7 +580,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 - Node 버전: `.nvmrc` = 20.
 - 스택: Electron 43.8.7, electron-vite 5, Vite 7.3, React 19.2, TypeScript 6(strict), Tailwind v4 + shadcn/ui(Radix), Zustand 5, TanStack Query 5 / Router 1, Drizzle 0.45 + better-sqlite3 13, dnd-kit, react-window 2, framer-motion 12, cheerio, sharp 0.35.5, ffmpeg-static, iconv-lite, electron-updater, zod 4.6.7, sonner, Pretendard 번들 폰트. `overrides`로 undici/seroval/js-yaml 등 하위 의존성 고정.
 - 패키징: `extraResources`로 `LOGO.png`, `mpv_addon.node`, `libmpv-2.dll` 동봉, `asarUnpack` 사용. 앱 ID `com.arkmanager.app`.
-- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 112개, preload API 함수 약 140개(미디어 전체 화면 작업으로 몇 개 늘었으나 재집계하지 않음), 번역 키 364개(2026-11-23 TypeScript 파서로 `ko` 객체 재집계, ja/en 동일).
+- 규모: 비테스트 TS/TSX 약 31,000줄, IPC 채널 114개, preload API 함수 약 140개(미디어 전체 화면 작업으로 몇 개 늘었으나 재집계하지 않음), 번역 키 364개(2026-11-23 TypeScript 파서로 `ko` 객체 재집계, ja/en 동일).
 - 설계 스펙·구현 계획(`docs/superpowers/`, `.superpowers/`)은 gitignore 대상이라 **저장소에는 없음**(2026-11-23 미디어 전체 화면 작업의 스펙·계획은 이 PC 작업 폴더에만 남아 있고 커밋되지 않음). 그 외 코드 주석이 인용하는 이 경로의 문서는 대부분 열람 불가 → 주석 자체가 유일한 근거.
 
 ---
@@ -633,6 +634,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
    - 분리 창: 같은 띠·자동 숨김·⛶/`F`/더블클릭/`Esc`, 분리·최소화 버튼 없음, ☰가 오른쪽 재생목록 패널을 열고(기본 닫힘, 열려 있는 동안 띠 유지), 좋아요·자막 PIP 버튼 동작.
    - 음성 화면: 내장 표지 / 폴더 이미지 `cover.jpg` / 표지 없는 RJ 작품 폴더 안 곡(작품 표지 표시)에서 흐린 배경·원 비율 표지·강조색(재생 버튼·슬라이더·진행선) / 표지 없는 곡(남색 배경·음표 사각형·클릭 무반응·primary 강조색) / 표지 클릭·Tab+Enter/Space로 확대·축소(재생/일시정지가 같이 토글되지 않음, 곡이 바뀌어도 유지, 분리 창은 독립) / 긴 일본어 제목 3줄 말줄임·파일명 2줄 / 4:3 가로 표지(너비 45% 한도)와 세로·정사각 표지(높이 2/3 한도), 창 크기 변경 시 띠와 겹치지 않음 / 표지 교체 후 곡을 바꾸지 않아도 이미지·강조색 갱신 / 표지가 매우 밝거나 어두울 때 재생 아이콘·제목 가독성 / 곡 전환 중 확대 상태에서 화면이 navy·기본 배치로 번쩍이지 않음 / 폭 520px 미만 분리 창의 세로 배치 / 4K·최대화에서 블러 배경의 GPU 부하와 자동 숨김 fade 부드러움.
    - 장면 미리보기: 1시간 이상 영상에서 새 지점은 약 0.1초 안에, 본 지점은 즉시 카드가 뜬다 / 빠르게 왕복해도 마지막 지점 장면만 남는다 / 곡 전환 직전·직후 호버에서 이전 곡 장면이 나오지 않는다 / 도킹 바·전체 화면 띠·분리 창에서 확인(분리 중 메인 창 도킹 바는 분리 시점의 곡 동안은 장면이 나오고, 곡이 바뀐 뒤에는 시간 알약만 — §11.13) / 오디오·길이 모르는 영상은 카드 없음 / 좌우 끝과 640px 미만 창에서 카드가 창 안에 머문다 / thumb 드래그 중 바 밖에서도 따라가고 바 밖에서 놓으면 사라진다 / 미리보기 소리가 나지 않고 격렬한 스크럽에도 본 재생이 끊기지 않는다 / 숨은 띠와 함께 카드가 사라지고 클릭을 막지 않는다.
+   - 분리 창 프레임 없음: 제목 표시줄·메뉴 막대가 없고, 우측 상단 ㅡ ㅁ ✕가 2초 뒤 사라졌다 마우스를 움직이면 돌아온다 / ㅡ 최소화, ㅁ 최대화·복원(아이콘 전환, 제목 줄 더블클릭·`Win+↑`로 바꿔도 아이콘이 맞음), ✕ 닫기(메인 창에 닫힘 알림) / 제목 줄을 끌어 창 이동, 가장자리를 끌어 크기 조절 / ☰ 재생목록 패널을 열어도 버튼이 가려지지 않음 / 전체 화면에서는 ㅁ이 없음.
    - 최종 리뷰 수정분: 전체 화면에서 EQ 팝오버(프리셋 드롭다운 포함)를 연 채 `Esc` → 팝오버만 닫히고 전체 화면 유지(다시 `Esc`로 해제) / 트랙 끝 직전·끝나는 순간에 다음 곡 버튼(또는 큐 항목 클릭) → 누른 곡이 그대로 재생되고 한 곡 더 건너뛰지 않음(한 곡 반복이면 새 곡이 0초로 되감기지 않음).
    - 외부 리뷰·사후 수정분(`2a37bbd`~`dd65b14`): ① 일괄 크롤 도중 앱을 종료했다 다시 켜면 이미 저장된 작품 표지가 음성 전체 화면에 나온다 ② 표지 조회 중(첫 곡 진입 직후) 사용자 지정 표지를 지정해도 "표지 없음"이 남지 않는다 ③ F11로 전체 화면에 먼저 들어간 뒤 미디어 오버레이를 열고 첫 ⛶/`F`가 바로 해제된다 ④ 마지막 곡이 자연 종료되면 미디어가 켠 모니터 전체 화면이 풀리고(F11로 켠 것은 유지, 일시정지는 유지) ⑤ `npm ci` 후 `node_modules/ffmpeg-static/ffmpeg.exe`가 있고 미디어 탭 영상·음악 섬네일이 나온다(없으면 "표지 없음"이 영구 캐시되지 않고 다시 시도됨) ⑥ 음악 재생 중 새로고침(메뉴 Reload 확인창 후 / `Ctrl+R`)하면 소리도 같이 끝나고 재생 바가 남지 않는다. 분리 창이 재생 중일 때 메인 창만 새로고침하면 재생은 유지된다.
 5. 버전 번호 결정(1.2.4 또는 1.3.0), README 업데이트 내역 작성(**업데이트 후 "전체 메타데이터 새로고침" 1회 안내** 포함, §5.3), master 병합.
@@ -700,7 +702,7 @@ docs/                      이 문서, SECURITY*.md, 스크린샷, 검증 결과
 
 | 구버전 서술 | 실제 코드 |
 | --- | --- |
-| IPC 채널 약 100개(FEATURES) / 77개(ARCHITECTURE) | **106개**(2026-11-23 미디어 전체 화면 작업 뒤 112개) |
+| IPC 채널 약 100개(FEATURES) / 77개(ARCHITECTURE) | **106개**(2026-11-23 미디어 전체 화면 작업 뒤 114개) |
 | 테스트 파일 약 134개 | **141개 / 1009 테스트** |
 | 전체 새로고침 = `game_metadata`에 있는 모든 코드 | + `metadata_failures`에만 있는 코드 |
 | RJ/VJ 폴백 체인 ③ external(활성화 시) | 단건 크롤에서만. 일괄/전체 새로고침은 external 미사용 |

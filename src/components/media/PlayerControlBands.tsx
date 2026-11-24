@@ -1,4 +1,4 @@
-import type { FocusEvent, MouseEvent, ReactNode, Ref } from 'react'
+import type { CSSProperties, FocusEvent, MouseEvent, ReactNode, Ref } from 'react'
 import { Captions, Expand, ListMusic, Minimize2, PictureInPicture2, Shrink } from 'lucide-react'
 import { MediaTransportBar } from './MediaTransportBar'
 import { MediaLikeButton } from './MediaLikeButton'
@@ -111,11 +111,23 @@ export function PlayerControlBands({
         data-control-band="top"
         className={cn(
           bandFade,
-          'top-0 flex items-center gap-2 bg-gradient-to-b from-black/60 to-transparent px-[3%] pt-2.5 pb-6'
+          'top-0 flex items-center gap-2 bg-gradient-to-b from-black/60 to-transparent px-[3%] pt-2.5 pb-6',
+          // Room for the frameless window's own buttons (DetachedWindowControls).
+          mode === 'detached' && 'pr-36'
         )}
         style={{ right: topInsetRight }}
       >
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
+        <span
+          className="min-w-0 flex-1 truncate text-sm font-semibold text-white"
+          // The title strip is the frameless window's drag handle. Only while
+          // visible: a drag region swallows pointer events, and the hidden band
+          // must let moves through to bring the bands back.
+          style={
+            mode === 'detached' && visible
+              ? ({ WebkitAppRegion: 'drag' } as CSSProperties)
+              : undefined
+          }
+        >
           {playback.title || playback.track.name}
         </span>
         {topBandExtra}

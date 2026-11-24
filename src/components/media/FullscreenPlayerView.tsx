@@ -5,6 +5,7 @@ import { getActiveLyricLine, type ParsedLyrics } from '../../lib/lrc'
 import { cn } from '../../lib/utils'
 import { useWindowFullscreen } from '../../hooks/useWindowFullscreen'
 import { PlayerControlBands, type ControlBand } from './PlayerControlBands'
+import { DetachedWindowControls } from './DetachedWindowControls'
 import { AudioArtworkView, AudioTrackHeading, type AudioShell } from './AudioArtworkView'
 import { accentForeground, coverDisplay } from './coverLayout'
 import { useAutoHideControls } from './useAutoHideControls'
@@ -306,9 +307,18 @@ export function FullscreenPlayerView({
         onPopoverOpenChange={onPopoverOpenChange}
       />
 
+      {mode === 'detached' && (
+        <DetachedWindowControls
+          visible={visible}
+          fullscreen={fullscreen}
+          onPointerOverChange={(over) => onPointerOverChange('top', over)}
+          onFocusInChange={(focused) => onFocusInChange('top', focused)}
+        />
+      )}
+
       {sidePanelShown && (
         <aside
-          className="absolute top-0 right-0 overflow-y-auto border-l border-white/10 bg-black/85 p-2"
+          className="absolute top-0 right-0 overflow-y-auto border-l border-white/10 bg-black/85 p-2 pt-12"
           style={{ width: SIDE_PANEL_WIDTH_PX, bottom: bandHeight }}
         >
           {sidePanel}

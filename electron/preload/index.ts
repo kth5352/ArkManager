@@ -38,6 +38,7 @@ import {
   type VersionMismatchDto,
   type WindowCloseBehavior,
   type WindowFullscreenChangedPayload,
+  type WindowControlResult,
 } from '../../shared/types/ipc'
 import type { GameCode, ScannedEntry } from '../../shared/types/scanner'
 
@@ -115,7 +116,10 @@ const api = {
     getMediaEqualizerBands: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'media-equalizer-bands' }),
     setMediaEqualizerBands: (bandsJson: string): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, { key: 'media-equalizer-bands', value: bandsJson }),
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, {
+        key: 'media-equalizer-bands',
+        value: bandsJson,
+      }),
     getLocale: (): Promise<Locale | null> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, { key: 'locale' }),
     setLocale: (value: Locale): Promise<void> =>
@@ -533,6 +537,14 @@ const api = {
       reason: 'media-toggle' | 'media-flip' | 'media-release'
     ): Promise<WindowFullscreenChangedPayload> =>
       ipcRenderer.invoke(IPC_CHANNELS.WINDOW_SET_FULLSCREEN, { fullscreen, reason }),
+    control: (
+      action: 'minimize' | 'toggle-maximize' | 'close' | 'get-state'
+    ): Promise<WindowControlResult> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_CONTROL, { action }),
+    onMaximizedChanged: (callback: (maximized: boolean) => void): (() => void) => {
+      const listener = (_event: unknown, maximized: boolean): void => callback(maximized)
+      ipcRenderer.on(IPC_CHANNELS.WINDOW_MAXIMIZED_CHANGED, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.WINDOW_MAXIMIZED_CHANGED, listener)
+    },
     getFullscreen: (): Promise<WindowFullscreenChangedPayload> =>
       ipcRenderer.invoke(IPC_CHANNELS.WINDOW_GET_FULLSCREEN),
     onFullscreenChanged: (
@@ -579,7 +591,9 @@ contextBridge.exposeInMainWorld('api', api)
 // electron/main too, a pure-Node context where they don't actually exist.
 // This local ambient declaration covers exactly what this one relay call
 // needs, nothing more.
-declare const window: { postMessage: (message: unknown, targetOrigin: string, transfer?: MessagePort[]) => void }
+declare const window: {
+  postMessage: (message: unknown, targetOrigin: string, transfer?: MessagePort[]) => void
+}
 ipcRenderer.on('mpv-frame-port', (event) => {
   if (event.ports[0]) window.postMessage('mpv-frame-port-relay', '*', event.ports)
 })

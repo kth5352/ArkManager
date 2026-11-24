@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MediaPlaybackState } from './useMediaPlayback'
 import type { MediaCoverInfo } from '../../../shared/types/ipc'
 
+const windowControl = vi.hoisted(() => vi.fn(async () => ({ maximized: false })))
+
 const fs = vi.hoisted(() => ({
   state: { fullscreen: false, owner: null as 'media' | 'user' | null },
   toggle: vi.fn(),
@@ -86,6 +88,7 @@ describe('FullscreenPlayerView', () => {
   let root: ReturnType<typeof createRoot>
   const globals = globalThis as unknown as {
     IS_REACT_ACT_ENVIRONMENT: boolean
+    api: unknown
     ResizeObserver: unknown
   }
   let resizeCallbacks: (() => void)[]
@@ -135,6 +138,13 @@ describe('FullscreenPlayerView', () => {
     fs.state = { fullscreen: false, owner: null }
     cover.info = undefined
     useMediaPlayerStore.setState({ coverExpanded: false })
+    windowControl.mockClear()
+    globals.api = {
+      window: {
+        control: windowControl,
+        onMaximizedChanged: () => () => {},
+      },
+    }
     resizeCallbacks = []
     globals.ResizeObserver = class {
       constructor(cb: () => void) {
@@ -227,6 +237,22 @@ describe('FullscreenPlayerView', () => {
     render({ mode: 'detached', onMinimize: vi.fn(), onDetach: vi.fn() })
     expect(container.querySelector('[aria-label="media.minimize"]')).toBeNull()
     expect(container.querySelector('[aria-label="media.detachWindow"]')).toBeNull()
+  })
+
+  it('detached: draws minimize/maximize/close, fading with the bands; overlay has none', () => {
+    render({ mode: 'detached' })
+    const group = container.querySelector('[data-window-controls]') as HTMLElement
+    expect(group).not.toBeNull()
+    expect(group.className).toContain('opacity-100')
+    act(() => {
+      ;(container.querySelector('[aria-label="media.windowMinimize"]') as HTMLElement).click()
+      ;(container.querySelector('[aria-label="media.windowClose"]') as HTMLElement).click()
+    })
+    expect(windowControl).toHaveBeenCalledWith('minimize')
+    expect(windowControl).toHaveBeenCalledWith('close')
+    expect(container.querySelector('[aria-label="media.windowMaximize"]')).not.toBeNull()
+    render()
+    expect(container.querySelector('[data-window-controls]')).toBeNull()
   })
 
   it('double-clicking the video toggles monitor fullscreen', () => {
